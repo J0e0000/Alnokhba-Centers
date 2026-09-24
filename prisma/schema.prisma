@@ -1,0 +1,1279 @@
+// Nokhba Centers — AlNokhba platform extension
+// Multi-tenant center management: students, attendance, payments, accounting.
+// All monetary amounts are stored as INTEGER PIASTRES (1 EGP = 100 piastres)
+// to guarantee exact financial math. Dates use YYYY-MM-DD strings (business dates).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================= TENANT =============================
+
+model Center {
+  id             String   @id @default(cuid())
+  name           String
+  slug           String   @unique
+  logo           String? // data URL
+  primaryColor   String   @default("#0E9F6E")
+  secondaryColor String   @default("#0F766E")
+  accentColor    String?
+  phone          String?
+  whatsapp       String?
+  address        String?
+  social         String? // JSON { facebook, instagram, website }
+  slogan         String?
+  signature      String? // WhatsApp closing signature
+  status         String   @default("ACTIVE") // ACTIVE | SUSPENDED
+  // WhatsApp parent-notification opt-in (manual handoff via wa.me — no provider configured)
+  waPaymentsEnabled    Boolean @default(false)
+  waLowBalanceEnabled  Boolean @default(false)
+  waLowBalanceThreshold Int   @default(5000) // piastres
+  waConsentNote        String? // free-text consent record (who agreed, when)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  users        User[]
+  students     Student[]
+  teachers     Teacher[]
+  subjects     Subject[]
+  grades       Grade[]
+  rooms        Room[]
+  groups       Group[]
+  schedules    ScheduleSlot[]
+  sessions     SessionInstance[]
+  expenses     Expense[]
+  cashDays     CashDay[]
+  settlements  TeacherSettlement[]
+  billings     PlatformBilling[]
+  templates    WhatsAppTemplate[]
+  auditLogs    AuditLog[]
+  books        Book[]
+  subscription Subscription?
+  txns         CenterTransaction[]
+  receipts     Receipt[]
+  notifications NotificationAttempt[]
+  messageQueue MessageQueueItem[]
+  announcements Announcement[]
+  emergencyImports EmergencyImport[]
+  emergencyPackages EmergencyPackage[]
+  emergencyRecoveryImports EmergencyRecoveryImport[]
+  approvalRequests ApprovalRequest[]
+  staffNotifications StaffNotification[]
+}
+
+model User {
+  id             String   @id @default(cuid())
+  centerId       String? // null => platform admin (أو مقدم طلب انضمام مستني تعيين)
+  username       String   @unique
+  passwordHash   String
+  name           String
+  role           String // ADMIN | MANAGER | RECEPTIONIST | PENDING (طلب انضمام) | REJECTED
+  canAddStudents Boolean  @default(true) // receptionist permission
+  isActive       Boolean  @default(true)
+  // per-user receipt preferences
+  autoPrintReceipt Boolean @default(false) // print receipt automatically after each payment
+  receiptFormat    String  @default("THERMAL") // THERMAL (80mm) | A4
+  // صلاحيات حساسة دقيقة يتحكم فيها المدير (JSON { REFUND_PAYMENT: true, ... })
+  // null = افتراضي الدور. الصلاحيات دي فوق الافتراضي — بتقرأها resolvePermissions()
+  permissions     String?
+  // ALNOKHBA ACADEMIA — product scope + granular academia permission overrides
+  scope           String   @default("centers") // "centers" | "academia"
+  acaPermissions  String? // JSON { "grades.edit": true, ... } — overrides for academia RBAC
+  // بيانات طلب الانضمام (لما role = PENDING)
+  phone           String?
+  center          Center?  @relation(fields: [centerId], references: [id])
+  authSessions   AuthSession[]
+  auditLogs      AuditLog[]
+  supportAdminSessions   SupportSession[] @relation("SupportAdmin")
+  supportTargetSessions  SupportSession[] @relation("SupportTarget")
+  teamMemberships TeamMember[] @relation("TeamMembers")
+  approvalRequested ApprovalRequest[] @relation("ApprovalRequester")
+  approvalDecided  ApprovalRequest[] @relation("ApprovalDecider")
+  staffNotifications StaffNotification[]
+  acaTeacherGroups   AcaGroup[]         @relation("AcaTeacherGroups")
+  acaTeacherSessions AcaSession[]       @relation("AcaTeacherSessions")
+  acaStudentProfile  AcaStudentProfile?
+  acaRequestsMade    AcaRequest[]       @relation("AcaRequester")
+  acaRequestsDecided AcaRequest[]       @relation("AcaDecider")
+  acaNotifications   AcaNotification[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([centerId])
+  @@index([role, isActive])
+}
+
+model AuthSession {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ============================= ACADEMICS =============================
+
+model Grade {
+  id       String  @id @default(cuid())
+  centerId String
+  name     String // "الأول الثانوي"
+  order    Int     @default(0)
+  center   Center  @relation(fields: [centerId], references: [id])
+  groups   Group[]
+  students Student[]
+  books    Book[]
+
+  @@unique([centerId, name])
+}
+
+model Subject {
+  id       String @id @default(cuid())
+  centerId String
+  name     String // "فيزياء"
+  center   Center @relation(fields: [centerId], references: [id])
+  groups   Group[]
+  books    Book[]
+
+  @@unique([centerId, name])
+}
+
+model Teacher {
+  id        String  @id @default(cuid())
+  centerId  String
+  name      String
+  phone     String?
+  loginCode String? // كود 4 أرقام لدخول بورتال المدرس (فريد داخل السنتر)
+  notes     String?
+  isActive  Boolean @default(true)
+  center    Center  @relation(fields: [centerId], references: [id])
+  groups    Group[]
+  settlements TeacherSettlement[]
+  portalSessions TeacherPortalSession[]
+
+  @@index([centerId])
+  @@unique([centerId, loginCode])
+}
+
+// جلسة بورتال المدرس — زي جلسة الطالب بالظبط (معزولة تمامًا عن جلسات الموظفين)
+model TeacherPortalSession {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  teacherId String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  teacher   Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId])
+}
+
+model Group {
+  id             String   @id @default(cuid())
+  centerId       String
+  name           String // "A"
+  gradeId        String
+  subjectId      String
+  teacherId      String?
+  sessionPrice   Int // piastres
+  teacherPercent Int      @default(50) // 0..100
+  room           String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  center         Center   @relation(fields: [centerId], references: [id])
+  grade          Grade    @relation(fields: [gradeId], references: [id])
+  subject        Subject  @relation(fields: [subjectId], references: [id])
+  teacher        Teacher? @relation(fields: [teacherId], references: [id])
+  students       StudentGroup[]
+  sessions       SessionInstance[]
+  schedules      ScheduleSlot[]
+
+  @@index([centerId])
+}
+
+// ============================= ROOMS (قاعات) =============================
+
+model Room {
+  id        String   @id @default(cuid())
+  centerId  String
+  name      String // "قاعة 1"
+  capacity  Int? // optional seats
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  center    Center   @relation(fields: [centerId], references: [id])
+
+  @@unique([centerId, name])
+  @@index([centerId])
+}
+
+// ============================= STUDENTS =============================
+
+model Student {
+  id          String   @id @default(cuid())
+  centerId    String
+  code        String // 5-digit, unique per center
+  qrToken     String   @unique // secure opaque token encoded in QR (no PII)
+  name        String
+  phone       String?
+  parentName  String?
+  parentPhone String?
+  gradeId     String?
+  school      String?
+  status      String   @default("ACTIVE") // ACTIVE | PAUSED | ARCHIVED
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  center      Center   @relation(fields: [centerId], references: [id])
+  grade       Grade?   @relation(fields: [gradeId], references: [id])
+  registrations StudentGroup[]
+  attendance  Attendance[]
+  txns        StudentTransaction[]
+  bookSales   BookSale[]
+  receipts    Receipt[]
+  notifications NotificationAttempt[]
+  queueItems  MessageQueueItem[]
+  portalSessions StudentPortalSession[]
+  studentNotifications StudentNotification[]
+  pushSubs    PushSubscription[]
+
+  @@unique([centerId, code])
+  @@index([centerId, name])
+  @@index([centerId, status])
+  @@index([centerId, phone])
+}
+
+model StudentGroup {
+  id            String   @id @default(cuid())
+  studentId     String
+  groupId       String
+  priceOverride Int? // piastres; null => use group price
+  status        String   @default("ACTIVE")
+  registeredBy  String?
+  createdAt     DateTime @default(now())
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, groupId])
+  @@index([groupId])
+}
+
+// ============================= SCHEDULE & SESSIONS =============================
+
+model ScheduleSlot {
+  id        String   @id @default(cuid())
+  centerId  String
+  dayOfWeek Int // 0=Sunday .. 6=Saturday
+  startTime String // "17:00"
+  endTime   String // "18:30"
+  groupId   String
+  room      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  center    Center   @relation(fields: [centerId], references: [id])
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([centerId, dayOfWeek])
+}
+
+model SessionInstance {
+  id            String    @id @default(cuid())
+  centerId      String
+  scheduleId    String?
+  groupId       String
+  date          String // YYYY-MM-DD
+  startTime     String
+  endTime       String
+  room          String?
+  price         Int // snapshot of group price (piastres)
+  teacherPercent Int // snapshot
+  status        String    @default("OPEN") // OPEN | CLOSED | CANCELLED
+  openedBy      String?
+  closedBy      String?
+  closedAt      DateTime?
+  // close-time aggregates (piastres)
+  presentCount  Int?
+  totalRevenue  Int?
+  teacherShare  Int?
+  centerShare   Int?
+  createdAt     DateTime  @default(now())
+  center        Center    @relation(fields: [centerId], references: [id])
+  group         Group     @relation(fields: [groupId], references: [id])
+  attendance    Attendance[]
+
+  @@index([centerId, date])
+  @@index([groupId, date])
+}
+
+model Attendance {
+  id         String         @id @default(cuid())
+  centerId   String
+  sessionId  String
+  studentId  String
+  status     String         @default("PRESENT") // PRESENT | LATE | EXCUSED
+  idemKey    String?  @unique // offline-sync idempotency key — duplicate retries return the same record
+  charged    Int? // actual charge in piastres (null = not charged)
+  note       String?
+  recordedBy String?
+  createdAt  DateTime       @default(now())
+  session    SessionInstance @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student    Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, studentId])
+  @@index([centerId, studentId])
+}
+
+// ============================= FINANCIAL LEDGER =============================
+// Signed amounts (piastres):
+//   PAYMENT/REFUND_VOID/ADJUSTMENT(+) increases student credit
+//   CHARGE(-) decreases credit
+// Balance = SUM(amount): >0 => student has credit, <0 => student owes.
+
+model StudentTransaction {
+  id        String   @id @default(cuid())
+  centerId  String
+  studentId String
+  sessionId String?
+  type      String // CHARGE | PAYMENT | REFUND | ADJUSTMENT
+  amount    Int // signed piastres
+  method    String? // CASH | VODAFONE | INSTAPAY (payments)
+  reason    String?
+  idemKey   String?  @unique // emergency-import idempotency key (EMG-YYYY-NNNNNN) — duplicate imports are rejected
+  createdBy String // userId
+  createdAt DateTime @default(now())
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  receipt   Receipt?
+
+  @@index([centerId, studentId])
+  @@index([centerId, createdAt])
+  @@index([centerId, type])
+  @@index([sessionId])
+}
+
+model Expense {
+  id        String   @id @default(cuid())
+  centerId  String
+  category  String // RENT | ELECTRICITY | SALARIES | MAINTENANCE | SUPPLIES | OTHER
+  amount    Int // piastres
+  date      String // YYYY-MM-DD
+  note      String?
+  createdBy String
+  createdAt DateTime @default(now())
+  center    Center   @relation(fields: [centerId], references: [id])
+
+  @@index([centerId, date])
+}
+
+model TeacherSettlement {
+  id        String   @id @default(cuid())
+  centerId  String
+  teacherId String
+  sessionId String?
+  type      String // EARNED | PAID
+  amount    Int // signed: EARNED(+) accrues payable, PAID(-) reduces it
+  date      String
+  note      String?
+  createdBy String
+  createdAt DateTime @default(now())
+  center    Center   @relation(fields: [centerId], references: [id])
+  teacher   Teacher  @relation(fields: [teacherId], references: [id])
+
+  @@index([centerId, teacherId])
+  @@index([centerId, date])
+}
+
+// Center-level journal (audit + external accounting exports)
+model CenterTransaction {
+  id        String   @id @default(cuid())
+  centerId  String
+  type      String // SESSION_REVENUE | EXPENSE | TEACHER_SHARE | TEACHER_PAYOUT | REFUND | ADJUSTMENT | SUBSCRIPTION_FEE
+  amount    Int // signed piastres
+  date      String
+  note      String?
+  refType   String?
+  refId     String?
+  createdBy String
+  createdAt DateTime @default(now())
+  center    Center   @relation(fields: [centerId], references: [id])
+
+  @@index([centerId, date])
+  @@index([centerId, type])
+}
+
+model CashDay {
+  id          String    @id @default(cuid())
+  centerId    String
+  date        String // YYYY-MM-DD
+  openingCash Int       @default(0) // piastres
+  countedCash Int? // actual counted at close
+  status      String    @default("OPEN") // OPEN | CLOSED
+  openedBy    String?
+  closedBy    String?
+  closedAt    DateTime?
+  createdAt   DateTime  @default(now())
+  center      Center    @relation(fields: [centerId], references: [id])
+
+  @@unique([centerId, date])
+}
+
+// ============================= WHATSAPP =============================
+
+model WhatsAppTemplate {
+  id        String   @id @default(cuid())
+  centerId  String
+  name      String
+  body      String // supports {student_name} {parent_name} {subject} ... vars
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  center    Center   @relation(fields: [centerId], references: [id])
+
+  @@unique([centerId, name])
+}
+
+// ============================= BOOKS (الكتب) =============================
+// Center sells books/study materials. Money in INTEGER PIASTRES like everywhere.
+
+model Book {
+  id        String   @id @default(cuid())
+  centerId  String
+  name      String // "كتاب الفيزياء — الأول الثانوي"
+  gradeId   String? // optional curriculum grade
+  subjectId String? // optional subject
+  price     Int // sale price (piastres)
+  costPrice Int      @default(0) // purchase cost (piastres) — for gross-profit reports
+  stock     Int      @default(0) // current copies on shelf
+  reorderThreshold Int @default(3) // low-stock warning level
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  center    Center   @relation(fields: [centerId], references: [id])
+  grade     Grade?   @relation(fields: [gradeId], references: [id])
+  subject   Subject? @relation(fields: [subjectId], references: [id])
+  sales     BookSale[]
+
+  @@unique([centerId, name])
+  @@index([centerId])
+  @@index([centerId, isActive, stock])
+}
+
+model BookSale {
+  id         String   @id @default(cuid())
+  centerId   String
+  bookId     String
+  studentId  String? // null = walk-in customer (buyerName instead)
+  buyerName  String? // snapshot display name (student name or walk-in)
+  qty        Int
+  unitPrice  Int // snapshot at sale time (piastres)
+  unitCost   Int      @default(0) // snapshot of book costPrice at sale time (profit reports)
+  total      Int // qty × unitPrice
+  method     String? // CASH | VODAFONE | INSTAPAY
+  idemKey    String?  @unique // idempotency key — repeated submissions return the same sale
+  date       String // YYYY-MM-DD business date
+  note       String?
+  createdBy  String
+  createdAt  DateTime @default(now())
+  book       Book     @relation(fields: [bookId], references: [id])
+  student    Student? @relation(fields: [studentId], references: [id])
+
+  @@index([centerId, date])
+  @@index([centerId, bookId])
+}
+
+// ============================= RECEIPTS (إيصالات الدفع) =============================
+// One receipt per PAYMENT transaction, sequential per center (RC-000001).
+
+model Receipt {
+  id            String   @id @default(cuid())
+  centerId      String
+  seq           Int // per-center sequence
+  number        String // display number "RC-000042"
+  txnId         String   @unique // the StudentTransaction this receipt covers
+  txn           StudentTransaction @relation(fields: [txnId], references: [id])
+  studentId     String
+  amount        Int // piastres received
+  method        String? // CASH | VODAFONE | INSTAPAY
+  balanceBefore Int // piastres
+  balanceAfter  Int // piastres
+  sessionId     String? // session the payment was allocated to (if any)
+  issuedBy      String // userId
+  issuedByName  String // denormalized staff display name
+  date          String // YYYY-MM-DD business date
+  createdAt     DateTime @default(now())
+  center        Center   @relation(fields: [centerId], references: [id])
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([centerId, seq])
+  @@index([centerId, createdAt])
+}
+
+// ============================= NOTIFICATIONS (محاولات إشعار الواتساب) =============================
+// Opt-in parent notifications. Delivery is a manual wa.me handoff (no provider
+// credentials configured) — attempts are persisted with honest statuses.
+
+model NotificationAttempt {
+  id            String   @id @default(cuid())
+  centerId      String
+  studentId     String?
+  txnId         String? // payment ref — dedupe key for payment templates
+  template      String // template name ("تأكيد دفعة" ...)
+  channel       String   @default("WA_HANDOFF") // WA_HANDOFF | PROVIDER
+  recipient     String // phone number
+  status        String   @default("PENDING") // PENDING | OPENED | SENT | FAILED
+  providerRef   String?
+  error         String?
+  bodySnapshot  String
+  createdBy     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  center        Center   @relation(fields: [centerId], references: [id])
+  student       Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([txnId, template]) // one attempt per payment+template (explicit retry resets it)
+  @@index([centerId, createdAt])
+}
+
+// ============================= MESSAGE QUEUE (طابور الرسائل) =============================
+// Persistent per-center message queue for manual WhatsApp handoff batches
+// (low-balance campaigns, group announcements, payment reminders).
+// One message at a time, explicit staff click per handoff — statuses are honest:
+// QUEUED → SENDING (chat opened) → SENT (staff confirmed) | FAILED | SKIPPED | CANCELLED.
+
+model MessageQueueItem {
+  id              String    @id @default(cuid())
+  centerId        String
+  batchId         String // grouping key for one campaign run
+  batchLabel      String // display label ("تنبيه رصيد — مارس")
+  studentId       String?
+  recipientPhone  String
+  recipientName   String
+  channel         String    @default("WA_HANDOFF") // WA_HANDOFF | PROVIDER
+  templateKey     String // low_balance | campaign | payment_confirm
+  messageText     String
+  dedupeKey       String // centerId:studentId:template:period — skip duplicates
+  status          String    @default("QUEUED") // QUEUED | SENDING | SENT | FAILED | SKIPPED | CANCELLED
+  attempts        Int       @default(0)
+  maxAttempts     Int       @default(3)
+  nextAttemptAt   DateTime?
+  lockedAt        DateTime?
+  providerMessageId String?
+  lastError       String?
+  handoffCount    Int       @default(0) // how many times the chat was opened
+  createdBy       String
+  createdAt       DateTime  @default(now())
+  sentAt          DateTime?
+  updatedAt       DateTime  @updatedAt
+  center          Center    @relation(fields: [centerId], references: [id])
+  student         Student?  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([dedupeKey])
+  @@index([centerId, status, nextAttemptAt])
+  @@index([centerId, batchId, status])
+  @@index([centerId, createdAt])
+}
+
+// ============================= STUDENT PORTAL =============================
+// بورتال الطالب المبسّط: دخول بالكود + رقم الموبايل → جلسة httpOnly مستقلة
+// عن جلسات الموظفين (cookie منفصل + نطاق /api/portal بس).
+
+model StudentPortalSession {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  studentId String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+}
+
+// ============================= ANNOUNCEMENTS (إعلانات السنتر) =============================
+// المدير بينشر إعلان بجمهور مستهدف (كل الطلاب / مرحلة / مجموعة / مادة)
+// والنظام بيحوله تلقائيًا لإشعار لكل طالب في الجمهور ده.
+
+model Announcement {
+  id           String   @id @default(cuid())
+  centerId     String
+  title        String
+  body         String
+  audienceType String // ALL | GRADE | GROUP | SUBJECT
+  audienceId   String? // gradeId | groupId | subjectId (null for ALL)
+  audienceName String // denormalized label for lists ("كل الطلاب" / "أولى ثانوي")
+  recipients   Int // عدد الطلاب اللي وصلهم الإعلان
+  createdBy    String
+  createdByName String
+  createdAt    DateTime @default(now())
+  center       Center   @relation(fields: [centerId], references: [id])
+  notifications StudentNotification[]
+
+  @@index([centerId, createdAt])
+}
+
+// ============================= STUDENT NOTIFICATIONS (إشعارات الطالب) =============================
+// أنواع محدودة عمدًا: إعلان / تغيير جدول / تغيير ميعاد / تغيير مكان.
+// غيّرنا رصيد؟ مش إشعار. عملية عادية؟ مش إشوار. مفيش سبام.
+
+model StudentNotification {
+  id             String        @id @default(cuid())
+  centerId       String
+  studentId      String
+  type           String // ANNOUNCEMENT | SCHEDULE_CHANGE | TIME_CHANGE | LOCATION_CHANGE
+  title          String
+  body           String
+  announcementId String?
+  readAt         DateTime?
+  createdAt      DateTime      @default(now())
+  student        Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  announcement   Announcement? @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@index([centerId, studentId, readAt])
+  @@index([centerId, createdAt])
+}
+
+// ============================= WEB PUSH =============================
+// اشتراكات Push للبورتال (اختيارية تمامًا — الرفض مش بيمنع أي حاجة)
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  centerId  String
+  studentId String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([centerId, studentId])
+}
+
+// مفاتيح VAPID لكل سنتر — بتتولد مرة واحدة عند أول استخدام
+model VapidKey {
+  id         String   @id @default(cuid())
+  centerId   String   @unique
+  publicKey  String
+  privateKey String
+  createdAt  DateTime @default(now())
+}
+
+// ============================= EMERGENCY EXCEL (نظام الطوارئ) =============================
+// سجل عمليات مزامنة الإكسل الطارئ — الإكسل مصدر استرداد مش مصدر حقيقة.
+
+model EmergencyImport {
+  id          String   @id @default(cuid())
+  centerId    String
+  fileName    String
+  totalRows   Int
+  imported    Int
+  duplicates  Int
+  conflicts   Int
+  details     String? // JSON: صفوف التعارض وأسبابها
+  importedBy  String
+  importedByName String
+  createdAt   DateTime @default(now())
+  center      Center   @relation(fields: [centerId], references: [id])
+
+  @@index([centerId, createdAt])
+}
+
+// ============================= EMERGENCY PACKAGES (نظام الطوارئ أوفلاين) =============================
+// سجل الحزم الصادرة: كل حزمة HTML أوفلاين ليها رخصة موقّعة RSA من السيرفر —
+// صلاحية 7 أيام، مربوطة بالسنتر، ومرتبطة ببصمة اللقطة (snapshotDigest).
+// المفتاح الخاص محفوظ على السيرفر بس (db/emergency-signing.pem) — مش بيتشحن مع الحزمة أبدًا.
+
+model EmergencyPackage {
+  id              String    @id // packageId (NK-EMG-...)
+  centerId        String
+  snapshotId      String
+  centerName      String // denormalized عند الإصدار
+  licenseVersion  Int       @default(1)
+  licenseJson     String // canonical payload (النص الموقّع حرفيًا)
+  signature       String // base64 RSA-SHA256
+  snapshotDigest  String // sha256 hex للقطة
+  keyFingerprint  String // بصمة المفتاح الموقّع
+  studentCount    Int
+  groupCount      Int
+  sessionCount    Int
+  createdAt       DateTime  @default(now())
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  generatedBy     String // userId
+  generatedByName String
+  center          Center    @relation(fields: [centerId], references: [id])
+  recoveryImports EmergencyRecoveryImport[]
+  importedTxns    EmergencyImportedTxn[]
+
+  @@index([centerId, createdAt])
+}
+
+// كل عملية استيراد لملف استرداد (JSON) — سجل مستقل عن استيراد الإكسل القديم
+model EmergencyRecoveryImport {
+  id             String   @id @default(cuid())
+  centerId       String
+  packageId      String
+  fileName       String
+  totalTxns      Int
+  imported       Int
+  duplicates     Int
+  conflicts      Int
+  skipped        Int
+  details        String? // JSON: التعارضات والقرارات
+  importedBy     String
+  importedByName String
+  createdAt      DateTime @default(now())
+  package        EmergencyPackage @relation(fields: [packageId], references: [id])
+  txnMarks      EmergencyImportedTxn[]
+  center        Center           @relation(fields: [centerId], references: [id])
+
+  @@index([centerId, createdAt])
+}
+
+// علامات استيراد كل معاملة طوارئ (ETX) — منع الاستيراد المتكرر نهائيًا مهما اترفع الملف كام مرة
+model EmergencyImportedTxn {
+  id         String   @id // ETX id (UUID) — فريد عالميًا
+  packageId  String
+  centerId   String
+  opType     String
+  entityType String
+  entityId   String?
+  importId   String?
+  importedAt DateTime @default(now())
+  package    EmergencyPackage          @relation(fields: [packageId], references: [id])
+  import     EmergencyRecoveryImport?  @relation(fields: [importId], references: [id])
+
+  @@unique([id])
+  @@index([packageId])
+  @@index([centerId, importedAt])
+}
+
+// ============================= AUDIT & SUBSCRIPTIONS =============================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  centerId String?
+  userId    String?
+  userName  String // denormalized display name
+  action    String // STUDENT_CREATED | PAYMENT_RECORDED | SESSION_CLOSED ...
+  entity    String?
+  entityId  String?
+  before    String? // JSON snapshot
+  after     String? // JSON snapshot
+  reason    String?
+  createdAt DateTime @default(now())
+  center    Center?  @relation(fields: [centerId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([centerId, createdAt])
+  @@index([action])
+}
+
+model SubscriptionPlan {
+  id              String @id @default(cuid())
+  name            String // Starter | Professional | Enterprise
+  pricePerStudent Int // piastres / student / month
+  maxStudents     Int? // null = unlimited
+  isActive        Boolean @default(true)
+  subscriptions   Subscription[]
+}
+
+model Subscription {
+  id            String           @id @default(cuid())
+  centerId      String           @unique
+  planId        String
+  status        String           @default("ACTIVE") // ACTIVE | EXPIRED | CANCELLED
+  billingPeriod String           @default("MONTHLY")
+  pricePerStudent Int            @default(2500) // piastres snapshot
+  startDate     String
+  renewalDate   String // YYYY-MM-DD
+  paymentStatus String           @default("PENDING") // PAID | PENDING
+  center        Center           @relation(fields: [centerId], references: [id])
+  plan          SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@index([status])
+}
+
+// Platform billing records (admin renews a center => BILLING entry)
+model PlatformBilling {
+  id           String   @id @default(cuid())
+  centerId     String
+  students     Int // active student count at billing time
+  pricePerStudent Int
+  amount       Int
+  periodStart  String
+  periodEnd    String
+  status       String   @default("PAID")
+  createdBy    String
+  createdAt    DateTime @default(now())
+  center       Center   @relation(fields: [centerId], references: [id])
+
+  @@index([centerId])
+}
+
+// ============================= SUPPORT ACCESS (دخول الدعم الفني) =============================
+// الأدمن بيدخل باسم مستخدم لمساعدته — من غير ما يشوف الباسورد أبدًا.
+// جلسة مؤقتة (30 دقيقة افتراضيًا) + عودة تلقائية لحساب الأدمن.
+model SupportSession {
+  id            String    @id @default(cuid())
+  adminId       String
+  admin         User      @relation("SupportAdmin", fields: [adminId], references: [id])
+  targetUserId  String
+  targetUser    User      @relation("SupportTarget", fields: [targetUserId], references: [id])
+  reason        String
+  sessionToken  String    @unique // جلسة الموظف المؤقتة اللي بتتعمل للهدف
+  startedAt     DateTime  @default(now())
+  expiresAt     DateTime // انتهاء الدعم (افتراضي 30 دقيقة)
+  endedAt       DateTime?
+
+  @@index([adminId])
+  @@index([targetUserId])
+}
+
+// ============================= TEAMS (فرق العمل) =============================
+// تنظيمية بس — عضوية الفريق مش بتدي أي صلاحيات تلقائيًا.
+model Team {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  members     TeamMember[]
+}
+
+model TeamMember {
+  id         String   @id @default(cuid())
+  teamId     String
+  userId     String
+  addedById  String?
+  addedAt    DateTime @default(now())
+  team       Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user       User     @relation("TeamMembers", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+}
+
+// ============================= APPROVAL REQUESTS (طلبات الموافقة) =============================
+// العمليات الحساسة (استرداد / تسوية / إلغاء حصة ...) اللي الموظف مالوش صلاحية مباشرة
+// بتتحول لطلب موافقة بدل تنفيذ فوري: PENDING → APPROVED (مرة واحدة بس) أو REJECTED/CANCELLED.
+// المدير بيقرر، والتنفيذ بيحصل بعد الاعتماد بس — بأثر مالي عكسي (مفيش مسح لدفعة أبدًا).
+
+model ApprovalRequest {
+  id               String    @id @default(cuid())
+  centerId         String
+  seq              Int // per-center sequence (AR-000001)
+  number           String // display "AR-000001"
+  type             String // REFUND | ADJUSTMENT | SESSION_CANCEL | STUDENT_CANCEL
+  status           String    @default("PENDING") // PENDING | APPROVED | REJECTED | CANCELLED
+  studentId        String? // الطالب المعني (لو فيه)
+  payload          String // JSON: { amount, reason, sessionId, ... } snapshot وقت الطلب
+  amount           Int? // الأثر المالي بالقروش (موجب = فلوس خارجة من السنتر للطالب)
+  reason           String // سبب الطلب من الموظف
+  requestedBy      String
+  requestedByName  String // denormalized
+  decidedBy        String?
+  decidedByName    String? // denormalized
+  decidedAt        DateTime?
+  decisionNote     String? // سبب القرار (رفض/اعتماد)
+  executedTxnId    String? // StudentTransaction اللي اتنفذ بعد الاعتماد
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  center           Center    @relation(fields: [centerId], references: [id])
+  requester        User      @relation("ApprovalRequester", fields: [requestedBy], references: [id])
+  decider          User?     @relation("ApprovalDecider", fields: [decidedBy], references: [id])
+
+  @@unique([centerId, seq])
+  @@index([centerId, status, createdAt])
+  @@index([centerId, requestedBy])
+}
+
+// ============================= STAFF NOTIFICATIONS (إشعارات الموظفين) =============================
+// إشعارات فورية للمدير والأدمن: طلب موافقة جديد / قرار على طلب / طلب انضمام جديد.
+// بتتقرأ بالبولينج من الواجهة (جرس + بادج) — مفيش إشعار واتساب للموظفين هنا.
+
+model StaffNotification {
+  id        String    @id @default(cuid())
+  centerId  String? // null = إشعار أدمن منصة (طلبات الانضمام مثلاً)
+  userId    String // الموظف المستلم
+  type      String // APPROVAL_REQUEST | APPROVAL_DECIDED | SIGNUP_REQUEST | SYSTEM
+  title     String
+  body      String
+  link      String? // واجهة مقترحة للتنقل (مثلاً "approvals")
+  refId     String? // معرّف الطلب المرتبط
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  center    Center?   @relation(fields: [centerId], references: [id])
+
+  @@index([userId, readAt])
+  @@index([centerId, createdAt])
+}
+
+// ###########################################################################
+// ============================ ALNOKHBA ACADEMIA ============================
+// ###########################################################################
+// Dedicated academic-management product built on the same identity system
+// (User/AuthSession) but a separate product scope ("academia").
+// Additive forward models — Centers tables above are untouched (spec §33).
+// Dates: YYYY-MM-DD strings. Times: "HH:MM" 24h. dayOfWeek: 0=Sunday..6=Saturday.
+
+model AcademicTerm {
+  id        String   @id @default(cuid())
+  name      String // "2026/2027 — الترم الأول"
+  type      String   @default("TERM") // YEAR | TERM | EXAM_PERIOD | HOLIDAY
+  startDate String // YYYY-MM-DD
+  endDate   String
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  exams AcaExam[]
+
+  @@index([isActive])
+}
+
+// ----------------------------- CURRICULUM TREE -----------------------------
+// Subject → Unit → Topic → Lesson  (what the student has studied & how)
+
+model AcaSubject {
+  id        String   @id @default(cuid())
+  name      String // "الرياضيات"
+  code      String? // "MATH"
+  color     String   @default("#0E9F6E")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  units  AcaUnit[]
+  groups AcaGroup[]
+  exams  AcaExam[]
+
+  @@unique([name])
+}
+
+model AcaUnit {
+  id        String     @id @default(cuid())
+  subjectId String
+  title     String
+  order     Int        @default(0)
+  subject   AcaSubject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  topics AcaTopic[]
+
+  @@index([subjectId, order])
+}
+
+model AcaTopic {
+  id      String  @id @default(cuid())
+  unitId  String
+  title   String
+  order   Int     @default(0)
+  unit    AcaUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  lessons  AcaLesson[]
+  exams    AcaExam[]
+  sessions AcaSession[]
+
+  @@index([unitId, order])
+}
+
+model AcaLesson {
+  id      String   @id @default(cuid())
+  topicId String
+  title   String
+  order   Int      @default(0)
+  topic   AcaTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@index([topicId, order])
+}
+
+// ----------------------------- PEOPLE -----------------------------
+// Teachers & students are platform Users (role TEACHER/STUDENT, scope=academia).
+
+model AcaStudentProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  code        String   @unique // 5-digit student code
+  gradeName   String? // "الأول الثانوي"
+  parentName  String?
+  parentPhone String?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enrollments  AcaEnrollment[]
+  attendance   AcaAttendance[]
+  interactions AcaInteraction[]
+  homework     AcaHomeworkRecord[]
+  examResults  AcaExamResult[]
+
+  @@index([code])
+}
+
+// ----------------------------- GROUPS / CLASSES -----------------------------
+
+model AcaGroup {
+  id              String   @id @default(cuid())
+  name            String // "الرياضيات — أولى ثانوي — A"
+  subjectId       String
+  teacherId       String // User (role TEACHER)
+  gradeName       String?
+  room            String?
+  capacity        Int      @default(20)
+  pricePerSession Int? // piastres (light financial layer, perm-gated)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  subject     AcaSubject          @relation(fields: [subjectId], references: [id])
+  teacher     User                @relation("AcaTeacherGroups", fields: [teacherId], references: [id])
+  schedules   AcaGroupSchedule[]
+  enrollments AcaEnrollment[]
+  sessions    AcaSession[]
+  exams       AcaExam[]
+  requests    AcaRequest[]
+
+  @@index([teacherId])
+  @@index([subjectId])
+}
+
+// ONE group may have MULTIPLE weekly occurrences — each independently
+// identifiable for sessions/attendance/history/rescheduling (spec §11).
+model AcaGroupSchedule {
+  id        String   @id @default(cuid())
+  groupId   String
+  dayOfWeek Int // 0=Sunday..6=Saturday
+  startTime String // "17:00"
+  endTime   String // "18:30"
+  room      String?
+  status    String   @default("ACTIVE") // ACTIVE | CANCELLED
+  createdAt DateTime @default(now())
+
+  group    AcaGroup     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sessions AcaSession[]
+
+  @@index([groupId, dayOfWeek])
+  @@index([dayOfWeek])
+}
+
+model AcaEnrollment {
+  id          String   @id @default(cuid())
+  groupId     String
+  studentId   String // AcaStudentProfile
+  customPrice Int? // override (piastres)
+  status      String   @default("ACTIVE") // ACTIVE | PAUSED | LEFT
+  enrolledAt  DateTime @default(now())
+
+  group   AcaGroup          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  student AcaStudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, studentId])
+  @@index([studentId, status])
+}
+
+// ----------------------------- SESSIONS -----------------------------
+// Lifecycle: SCHEDULED → STARTED → IN_PROGRESS → COMPLETED  (+ CANCELLED)
+// Resumable until explicitly completed (SAVE ≠ FINISH, spec §14).
+// workspace JSON: { stages: { attendance: "pending"|"done", ... }, notes }
+
+model AcaSession {
+  id            String    @id @default(cuid())
+  groupId       String
+  scheduleId    String? // source occurrence (null for makeup/manual)
+  date          String // YYYY-MM-DD
+  startTime     String
+  endTime       String
+  room          String?
+  teacherId     String // User — ownership for RBAC
+  topicId       String? // curriculum link
+  title         String?
+  status        String    @default("SCHEDULED") // SCHEDULED | STARTED | IN_PROGRESS | COMPLETED | CANCELLED
+  isMakeup      Boolean   @default(false)
+  workspace     String? // JSON stage state
+  notes         String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  completedById String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  group        AcaGroup            @relation(fields: [groupId], references: [id])
+  schedule     AcaGroupSchedule?   @relation(fields: [scheduleId], references: [id])
+  teacher      User                @relation("AcaTeacherSessions", fields: [teacherId], references: [id])
+  topic        AcaTopic?           @relation(fields: [topicId], references: [id])
+  attendance   AcaAttendance[]
+  interactions AcaInteraction[]
+  homework     AcaHomeworkRecord[]
+  exams        AcaExam[]
+
+  @@index([groupId, date])
+  @@index([date, status])
+  @@index([teacherId, date])
+}
+
+model AcaAttendance {
+  id         String      @id @default(cuid())
+  sessionId  String
+  studentId  String
+  status     String // PRESENT | ABSENT | LATE | EXCUSED
+  note       String?
+  markedById String
+  markedAt   DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  session AcaSession        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student AcaStudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, studentId])
+  @@index([studentId, status])
+}
+
+model AcaInteraction {
+  id        String   @id @default(cuid())
+  sessionId String
+  studentId String
+  rating    String // GREAT | GOOD | QUIET | DISRUPTIVE
+  note      String?
+  updatedAt DateTime @updatedAt
+
+  session AcaSession        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student AcaStudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, studentId])
+  @@index([studentId, rating])
+}
+
+// Homework kept intentionally simple (spec §20): completed + score (+10/+5/-5)
+model AcaHomeworkRecord {
+  id        String   @id @default(cuid())
+  sessionId String
+  studentId String
+  completed Boolean  @default(false)
+  score     Int? // -5 | 5 | 10
+  note      String?
+  updatedAt DateTime @updatedAt
+
+  session AcaSession        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student AcaStudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, studentId])
+  @@index([studentId, completed])
+}
+
+// ----------------------------- EXAMS & GRADES -----------------------------
+
+model AcaExam {
+  id        String   @id @default(cuid())
+  groupId   String
+  subjectId String
+  title     String // "كويز الوحدة الأول"
+  type      String   @default("QUIZ") // QUIZ | MIDTERM | FINAL | PRACTICAL | ASSIGNMENT
+  date      String // YYYY-MM-DD
+  maxScore  Int      @default(100)
+  sessionId String? // optional in-session link
+  termId    String?
+  topicId   String?
+  createdBy String
+  createdAt DateTime @default(now())
+
+  group   AcaGroup       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  subject AcaSubject     @relation(fields: [subjectId], references: [id])
+  term    AcademicTerm?  @relation(fields: [termId], references: [id])
+  topic   AcaTopic?      @relation(fields: [topicId], references: [id])
+  results AcaExamResult[]
+  session AcaSession?    @relation(fields: [sessionId], references: [id])
+
+  @@index([groupId, date])
+  @@index([subjectId, date])
+}
+
+model AcaExamResult {
+  id          String   @id @default(cuid())
+  examId      String
+  studentId   String
+  score       Int? // null = not graded yet
+  note        String?
+  enteredById String
+  updatedAt   DateTime @updatedAt
+
+  exam    AcaExam           @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student AcaStudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, studentId])
+  @@index([studentId])
+}
+
+// ----------------------------- OPERATIONS -----------------------------
+// Teacher requests → manager decisions (reschedule/cancel/makeup/substitute)
+
+model AcaRequest {
+  id            String    @id @default(cuid())
+  type          String // RESCHEDULE | CANCEL | MAKEUP | SUBSTITUTE | OTHER
+  payload       String // JSON { groupId, sessionId?, scheduleId?, newDate?, newStart?, newEnd?, reason }
+  status        String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  requestedById String
+  groupId       String?
+  sessionId     String?
+  decidedById   String?
+  decidedAt     DateTime?
+  decisionNote  String?
+  createdAt     DateTime  @default(now())
+
+  group   AcaGroup? @relation(fields: [groupId], references: [id])
+  requester User    @relation("AcaRequester", fields: [requestedById], references: [id])
+  decider   User?   @relation("AcaDecider", fields: [decidedById], references: [id])
+
+  @@index([status, createdAt])
+  @@index([requestedById])
+}
+
+// Contextual notifications (absence report, schedule change, exam results…)
+
+model AcaNotification {
+  id        String    @id @default(cuid())
+  userId    String // recipient (staff or student)
+  type      String // ABSENCE | SCHEDULE_CHANGE | EXAM_RESULT | REQUEST | SYSTEM
+  title     String
+  body      String
+  data      String? // JSON { sessionId, groupId, studentId, ... }
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+}
+
+// ----------------------------- SMART INSIGHTS -----------------------------
+// Scheduled analytical layer (spec §29-30): findings → validation → materiality
+// → insight; stored results displayed under More → فريق التحليل only.
+
+model AcaInsightRun {
+  id          String    @id @default(cuid())
+  startedAt   DateTime  @default(now())
+  finishedAt  DateTime?
+  status      String    @default("RUNNING") // RUNNING | DONE | FAILED
+  stats       String? // JSON { findings, generated, skipped, … }
+  triggerById String?
+
+  insights AcaInsight[]
+
+  @@index([startedAt])
+}
+
+model AcaInsight {
+  id        String   @id @default(cuid())
+  dimension String // ACADEMIC | OPERATIONAL | FINANCIAL | STRATEGIC
+  severity  String   @default("INFO") // INFO | WARNING | CRITICAL
+  title     String
+  body      String
+  data      String? // JSON evidence
+  status    String   @default("NEW") // NEW | SEEN | DISMISSED
+  runId     String?
+  createdAt DateTime @default(now())
+
+  run AcaInsightRun? @relation(fields: [runId], references: [id])
+
+  @@index([status, createdAt])
+}
