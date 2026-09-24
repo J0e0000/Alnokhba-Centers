@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+tsconfig.tsbuildinfo
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# SQLite journal / temp
+db/*.db-journal
+
+# Workspace tooling & artifacts (not part of the app)
+.zscripts/
+.recon/
+tool-results/
+backups/
+chatdata/
+chat_extract/
+download/
+upload/
+skills/
+mini-services/
+examples/
+scripts/
+tests/
+worklog.md
+agent-ctx/
+Caddyfile
