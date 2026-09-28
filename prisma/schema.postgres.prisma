@@ -1,14 +1,20 @@
+// ⚠️ GENERATED FILE — do not edit by hand.
+// بيتولد من prisma/schema.prisma عن طريق scripts/build_postgres_schema.py
+// (نسخة الإنتاج — Vercel + PostgreSQL)
+
 // Nokhba Centers — AlNokhba platform extension
 // Multi-tenant center management: students, attendance, payments, accounting.
 // All monetary amounts are stored as INTEGER PIASTRES (1 EGP = 100 piastres)
 // to guarantee exact financial math. Dates use YYYY-MM-DD strings (business dates).
 
+// client بيتولد في فولدر منفصل عشان ميلخطش مع عميل SQLite المحلي
 generator client {
   provider = "prisma-client-js"
+  output   = "../generated/prisma-pg"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

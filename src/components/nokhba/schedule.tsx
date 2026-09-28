@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   CalendarDays, Plus, Pencil, Trash2, Copy, Clock, DoorClosed, Play,
-  MapPin, Loader2, GraduationCap, Building2, X, Check, Ban, Printer,
+  MapPin, Loader2, GraduationCap, Building2, X, Check, Ban, Printer, AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, fmt, formatTime12, DAY_TABS, sessionPhase, type SessionUser } from "./lib";
@@ -25,6 +25,7 @@ type Room = { id: string; name: string; capacity: number | null };
 type ScheduleData = {
   days: { dayOfWeek: number; slots: Slot[] }[];
   rooms: Room[];
+  conflicts?: { type: string; label: string; detail: string }[];
   groups: { id: string; name: string; subject: string; grade: string; teacher: string | null; price: number; teacherPercent: number; room: string | null }[];
 };
 
@@ -136,6 +137,26 @@ export function ScheduleView({ user, openSession }: { user: SessionUser; openSes
           </div>
         }
       />
+
+      {/* ===== تنبيهات الجدول الذكية (spec §12) ===== */}
+      {data.conflicts && data.conflicts.length > 0 && (
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 space-y-2 dark:bg-amber-500/10 dark:border-amber-500/40">
+          <p className="font-extrabold text-sm flex items-center gap-2 text-amber-800 dark:text-amber-300">
+            <AlertTriangle className="w-4 h-4" /> تنبيهات الجدول — {data.conflicts.length} ملاحظة
+          </p>
+          <div className="space-y-1.5">
+            {data.conflicts.slice(0, 6).map((c, i) => (
+              <div key={i} className="rounded-xl bg-white/70 px-3 py-2 dark:bg-white/5">
+                <p className="text-xs font-extrabold text-amber-900 dark:text-amber-200">{c.label}</p>
+                <p className="text-[11px] font-bold text-amber-800/80 dark:text-amber-300/80">{c.detail}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] font-bold text-amber-800/70 dark:text-amber-300/70">
+            التنبيهات استشارية بس — مفيش أي تغيير تلقائي على جدولك.
+          </p>
+        </div>
+      )}
 
       {/* ===== today's live sessions ===== */}
       <SectionCard title="حصص النهاردة" icon={<CalendarDays className="w-4 h-4" />}>

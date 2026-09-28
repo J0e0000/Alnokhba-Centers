@@ -207,7 +207,7 @@ async function main() {
     { name: "هنا عمر فتحي", parent: "عمر فتحي", phone: "01122334455", gradeIdx: 1, groupIdx: [0], pay: "full", status: "ARCHIVED" },
   ];
 
-  const students = [];
+  const students: { id: string; name: string; code: string; pay: string; groupIdx: number[] }[] = [];
   for (let i = 0; i < roster.length; i++) {
     const r = roster[i];
     const st = await db.student.create({
@@ -271,7 +271,7 @@ async function main() {
     { day: 4, start: "15:00", end: "16:30", groupIdx: 1, room: "قاعة 1" }, // Thu
     { day: 4, start: "17:00", end: "18:30", groupIdx: 4, room: "قاعة 2" },
   ];
-  const slots = [];
+  const slots: { id: string }[] = [];
   for (const s of slotDefs) {
     slots.push(await db.scheduleSlot.create({
       data: { centerId: nokhba.id, dayOfWeek: s.day, startTime: s.start, endTime: s.end, groupId: groups[s.groupIdx].id, room: s.room },
@@ -315,7 +315,7 @@ async function main() {
         });
         revenue += charge;
         // Pay at the desk: full / short (owe) / extra (credit)
-        const payStyle = reg.student.pay;
+        const payStyle = (reg.student as { pay?: string }).pay; // حقل seed-only (مش في الموديل)
         if (rnd() < 0.8) {
           let pay = charge;
           if (payStyle === "owe" && rnd() < 0.5) pay = Math.max(Math.round(charge * 0.6), 0); // short by 40%
@@ -444,7 +444,7 @@ async function main() {
     { name: "امتحانات الرياضيات — الثاني الثانوي", gradeIdx: 2, subjectIdx: 2, price: EGP(75), stock: 2, notes: "آخر نسخ — راجع المخزون" },
     { name: "قواعد الإنجليزي — الثالث الإعدادي", gradeIdx: 0, subjectIdx: 3, price: EGP(60), stock: 0, notes: "خلص — في توريد جاي" },
   ];
-  const books = [];
+  const books: { id: string; name: string; price: number }[] = [];
   for (const b of bookDefs) {
     books.push(await db.book.create({
       data: { centerId: nokhba.id, name: b.name, gradeId: grades[b.gradeIdx].id, subjectId: subjects[b.subjectIdx].id, price: b.price, stock: b.stock, notes: b.notes },
@@ -511,6 +511,34 @@ async function main() {
   console.log("   Demo logins → admin / manager / reception / reception2 / manager2 — password: nokhba123");
 }
 
+// كويز تجريبي منشور عشان بورتال الطالب يبقى فيه محتوى حقيقي من أول تشغيل (spec §1)
+async function seedDemoQuiz() {
+  const group = await db.group.findFirst({ where: { name: "A", isActive: true }, include: { subject: true } });
+  const anyUser = await db.user.findFirst({ where: { role: "MANAGER" } });
+  if (!group || !anyUser) return;
+  const exists = await db.quiz.findFirst({ where: { title: "كويز تجريبي — الوحدة الأولى" } });
+  if (exists) return;
+  await db.quiz.create({
+    data: {
+      centerId: group.centerId,
+      groupId: group.id,
+      title: "كويز تجريبي — الوحدة الأولى",
+      description: "كويز قصير للتجربة — بيصحح تلقائي.",
+      status: "PUBLISHED",
+      createdById: anyUser.id,
+      createdByName: anyUser.name,
+      questions: {
+        create: [
+          { order: 0, text: "السؤال الأول: وحدة القياس في جسم ساقط؟", type: "MCQ", options: JSON.stringify(["م/ث²", "نيوتن", "كجم"]), correctAnswer: "0", points: 5 },
+          { order: 1, text: "التسارع الناتج عن الجاذبية الأرضية ثابت على سطح الأرض.", type: "TRUE_FALSE", correctAnswer: "true", points: 5 },
+        ],
+      },
+    },
+  });
+  console.log("   📝 Demo quiz published (portal → الكويزات)");
+}
+
 main()
+  .then(() => seedDemoQuiz())
   .catch((e) => { console.error(e); process.exit(1); })
   .finally(() => db.$disconnect());

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   Home, CalendarDays, MessageSquareText, LogOut, LogIn, QrCode, ChevronLeft,
   Clock, MapPin, UserRound, Smartphone, CheckCheck, Loader2, BellRing, Wallet, X, RefreshCw,
+  ClipboardList, GraduationCap, TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { normalizeDigits, formatTime12, dayNameAR, formatDateAR } from "@/lib/normalize";
@@ -71,6 +72,10 @@ type HomeData = {
   balance: number;
   nextLesson: NextLesson | null;
   lastAnnouncement: { id: string; title: string; body: string; createdAt: string } | null;
+  progress?: {
+    sessionsAttended: number; sessionsTotal: number;
+    attendanceRate: number | null; quizAvg: number | null; quizzesGraded: number;
+  } | null;
 };
 
 type WeekData = {
@@ -97,7 +102,7 @@ type MessagesData = {
   }[];
 };
 
-type TabId = "home" | "schedule" | "messages";
+type TabId = "home" | "schedule" | "quizzes" | "messages";
 
 /** بوب-أب الرسايل الجديدة — نمط فيسبوك/إنستجرام */
 type ToastMsg = {
@@ -419,16 +424,18 @@ export function PortalApp() {
         <div key={tab} className="nk-anim-view">
           {tab === "home" && <PortalHome data={home} onGoTab={setTab} onRefresh={refreshHome} refreshing={homeRefreshing} />}
           {tab === "schedule" && <PortalSchedule />}
+          {tab === "quizzes" && <PortalQuizzes />}
           {tab === "messages" && <PortalMessages onUnread={setUnread} />}
         </div>
       </main>
 
       {/* ===== bottom nav — 3 تابات: الرئيسية / جدولي / الرسائل ===== */}
       <nav className="fixed bottom-0 inset-x-0 z-40 nk-portal-nav border-t" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 4px)" }} aria-label="تنقل الطالب">
-        <div className="mx-auto max-w-lg grid grid-cols-3 h-16">
+        <div className="mx-auto max-w-lg grid grid-cols-4 h-16">
           {([
               { id: "home", label: "الرئيسية", icon: <Home className="w-5 h-5" /> },
               { id: "schedule", label: "جدولي", icon: <CalendarDays className="w-5 h-5" /> },
+              { id: "quizzes", label: "الكويزات", icon: <ClipboardList className="w-5 h-5" /> },
               { id: "messages", label: "الرسائل", icon: <MessageSquareText className="w-5 h-5" />, badge: unread },
             ] as { id: TabId; label: string; icon: React.ReactNode; badge?: number }[]
           ).map((t) => (
@@ -635,6 +642,29 @@ function PortalHome({ data, onGoTab, onRefresh, refreshing }: {
           <RefreshCw className={cn("w-4.5 h-4.5", refreshing && "animate-spin")} />
         </button>
       </section>
+
+      {/* نظرة التقدم — حضور + كويزات (spec §1) */}
+      {data.progress && (data.progress.attendanceRate != null || data.progress.quizAvg != null) && (
+        <section className="nk-card nk-anim-lift rounded-2xl p-4">
+          <h3 className="text-xs font-extrabold text-muted-foreground mb-3 flex items-center gap-1.5">
+            <TrendingUp className="w-3.5 h-3.5 nk-brand-text" /> تقدمك آخر 30 يوم
+          </h3>
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="rounded-xl border border-border bg-muted/30 p-3 text-center">
+              <p className="nk-num font-black text-2xl nk-brand-text">{data.progress.attendanceRate ?? "—"}<span className="text-sm">%</span></p>
+              <p className="text-[10px] font-bold text-muted-foreground mt-0.5">نسبة الحضور</p>
+              <p className="text-[10px] font-bold text-muted-foreground/70">
+                {data.progress.sessionsAttended} من {data.progress.sessionsTotal} حصة
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-muted/30 p-3 text-center">
+              <p className="nk-num font-black text-2xl nk-brand-text">{data.progress.quizAvg != null ? `${data.progress.quizAvg}%` : "—"}</p>
+              <p className="text-[10px] font-bold text-muted-foreground mt-0.5">متوسط الكويزات</p>
+              <p className="text-[10px] font-bold text-muted-foreground/70">{data.progress.quizzesGraded} كويز مصحح</p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* next lesson */}
       <section className="nk-card nk-anim-lift rounded-2xl p-4">
@@ -1071,4 +1101,232 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const arr = new Uint8Array(raw.length);
   for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
   return arr;
+}
+
+// ============================= الكويزات (spec §1) =============================
+
+type PortalQuizRow = {
+  id: string; title: string; description: string | null;
+  subject: string; groupName: string; status: string; durationMin: number | null;
+  open: boolean; closedReason: string | null; done: boolean;
+  score: number | null | undefined; maxScore?: number; pendingGrading?: boolean;
+};
+
+type PortalQuizDetail = {
+  quiz: {
+    id: string; title: string; description: string | null; durationMin: number | null;
+    closesAt: string | null;
+    questions: { id: string; order: number; text: string; type: string; options: string[] | null; points: number }[];
+    attempt: { id: string } | null;
+  };
+  done?: boolean;
+  attempt?: { status: string; score: number | null; maxScore: number };
+};
+
+function PortalQuizzes() {
+  const [rows, setRows] = useState<PortalQuizRow[] | null>(null);
+  const [taking, setTaking] = useState<PortalQuizDetail | null>(null);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<{ score: number | null; maxScore: number; status: string } | null>(null);
+
+  const load = useCallback(() => {
+    papi<{ quizzes: PortalQuizRow[] }>("/api/portal/quizzes", { silent: true })
+      .then((d) => setRows(d.quizzes))
+      .catch(() => setRows([]));
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  async function openQuiz(id: string) {
+    try {
+      const d = await papi<PortalQuizDetail>(`/api/portal/quizzes?quizId=${id}`);
+      if (d.done && d.attempt) {
+        setResult({ score: d.attempt.score, maxScore: d.attempt.maxScore, status: d.attempt.status });
+        setTaking(null);
+        return;
+      }
+      setTaking(d);
+      setAnswers({});
+      setResult(null);
+    } catch { /* toast */ }
+  }
+
+  async function submit() {
+    if (!taking || submitting) return;
+    setSubmitting(true);
+    try {
+      const res = await papi<{ attempt: { status: string; score: number | null; maxScore: number; pendingGrading: boolean } }>(
+        "/api/portal/quizzes",
+        { method: "POST", body: { quizId: taking.quiz.id, answers: Object.entries(answers).map(([questionId, answer]) => ({ questionId, answer })) } },
+      );
+      setResult(res.attempt);
+      setTaking(null);
+      load();
+    } catch { /* toast */ } finally { setSubmitting(false); }
+  }
+
+  // ============================= شاشة الحل =============================
+  if (taking) {
+    const qz = taking.quiz;
+    return (
+      <div className="space-y-4">
+        <button onClick={() => { setTaking(null); load(); }} className="flex items-center gap-1 text-sm font-bold text-muted-foreground">
+          <ChevronLeft className="w-4 h-4" /> رجوع للكويزات
+        </button>
+        <div className="nk-card rounded-2xl p-4">
+          <h2 className="font-black text-lg">{qz.title}</h2>
+          {qz.description && <p className="text-xs font-bold text-muted-foreground mt-1">{qz.description}</p>}
+          <p className="text-[11px] font-bold text-muted-foreground mt-2">
+            {qz.questions.length} سؤال{qz.durationMin ? ` · المدة ${qz.durationMin} دقيقة` : ""} — جاوب كل السؤال وسلّم مرة واحدة.
+          </p>
+        </div>
+
+        {qz.questions.map((q, i) => (
+          <div key={q.id} className="nk-card rounded-2xl p-4 space-y-3">
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="font-extrabold text-sm leading-relaxed">{i + 1}. {q.text}</h3>
+              <span className="text-[10px] font-black text-muted-foreground shrink-0 nk-num">{q.points} ن</span>
+            </div>
+            {q.type === "MCQ" && q.options && (
+              <div className="space-y-1.5">
+                {q.options.map((opt, oi) => (
+                  <button
+                    key={oi}
+                    onClick={() => setAnswers((prev) => ({ ...prev, [q.id]: String(oi) }))}
+                    className={cn(
+                      "w-full text-start rounded-xl border-2 px-3 py-2.5 text-sm font-bold transition active:scale-[0.99]",
+                      answers[q.id] === String(oi)
+                        ? "nk-brand-border nk-brand-bg-soft nk-brand-text"
+                        : "border-border bg-card",
+                    )}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            )}
+            {q.type === "TRUE_FALSE" && (
+              <div className="grid grid-cols-2 gap-2">
+                {[{ v: "true", l: "صح ✔️" }, { v: "false", l: "غلط ✖️" }].map((o) => (
+                  <button
+                    key={o.v}
+                    onClick={() => setAnswers((prev) => ({ ...prev, [q.id]: o.v }))}
+                    className={cn(
+                      "rounded-xl border-2 px-3 py-2.5 text-sm font-extrabold transition active:scale-[0.98]",
+                      answers[q.id] === o.v ? "nk-brand-border nk-brand-bg-soft nk-brand-text" : "border-border bg-card",
+                    )}
+                  >
+                    {o.l}
+                  </button>
+                ))}
+              </div>
+            )}
+            {q.type === "WRITTEN" && (
+              <textarea
+                value={answers[q.id] ?? ""}
+                onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value.slice(0, 500) }))}
+                rows={3}
+                placeholder="اكتب إجابتك هنا…"
+                className="w-full rounded-xl border-2 border-input bg-card px-3 py-2.5 text-sm font-bold resize-none"
+              />
+            )}
+          </div>
+        ))}
+
+        <button
+          onClick={submit}
+          disabled={submitting}
+          className="w-full h-13 py-3.5 rounded-2xl nk-brand-bg text-white font-extrabold shadow active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-60 sticky bottom-20"
+        >
+          {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCheck className="w-5 h-5" />}
+          تسليم الكويز
+        </button>
+      </div>
+    );
+  }
+
+  // ============================= نتيجة بعد التسليم =============================
+  if (result) {
+    const pct = result.maxScore > 0 && result.score != null ? Math.round((result.score / result.maxScore) * 100) : null;
+    return (
+      <div className="space-y-4">
+        <div className="nk-card rounded-3xl p-8 text-center space-y-3">
+          <GraduationCap className="w-14 h-14 nk-brand-text mx-auto" />
+          {result.status === "GRADED" && result.score != null ? (
+            <>
+              <p className="text-3xl font-black nk-num nk-brand-text">{pct}%</p>
+              <p className="font-extrabold">درجتك: <span className="nk-num">{result.score}</span> من <span className="nk-num">{result.maxScore}</span></p>
+              <p className="text-xs font-bold text-muted-foreground">
+                {pct != null && pct >= 85 ? "ممتاز — كمّل بنفس المستوى 🔥" : pct != null && pct >= 60 ? "كويس — راجع الأخطاء وتقدر تحسن." : "محتاج مراجعة الدروس — وفيك تصحى."}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-xl font-black">اتسلّم ✅</p>
+              <p className="text-xs font-bold text-muted-foreground">فيه أسئلة مكتوبة بتتصحح من المدرس — نتيجتك هتظهر هنا بعد التصحيح.</p>
+            </>
+          )}
+        </div>
+        <button onClick={() => { setResult(null); load(); }} className="w-full h-12 rounded-2xl border-2 border-border bg-card font-extrabold">
+          رجوع للكويزات
+        </button>
+      </div>
+    );
+  }
+
+  // ============================= القائمة =============================
+  return (
+    <div className="space-y-3.5">
+      <div className="flex items-center justify-between">
+        <h2 className="font-black text-lg flex items-center gap-2"><ClipboardList className="w-5 h-5 nk-brand-text" /> الكويزات</h2>
+        <button onClick={load} aria-label="تحديث" className="w-9 h-9 rounded-xl border border-border bg-card grid place-items-center">
+          <RefreshCw className="w-4 h-4" />
+        </button>
+      </div>
+
+      {!rows ? (
+        <div className="nk-card rounded-2xl p-8 text-center text-sm font-bold text-muted-foreground">جاري التحميل…</div>
+      ) : rows.length === 0 ? (
+        <div className="nk-card rounded-2xl p-8 text-center space-y-2">
+          <ClipboardList className="w-10 h-10 mx-auto text-muted-foreground/50" />
+          <p className="font-extrabold">مفيش كويزات دلوقتي</p>
+          <p className="text-xs font-bold text-muted-foreground">لما المدرس ينزل كويز هيظهر هنا فورًا.</p>
+        </div>
+      ) : (
+        rows.map((q) => (
+          <button
+            key={q.id}
+            onClick={() => q.open && openQuiz(q.id)}
+            disabled={!q.open}
+            className={cn(
+              "w-full nk-card rounded-2xl p-4 text-start space-y-2 transition",
+              q.open ? "hover:shadow-md active:scale-[0.99]" : "opacity-75",
+            )}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h3 className="font-extrabold text-sm truncate">{q.title}</h3>
+                <p className="text-[11px] font-bold text-muted-foreground">{q.subject} — {q.groupName}</p>
+              </div>
+              {q.done && !q.pendingGrading && q.score != null ? (
+                <span className="rounded-full bg-emerald-600 text-white text-[11px] font-black px-2.5 py-1 nk-num shrink-0">
+                  {q.score}/{q.maxScore ?? 0}
+                </span>
+              ) : q.pendingGrading ? (
+                <span className="rounded-full bg-amber-500 text-white text-[10px] font-black px-2.5 py-1 shrink-0">بنتصحح</span>
+              ) : q.open ? (
+                <span className="rounded-full nk-brand-bg text-white text-[10px] font-black px-2.5 py-1 shrink-0">افتح الكويز</span>
+              ) : (
+                <span className="rounded-full bg-muted text-muted-foreground text-[10px] font-black px-2.5 py-1 shrink-0">مقفول</span>
+              )}
+            </div>
+            {!q.open && !q.done && q.closedReason && (
+              <p className="text-[10px] font-bold text-muted-foreground">{q.closedReason}</p>
+            )}
+            {q.durationMin && <p className="text-[10px] font-bold text-muted-foreground">المدة: {q.durationMin} دقيقة</p>}
+          </button>
+        ))
+      )}
+    </div>
+  );
 }

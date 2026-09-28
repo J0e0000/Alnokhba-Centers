@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { QrCameraScanner } from "./qr-scanner";
 import { ReceiptActions, PrintSettingsButton } from "./receipt-actions";
 import { WhatsAppHandoffButton } from "./whatsapp-button";
+import { ContactActions } from "./contact-actions";
 import { OfflineStatusBar, useOnlineStatus, queueScan } from "./pwa";
 import { feedback, unlockAudio, useFeedbackSettings, useWakeLock } from "./feedback";
 import { usePrint, PrintableReceiptA4, PrintableReceiptThermal, type ReceiptData } from "./print";
@@ -334,7 +335,7 @@ export function ScanView({ user, sessionOverride, clearSessionOverride, embedded
       if (!attended) {
         const m = await api<{ alreadyAttended: boolean; charged: number; balance: number; amountDue: number; status: string }>("/api/attendance/mark", {
           method: "POST",
-          body: { studentId: r.student.id, sessionId: activeSessionId, status: "PRESENT", registerGroup: opts.register },
+          body: { studentId: r.student.id, sessionId: activeSessionId, status: "PRESENT", registerGroup: opts.register, method: "QR_SCAN" },
         });
         attended = m.alreadyAttended;
         balance = m.balance;
@@ -1037,6 +1038,10 @@ function ResultCard({ result, onClose, onComplete, busy, user }: {
               {result.session.room ? ` · ${result.session.room}` : ""} · {formatTime12(result.session.startTime)}
             </p>
           )}
+          {/* تواصل فوري: اتصال/واتساب للطالب + ولي الأمر (spec §2) */}
+          <div className="mt-2">
+            <ContactActions target={s} size="sm" />
+          </div>
         </div>
         <button onClick={onClose} className="rounded-full hover:bg-black/5 p-1.5 text-muted-foreground" aria-label="إغلاق">
           <XCircle className="w-5 h-5" />
@@ -1366,7 +1371,7 @@ function KioskMode({ sessions, activeSessionId, online, onExit }: {
       }
       const m = await api<{ balance: number }>("/api/attendance/mark", {
         method: "POST",
-        body: { studentId: res.student!.id, sessionId: session!.id, status: "PRESENT" },
+        body: { studentId: res.student!.id, sessionId: session!.id, status: "PRESENT", method: "QR_SCAN" },
       });
       feedback("green");
       setCard({

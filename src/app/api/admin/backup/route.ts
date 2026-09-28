@@ -1,3 +1,4 @@
+import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
 import { requireAdmin, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
@@ -23,6 +24,12 @@ export const GET = handler(async (req: Request) => {
   const url = new URL(req.url);
   const preview = url.searchParams.get("preview");
   const download = url.searchParams.get("download");
+
+  // سجل النسخ والاستعادة (BackupRun) — آخر 30 عملية
+  if (url.searchParams.get("runs")) {
+    const runs = await db.backupRun.findMany({ orderBy: { startedAt: "desc" }, take: 30 });
+    return ok({ runs });
+  }
 
   if (preview) {
     const data = await previewBackupDb(preview);
@@ -130,6 +137,18 @@ export const POST = handler(async (req: Request) => {
     if (tables.length === 0) throw new ApiError("اختار جدول واحد على الأقل للاستعادة.", 400);
 
     const results = await restoreMissingFromDb(file, tables);
+    // سجل الاستعادة (spec §9: recovery status/logs)
+    await db.backupRun.create({
+      data: {
+        type: "MANUAL", target: "DB", status: "SUCCESS",
+        fileName: file,
+        startedByName: user.name, startedById: user.id,
+        startedAt: new Date(),
+        finishedAt: new Date(),
+        restoredAt: new Date(), restoredById: user.id, restoredByName: user.name,
+        notes: `استعادة موجّهة (الصفوف الناقصة بس): ${tables.join(", ")}`,
+      },
+    }).catch(() => {});
     await logAudit({
       user,
       action: AUDIT.BACKUP_RESTORED,

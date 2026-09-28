@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   Palette, MessageCircle, Users, ScrollText, Loader2, Save, Plus, Pencil, Trash2,
-  ShieldCheck, Eye, Upload, Variable, Smartphone,
+  ShieldCheck, Eye, Upload, Variable, Smartphone, SlidersHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, applyCenterBranding, darkenForAA, type SessionUser } from "./lib";
@@ -132,6 +132,7 @@ const TABS = [
   { id: "branding", label: "هوية السنتر", icon: <Palette className="w-4 h-4" /> },
   { id: "whatsapp", label: "قوالب واتساب", icon: <MessageCircle className="w-4 h-4" /> },
   { id: "staff", label: "الموظفين", icon: <Users className="w-4 h-4" /> },
+  { id: "prefs", label: "تفضيلاتي", icon: <SlidersHorizontal className="w-4 h-4" /> },
   { id: "audit", label: "سجل العمليات", icon: <ScrollText className="w-4 h-4" /> },
 ] as const;
 
@@ -157,6 +158,7 @@ export function SettingsView({ user, onBrandingChanged }: { user: SessionUser; o
       {tab === "branding" && <BrandingTab user={user} onBrandingChanged={onBrandingChanged} />}
       {tab === "whatsapp" && <WhatsAppTab />}
       {tab === "staff" && <StaffTab />}
+      {tab === "prefs" && <PersonalPrefsTab />}
       {tab === "audit" && <AuditTab />}
     </div>
   );
@@ -742,5 +744,102 @@ function AuditTab() {
         </>
       )}
     </SectionCard>
+  );
+}
+
+// ============================= تفضيلاتي (spec §11) =============================
+
+function PersonalPrefsTab() {
+  const [theme, setTheme] = useState<string>("system");
+  const [language, setLanguage] = useState("ar");
+  const [prefs, setPrefs] = useState<Record<string, unknown>>({});
+  const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    api<{ preferences: { theme: string | null; language: string; prefs: Record<string, unknown> } }>("/api/preferences", { silent: true })
+      .then((d) => {
+        setTheme(d.preferences.theme ?? "system");
+        setLanguage(d.preferences.language);
+        setPrefs(d.preferences.prefs ?? {});
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, []);
+
+  async function save(next?: { theme?: string }) {
+    setBusy(true);
+    try {
+      await api("/api/preferences", {
+        method: "PUT",
+        body: { theme: next?.theme ?? theme, language, prefs },
+      });
+      if (next?.theme) setTheme(next.theme);
+      toast.success("تم حفظ تفضيلاتك — بتتطبق مع كل دخول.");
+      // طبّق فورًا لو الحقول ظاهرة
+      window.dispatchEvent(new CustomEvent("nk-prefs-changed", { detail: { theme: next?.theme ?? theme } }));
+    } catch { /* toast */ } finally { setBusy(false); }
+  }
+
+  if (!loaded) return <Loading label="جاري التحميل..." />;
+
+  return (
+    <div className="space-y-4">
+      <SectionCard title="تفضيلاتي الشخصية" icon={<SlidersHorizontal className="w-4 h-4" />}>
+        <div className="space-y-3.5">
+          <div>
+            <label className="text-xs font-bold block mb-1.5">المظهر (يتطبق مع دخولك من أي جهاز)</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { v: "light", label: "فاتح ☀️" },
+                { v: "dark", label: "غامق 🌙" },
+                { v: "system", label: "حسب الجهاز" },
+              ].map((o) => (
+                <button
+                  key={o.v}
+                  onClick={() => { setTheme(o.v); void save({ theme: o.v }); }}
+                  className={cn(
+                    "rounded-xl border-2 py-2.5 text-xs font-extrabold transition active:scale-[0.98]",
+                    theme === o.v ? "nk-brand-border nk-brand-bg-soft nk-brand-text" : "border-border bg-card text-muted-foreground",
+                  )}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold block mb-1.5">اللغة المفضلة (للتوسعات الجاية — الواجهة عربي حاليًا)</label>
+            <select
+              value={language}
+              onChange={(e) => { setLanguage(e.target.value); void save(); }}
+              className="w-full h-11 rounded-xl border-2 border-input bg-card px-3 font-bold text-sm"
+            >
+              <option value="ar">العربية</option>
+              <option value="en">English (قريبًا)</option>
+            </select>
+          </div>
+
+          <div className="rounded-xl border border-border bg-muted/30 p-3">
+            <label className="flex items-center justify-between gap-3 cursor-pointer">
+              <span>
+                <span className="block text-sm font-extrabold">صوت وشاشة التنبيهات للطالب</span>
+                <span className="block text-[11px] text-muted-foreground font-semibold">تنبيه منبثق وصوت لما وصل إشعار جديد</span>
+              </span>
+              <Switch
+                checked={(prefs.portalChime as boolean) ?? true}
+                onCheckedChange={(v) => { const next = { ...prefs, portalChime: v }; setPrefs(next); void save(); }}
+                aria-label="تفعيل صوت التنبيهات"
+              />
+            </label>
+          </div>
+
+          <p className="text-[11px] font-bold text-muted-foreground">
+            تفضيلاتك محفوظة على حسابك — بتتبعك على أي جهاز، ومش بتأثر على هوية السنتر.
+          </p>
+        </div>
+      </SectionCard>
+    </div>
   );
 }

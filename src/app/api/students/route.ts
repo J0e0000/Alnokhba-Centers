@@ -3,6 +3,7 @@ import { ok, handler, readJson } from "@/lib/api";
 import { requireCenterUser, canRegisterStudents, generateStudentCode, generateQrToken, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { cleanRaw, normalizeDigits, validateEgyptianPhone, toPiastres } from "@/lib/normalize";
+import { recordUndo } from "@/lib/undo";
 import { manyBalances } from "@/lib/finance";
 import { PRICING } from "@/lib/pricing";
 import type { Prisma } from "@prisma/client";
@@ -171,6 +172,13 @@ export const POST = handler(async (req: Request) => {
     entity: "STUDENT",
     entityId: student.id,
     after: { code: student.code, name: student.name, groups: groups.map((g) => g.name) },
+  });
+  // قابل للتراجع (spec §13) — التراجع بيرجّع الطالب للأرشفة (مش مسح)
+  await recordUndo({
+    user, entity: "STUDENT", entityId: student.id, action: "CREATE",
+    label: `إضافة الطالب ${student.name} (كود ${student.code})`,
+    forward: { id: student.id },
+    inverse: { id: student.id, status: "ACTIVE" },
   });
 
   return ok({ student: { id: student.id, code: student.code, name: student.name, qrToken: student.qrToken } }, { status: 201 });
