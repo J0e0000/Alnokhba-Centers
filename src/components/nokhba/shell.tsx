@@ -5,7 +5,7 @@ import {
   LayoutDashboard, ScanLine, CreditCard, Users, CalendarDays, Layers,
   Calculator, BarChart3, Settings, LogOut, MoreHorizontal, ChevronLeft,
   Building2, BadgeCheck, Receipt, MonitorCog, Activity, GraduationCap, Menu, BookOpen, MessageSquareText,
-  ShieldAlert, UserCog, DatabaseBackup, LifeBuoy, Sparkles, ClipboardCheck, UserPlus,
+  ShieldAlert, UserCog, DatabaseBackup, LifeBuoy, Sparkles, ClipboardCheck, UserPlus, ClipboardList,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,8 @@ import { Tour } from "./tour";
 import { HelpButton } from "./help";
 import { CENTER_TOUR, RECEPTION_TOUR, ADMIN_TOUR } from "./help-content";
 import { StaffNotificationsBell } from "./staff-bell";
+import { ZakiAssistant } from "./zaki";
+import { UndoRedoButtons } from "./undo-buttons";
 import {
   Sheet, SheetContent, SheetTrigger, SheetTitle,
 } from "@/components/ui/sheet";
@@ -22,7 +24,7 @@ import { Button } from "@/components/ui/button";
 
 export type ViewId =
   | "home" | "scan" | "payments" | "students" | "schedule"
-  | "groups" | "books" | "messages" | "accounting" | "reports" | "settings"
+  | "groups" | "quizzes" | "books" | "messages" | "accounting" | "reports" | "settings"
   | "emergency" | "approvals";
 
 export const NAV_ICONS: Record<ViewId, ReactNode> = {
@@ -32,6 +34,7 @@ export const NAV_ICONS: Record<ViewId, ReactNode> = {
   students: <Users className="w-5 h-5" />,
   schedule: <CalendarDays className="w-5 h-5" />,
   groups: <Layers className="w-5 h-5" />,
+  quizzes: <ClipboardList className="w-5 h-5" />,
   books: <BookOpen className="w-5 h-5" />,
   messages: <MessageSquareText className="w-5 h-5" />,
   accounting: <Calculator className="w-5 h-5" />,
@@ -48,6 +51,7 @@ export const NAV_LABELS: Record<ViewId, string> = {
   students: "الطلاب",
   schedule: "الجداول",
   groups: "المجموعات",
+  quizzes: "الكويزات",
   books: "الكتب",
   messages: "الرسائل",
   accounting: "الحسابات",
@@ -58,7 +62,7 @@ export const NAV_LABELS: Record<ViewId, string> = {
 };
 
 const RECEPTION_NAV: ViewId[] = ["home", "scan", "payments", "students", "schedule", "books", "messages"];
-const MANAGER_NAV: ViewId[] = ["home", "scan", "payments", "students", "approvals", "groups", "schedule", "books", "messages", "accounting", "reports", "emergency", "settings"];
+const MANAGER_NAV: ViewId[] = ["home", "scan", "payments", "students", "approvals", "groups", "quizzes", "schedule", "books", "messages", "accounting", "reports", "emergency", "settings"];
 
 export function CenterShell({
   user,
@@ -282,6 +286,7 @@ export function CenterShell({
               <span className="w-7 h-7 rounded-full nk-brand-grad text-white grid place-items-center text-[11px]">{initials}</span>
               {user.name}
             </span>
+            <UndoRedoButtons />
             <StaffNotificationsBell variant="center" />
             <ThemeToggle />
             <Button
@@ -346,6 +351,9 @@ export function CenterShell({
         </button>
       )}
 
+      {/* ===== زكي — المساعد الذكي (قواعد حتمية، مش AI) ===== */}
+      <ZakiAssistant />
+
       {/* ===== Mobile bottom nav ===== */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 nk-glass-bar border-t print:hidden" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 4px)" }} aria-label="التنقل الرئيسي">
         <div className="grid grid-cols-5 h-16">
@@ -408,10 +416,11 @@ export function CenterShell({
 
 // ============================= Admin shell =============================
 
-export type AdminViewId = "centers" | "subscriptions" | "students" | "billing" | "system" | "monitor" | "teams" | "backups" | "requests";
+export type AdminViewId = "centers" | "subscriptions" | "analytics" | "students" | "billing" | "system" | "monitor" | "teams" | "backups" | "requests";
 
 export const ADMIN_NAV: { id: AdminViewId; label: string; icon: ReactNode }[] = [
   { id: "centers", label: "السناتر", icon: <Building2 className="w-5 h-5" /> },
+  { id: "analytics", label: "تحليلات المنصة", icon: <Activity className="w-5 h-5" /> },
   { id: "requests", label: "طلبات الانضمام", icon: <UserPlus className="w-5 h-5" /> },
   { id: "subscriptions", label: "الاشتراكات", icon: <BadgeCheck className="w-5 h-5" /> },
   { id: "students", label: "الطلاب", icon: <GraduationCap className="w-5 h-5" /> },

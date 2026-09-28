@@ -38,3 +38,7 @@ tests/
 worklog.md
 agent-ctx/
 Caddyfile
+generated/prisma-pg
+
+# Generated postgres client (production builds only)
+generated/

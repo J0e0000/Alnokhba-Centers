@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   ChevronRight, Clock, DoorClosed, Lock, LockOpen, Users, UserX, Loader2,
   Banknote, GraduationCap, Wallet, TrendingUp, AlertTriangle, RotateCcw, Printer, CheckCircle2,
-  CalendarX, Send, LayoutDashboard, ScanLine, Wrench, ClipboardCheck, ReceiptText, Info,
+  CalendarX, Send, LayoutDashboard, ScanLine, Wrench, ClipboardCheck, ReceiptText, Info, QrCode,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, fmt, fmtE, formatTime12, ATTENDANCE_LABEL, userCan, userCanRequest, type SessionUser } from "./lib";
@@ -13,6 +13,7 @@ import { PageHeader, Chip, Loading, SectionCard, EmptyState, MoneyStat, Stat } f
 import { usePrint, PrintableAttendanceSheet } from "./print";
 import { feedback } from "./feedback";
 import { ScanView } from "./scan";
+import { SessionQrCard } from "./session-qr-card";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -382,8 +383,16 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
             </>
           ) : (
             <>
+              {/* الطرق الثلاثة للحضور — واضحة للجميع (spec §3) */}
+              <div className="nk-card rounded-2xl p-3 flex flex-wrap items-center gap-1.5 text-[11px] font-extrabold">
+                <span className="text-muted-foreground me-1">طرق تسجيل الحضور:</span>
+                <span className="rounded-full border border-border bg-card px-2.5 py-1">١ · مسح كارت الطالب</span>
+                <span className="rounded-full border border-border bg-card px-2.5 py-1">٢ · البحث / التحديد اليدوي</span>
+                <span className="rounded-full nk-brand-bg text-white px-2.5 py-1 inline-flex items-center gap-1"><QrCode className="w-3 h-3" /> ٣ · QR الحصة المتنقل</span>
+              </div>
               {/* المسح المدمج — نفس محرك شاشة الحضور المجرب، بس مربوط بالحصة دي */}
               <ScanView user={user} embedded sessionOverride={sessionId} clearSessionOverride={() => {}} />
+              <SessionQrCard sessionId={sessionId} />
               <AttendanceTable data={data} printAttendance={printAttendance} showPrint />
               {data.absent.length > 0 && (
                 <SectionCard

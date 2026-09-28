@@ -11,6 +11,7 @@ import { StudentsView } from "./students";
 import { StudentProfileView } from "./student-profile";
 import { ScheduleView } from "./schedule";
 import { GroupsView } from "./groups";
+import { QuizManagerView } from "./quiz-manager";
 import { BooksView } from "./books";
 import { MessagesView } from "./message-queue";
 import { AccountingView } from "./accounting";
@@ -26,7 +27,7 @@ import { CommandPalette } from "./command-palette";
 import {
   AdminCentersView, AdminSubscriptionsView, AdminStudentsView,
   AdminBillingView, AdminSystemView, AdminMonitorView, AdminTeamsView, AdminBackupsView,
-  AdminRequestsView,
+  AdminRequestsView, AdminAnalyticsView,
 } from "./admin";
 import type { AdminData } from "./admin";
 
@@ -55,6 +56,23 @@ export function App() {
     window.addEventListener("nk-user-updated", onUser);
     return () => window.removeEventListener("nk-user-updated", onUser);
   }, []);
+
+  // تفضيلات المستخدم (spec §11): المظهر المحفوظ بيتطبق مع كل دخول
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/preferences", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { preferences?: { theme?: string | null } } | null) => {
+        const theme = d?.preferences?.theme;
+        if (theme && theme !== "system") {
+          const root = document.documentElement;
+          const isDark = root.classList.contains("dark");
+          if (theme === "dark" && !isDark) root.classList.add("dark");
+          if (theme === "light" && isDark) root.classList.remove("dark");
+        }
+      })
+      .catch(() => {});
+  }, [user]);
 
   // custom navigation events (e.g., RED scan → add student / tour → switch view)
   useEffect(() => {
@@ -180,6 +198,9 @@ export function App() {
       case "groups":
         content = <GroupsView />;
         break;
+      case "quizzes":
+        content = <QuizManagerView />;
+        break;
       case "books":
         content = <BooksView user={user} />;
         break;
@@ -249,6 +270,7 @@ function AdminPortalShell({ user, onLogout, view, setView }: {
       <AdminShell user={user} onLogout={onLogout} view={view} setView={setView}>
         <div key={view} className="nk-anim-view">
           {view === "centers" && <AdminCentersView data={data} reload={reload} />}
+          {view === "analytics" && <AdminAnalyticsView />}
           {view === "requests" && <AdminRequestsView data={data} reload={reload} />}
           {view === "subscriptions" && <AdminSubscriptionsView data={data} reload={reload} />}
           {view === "students" && <AdminStudentsView data={data} />}

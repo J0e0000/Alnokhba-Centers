@@ -71,6 +71,17 @@ export async function createBackup(reason: "manual" | "scheduled"): Promise<{ fi
   const file = `nokhba-backup-${stamp}.db`;
   const target = path.join(BACKUP_DIR, file);
 
+  // سجل تدقيق في الداتابيز (spec §9) — صف واحد من البداية، بيتحدث بالنهاية
+  const run = await db.backupRun.create({
+    data: {
+      type: reason === "scheduled" ? "SCHEDULED" : "MANUAL",
+      target: "DB",
+      status: "RUNNING",
+      fileName: file,
+      startedByName: reason === "scheduled" ? "الجدولة الأسبوعية" : "أدمن المنصة",
+    },
+  }).catch(() => null);
+
   try {
     // VACUUM INTO produces a transactionally-consistent snapshot without blocking writers.
     await db.$executeRawUnsafe(`VACUUM INTO '${target.replace(/'/g, "''")}'`);
@@ -78,8 +89,31 @@ export async function createBackup(reason: "manual" | "scheduled"): Promise<{ fi
     const msg = e instanceof Error ? e.message : String(e);
     const s = await readStatus();
     await writeStatus({ ...s, lastFailureAt: new Date().toISOString(), lastError: `${reason}: ${msg}` });
+    if (run) {
+      await db.backupRun.update({ where: { id: run.id }, data: { status: "FAILED", error: msg, finishedAt: new Date() } }).catch(() => {});
+    }
     throw e;
   }
+
+  // فحص سلامة الملف الناتج (spec §9: integrity verification)
+  let integrity = "SKIPPED";
+  try {
+    const checks = await db.$queryRawUnsafe<{ integrity_check: string }[]>(`ATTACH DATABASE '${target.replace(/'/g, "''")}' AS bk; PRAGMA bk.integrity_check; DETACH DATABASE bk;`);
+    const first = Array.isArray(checks) && checks[0] ? (checks[0] as unknown as { integrity_check?: string }) : null;
+    const v = first?.integrity_check ?? (Array.isArray(checks) && typeof checks[0] === "string" ? String(checks[0]) : "");
+    integrity = v === "ok" ? "OK" : v ? "FAILED" : "SKIPPED";
+  } catch {
+    integrity = "SKIPPED";
+  }
+
+  // snapshot أعداد الصفوف للجداول الرئيسية
+  let counts: string | null = null;
+  try {
+    const [students, users, txns, sessions] = await Promise.all([
+      db.student.count(), db.user.count(), db.studentTransaction.count(), db.sessionInstance.count(),
+    ]);
+    counts = JSON.stringify({ students, users, studentTransactions: txns, sessions });
+  } catch { counts = null; }
 
   // retention: keep newest RETENTION files
   const files = await listBackupFiles();
@@ -95,6 +129,13 @@ export async function createBackup(reason: "manual" | "scheduled"): Promise<{ fi
     lastError: status.lastError,
     backups: await listBackupFiles(),
   });
+
+  if (run) {
+    await db.backupRun.update({
+      where: { id: run.id },
+      data: { status: "SUCCESS", sizeBytes: st.size, integrity, counts, finishedAt: new Date() },
+    }).catch(() => {});
+  }
 
   return { file, size: st.size };
 }

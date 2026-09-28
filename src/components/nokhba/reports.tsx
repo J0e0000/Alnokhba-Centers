@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   BarChart3, FileSpreadsheet, Printer, Loader2, CalendarRange, Filter, Search, X,
 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
 import { api, fmt, formatDateAR, todayStr } from "./lib";
 import type { SessionUser } from "./lib";
@@ -273,6 +274,33 @@ export function ReportsView({ user }: { user: SessionUser }) {
               )}
             </div>
           )}
+
+          {/* chart — نظرة بيانية على الصفوف المالية (spec §6: charts where useful) */}
+          {(() => {
+            const labelCol = data.columns[0]?.key;
+            const moneyCol = data.columns.find((c) => c.type === "money")?.key;
+            if (!labelCol || !moneyCol || data.rows.length < 2) return null;
+            const series = data.rows.slice(0, 14).map((r) => ({
+              name: String(r[labelCol] ?? "—").slice(0, 18),
+              value: Math.abs(Number(r[moneyCol] ?? 0)) / 100,
+            }));
+            return (
+              <div className="nk-card rounded-2xl p-4 print:hidden">
+                <h3 className="text-xs font-extrabold text-muted-foreground mb-3">نظرة بيانية (أول 14 صف — بالجنيه)</h3>
+                <div className="h-56" dir="ltr">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={series} margin={{ bottom: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                      <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={55} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip formatter={(v: number | string) => `${Number(v).toLocaleString("en-EG")} ج`} />
+                      <Bar dataKey="value" fill="var(--c-primary)" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* table */}
           <div className="nk-card rounded-2xl overflow-hidden">

@@ -64,6 +64,11 @@ model Center {
   emergencyRecoveryImports EmergencyRecoveryImport[]
   approvalRequests ApprovalRequest[]
   staffNotifications StaffNotification[]
+  quizzes          Quiz[]
+  sessionQrTokens  SessionQRToken[]
+  subscriptionEvents SubscriptionEvent[]
+  backupRuns       BackupRun[]
+  undoEntries      UndoEntry[]
 }
 
 model User {
@@ -95,6 +100,8 @@ model User {
   approvalRequested ApprovalRequest[] @relation("ApprovalRequester")
   approvalDecided  ApprovalRequest[] @relation("ApprovalDecider")
   staffNotifications StaffNotification[]
+  preference       UserPreference?
+  undoEntries      UndoEntry[]        @relation("UndoEntries")
   acaTeacherGroups   AcaGroup[]         @relation("AcaTeacherGroups")
   acaTeacherSessions AcaSession[]       @relation("AcaTeacherSessions")
   acaStudentProfile  AcaStudentProfile?
@@ -193,6 +200,7 @@ model Group {
   students       StudentGroup[]
   sessions       SessionInstance[]
   schedules      ScheduleSlot[]
+  quizzes        Quiz[]
 
   @@index([centerId])
 }
@@ -242,6 +250,7 @@ model Student {
   portalSessions StudentPortalSession[]
   studentNotifications StudentNotification[]
   pushSubs    PushSubscription[]
+  quizAttempts QuizAttempt[]
 
   @@unique([centerId, code])
   @@index([centerId, name])
@@ -317,6 +326,8 @@ model Attendance {
   sessionId  String
   studentId  String
   status     String         @default("PRESENT") // PRESENT | LATE | EXCUSED
+  // كيف اتسجل الحضور: MANUAL (بحث/تحديد يدوي) | QR_SCAN (مسح كارت الطالب) | SESSION_QR (QR الحصة المتنقل)
+  method     String         @default("MANUAL")
   idemKey    String?  @unique // offline-sync idempotency key — duplicate retries return the same record
   charged    Int? // actual charge in piastres (null = not charged)
   note       String?
@@ -785,16 +796,25 @@ model Subscription {
   id            String           @id @default(cuid())
   centerId      String           @unique
   planId        String
-  status        String           @default("ACTIVE") // ACTIVE | EXPIRED | CANCELLED
-  billingPeriod String           @default("MONTHLY")
+  // Lifecycle: TRIAL → ACTIVE → (RENEWAL_DUE محسوب من renewalDate) → GRACE → EXPIRED | CANCELLED
+  // ⚠️ انتهاء الاشتراك عمره ما بيحذف بيانات السنتر تلقائيًا — القرار للأدمن فقط (spec §7)
+  status        String           @default("ACTIVE") // TRIAL | ACTIVE | GRACE | EXPIRED | CANCELLED
+  billingPeriod String           @default("MONTHLY") // MONTHLY | QUARTERLY | YEARLY
   pricePerStudent Int            @default(2500) // piastres snapshot
   startDate     String
-  renewalDate   String // YYYY-MM-DD
+  renewalDate   String // YYYY-MM-DD (next renewal/expiry date)
   paymentStatus String           @default("PENDING") // PAID | PENDING
+  // Trial / grace lifecycle timestamps
+  trialEndsAt   DateTime?
+  graceUntil    DateTime?
+  lastRenewedAt DateTime?
+  cancelledAt   DateTime?
   center        Center           @relation(fields: [centerId], references: [id])
   plan          SubscriptionPlan @relation(fields: [planId], references: [id])
+  events        SubscriptionEvent[]
 
   @@index([status])
+  @@index([renewalDate])
 }
 
 // Platform billing records (admin renews a center => BILLING entry)
@@ -1116,6 +1136,8 @@ model AcaAttendance {
   sessionId  String
   studentId  String
   status     String // PRESENT | ABSENT | LATE | EXCUSED
+  // طريقة التسجيل: MANUAL (شاشة الحصة) | SESSION_QR (QR الحصة المتنقل)
+  method     String      @default("MANUAL")
   note       String?
   markedById String
   markedAt   DateTime    @default(now())
@@ -1276,4 +1298,181 @@ model AcaInsight {
   run AcaInsightRun? @relation(fields: [runId], references: [id])
 
   @@index([status, createdAt])
+}
+
+// ###########################################################################
+// ====================== EXTENSIONS (spec-approved adds) ====================
+// ###########################################################################
+
+// ============================= DYNAMIC SESSION QR (QR الحصة المتنقل) =============================
+// التوكن بيتعمله rotate كل ما الموظف يطلب توليد جديد — قصير العمر، مرتبط بالحصة والسنتر،
+// ومش صالح خارج الحصة المقصودة. الاستخدام بيتسجل (مين/إمتى/كام مرة) — spec §3.
+
+model SessionQRToken {
+  id            String   @id @default(cuid())
+  scope         String   @default("CENTERS") // CENTERS (SessionInstance) | ACADEMIA (AcaSession)
+  centerId      String? // null للـ ACADEMIA (مفيش multi-tenant هناك)
+  sessionId     String // SessionInstance.id أو AcaSession.id حسب scope
+  token         String   @unique // opaque random hex — هو اللي بيتشفر في QR
+  isActive      Boolean  @default(true) // rotate = قفل القديم وإنشاء جديد
+  expiresAt     DateTime // قصير العمر (دقائق)
+  useCount      Int      @default(0)
+  lastUsedAt    DateTime?
+  createdById   String
+  createdByName String
+  createdAt     DateTime @default(now())
+  center        Center?  @relation(fields: [centerId], references: [id])
+
+  @@index([sessionId, isActive])
+  @@index([centerId, createdAt])
+}
+
+// ============================= QUIZZES (كويزات بسيطة — مفيش بنك أسئلة) =============================
+// الأسئلة تابعة للكويز مباشرة عمدًا (spec §1) — مفيش Question Bank معماري.
+// الكويز تابع لمجموعة سنتر، والطلاب يحلوه من بورتال الطالب.
+
+model Quiz {
+  id            String    @id @default(cuid())
+  centerId      String
+  groupId       String
+  title         String
+  description   String?
+  status        String    @default("DRAFT") // DRAFT | PUBLISHED | CLOSED
+  durationMin   Int? // مدة الحل بالدقايق (اختياري)
+  opensAt       DateTime?
+  closesAt      DateTime?
+  createdById   String
+  createdByName String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  center        Center    @relation(fields: [centerId], references: [id])
+  group         Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  questions     QuizQuestion[]
+  attempts      QuizAttempt[]
+
+  @@index([centerId, groupId, status])
+}
+
+model QuizQuestion {
+  id            String @id @default(cuid())
+  quizId        String
+  order         Int    @default(0)
+  text          String
+  type          String @default("MCQ") // MCQ | TRUE_FALSE | WRITTEN
+  options       String? // JSON array of strings (MCQ)
+  correctAnswer String? // MCQ: index "0".."n" | TRUE_FALSE: "true"/"false" | WRITTEN: null (تصحيح يدوي)
+  points        Int    @default(1)
+  quiz          Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([quizId, order])
+}
+
+model QuizAttempt {
+  id          String    @id @default(cuid())
+  quizId      String
+  studentId   String
+  answers     String? // JSON [{questionId, answer}]
+  score       Int? // مجموع النقاط المحسومة (null = لسه بيتصحح)
+  maxScore    Int       @default(0)
+  status      String    @default("IN_PROGRESS") // IN_PROGRESS | SUBMITTED | GRADED
+  submittedAt DateTime?
+  gradedAt    DateTime?
+  gradedById  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  quiz        Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([quizId, studentId])
+  @@index([studentId, status])
+}
+
+// ============================= SUBSCRIPTION EVENTS (سجل حياة الاشتراك) =============================
+
+model SubscriptionEvent {
+  id             String       @id @default(cuid())
+  subscriptionId String
+  centerId       String
+  type           String // CREATED | TRIAL_START | RENEWED | STATUS_CHANGE | GRACE_APPLIED | PAYMENT | CANCELLED | REACTIVATED | PLAN_CHANGE
+  fromStatus     String?
+  toStatus       String?
+  amount         Int? // piastres (لو في دفعة)
+  note           String?
+  createdById    String?
+  createdByName  String?
+  createdAt      DateTime     @default(now())
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  center         Center       @relation(fields: [centerId], references: [id])
+
+  @@index([subscriptionId, createdAt])
+  @@index([centerId, createdAt])
+}
+
+// ============================= BACKUP RUNS (سجل النسخ الاحتياطي والاستعادة) =============================
+// سجل تدقيق مستقل عن ملفات النسخ نفسها — كل نسخة/استعادة ليها صف بحالتها وسلامة البيانات.
+// منفصل تمامًا عن نظام الطوارئ (Emergency Packages) عمدًا (spec §9).
+
+model BackupRun {
+  id             String    @id @default(cuid())
+  kind           String    @default("PLATFORM") // PLATFORM | CENTER
+  centerId       String? // للنسخ الخاصة بسنتر واحد (Excel)
+  type           String    @default("MANUAL") // MANUAL | SCHEDULED | PRE_RESTORE
+  target         String    @default("DB") // DB (SQLite file) | EXCEL
+  status         String    @default("RUNNING") // RUNNING | SUCCESS | FAILED
+  fileName       String?
+  sizeBytes      Int?
+  integrity      String? // OK | FAILED | SKIPPED (PRAGMA integrity_check)
+  counts         String? // JSON { table: n } snapshot أعداد الصفوف
+  error          String?
+  startedById    String?
+  startedByName  String    @default("النظام")
+  startedAt      DateTime  @default(now())
+  finishedAt     DateTime?
+  restoredAt     DateTime? // لو دي نسخة اتعملت كأمان قبل استعادة
+  restoredById   String?
+  restoredByName String?
+  notes          String?
+  center         Center?   @relation(fields: [centerId], references: [id])
+
+  @@index([startedAt])
+  @@index([centerId, startedAt])
+}
+
+// ============================= USER PREFERENCES (تفضيلات المستخدم) =============================
+
+model UserPreference {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  theme     String? // light | dark | system (null = اتبع إعداد الجهاز الحالي)
+  language  String   @default("ar")
+  prefs     String? // JSON { staffBell: true, ... }
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============================= UNDO / REDO (تراجع وإعادة) =============================
+// سجل أفعال قابلة للتراجع بأمان (مصروف/إعلان/حصة جدول/طالب جديد) — inverse يحمل البيانات
+// العكسية الكاملة وقت التنفيذ. مفيش تراجع على الدفعات أبدًا (الاسترداد عن طريق طلبات الموافقة).
+// سجل العمليات (AuditLog) مستقل ومش بيتأثر (spec §13).
+
+model UndoEntry {
+  id           String    @id @default(cuid())
+  centerId     String
+  userId       String?
+  userName     String
+  entity       String // EXPENSE | ANNOUNCEMENT | SCHEDULE_SLOT | STUDENT
+  entityId     String
+  action       String // CREATE | UPDATE | DELETE
+  label        String // وصف عربي يظهر في القائمة
+  forward      String // JSON — بيانات إعادة التنفيذ (redo)
+  inverse      String // JSON — بيانات التراجع (undo)
+  status       String    @default("ACTIVE") // ACTIVE | UNDONE | EXPIRED
+  undoneAt     DateTime?
+  undoneByName String?
+  createdAt    DateTime  @default(now())
+  center       Center    @relation(fields: [centerId], references: [id])
+  user         User?     @relation("UndoEntries", fields: [userId], references: [id])
+
+  @@index([centerId, userId, createdAt])
+  @@index([centerId, status, createdAt])
 }

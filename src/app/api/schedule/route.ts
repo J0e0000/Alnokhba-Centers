@@ -2,7 +2,8 @@ import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
 import { requireCenterUser, requireManager, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
-import { toPiastres, dayNameAR, formatTime12 } from "@/lib/normalize";
+import { toPiastres, dayNameAR, formatTime12, todayStr } from "@/lib/normalize";
+import { recordUndo } from "@/lib/undo";
 import { notifyGroupStudents } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
@@ -51,8 +52,62 @@ export const GET = handler(async () => {
       })),
   }));
 
+  // ===== تنبيهات الجدول الذكية (spec §12) — كشف مشكلة قبل ما تحصل =====
+  const conflicts: { type: string; label: string; detail: string }[] = [];
+  // 1) تعارض مدرس/قاعة داخل نفس اليوم (من تعديلات قديمة أو سلوتات متعدلة)
+  for (const dow of DAY_ORDER) {
+    const daySlots = slots.filter((s) => s.dayOfWeek === dow);
+    for (let i = 0; i < daySlots.length; i++) {
+      for (let j = i + 1; j < daySlots.length; j++) {
+        const a = daySlots[i], b = daySlots[j];
+        const overlap = a.startTime < b.endTime && a.endTime > b.startTime;
+        if (!overlap) continue;
+        if (a.group.teacherId && a.group.teacherId === b.group.teacherId) {
+          conflicts.push({
+            type: "TEACHER",
+            label: `تعارض مدرس — ${a.group.teacher?.name ?? "—"}`,
+            detail: `يوم ${dayNameAR(dow)}: ${a.group.subject.name} (${a.startTime}) متقاطعة مع ${b.group.subject.name} (${b.startTime})`,
+          });
+        }
+        if (a.room && a.room === b.room) {
+          conflicts.push({
+            type: "ROOM",
+            label: `تعارض قاعة — ${a.room}`,
+            detail: `يوم ${dayNameAR(dow)}: ${a.group.subject.name} (${a.startTime}) مع ${b.group.subject.name} (${b.startTime})`,
+          });
+        }
+      }
+    }
+  }
+  // 2) مجموعة جدولها شغال ومفيش حصة اتولدت ليها آخر 10 أيام
+  const today = todayStr();
+  const since10 = new Date(Date.now() - 10 * 86400000).toISOString().slice(0, 10);
+  const activeGroupIds = [...new Set(slots.map((s) => s.groupId))];
+  for (const gid of activeGroupIds.slice(0, 40)) {
+    const g = groups.find((x) => x.id === gid);
+    if (!g) continue;
+    const cnt = await db.sessionInstance.count({ where: { centerId: user.centerId, groupId: gid, date: { gte: since10 } } });
+    if (cnt === 0) {
+      conflicts.push({
+        type: "GAP",
+        label: `مجموعة ${g.subject.name} — ${g.name} واقفة`,
+        detail: "عليها جدول ومفيش أي حصة اتولدت آخر 10 أيام — راجع المواعيد أو فعّل توليد الحصص",
+      });
+      if (conflicts.length >= 8) break;
+    }
+  }
+  // 3) حصص مفتوحة متسابة من أيام فاتت
+  const openOld = await db.sessionInstance.count({ where: { centerId: user.centerId, status: "OPEN", date: { lt: today } } });
+  if (openOld > 0) {
+    conflicts.push({
+      type: "UNCLOSED",
+      label: `${openOld} حصة فاتت ومتقفلتش`,
+      detail: "اقفلها بعد مراجعة الحضور — الحسابات بتتثبت بالقفل",
+    });
+  }
+
   return ok({
-    days, rooms: rooms.map((r) => ({ id: r.id, name: r.name, capacity: r.capacity })),
+    days, conflicts, rooms: rooms.map((r) => ({ id: r.id, name: r.name, capacity: r.capacity })),
     groups: groups.map((g) => ({
     id: g.id, name: g.name, subject: g.subject.name, subjectId: g.subjectId,
     grade: g.grade.name, gradeId: g.gradeId,
@@ -102,6 +157,13 @@ export const POST = handler(async (req: Request) => {
     data: { centerId: user.centerId, dayOfWeek: day, startTime: body.startTime!, endTime: body.endTime!, groupId: group.id, room: body.room ?? null },
   });
   await logAudit({ user, action: AUDIT.SCHEDULE_ADDED, entity: "SCHEDULE", entityId: slot.id, after: { day, startTime: body.startTime, group: group.name } });
+  // قابل للتراجع (spec §13) — التراجع بيعطّل السلوت (مش مسح)
+  await recordUndo({
+    user, entity: "SCHEDULE_SLOT", entityId: slot.id, action: "CREATE",
+    label: `إضافة حصة ${group.name} — ${dayNameAR(day)} ${body.startTime}`,
+    forward: { id: slot.id, centerId: user.centerId, dayOfWeek: day, startTime: body.startTime, endTime: body.endTime, groupId: group.id, room: body.room ?? null },
+    inverse: { isActive: false },
+  });
 
   // إشعار تلقائي: "تم تحديث جدولك" — مفيش رسائل تقنية للطلاب
   await notifyGroupStudents(

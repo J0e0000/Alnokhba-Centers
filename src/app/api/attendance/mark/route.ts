@@ -14,6 +14,8 @@ type MarkBody = {
   idemKey?: string; // مفتاح idempotency (مزامنة أوفلاين) — نفس المفتاح = نفس الحضور
   bulk?: boolean; // التحضير المعكوس: علّم كل المسجلين اللي لسه محضروش
   studentIds?: string[]; // (bulk) قائمة اختيارية — لو مش موجودة: كل المسجلين النشطين
+  // طريقة التسجيل للحوكمة (spec §3): MANUAL افتراضي — شاشة المسح تبعت QR_SCAN
+  method?: "MANUAL" | "QR_SCAN" | "SESSION_QR";
 };
 
 /**
@@ -28,6 +30,7 @@ export const POST = handler(async (req: Request) => {
   const body = await readJson<MarkBody>(req);
 
   const sessionId = String(body.sessionId ?? "");
+  const attMethod = ["MANUAL", "QR_SCAN", "SESSION_QR"].includes(body.method ?? "") ? body.method! : "MANUAL";
 
   // ============================= BULK =============================
   if (body.bulk) {
@@ -71,7 +74,7 @@ export const POST = handler(async (req: Request) => {
         await tx.attendance.create({
           data: {
             centerId: user.centerId, sessionId, studentId: r.student.id,
-            status: "PRESENT", charged: charge, recordedBy: user.id,
+            status: "PRESENT", charged: charge, recordedBy: user.id, method: attMethod,
           },
         });
         if (charge > 0) {
@@ -175,7 +178,7 @@ export const POST = handler(async (req: Request) => {
     const attendance = await tx.attendance.create({
       data: {
         centerId: user.centerId, sessionId, studentId, status, charged: charge, recordedBy: user.id,
-        idemKey: body.idemKey?.trim() || null,
+        idemKey: body.idemKey?.trim() || null, method: attMethod,
       },
     });
     if (charge > 0) {

@@ -3,6 +3,7 @@ import { ok, handler, readJson } from "@/lib/api";
 import { requireCenterUser, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { resolveAnnouncementAudience, sendPushToStudents } from "@/lib/push";
+import { recordUndo } from "@/lib/undo";
 
 export const dynamic = "force-dynamic";
 
@@ -115,6 +116,14 @@ export const POST = handler(async (req: Request) => {
     entity: "ANNOUNCEMENT",
     entityId: announcement.id,
     after: { title, audience: audience.audienceName, recipients: audience.studentIds.length },
+  });
+
+  // قابل للتراجع (spec §13) — التراجع بيمسح الإعلان وإشعاراته
+  await recordUndo({
+    user, entity: "ANNOUNCEMENT", entityId: announcement.id, action: "CREATE",
+    label: `نشر الإعلان «${title}»`,
+    forward: { id: announcement.id },
+    inverse: { id: announcement.id },
   });
 
   return ok({

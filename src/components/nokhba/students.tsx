@@ -9,6 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import { api, fmt, normalizeDigits, STUDENT_STATUS, type SessionUser } from "./lib";
 import { PageHeader, Chip, BalanceChip, EmptyState, Loading, CardsSkeleton } from "./shared";
+import { ContactActions } from "./contact-actions";
 import { StudentSearchBar } from "./student-search";
 import { StudentCardPrint } from "./cards";
 import {
@@ -215,6 +216,16 @@ export function StudentsView({ user, openNew, onOpenNewConsumed, onOpenProfile }
                     {s.phone ? <><Phone className="w-3 h-3" /> <span className="nk-num" dir="ltr">{s.phone}</span></> : <>{s.subjects.length} مادة</>}
                   </span>
                 </div>
+                {/* تواصل مباشر: اتصال/واتساب للطالب + ولي الأمر (spec §2) */}
+                {(s.phone || s.parentPhone) && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center justify-between gap-2 border-t border-border/50 pt-2"
+                  >
+                    <span className="text-[10px] font-bold text-muted-foreground">تواصل مباشر</span>
+                    <ContactActions target={s} size="sm" />
+                  </div>
+                )}
                 {s.subjects.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {s.subjects.slice(0, 3).map((sub, i) => (

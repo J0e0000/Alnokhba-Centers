@@ -3,6 +3,7 @@ import { ok, handler, readJson } from "@/lib/api";
 import { requireCenterUser, requireManager, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { toPiastres, todayStr } from "@/lib/normalize";
+import { recordUndo } from "@/lib/undo";
 import { expectedCash } from "@/lib/finance";
 
 export const dynamic = "force-dynamic";
@@ -113,6 +114,13 @@ export const POST = handler(async (req: Request) => {
       data: { centerId: user.centerId, type: "EXPENSE", amount: -amount, date, note: body.note?.trim() || category, refType: "EXPENSE", refId: expense.id, createdBy: user.id },
     });
     await logAudit({ user, action: AUDIT.EXPENSE_ADDED, entity: "EXPENSE", entityId: expense.id, after: { category, amount, date } });
+    // قابل للتراجع (spec §13) — عكس واضح: حذف المصروف وقيده من دفتر السنتر
+    await recordUndo({
+      user, entity: "EXPENSE", entityId: expense.id, action: "CREATE",
+      label: `إضافة مصروف ${category} — ${(amount / 100).toLocaleString("en-EG")} ج`,
+      forward: { id: expense.id, centerId: user.centerId, category, amount, date, note: body.note?.trim() || null, createdBy: user.id },
+      inverse: { id: expense.id },
+    });
     return ok({ expense: { id: expense.id } }, { status: 201 });
   }
 

@@ -4,6 +4,7 @@ import { requireAdmin, createSupportSession, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { todayStr, toPiastres } from "@/lib/normalize";
 import { pricingBreakdown, monthlyBillPiastres, PRICING } from "@/lib/pricing";
+import { recordSubEvent, GRACE_DAYS_DEFAULT, deriveSubStatus, EXPIRY_WARNING_DAYS } from "@/lib/subscription";
 
 export const dynamic = "force-dynamic";
 
@@ -120,15 +121,28 @@ export const GET = handler(async () => {
         groups: st.groups,
         pricing,
         subscription: sub
-          ? {
-              id: sub.id, plan: sub.plan.name, planId: sub.planId,
-              status: sub.status, pricePerStudent: sub.pricePerStudent,
-              renewalDate: sub.renewalDate, paymentStatus: sub.paymentStatus,
-              billingPeriod: sub.billingPeriod,
-              currentAmount: pricing.total,
-              maxStudents: sub.plan.maxStudents,
-              overLimit: st.totalStudents >= PRICING.hardLimitStudents,
-            }
+          ? (() => {
+              const derived = deriveSubStatus(sub);
+              return {
+                id: sub.id, plan: sub.plan.name, planId: sub.planId,
+                status: sub.status, pricePerStudent: sub.pricePerStudent,
+                renewalDate: sub.renewalDate, paymentStatus: sub.paymentStatus,
+                billingPeriod: sub.billingPeriod,
+                currentAmount: pricing.total,
+                maxStudents: sub.plan.maxStudents,
+                overLimit: st.totalStudents >= PRICING.hardLimitStudents,
+                // lifecycle (spec §7)
+                effectiveStatus: derived.effective,
+                daysLeft: derived.daysLeft,
+                expiringSoon: derived.expiringSoon,
+                renewalDue: derived.renewalDue,
+                trialEndsAt: sub.trialEndsAt,
+                graceUntil: sub.graceUntil,
+                lastRenewedAt: sub.lastRenewedAt,
+                cancelledAt: sub.cancelledAt,
+                warningDays: EXPIRY_WARNING_DAYS,
+              };
+            })()
           : null,
       };
     }),
@@ -158,7 +172,8 @@ export const GET = handler(async () => {
 type AdminAction = {
   action?: "renew" | "set-plan" | "set-status" | "support-start"
     | "team-create" | "team-rename" | "team-set-status" | "team-add-member" | "team-remove-member" | "team-set-description"
-    | "request-assign" | "request-reject";
+    | "request-assign" | "request-reject"
+    | "sub-lifecycle" | "sub-events";
   centerId?: string; planId?: string; months?: number;
   status?: string; markPaid?: boolean;
   // support access
@@ -167,6 +182,8 @@ type AdminAction = {
   teamId?: string; name?: string; description?: string; userId?: string;
   // join requests
   requestRole?: string;
+  // subscription lifecycle
+  op?: string; days?: number; note?: string;
 };
 
 /** POST /api/admin — renew / plan / status / support access / teams */
@@ -273,7 +290,12 @@ export const POST = handler(async (req: Request) => {
     await db.$transaction(async (tx) => {
       await tx.subscription.update({
         where: { centerId: center.id },
-        data: { status: "ACTIVE", renewalDate: newRenewal, paymentStatus: body.markPaid === false ? "PENDING" : "PAID", pricePerStudent: avgPerStudent },
+        data: {
+          status: "ACTIVE", renewalDate: newRenewal,
+          paymentStatus: body.markPaid === false ? "PENDING" : "PAID",
+          pricePerStudent: avgPerStudent,
+          lastRenewedAt: new Date(), graceUntil: null, cancelledAt: null,
+        },
       });
       await tx.platformBilling.create({
         data: {
@@ -284,6 +306,14 @@ export const POST = handler(async (req: Request) => {
       });
       // Make sure center is active again
       await tx.center.update({ where: { id: center.id }, data: { status: "ACTIVE" } });
+    });
+
+    // سجل حياة الاشتراك (spec §7)
+    await recordSubEvent({
+      subscriptionId: sub.id, centerId: center.id, type: "RENEWED",
+      fromStatus: sub.status, toStatus: "ACTIVE", amount,
+      note: `تجديد ${months} شهر لغاية ${newRenewal} (${body.markPaid === false ? "غير مدفوع" : "مدفوع"})`,
+      userId: user.id, userName: user.name,
     });
 
     await logAudit({
@@ -305,6 +335,11 @@ export const POST = handler(async (req: Request) => {
     await db.subscription.update({
       where: { centerId: center.id },
       data: { planId: plan.id, pricePerStudent: plan.pricePerStudent },
+    });
+    await recordSubEvent({
+      subscriptionId: sub.id, centerId: center.id, type: "PLAN_CHANGE",
+      note: `تغيير الخطة لـ ${plan.name} (${plan.pricePerStudent} قرش/طالب/شهر)`,
+      userId: user.id, userName: user.name,
     });
     await logAudit({
       user: { ...user, centerId: center.id },
@@ -330,6 +365,76 @@ export const POST = handler(async (req: Request) => {
       after: { status },
     });
     return ok({ ok: true, status });
+  }
+
+  // =================== دورة حياة الاشتراك (spec §7) ===================
+  // كل انتقال بيتسجل في SubscriptionEvent — ومفيش أي حذف بيانات سنتر أبدًا.
+  if (body.action === "sub-lifecycle") {
+    const sub = await db.subscription.findUnique({ where: { centerId: center.id } });
+    if (!sub) throw new ApiError("السنتر ده ملوش اشتراك.", 404);
+    const op = String(body.op ?? "");
+    const note = body.note ? String(body.note).trim() || null : null;
+    const today = todayStr();
+
+    if (op === "start-trial") {
+      const days = Math.min(Math.max(Number(body.days ?? 14), 1), 60);
+      const trialEnds = new Date(Date.now() + days * 86400000);
+      const renewal = new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
+      await db.subscription.update({
+        where: { centerId: center.id },
+        data: { status: "TRIAL", trialEndsAt: trialEnds, renewalDate: renewal, graceUntil: null, cancelledAt: null },
+      });
+      await recordSubEvent({ subscriptionId: sub.id, centerId: center.id, type: "TRIAL_START", fromStatus: sub.status, toStatus: "TRIAL", note: note ?? `تجربة ${days} يوم لغاية ${renewal}`, userId: user.id, userName: user.name });
+      await logAudit({ user: { ...user, centerId: center.id }, action: AUDIT.CENTER_STATUS_CHANGED, entity: "SUBSCRIPTION", entityId: sub.id, before: { status: sub.status }, after: { status: "TRIAL" }, reason: note ?? "بدء تجربة" });
+      return ok({ ok: true, status: "TRIAL" });
+    }
+
+    if (op === "apply-grace") {
+      const days = Math.min(Math.max(Number(body.days ?? GRACE_DAYS_DEFAULT), 1), 30);
+      const graceUntil = new Date(Date.now() + days * 86400000);
+      await db.subscription.update({
+        where: { centerId: center.id },
+        data: { status: "GRACE", graceUntil, trialEndsAt: null, cancelledAt: null },
+      });
+      await recordSubEvent({ subscriptionId: sub.id, centerId: center.id, type: "GRACE_APPLIED", fromStatus: sub.status, toStatus: "GRACE", note: note ?? `فترة سماح ${days} يوم`, userId: user.id, userName: user.name });
+      await logAudit({ user: { ...user, centerId: center.id }, action: AUDIT.CENTER_STATUS_CHANGED, entity: "SUBSCRIPTION", entityId: sub.id, before: { status: sub.status }, after: { status: "GRACE" }, reason: note ?? "منح فترة سماح" });
+      return ok({ ok: true, status: "GRACE" });
+    }
+
+    if (op === "cancel") {
+      await db.subscription.update({
+        where: { centerId: center.id },
+        data: { status: "CANCELLED", cancelledAt: new Date() },
+      });
+      await recordSubEvent({ subscriptionId: sub.id, centerId: center.id, type: "CANCELLED", fromStatus: sub.status, toStatus: "CANCELLED", note: note ?? "إلغاء الاشتراك — بيانات السنتر محفوظة ومفيش أي حذف تلقائي", userId: user.id, userName: user.name });
+      await logAudit({ user: { ...user, centerId: center.id }, action: AUDIT.CENTER_STATUS_CHANGED, entity: "SUBSCRIPTION", entityId: sub.id, before: { status: sub.status }, after: { status: "CANCELLED" }, reason: note ?? "إلغاء اشتراك" });
+      return ok({ ok: true, status: "CANCELLED" });
+    }
+
+    if (op === "expire") {
+      // انتهاء صريح — بدون أي حذف/تعطيل تلقائي (spec §7 CRITICAL)
+      await db.subscription.update({
+        where: { centerId: center.id },
+        data: { status: "EXPIRED", graceUntil: null },
+      });
+      await recordSubEvent({ subscriptionId: sub.id, centerId: center.id, type: "STATUS_CHANGE", fromStatus: sub.status, toStatus: "EXPIRED", note: note ?? "تحديد الحالة منتهي — مفيش أي حذف بيانات", userId: user.id, userName: user.name });
+      await logAudit({ user: { ...user, centerId: center.id }, action: AUDIT.CENTER_STATUS_CHANGED, entity: "SUBSCRIPTION", entityId: sub.id, before: { status: sub.status }, after: { status: "EXPIRED" }, reason: note ?? "تحديد اشتراك منتهي" });
+      return ok({ ok: true, status: "EXPIRED" });
+    }
+
+    throw new ApiError("عملية الاشتراك دي مش معروفة.", 400);
+  }
+
+  // سجل حياة الاشتراك للعرض
+  if (body.action === "sub-events") {
+    const sub = await db.subscription.findUnique({ where: { centerId: center.id } });
+    if (!sub) throw new ApiError("السنتر ده ملوش اشتراك.", 404);
+    const events = await db.subscriptionEvent.findMany({
+      where: { subscriptionId: sub.id },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+    return ok({ events });
   }
 
   throw new ApiError("العملية دي مش معروفة.");

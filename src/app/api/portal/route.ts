@@ -17,7 +17,7 @@ export const GET = handler(async () => {
   const student = await getPortalStudent();
   if (!student) return ok({ student: null });
 
-  const [unread, nextLesson, lastAnnouncement, qrDataUrl, balance] = await Promise.all([
+  const [unread, nextLesson, lastAnnouncement, qrDataUrl, balance, progress] = await Promise.all([
     db.studentNotification.count({ where: { studentId: student.id, readAt: null } }),
     computeNextLesson(student.id),
     latestAnnouncementsFor(student.id, student.centerId, student.gradeId ?? null, 1),
@@ -26,6 +26,7 @@ export const GET = handler(async () => {
       color: { dark: "#111827", light: "#FFFFFF" },
     }),
     studentBalance(student.id),
+    portalProgress(student.id, student.centerId),
   ]);
 
   return ok({
@@ -39,8 +40,41 @@ export const GET = handler(async () => {
     balance,
     nextLesson,
     lastAnnouncement: lastAnnouncement[0] ?? null,
+    progress,
   });
 });
+
+/**
+ * نظرة تقدم الطالب (spec §1) — حتمية من داتا الحضور والكويزات:
+ * نسبة الحضور آخر 30 يوم + إجمالي الحصص + متوسط الكويزات المصححة.
+ */
+async function portalProgress(studentId: string, centerId: string) {
+  const since = new Date(Date.now() - 30 * 86400000);
+  const [attended, quizData] = await Promise.all([
+    db.attendance.findMany({
+      where: { studentId, createdAt: { gte: since }, session: { centerId, status: { not: "CANCELLED" } } },
+      select: { status: true },
+    }),
+    db.quizAttempt.findMany({
+      where: { studentId, status: "GRADED", quiz: { centerId } },
+      select: { score: true, maxScore: true },
+      orderBy: { updatedAt: "desc" },
+      take: 20,
+    }),
+  ]);
+  const sessionsAttended = attended.filter((a) => a.status === "PRESENT" || a.status === "LATE").length;
+  const graded = quizData.filter((a) => a.maxScore > 0);
+  const quizAvg = graded.length
+    ? Math.round(graded.reduce((s, a) => s + ((a.score ?? 0) / a.maxScore) * 100, 0) / graded.length)
+    : null;
+  return {
+    sessionsAttended,
+    sessionsTotal: attended.length,
+    attendanceRate: attended.length ? Math.round((sessionsAttended / attended.length) * 100) : null,
+    quizAvg,
+    quizzesGraded: graded.length,
+  };
+}
 
 // ============================= POST — دخول / خروج =============================
 

@@ -22,6 +22,16 @@ type PricingInfo = {
   usageRatio: number; warnLevel: "NONE" | "WARN_80" | "WARN_95" | "LIMIT";
 };
 
+type SubEvent = {
+  id: string; type: string; fromStatus: string | null; toStatus: string | null;
+  amount: number | null; note: string | null; createdByName: string | null; createdAt: string;
+};
+
+const SUB_EVENT_LABEL: Record<string, string> = {
+  CREATED: "إنشاء", TRIAL_START: "بدء تجربة", RENEWED: "تجديد", STATUS_CHANGE: "تغيير حالة",
+  GRACE_APPLIED: "فترة سماح", PAYMENT: "دفعة", CANCELLED: "إلغاء", REACTIVATED: "إعادة تنشيط", PLAN_CHANGE: "تغيير خطة",
+};
+
 export type AdminData = {
   totals: { centers: number; activeCenters: number; totalActiveStudents: number; platformRevenue: number; expiringSoon: number };
   unreadNotifs?: number;
@@ -40,6 +50,10 @@ export type AdminData = {
       id: string; plan: string; planId: string; status: string; pricePerStudent: number;
       renewalDate: string; paymentStatus: string; billingPeriod: string;
       currentAmount: number; maxStudents: number | null; overLimit: boolean;
+      // lifecycle (spec §7)
+      effectiveStatus?: string; daysLeft?: number; expiringSoon?: boolean; renewalDue?: boolean;
+      trialEndsAt?: string | null; graceUntil?: string | null;
+      lastRenewedAt?: string | null; cancelledAt?: string | null; warningDays?: number;
     } | null;
   }[];
   billings: { id: string; centerName: string; students: number; pricePerStudent: number; amount: number; periodStart: string; periodEnd: string; status: string; createdAt: string }[];
@@ -251,8 +265,20 @@ export function AdminSubscriptionsView({ data, reload }: { data: AdminData | nul
   const [renewFor, setRenewFor] = useState<AdminData["centers"][number] | null>(null);
   const [months, setMonths] = useState(1);
   const [busy, setBusy] = useState(false);
+  const [historyFor, setHistoryFor] = useState<AdminData["centers"][number] | null>(null);
+  const [events, setEvents] = useState<SubEvent[] | null>(null);
 
   if (!data) return <Loading />;
+
+  async function lifecycle(centerId: string, op: string) {
+    if (op === "cancel" && !confirm("متأكد من إلغاء الاشتراك؟ البيانات مش هتتحذف — والقرار بيتسجل.")) return;
+    setBusy(true);
+    try {
+      await api("/api/admin", { method: "POST", body: { action: "sub-lifecycle", centerId, op } });
+      toast.success(op === "start-trial" ? "بدأت تجربة 14 يوم" : op === "apply-grace" ? "فترة سماح 7 أيام" : op === "cancel" ? "اتلغى الاشتراك — البيانات محفوظة" : "تم");
+      reload();
+    } catch { /* toast */ } finally { setBusy(false); }
+  }
 
   async function renew() {
     if (!renewFor?.subscription) return;
@@ -296,16 +322,34 @@ export function AdminSubscriptionsView({ data, reload }: { data: AdminData | nul
         {data.centers.map((c) => {
           const p = c.pricing;
           const pct = Math.min(100, Math.round(p.usageRatio * 100));
+          const sub = c.subscription;
+          const eff = sub?.effectiveStatus ?? "NONE";
+          const EFF_STYLE: Record<string, { label: string; cls: string }> = {
+            TRIAL: { label: "تجريبي", cls: "bg-sky-50 border-sky-200 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300" },
+            ACTIVE: { label: "نشط", cls: "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300" },
+            GRACE: { label: "فترة سماح", cls: "bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300" },
+            EXPIRED: { label: "منتهي", cls: "bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" },
+            CANCELLED: { label: "ملغي", cls: "bg-gray-100 border-gray-200 text-gray-600 dark:bg-white/5" },
+            NONE: { label: "بدون", cls: "bg-muted border-border text-muted-foreground" },
+          };
+          const effStyle = EFF_STYLE[eff] ?? EFF_STYLE.NONE;
           return (
             <div key={c.id} className="nk-card rounded-2xl p-4 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="font-extrabold">{c.name}</h3>
-                {c.subscription ? (
-                  <Chip className={c.subscription.status === "ACTIVE" ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-rose-50 border-rose-200 text-rose-700"}>
-                    {c.subscription.status === "ACTIVE" ? "نشط" : "منتهي"}
-                  </Chip>
-                ) : <Chip>بدون</Chip>}
+                <span className={cn("text-[10px] font-bold rounded-full border px-2 py-0.5", effStyle.cls)}>{effStyle.label}</span>
               </div>
+
+              {/* تحذير الانتهاء (spec §7) */}
+              {sub?.expiringSoon && sub.daysLeft != null && (
+                <div className={cn("rounded-xl p-2.5 text-xs font-bold flex items-center gap-2",
+                  sub.daysLeft <= 3 ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-800")}>
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  {sub.daysLeft < 0
+                    ? "الاشتراك تجاوز تاريخ التجديد — بيانات السنتر محفوظة، القرار ليك"
+                    : `بينتهي بعد ${sub.daysLeft} يوم (${formatDateAR(sub.renewalDate)})`}
+                </div>
+              )}
 
               {/* تحذيرات السعة 80% / 95% / الحد */}
               {p.warnLevel !== "NONE" && (
@@ -352,10 +396,32 @@ export function AdminSubscriptionsView({ data, reload }: { data: AdminData | nul
 
               {c.subscription && <SubRow label="التجديد" value={formatDateAR(c.subscription.renewalDate)} />}
 
-              <button onClick={() => { setRenewFor(c); setMonths(1); }}
-                className="w-full nk-brand-bg text-white font-extrabold rounded-xl py-3 shadow flex items-center justify-center gap-2 text-sm">
-                <RefreshCcw className="w-4 h-4" /> تجديد الاشتراك
-              </button>
+              {/* أدوات دورة الحياة (spec §7) — مفيش أي حذف بيانات */}
+              <div className="flex flex-wrap gap-1.5">
+                <button onClick={() => { setRenewFor(c); setMonths(1); }}
+                  className="flex-1 nk-brand-bg text-white font-extrabold rounded-xl py-2.5 shadow flex items-center justify-center gap-1.5 text-xs">
+                  <RefreshCcw className="w-3.5 h-3.5" /> تجديد
+                </button>
+                <button onClick={() => lifecycle(c.id, "start-trial")} disabled={busy}
+                  className="rounded-xl border border-border bg-card px-3 py-2.5 text-[11px] font-extrabold hover:bg-muted/60 disabled:opacity-50">
+                  تجربة
+                </button>
+                <button onClick={() => lifecycle(c.id, "apply-grace")} disabled={busy}
+                  className="rounded-xl border border-border bg-card px-3 py-2.5 text-[11px] font-extrabold hover:bg-muted/60 disabled:opacity-50">
+                  سماح
+                </button>
+                <button onClick={() => lifecycle(c.id, "cancel")} disabled={busy}
+                  className="rounded-xl border border-rose-200 bg-card px-3 py-2.5 text-[11px] font-extrabold text-rose-600 hover:bg-rose-50 disabled:opacity-50">
+                  إلغاء
+                </button>
+                <button onClick={() => setHistoryFor(c)}
+                  className="rounded-xl border border-border bg-card px-3 py-2.5 text-[11px] font-extrabold hover:bg-muted/60">
+                  السجل
+                </button>
+              </div>
+              <p className="text-[10px] font-bold text-muted-foreground">
+                انتهاء/إلغاء الاشتراك عمره ما بيحذف بيانات السنتر — القرار النهائي بتاعك بمسؤولية وتسجيل.
+              </p>
             </div>
           );
         })}
@@ -405,6 +471,48 @@ export function AdminSubscriptionsView({ data, reload }: { data: AdminData | nul
           </DialogContent>
         </Dialog>
       )}
+
+      {/* سجل حياة الاشتراك (spec §7) */}
+      {historyFor && (() => {
+        const loadEvents = async () => {
+          setEvents(null);
+          try {
+            const d = await api<{ events: SubEvent[] }>("/api/admin", {
+              method: "POST", body: { action: "sub-events", centerId: historyFor.id },
+            });
+            setEvents(d.events);
+          } catch { setEvents([]); }
+        };
+        if (events === null) setTimeout(loadEvents, 0);
+        return (
+          <Dialog open onOpenChange={() => { setHistoryFor(null); setEvents(null); }}>
+            <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto nk-scroll">
+              <DialogHeader><DialogTitle>سجل الاشتراك — {historyFor.name}</DialogTitle></DialogHeader>
+              {!events ? (
+                <div className="py-6 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></div>
+              ) : events.length === 0 ? (
+                <p className="text-sm font-bold text-muted-foreground text-center py-4">مفيش أحداث مسجلة لسه.</p>
+              ) : (
+                <div className="space-y-2">
+                  {events.map((e) => (
+                    <div key={e.id} className="rounded-xl border border-border bg-card p-3 text-sm space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-extrabold">{SUB_EVENT_LABEL[e.type] ?? e.type}</span>
+                        <span className="text-[10px] font-bold text-muted-foreground nk-num">
+                          {new Date(e.createdAt).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" })}
+                        </span>
+                      </div>
+                      {e.amount != null && <p className="text-xs font-bold nk-brand-text">المبلغ: {fmt(e.amount)} ج</p>}
+                      {e.note && <p className="text-xs font-bold text-muted-foreground">{e.note}</p>}
+                      {e.createdByName && <p className="text-[10px] font-bold text-muted-foreground/70">بواسطة: {e.createdByName}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 }
@@ -933,6 +1041,9 @@ export function AdminBackupsView({ data }: { data: AdminData | null }) {
         </div>
       </div>
 
+      {/* سجل النسخ والاستعادة (spec §9) */}
+      <BackupRunsPanel />
+
       {/* مصنفات Excel */}
       <SectionCard title="مصنفات Excel (ملف لكل سنتر)" icon={<FileSpreadsheet className="w-4 h-4" />}>
         {backups.excelBackups.length === 0 ? (
@@ -1318,5 +1429,215 @@ export function AdminRequestsView({ data, reload }: { data: AdminData | null; re
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// ============================= تحليلات المنصة (spec §8) =============================
+
+type AnalyticsData = {
+  months: string[];
+  revenueByMonth: { month: string; amount: number }[];
+  centersGrowth: { month: string; count: number }[];
+  renewalsByMonth: { month: string; count: number }[];
+  renewalRevenueByMonth: { month: string; amount: number }[];
+  subCounts: { TRIAL: number; ACTIVE: number; GRACE: number; EXPIRED: number; CANCELLED: number };
+  totals: {
+    centers: number; activeCenters: number; suspendedCenters: number; studentsTotal: number;
+    revenueTotal12m: number; outstandingCount: number; outstandingTotal: number;
+  };
+  expiringSoon: { centerId: string; centerName: string; status: string; renewalDate: string; daysLeft: number }[];
+  topCenters: { id: string; name: string; students: number; staff: number }[];
+};
+
+export function AdminAnalyticsView() {
+  const [d, setD] = useState<AnalyticsData | null>(null);
+
+  useEffect(() => {
+    api<AnalyticsData>("/api/admin/analytics", { silent: true }).then(setD).catch(() => {});
+  }, []);
+
+  if (!d) return <Loading />;
+  const fmtM = (m: string) => {
+    const [y, mo] = m.split("-");
+    const names = ["ينا", "فبر", "مار", "أبر", "ماي", "يون", "يول", "أغس", "سبت", "أكت", "نوف", "ديس"];
+    return `${names[Number(mo) - 1]} ${y.slice(2)}`;
+  };
+  const maxRev = Math.max(...d.revenueByMonth.map((x) => x.amount), 1);
+  const maxC = Math.max(...d.centersGrowth.map((x) => x.count), 1);
+
+  return (
+    <div className="space-y-4">
+      <PageHeader title="تحليلات المنصة" subtitle="فهم البيزنس: نمو السناتر، الإيراد، التجديدات، والاشتراكات المستحقة — مش مجرد عدّادات" />
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
+        <Stat label="إجمالي السناتر" value={d.totals.centers} />
+        <Stat label="سناتر شغالة" value={d.totals.activeCenters} />
+        <Stat label="موقوفة" value={d.totals.suspendedCenters} />
+        <Stat label="إجمالي الطلاب" value={d.totals.studentsTotal} />
+        <Stat label="إيراد 12 شهر" value={fmt(d.totals.revenueTotal12m)} hint="جنيه" />
+        <Stat label="مستحقات معلّقة" value={fmt(d.totals.outstandingTotal)} hint={`${d.totals.outstandingCount} فاتورة`} />
+      </div>
+
+      {/* حالات الاشتراكات */}
+      <div className="nk-card rounded-2xl p-4">
+        <h3 className="font-extrabold text-sm mb-3">حالات الاشتراكات (محسوبة)</h3>
+        <div className="grid grid-cols-5 gap-2 text-center">
+          {([["TRIAL", "تجريبي", "bg-sky-100 text-sky-700"], ["ACTIVE", "نشط", "bg-emerald-100 text-emerald-700"], ["GRACE", "سماح", "bg-amber-100 text-amber-700"], ["EXPIRED", "منتهي", "bg-rose-100 text-rose-700"], ["CANCELLED", "ملغي", "bg-gray-100 text-gray-600"]] as const).map(([k, label, cls]) => (
+            <div key={k} className={cn("rounded-xl p-3", cls)}>
+              <p className="nk-num text-xl font-black">{d.subCounts[k]}</p>
+              <p className="text-[10px] font-bold mt-0.5">{label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* إيراد شهري */}
+      <div className="nk-card rounded-2xl p-4">
+        <h3 className="font-extrabold text-sm mb-3">إيراد الاشتراكات آخر 12 شهر (جنيه)</h3>
+        <div className="flex items-end gap-1.5 h-36">
+          {d.revenueByMonth.map((r) => (
+            <div key={r.month} className="flex-1 flex flex-col items-center gap-1 group">
+              <span className="text-[9px] font-bold text-muted-foreground nk-num opacity-0 group-hover:opacity-100 transition">{fmt(r.amount)}</span>
+              <div
+                className="w-full rounded-t-lg nk-brand-grad min-h-[3px] transition-all"
+                style={{ height: `${Math.max(2, (r.amount / maxRev) * 100)}%` }}
+                title={`${fmtM(r.month)}: ${fmt(r.amount)} ج`}
+              />
+              <span className="text-[9px] font-bold text-muted-foreground whitespace-nowrap">{fmtM(r.month)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {/* نمو السناتر */}
+        <div className="nk-card rounded-2xl p-4">
+          <h3 className="font-extrabold text-sm mb-3">نمو السناتر الجديدة شهريًا</h3>
+          <div className="flex items-end gap-1.5 h-28">
+            {d.centersGrowth.map((g) => (
+              <div key={g.month} className="flex-1 flex flex-col items-center gap-1">
+                <div className="w-full rounded-t-lg bg-sky-500/70 min-h-[2px]" style={{ height: `${Math.max(3, (g.count / maxC) * 100)}%` }} title={`${fmtM(g.month)}: ${g.count}`} />
+                <span className="text-[8px] font-bold text-muted-foreground">{fmtM(g.month).split(" ")[0]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* تجديدات */}
+        <div className="nk-card rounded-2xl p-4">
+          <h3 className="font-extrabold text-sm mb-3">عدد التجديدات شهريًا</h3>
+          <div className="space-y-1.5 max-h-32 overflow-y-auto nk-scroll">
+            {d.renewalsByMonth.slice().reverse().filter((r) => r.count > 0).slice(0, 8).map((r) => (
+              <div key={r.month} className="flex items-center justify-between text-xs font-bold">
+                <span className="text-muted-foreground">{fmtM(r.month)}</span>
+                <span className="nk-num font-extrabold">{r.count} تجديد · {fmt(d.renewalRevenueByMonth.find((x) => x.month === r.month)?.amount ?? 0)} ج</span>
+              </div>
+            ))}
+            {d.renewalsByMonth.every((r) => r.count === 0) && (
+              <p className="text-xs font-bold text-muted-foreground text-center py-3">مفيش تجديدات مسجلة بعد.</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* قريبة الانتهاء */}
+      <div className="nk-card rounded-2xl p-4">
+        <h3 className="font-extrabold text-sm mb-3">اشتراكات قريبة من الانتهاء (30 يوم)</h3>
+        {d.expiringSoon.length === 0 ? (
+          <p className="text-xs font-bold text-muted-foreground">مفيش اشتراكات على وشك الانتهاء — كله تحت السيطرة.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {d.expiringSoon.map((s) => (
+              <div key={s.centerId} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-bold">
+                <span className="font-extrabold">{s.centerName}</span>
+                <span className={cn("nk-num", s.daysLeft <= 7 ? "text-rose-600" : "text-amber-600")}>
+                  {s.daysLeft <= 0 ? "تجاوز الموعد" : `باقي ${s.daysLeft} يوم`} · {formatDateAR(s.renewalDate)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* أكبر السناتر */}
+      <div className="nk-card rounded-2xl p-4">
+        <h3 className="font-extrabold text-sm mb-3">أكبر السناتر في حجم الطلاب</h3>
+        <div className="space-y-1.5">
+          {d.topCenters.map((c, i) => {
+            const max = d.topCenters[0]?.students || 1;
+            return (
+              <div key={c.id} className="flex items-center gap-2 text-xs font-bold">
+                <span className="w-5 h-5 rounded-full bg-muted grid place-items-center text-[10px] nk-num shrink-0">{i + 1}</span>
+                <span className="w-32 truncate font-extrabold">{c.name}</span>
+                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full nk-brand-bg rounded-full" style={{ width: `${(c.students / max) * 100}%` }} />
+                </div>
+                <span className="nk-num w-16 text-end">{c.students.toLocaleString("en-EG")} طالب</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================= سجل النسخ والاستعادة (spec §9) =============================
+
+type BackupRunRow = {
+  id: string; type: string; target: string; status: string;
+  fileName: string | null; sizeBytes: number | null; integrity: string | null;
+  error: string | null; startedByName: string; startedAt: string; finishedAt: string | null;
+  restoredAt: string | null; restoredByName: string | null; notes: string | null;
+};
+
+export function BackupRunsPanel() {
+  const [runs, setRuns] = useState<BackupRunRow[] | null>(null);
+  useEffect(() => {
+    api<{ runs: BackupRunRow[] }>("/api/admin/backup?runs=1", { silent: true })
+      .then((d) => setRuns(d.runs))
+      .catch(() => setRuns([]));
+  }, []);
+
+  if (!runs) return null;
+  if (runs.length === 0) {
+    return (
+      <div className="nk-card rounded-2xl p-4 text-xs font-bold text-muted-foreground">
+        سجل النسخ فاضي — أول نسخة هيتسجل هنا بحالتها وفحص السلامة.
+      </div>
+    );
+  }
+  return (
+    <SectionCard title="سجل النسخ والاستعادة (آخر 30 عملية)" icon={<DatabaseBackup className="w-4 h-4" />}>
+      <div className="space-y-1.5 max-h-80 overflow-y-auto nk-scroll">
+        {runs.map((r) => (
+          <div key={r.id} className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs font-bold flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className={cn(
+                "w-2 h-2 rounded-full shrink-0",
+                r.status === "SUCCESS" ? "bg-emerald-500" : r.status === "FAILED" ? "bg-rose-500" : "bg-amber-400 animate-pulse",
+              )} />
+              <span className="truncate">
+                {r.type === "SCHEDULED" ? "مجدولة" : r.type === "PRE_RESTORE" ? "أمان قبل استعادة" : "يدوية"}
+                {r.restoredAt ? " · استعادة" : ""} · {r.fileName ?? "—"}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 text-[10px] text-muted-foreground">
+              {r.integrity && (
+                <span className={cn("rounded-full px-1.5 py-0.5",
+                  r.integrity === "OK" ? "bg-emerald-50 text-emerald-700" : r.integrity === "FAILED" ? "bg-rose-50 text-rose-700" : "bg-muted")}>
+                  سلامة: {r.integrity === "OK" ? "تمام" : r.integrity === "FAILED" ? "فشل" : "—"}
+                </span>
+              )}
+              {r.sizeBytes != null && <span className="nk-num">{(r.sizeBytes / 1048576).toFixed(1)}MB</span>}
+              <span className="nk-num">{new Date(r.startedAt).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" })}</span>
+            </div>
+            {r.error && <p className="w-full text-rose-600 text-[11px]">{r.error}</p>}
+            {r.notes && <p className="w-full text-muted-foreground text-[11px]">{r.notes}</p>}
+          </div>
+        ))}
+      </div>
+    </SectionCard>
   );
 }

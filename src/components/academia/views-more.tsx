@@ -99,7 +99,7 @@ export function RequestsView({ user }: { user: AcaUserClient }) {
 
 /* ================= SMART INSIGHTS (فريق التحليل) ================= */
 
-type InsightRow = { id: string; dimension: string; severity: string; title: string; body: string; status: string; createdAt: string };
+type InsightRow = { id: string; dimension: string; severity: string; title: string; body: string; status: string; createdAt: string; data?: string | null };
 type InsightData = { insights: InsightRow[]; lastRun: { startedAt: string; status: string } | null; role: string };
 
 const DIM_LABEL: Record<string, string> = { ACADEMIC: "أكاديمي", OPERATIONAL: "تشغيلي", FINANCIAL: "مالي", STRATEGIC: "استراتيجي" };
@@ -108,6 +108,8 @@ export function InsightsView({ user: _user }: { user: AcaUserClient }) {
   const [data, setData] = useState<InsightData | null>(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
+  const [sevFilter, setSevFilter] = useState<string>("ALL");
+  const [dimFilter, setDimFilter] = useState<string>("ALL");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -144,6 +146,27 @@ export function InsightsView({ user: _user }: { user: AcaUserClient }) {
         </Button>
       </div>
 
+      {/* فلاتر (spec §5): الفئة + الخطورة */}
+      {!loading && data && data.insights.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {[{ k: "ALL", l: "الكل" }, { k: "CRITICAL", l: "حرج" }, { k: "WARNING", l: "تحتاج انتباه" }, { k: "INFO", l: "للمتابعة" }].map((s) => (
+            <button key={s.k} onClick={() => setSevFilter(s.k)}
+              className={cn("rounded-full border px-3 py-1 text-[11px] font-extrabold",
+                sevFilter === s.k ? "nk-brand-bg text-white border-transparent" : "border-border text-muted-foreground bg-white/70 dark:bg-white/5")}>
+              {s.l}
+            </button>
+          ))}
+          <span className="w-px bg-border mx-1" aria-hidden />
+          {[{ k: "ALL", l: "كل الفئات" }, ...Object.entries(DIM_LABEL).map(([k, l]) => ({ k, l }))].map((s) => (
+            <button key={s.k} onClick={() => setDimFilter(s.k)}
+              className={cn("rounded-full border px-3 py-1 text-[11px] font-extrabold",
+                dimFilter === s.k ? "nk-brand-bg text-white border-transparent" : "border-border text-muted-foreground bg-white/70 dark:bg-white/5")}>
+              {s.l}
+            </button>
+          ))}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-7 h-7 animate-spin text-muted-foreground" /></div>
       ) : !data || data.insights.length === 0 ? (
@@ -154,7 +177,19 @@ export function InsightsView({ user: _user }: { user: AcaUserClient }) {
         </div>
       ) : (
         <div className="grid gap-2">
-          {data.insights.map((i) => (
+          {data.insights
+            .filter((i) => (sevFilter === "ALL" || i.severity === sevFilter) && (dimFilter === "ALL" || i.dimension === dimFilter))
+            .map((i) => {
+              // الأدلة (spec §5): أرقام من الداتا بت backing الرؤية
+              let evidence: string[] = [];
+              try {
+                const d = i.data ? (JSON.parse(i.data) as Record<string, unknown>) : null;
+                if (d) evidence = Object.entries(d)
+                  .filter(([k, v]) => !Array.isArray(v) && typeof v !== "object" && v != null)
+                  .slice(0, 4)
+                  .map(([k, v]) => `${k}: ${String(v)}`);
+              } catch { evidence = []; }
+              return (
             <div key={i.id} className={cn("rounded-2xl border p-3.5",
               i.severity === "CRITICAL" ? "border-red-300 bg-red-50/70 dark:bg-red-950/30 dark:border-red-800" :
               i.severity === "WARNING" ? "border-amber-300 bg-amber-50/70 dark:bg-amber-950/30 dark:border-amber-800" :
@@ -164,6 +199,12 @@ export function InsightsView({ user: _user }: { user: AcaUserClient }) {
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-muted shrink-0">{DIM_LABEL[i.dimension]}</span>
               </div>
               <p className="text-sm mt-1 leading-relaxed">{i.body}</p>
+              {evidence.length > 0 && (
+                <div className="mt-2 rounded-xl bg-muted/50 px-3 py-2 space-y-0.5">
+                  <p className="text-[10px] font-black text-muted-foreground">الأدلة من الداتا:</p>
+                  {evidence.map((e, x) => <p key={x} className="text-[11px] font-bold text-muted-foreground nk-num" dir="ltr">• {e}</p>)}
+                </div>
+              )}
               <div className="flex items-center justify-between mt-2">
                 <span className="text-[11px] text-muted-foreground">{fmtDate(i.createdAt.slice(0, 10))}</span>
                 <Button size="sm" variant="ghost" className="h-7 rounded-full text-xs font-bold text-muted-foreground" onClick={() => dismiss(i.id)}>
@@ -171,7 +212,8 @@ export function InsightsView({ user: _user }: { user: AcaUserClient }) {
                 </Button>
               </div>
             </div>
-          ))}
+              );
+            })}
         </div>
       )}
 

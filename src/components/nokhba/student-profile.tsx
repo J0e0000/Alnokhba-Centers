@@ -12,6 +12,7 @@ import {
   ATTENDANCE_LABEL, PAY_METHOD_LABEL, userCan, userCanRequest, type SessionUser,
 } from "./lib";
 import { PageHeader, Chip, BalanceChip, SectionCard, Loading, EmptyState, Stat, MoneyStat, InfoRow } from "./shared";
+import { ContactActions } from "./contact-actions";
 import { PaymentPanel } from "./scan";
 import { TransactionPrintButton } from "./receipt-actions";
 import { StudentFormDialog } from "./students";
@@ -66,7 +67,8 @@ export function StudentProfileView({ user, studentId, onBack }: {
         title={s.name}
         subtitle={`كود الطالب: ${s.code} · ${s.grade ?? "بدون مرحلة"}`}
         action={
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <ContactActions target={s} size="md" showLabels />
             <button onClick={() => setCardOpen(true)} className="nk-brand-bg text-white font-extrabold rounded-xl px-3.5 py-2.5 shadow flex items-center gap-1.5 text-sm active:scale-[0.98]">
               <Printer className="w-4 h-4" /> الكارت
             </button>
