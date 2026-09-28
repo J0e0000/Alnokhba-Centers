@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "postinstall": "prisma generate",
-    "build": "NODE_OPTIONS=--max-old-space-size=3072 next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
+    "build": "NODE_OPTIONS=--max-old-space-size=3072 next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/ && cp -r db .next/standalone/",
     "start": "NODE_ENV=production node .next/standalone/server.js",
     "start:log": "NODE_ENV=production node .next/standalone/server.js 2>&1 | tee server.log",
     "start:daemon": "nohup node .next/standalone/server.js > server.log 2>&1 < /dev/null &",
