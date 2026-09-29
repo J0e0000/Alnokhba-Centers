@@ -36,4 +36,8 @@ export const db =
     log: ['error'],
   })
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+// Cache on EVERY environment (incl. production): Next.js bundles this module
+// into each route's serverless bundle — without globalThis caching, every
+// route in a lambda instance would spin its own PrismaClient + engine,
+// wasting CPU (slow cold start) and connections.
+globalForPrisma.prisma = db

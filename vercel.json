@@ -1,4 +1,8 @@
 {
   "buildCommand": "sh scripts/vercel-build.sh",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "functions": {
+    "src/app/api/**/route.ts": { "memory": 1769 },
+    "src/app/**/page.tsx": { "memory": 1769 }
+  }
 }

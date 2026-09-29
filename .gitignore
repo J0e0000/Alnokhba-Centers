@@ -44,3 +44,4 @@ prisma/.schema.pg-migrate.prisma
 generated/
 .vercel
 .env*
+.z-vercel-token
