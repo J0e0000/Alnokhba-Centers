@@ -1,0 +1,4 @@
+{
+  "buildCommand": "sh scripts/vercel-build.sh",
+  "framework": "nextjs"
+}
