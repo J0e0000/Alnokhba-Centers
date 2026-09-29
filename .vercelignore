@@ -1,0 +1,17 @@
+.env
+.env.local
+dev.log
+server.log
+worklog.md
+skills/
+backups/
+download/
+upload/
+chatdata/
+chat_extract/
+tool-results/
+.zscripts/
+.recon/
+agent-ctx/
+Caddyfile
+tsconfig.tsbuildinfo
