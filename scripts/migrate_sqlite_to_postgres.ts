@@ -43,23 +43,22 @@ if (!pgUrl.startsWith('postgres')) {
 
 // ------------------------------------------------- 1) temp pg client gen --
 async function buildPgClient() {
-  const schema = fs.readFileSync(PG_SCHEMA_SRC, 'utf8').replace(
-    /generator\s+client\s*\{[^}]*\}/,
-    `generator client {\n  provider = "prisma-client-js"\n  output   = "../generated/prisma-pg"\n}`
-  )
+  const schema = fs
+    .readFileSync(PG_SCHEMA_SRC, 'utf8')
+    .replace(
+      /generator\s+client\s*\{[^}]*\}/,
+      `generator client {\n  provider = "prisma-client-js"\n  output   = "../generated/prisma-pg"\n}`
+    )
   fs.writeFileSync(PG_SCHEMA_TMP, schema)
   execSync(
     `npx prisma generate --schema=${path.relative(ROOT, PG_SCHEMA_TMP)}`,
     { stdio: 'inherit', cwd: ROOT }
   )
-  // fresh module resolution after generation
-  delete require.cache[require.resolve('../generated/prisma-pg/client')]
-  const mod = await import(
-    '../generated/prisma-pg/client?migrate=' + Date.now()
-  ).catch(() => import('../generated/prisma-pg/client'))
-  const PgClient = (mod as { PrismaClient: new (o?: object) => never }[])
-    .PrismaClient ?? (mod as never as { default: { PrismaClient: new (o?: object) => never } }).PrismaClient
-  return new PgClient({ datasources: { db: { url: pgUrl } } }) as never
+  // CJS require of the freshly generated client (ESM-safe via createRequire)
+  const { createRequire } = await import('module')
+  const nodeRequire = createRequire(path.join(ROOT, 'scripts', 'migrate_sqlite_to_postgres.ts'))
+  const mod = nodeRequire(PG_CLIENT_DIR) as { PrismaClient: new (o?: object) => unknown }
+  return new mod.PrismaClient({ datasources: { db: { url: pgUrl } } }) as never
 }
 
 // ------------------------------------------------------- 2) model graph --
