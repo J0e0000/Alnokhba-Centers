@@ -42,3 +42,5 @@ prisma/.schema.pg-migrate.prisma
 
 # Generated postgres client (production builds only)
 generated/
+.vercel
+.env*
