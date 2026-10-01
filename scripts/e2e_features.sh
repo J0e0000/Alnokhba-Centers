@@ -1,9 +1,9 @@
 #!/bin/bash
 # E2E — الامتحانات + الواجبات + QR الحضور (spec phases 1/2/3/5)
-BASE=http://localhost:3000
-J=/tmp/nk-e2e; mkdir -p $J
+BASE=${BASE:-http://localhost:3000}
+J=${E2E_DIR:-/tmp/nk-e2e}; mkdir -p $J
 PASS=0; FAIL=0
-curl() { command curl --max-time 25 "$@"; }
+curl() { command curl --max-time 30 "$@"; }
 ck() { # ck <name> <expected> <actual>
   if [ "$2" = "$3" ]; then PASS=$((PASS+1)); echo "PASS: $1"; else FAIL=$((FAIL+1)); echo "FAIL: $1 (expected=$2 got=$3)"; fi
 }
@@ -214,8 +214,13 @@ LATE=$(curl -s -b $J/stu.jar -X POST $BASE/api/portal/assignments/$ASG_OLD -H 'C
 ck "late submission rejected (410)" "410" "$LATE"
 
 echo "========== 7) DYNAMIC QR: issue / claim / duplicate / replay =========="
-# حصة مفتوحة جديدة النهاردة لمجموعة الفيزياء (كل تشغيل حصة نضيفة عشان اختبار الحضور الأول ينجح)
+# حصة مفتوحة النهاردة لمجموعة الفيزياء — في اللحية: SESS_ID من env (supabase live)،
+# محليًا: حصة نضيفة sqlite كل تشغيل
 TODAY=$(date +%F)
+if [ -n "$SESS_ID" ]; then
+  SESS=$SESS_ID
+  echo "   using provided session $SESS"
+else
 SESS=$(python3 -c "
 import sqlite3, uuid
 con = sqlite3.connect('db/custom.db')
@@ -225,6 +230,7 @@ con.execute('INSERT INTO SessionInstance (id, centerId, groupId, date, startTime
 con.commit()
 print(sid)")
 echo "   created fresh session $SESS for today"
+fi
 curl -s -b $J/mgr.jar -X POST $BASE/api/attendance/session-qr -H 'Content-Type: application/json' -d "{\"sessionId\":\"$SESS\",\"rotateSeconds\":12}" -o $J/qr1.json
 ck "QR issued (12s rotation)" "12" "$(python3 -c "import json; print(json.load(open('$J/qr1.json')).get('rotateSeconds'))")"
 TOKEN1=$(python3 -c "import json; print(json.load(open('$J/qr1.json'))['token'])")
