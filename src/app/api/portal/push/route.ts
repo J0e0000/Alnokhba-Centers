@@ -33,7 +33,9 @@ export const POST = handler(async (req: Request) => {
       centerId: student.centerId, studentId: student.id,
       endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth,
     },
-    update: { studentId: student.id, p256dh: sub.keys.p256dh, auth: sub.keys.auth },
+    // الجهاز بيتربط بطالب/سنتر الجلسة الحالية دايمًا — لو الاشتراك كان لطالب تاني
+    // (نفس الجهاز اتسلم) بنعيد ربطه بالكامل، مش بس studentId
+    update: { studentId: student.id, centerId: student.centerId, p256dh: sub.keys.p256dh, auth: sub.keys.auth },
   });
 
   return ok({ ok: true });

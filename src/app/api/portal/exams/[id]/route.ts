@@ -88,6 +88,10 @@ export const GET = handler(async (_req: Request, ctx: RouteCtx) => {
   const now = new Date();
   const attempt = await loadAttempt(exam.id, st.id);
 
+  // مفيش محاولة → الطالب لازم يكون مسجل في مجموعة الامتحان عشان يشوف بياناته
+  // (منع تسريب عناوين/تعليمات امتحانات مجموعات تانية في نفس السنتر)
+  if (!attempt) await assertStudentInGroup(st.id, exam.groupId);
+
   if (attempt && attempt.status === "IN_PROGRESS") {
     if (attempt.expiresAt < now) {
       const res = await submitAttempt(attempt, exam.questions, { auto: true, centerId: st.centerId, studentId: st.id });

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { ApiError } from "@/lib/auth";
-import { requireAca, assertGroupAccess } from "@/lib/academia/guard";
+import { requireAca, requireAcaStaff, assertGroupAccess } from "@/lib/academia/guard";
 import { parseWorkspace } from "@/lib/academia/session-gen";
 import { findSessionConflicts } from "@/lib/academia/conflicts";
 import { logAudit } from "@/lib/audit";
@@ -9,9 +9,11 @@ import { acaHandler } from "@/lib/academia/handler";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-/** GET /api/academia/sessions/[id] — full Session Workspace payload */
+/** GET /api/academia/sessions/[id] — full Session Workspace payload (staff only) */
 async function GET_impl(_req: NextRequest, ctx: Ctx) {
-  const user = await requireAca();
+  // أمان: الـ workspace فيه حضور/تفاعل/واجبات كل زمايله — للإدارة والمدرسين بس.
+  // الطالب يشوف سجله هو بس من الشاشات بتاعته.
+  const user = await requireAcaStaff();
   const { id } = await ctx.params;
   const session = await db.acaSession.findUnique({
     where: { id },

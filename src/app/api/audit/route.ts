@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 /** GET /api/audit?action=&page= — center audit trail (manager); admin sees platform-wide */
 export const GET = handler(async (req: Request) => {
   const user = await requireUser();
-  if (user.role === "RECEPTIONIST") {
+  if (user.role !== "MANAGER" && user.role !== "ADMIN") {
     throw new ApiError("سجل العمليات للمدير بس.", 403);
   }
   const url = new URL(req.url);

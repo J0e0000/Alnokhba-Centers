@@ -8,6 +8,9 @@ import { permissionsForClient, type PermissionId } from "@/lib/permissions";
 export const SESSION_COOKIE = "nokhba_session";
 const SESSION_DAYS = 7;
 
+// الكوكيز تتسجل Secure على Vercel (HTTPS دايمًا) — محليًا http فبنسيبها زي ما هي
+const COOKIE_SECURE = process.env.VERCEL === "1";
+
 // ============================= SUPPORT ACCESS (دخول الدعم الفني) =============================
 // الأدمن بيدخل باسم مستخدم (مدير/استقبال) لمساعدته — من غير ما يعرف أو يشوف الباسورد.
 // ٣ كوكيز: جلسة الموظف المؤقتة + توكن رجوع الأدمن (httpOnly) + معرّف جلسة الدعم للبانر.
@@ -85,12 +88,14 @@ export type SessionUser = {
 export async function createSession(userId: string): Promise<string> {
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 3600 * 1000);
+  // تنظيف دوري للجلسات المنتهية (خصوصية: التوكنات القديمة متفضلش متراومة في الداتابيز)
+  await db.authSession.deleteMany({ where: { expiresAt: { lt: new Date() } } }).catch(() => {});
   await db.authSession.create({ data: { token, userId, expiresAt } });
   const jar = await cookies();
   jar.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: false,
+    secure: COOKIE_SECURE,
     path: "/",
     expires: expiresAt,
   });
@@ -161,16 +166,16 @@ export async function createSupportSession(
   const adminToken = jar.get(SESSION_COOKIE)?.value;
   if (adminToken) {
     jar.set(ADMIN_RETURN_COOKIE, adminToken, {
-      httpOnly: true, sameSite: "lax", secure: false, path: "/",
+      httpOnly: true, sameSite: "lax", secure: COOKIE_SECURE, path: "/",
       expires: expiresAt,
     });
   }
   jar.set(SESSION_COOKIE, token, {
-    httpOnly: true, sameSite: "lax", secure: false, path: "/",
+    httpOnly: true, sameSite: "lax", secure: COOKIE_SECURE, path: "/",
     expires: expiresAt,
   });
   jar.set(SUPPORT_COOKIE, support.id, {
-    httpOnly: true, sameSite: "lax", secure: false, path: "/",
+    httpOnly: true, sameSite: "lax", secure: COOKIE_SECURE, path: "/",
     expires: expiresAt,
   });
 
@@ -208,7 +213,7 @@ export async function endSupportSession(): Promise<boolean> {
   const adminToken = jar.get(ADMIN_RETURN_COOKIE)?.value;
   if (adminToken) {
     jar.set(SESSION_COOKIE, adminToken, {
-      httpOnly: true, sameSite: "lax", secure: false, path: "/",
+      httpOnly: true, sameSite: "lax", secure: COOKIE_SECURE, path: "/",
       expires: new Date(Date.now() + SESSION_DAYS * 24 * 3600 * 1000),
     });
   } else {
@@ -277,11 +282,13 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   });
   if (!sess || sess.expiresAt < new Date() || !sess.user.isActive) return null;
   const u = sess.user;
-  // Academia users keep their TEACHER/STUDENT roles; Centers roles resolve as before
+  // Academia users keep their TEACHER/STUDENT roles; Centers roles resolve as before.
+  // أمان: دور TEACHER (موظف امتحانات) بيفضل TEACHER — ميتحولش لاستقبال
+  // عشان صلاحيات الفلوس (تسجيل دفعات/تعديل حضور) متبقاش عنده افتراضيًا.
   const isAca = u.scope === "academia";
   const role = isAca
     ? (["ADMIN", "MANAGER", "TEACHER", "STUDENT"].includes(u.role) ? u.role : "STUDENT")
-    : (u.role === "ADMIN" || u.role === "MANAGER" || u.role === "RECEPTIONIST" ? u.role : "RECEPTIONIST");
+    : (["ADMIN", "MANAGER", "RECEPTIONIST", "TEACHER"].includes(u.role) ? u.role : "RECEPTIONIST");
   const support = await resolveSupportContext();
   return {
     id: u.id,

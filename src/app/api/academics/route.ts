@@ -27,7 +27,11 @@ export const GET = handler(async () => {
   return ok({
     grades: grades.map((g) => ({ id: g.id, name: g.name, order: g.order })),
     subjects: subjects.map((s) => ({ id: s.id, name: s.name })),
-    teachers: teachers.map((t) => ({ id: t.id, name: t.name, phone: t.phone, isActive: t.isActive, loginCode: t.loginCode })),
+    // كود دخول المدرس للبورتال بيتوزع للمدير بس — موظف الاستقبال/الامتحانات ميشوفوش
+    teachers: teachers.map((t) => ({
+      id: t.id, name: t.name, phone: t.phone, isActive: t.isActive,
+      ...(user.role === "MANAGER" ? { loginCode: t.loginCode } : {}),
+    })),
     groups: groups.map((g) => ({
       id: g.id, name: g.name,
       subject: g.subject.name, subjectId: g.subjectId,

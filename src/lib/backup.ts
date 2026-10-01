@@ -754,6 +754,11 @@ export async function previewBackupDb(file: string): Promise<{
   createdAt: string;
 }> {
   const target = path.join(BACKUP_DIR, path.basename(file));
+  // allowlist: ملفات نسخ الـ SQLite الاحتياطية بتاعتها بس (nokhba-backup-*.db)
+  const base = path.basename(file);
+  if (!base.startsWith("nokhba-backup-") || !base.endsWith(".db")) {
+    throw new Error("الملف ده مش ملف نسخة احتياطية معروف.");
+  }
   await access(target); // يرمي لو مش موجود
 
   const alias = `bak_${Date.now().toString(36)}`;

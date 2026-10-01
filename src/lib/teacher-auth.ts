@@ -1,11 +1,13 @@
 import "server-only";
 import { cookies } from "next/headers";
-import { randomBytes } from "crypto";
+import { randomBytes, randomInt } from "crypto";
 import { db } from "@/lib/db";
 import { cleanRaw } from "@/lib/normalize";
 
 export const TEACHER_COOKIE = "nokhba_teacher";
 const TEACHER_DAYS = 30;
+// الكوكيز Secure على Vercel (HTTPS) — محليًا http عادي
+const COOKIE_SECURE = process.env.VERCEL === "1";
 
 export type PortalTeacher = {
   id: string;
@@ -22,7 +24,8 @@ export type PortalTeacher = {
 /** توليد كود 4 أرقام فريد داخل السنتر (للاستخدام عند إنشاء/إعادة توليد الكود) */
 export async function generateTeacherCode(centerId: string): Promise<string> {
   for (let i = 0; i < 200; i++) {
-    const code = String(1000 + Math.floor(Math.random() * 9000));
+    // crypto.randomInt — مش Math.random (متوقع شكليًا)
+    const code = String(randomInt(1000, 10000));
     const clash = await db.teacher.findFirst({ where: { centerId, loginCode: code } });
     if (!clash) return code;
   }
@@ -47,7 +50,7 @@ export async function createTeacherSession(teacherId: string): Promise<void> {
   jar.set(TEACHER_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: false,
+    secure: COOKIE_SECURE,
     path: "/",
     expires: expiresAt,
   });

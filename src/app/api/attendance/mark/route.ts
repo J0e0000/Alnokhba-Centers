@@ -3,6 +3,7 @@ import { ok, handler, readJson } from "@/lib/api";
 import { requireCenterUser, canRegisterStudents, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { studentBalance, effectivePrice } from "@/lib/finance";
+import { hasPermission } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -216,6 +217,9 @@ export const POST = handler(async (req: Request) => {
 /** PATCH /api/attendance/mark — update attendance status (manager, or before session close) */
 export const PATCH = handler(async (req: Request) => {
   const user = await requireCenterUser();
+  if (!hasPermission(user, "EDIT_ATTENDANCE")) {
+    throw new ApiError("تعديل الحضور محتاج صلاحية «تعديل الحضور» — كلم مدير السنتر.", 403);
+  }
   const body = await readJson<{ attendanceId?: string; status?: string }>(req);
   const id = String(body.attendanceId ?? "");
   const status = String(body.status ?? "");
@@ -223,21 +227,67 @@ export const PATCH = handler(async (req: Request) => {
 
   const att = await db.attendance.findFirst({
     where: { id, centerId: user.centerId },
-    include: { session: true, student: true },
+    include: { session: { include: { group: { include: { subject: true } } } }, student: true },
   });
   if (!att) throw new ApiError("سجل الحضور ده مش موجود.", 404);
   if (att.session.status === "CLOSED" && user.role !== "MANAGER") {
     throw new ApiError("الحصة مقفولة — التعديل للمدير بس.", 403);
   }
 
-  await db.attendance.update({ where: { id }, data: { status } });
+  // ===== عدالة الفلوس: تغيير الحالة بيلغي/يرجّع التحميل بنفس دقة تسجيل الحضور =====
+  const wasCharged = att.charged ?? 0;
+  let newCharged = wasCharged;
+  let reversal: number | null = null;
+  let recharge: number | null = null;
+
+  if (status === "EXCUSED" && wasCharged > 0) {
+    // كان متحمّل واتغيّر لاعتذار → إلغاء التحميل بقيد موجب في دفتر الحساب
+    newCharged = 0;
+    reversal = wasCharged;
+  } else if (status !== "EXCUSED" && wasCharged === 0 && att.status === "EXCUSED") {
+    // كان اعتذار (مجاني) واتغيّر لحاضر/متأخر → التحميل بيرجع بسعر الحصة الحالي
+    const reg = await db.studentGroup.findFirst({
+      where: { studentId: att.studentId, groupId: att.session.groupId, status: "ACTIVE" },
+      select: { priceOverride: true },
+    });
+    const price = effectivePrice(reg?.priceOverride ?? null, null, att.session.price);
+    if (price > 0) {
+      newCharged = price;
+      recharge = price;
+    }
+  }
+
+  await db.$transaction(async (tx) => {
+    await tx.attendance.update({ where: { id }, data: { status, charged: newCharged } });
+    if (reversal && reversal > 0) {
+      await tx.studentTransaction.create({
+        data: {
+          centerId: user.centerId, studentId: att.studentId, sessionId: att.sessionId,
+          type: "CHARGE", amount: reversal,
+          reason: `إلغاء تحميل حصة (${att.session.group.subject.name}) — اعتذار`,
+          createdBy: user.id,
+        },
+      });
+    }
+    if (recharge && recharge > 0) {
+      await tx.studentTransaction.create({
+        data: {
+          centerId: user.centerId, studentId: att.studentId, sessionId: att.sessionId,
+          type: "CHARGE", amount: -recharge,
+          reason: `حصة ${att.session.group.subject.name} (بعد تعديل الحضور)`,
+          createdBy: user.id,
+        },
+      });
+    }
+  });
+
   await logAudit({
     user,
     action: AUDIT.ATTENDANCE_UPDATED,
     entity: "ATTENDANCE",
     entityId: id,
-    before: { status: att.status },
-    after: { status },
+    before: { status: att.status, charged: wasCharged },
+    after: { status, charged: newCharged },
     reason: `الطالب ${att.student.name}`,
   });
   return ok({ ok: true });
