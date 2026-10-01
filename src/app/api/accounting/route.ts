@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
-import { requireCenterUser, requireManager, ApiError } from "@/lib/auth";
+import { requireManager, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { toPiastres, todayStr } from "@/lib/normalize";
 import { recordUndo } from "@/lib/undo";
@@ -8,9 +8,9 @@ import { expectedCash } from "@/lib/finance";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/accounting?section=expenses|cash|settlements|journal */
+/** GET /api/accounting?section=expenses|cash|settlements|journal — المدير بس (بيانات مالية حساسة) */
 export const GET = handler(async (req: Request) => {
-  const user = await requireCenterUser();
+  const user = await requireManager();
   const section = new URL(req.url).searchParams.get("section") ?? "all";
   const today = todayStr();
 

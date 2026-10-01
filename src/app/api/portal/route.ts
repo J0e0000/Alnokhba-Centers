@@ -90,9 +90,12 @@ export const POST = handler(async (req: Request) => {
 
   if (body.action !== "login") throw new ApiError("طلب غير معروف.", 400);
 
-  // rate-limit: 12 محاولة في 10 دقايق لكل IP
+  // rate-limit مزدوج: 12 محاولة/10 دقايق لكل IP + 6 محاولات/10 دقايق لكل كود
+  // (تانيًا بيحمي حساب مستهدف لو المهاجم بدّل IPs)
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
   rateLimit(`portal-login:${ip}`, 12, 600_000);
+  const codeKey = String(body.code ?? "").replace(/\D/g, "").slice(-5);
+  if (codeKey) rateLimit(`portal-login-code:${codeKey}`, 6, 600_000);
 
   const result = await verifyStudentLogin(String(body.code ?? ""), String(body.phone ?? ""));
   if (!result.ok) throw new ApiError(result.error, 401);

@@ -9,18 +9,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 
-const DEMO_ACCOUNTS = [
-  { username: "aca-teacher1", pw: "academia123", label: "مدرس — أكاديميا النخبة", desc: "سير العمل الصفي اليومي" },
-  { username: "aca-manager", pw: "academia123", label: "مدير — أكاديميا النخبة", desc: "المجموعات والجداول والتقارير" },
-  { username: "aca-admin", pw: "academia123", label: "أدمن — أكاديميا النخبة", desc: "كل الصلاحيات + سجل التدقيق" },
-  { username: "aca-student1", pw: "academia123", label: "طالب — أكاديميا النخبة", desc: "بوابة الطالب" },
-  { username: "manager", label: "مدير — مركز النخبة (سنترز)", desc: "كل الصلاحيات" },
-  { username: "reception", label: "موظف استقبال — النخبة (سنترز)", desc: "عمليات يومية" },
-  { username: "admin", label: "أدمن منصة النخبة (سنترز)", desc: "السناتر والاشتراكات" },
-];
-
-// أزرار الدخول السريع دي للتجربة بس — بتتخبى في أي build بدون المتغير ده
-const SHOW_DEMO = process.env.NEXT_PUBLIC_DEMO_LOGINS === "1";
+// ملاحظة أمان: اتشالت حسابات الدخول السريع التجريبية وح passwords الافتراضية من الكود
+// كلها — كانت بتتشحن جوا باندل المتصفح حتى لو متخبية. الدخول دلوقتي بكتابة
+// اسم المستخدم وكلمة السر فقط (وبيانات تجريبية موجودة في prisma/seed.ts للتطوير بس).
 
 export function LoginScreen({ onLogin }: { onLogin: (user: SessionUser) => void }) {
   const [username, setUsername] = useState("");
@@ -28,10 +19,10 @@ export function LoginScreen({ onLogin }: { onLogin: (user: SessionUser) => void 
   const [busy, setBusy] = useState(false);
   const [signupOpen, setSignupOpen] = useState(false);
 
-  async function submit(e?: React.FormEvent, quick?: string, quickPw?: string) {
+  async function submit(e?: React.FormEvent) {
     e?.preventDefault();
-    const u = normalizeDigits(quick ?? username).trim().toLowerCase();
-    const p = quick ? (quickPw ?? "nokhba123") : password;
+    const u = normalizeDigits(username).trim().toLowerCase();
+    const p = password;
     if (!u || !p) {
       toast.error("اكتب اسم المستخدم وكلمة السر.");
       return;
@@ -48,11 +39,6 @@ export function LoginScreen({ onLogin }: { onLogin: (user: SessionUser) => void 
     } finally {
       setBusy(false);
     }
-  }
-
-  // quick chips default password per product scope
-  function quickSubmit(acc: (typeof DEMO_ACCOUNTS)[number]) {
-    submit(undefined, acc.username, acc.pw ?? "nokhba123");
   }
 
   return (
@@ -129,30 +115,6 @@ export function LoginScreen({ onLogin }: { onLogin: (user: SessionUser) => void 
             <UserPlus className="w-4.5 h-4.5" /> مركز جديد؟ سجّل حسابك
           </button>
 
-          {SHOW_DEMO && (
-            <div className="pt-2">
-              <p className="text-xs font-bold text-muted-foreground mb-2 flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5" /> حسابات تجريبية — دوس عليها للدخول السريع (أكاديميا: academia123 · سنترز: nokhba123)
-              </p>
-              <div className="grid gap-2">
-                {DEMO_ACCOUNTS.map((d) => (
-                  <button
-                    key={d.username}
-                    type="button"
-                    disabled={busy}
-                    onClick={() => quickSubmit(d)}
-                    className="flex items-center justify-between gap-2 rounded-xl border border-border bg-white/80 hover:bg-muted/60 px-3.5 py-2.5 text-start transition disabled:opacity-50"
-                  >
-                    <span>
-                      <span className="block text-sm font-bold">{d.label}</span>
-                      <span className="block text-[11px] text-muted-foreground">{d.desc}</span>
-                    </span>
-                    <code dir="ltr" className="text-xs bg-muted rounded-md px-2 py-1 font-bold">{d.username}</code>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </form>
 
         <p className="text-center text-[11px] text-muted-foreground mt-5 flex items-center justify-center gap-1.5">

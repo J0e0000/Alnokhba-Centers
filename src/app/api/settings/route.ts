@@ -71,11 +71,11 @@ export const PATCH = handler(async (req: Request) => {
     }
   }
   if (body.logo !== undefined) {
-    // data URL, limit ~400KB
+    // data URL, limit ~400KB — MIME allowlist صريح (png/jpeg/webp بس)
     if (body.logo === null || body.logo === "") data.logo = null;
     else {
-      if (typeof body.logo !== "string" || !body.logo.startsWith("data:image/")) {
-        throw new Error("اللوجو لازم يكون صورة.");
+      if (typeof body.logo !== "string" || !/^data:image\/(png|jpe?g|webp);/i.test(body.logo)) {
+        throw new Error("اللوجو لازم يكون صورة (PNG أو JPG أو WEBP).");
       }
       if (body.logo.length > 550_000) throw new Error("اللوجو كبير جداً — ارفع صورة أصغر (أقل من 400KB).");
       data.logo = body.logo;

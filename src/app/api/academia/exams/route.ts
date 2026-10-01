@@ -112,9 +112,10 @@ async function POST_impl(req: NextRequest) {
   throw new ApiError("عملية مش معروفة.", 400);
 }
 
-/** GET results for one exam (grades view/edit) */
+/** GET results for one exam (grades view) — staff with grades.view only */
 async function PUT_impl(req: NextRequest) {
-  const user = await requireAca();
+  // أمان: الاستجابة فيها درجات كل زمايله — الطالب ممنوع يوصلها (grades.view للمدرسين/الإدارة)
+  const user = await requireAcaPerm("grades.view");
   const body = await req.json().catch(() => null);
   const { examId } = body ?? {};
   if (!examId) throw new ApiError("بيانات ناقصة.", 400);

@@ -36,14 +36,21 @@ async function GET_impl(req: NextRequest) {
   };
 
   const profiles = await db.acaStudentProfile.findMany({
-    where: q
-      ? {
-          OR: [
-            { user: { name: { contains: q } } },
-            { code: qn.replace(/\D/g, "") || "—" },
-          ],
-        }
-      : {},
+    where: {
+      // أمان: المدرس يشوف طلاب مجموعاته هو بس — الفلترة في الـ WHERE نفسه
+      // (مش بس في الـ include) عشان مينفعش تعداد طلاب مجموعات تانية
+      ...(user.role === "TEACHER"
+        ? { enrollments: { some: { status: "ACTIVE", groupId: { in: user.teacherGroupIds ?? [] } } } }
+        : {}),
+      ...(q
+        ? {
+            OR: [
+              { user: { name: { contains: q } } },
+              { code: qn.replace(/\D/g, "") || "—" },
+            ],
+          }
+        : {}),
+    },
     include: {
       user: { select: { name: true, username: true, isActive: true } },
       enrollments: { where: enrollWhere, include: { group: { select: { id: true, name: true, subject: { select: { name: true, color: true } }, teacher: { select: { name: true } } } } } },

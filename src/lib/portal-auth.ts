@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { cleanRaw } from "@/lib/normalize";
 
 export const PORTAL_COOKIE = "nokhba_portal";
+// الكوكيز Secure على Vercel (HTTPS) — محليًا http عادي
+const COOKIE_SECURE = process.env.VERCEL === "1";
 // سنة كاملة — الطالب يفضل مسجل على جهازه من غير ما يخرج من نفسه.
 // (الخروج اليدوي من الزرار بيمسح الجلسة فورًا)
 const PORTAL_DAYS = 365;
@@ -37,7 +39,7 @@ export async function createPortalSession(studentId: string): Promise<void> {
   jar.set(PORTAL_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: false,
+    secure: COOKIE_SECURE,
     path: "/",
     expires: expiresAt,
   });
@@ -88,7 +90,7 @@ export async function getPortalStudent(): Promise<PortalStudent | null> {
       jar.set(PORTAL_COOKIE, token, {
         httpOnly: true,
         sameSite: "lax",
-        secure: false,
+        secure: COOKIE_SECURE,
         path: "/",
         expires: extended,
       });

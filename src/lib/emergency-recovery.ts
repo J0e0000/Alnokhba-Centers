@@ -299,7 +299,7 @@ export async function analyzeRecovery(user: ManagerUser, pkg: RecoveryPkg): Prom
       const startTime = String(p.startTime || "");
       const g = groups.find((x) => x.id === groupId);
       if (!g || !g.isActive) { why("المجموعة مش موجودة/موقوفة"); continue; }
-      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date) || date < license.issuedAt.slice(0, 10) || date > license.expiresAt.slice(0, 10)) { why("تاريخ الحصة خارج نافذة الطوارئ"); continue; }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < license.issuedAt.slice(0, 10) || date > license.expiresAt.slice(0, 10)) { why("تاريخ الحصة خارج نافذة الطوارئ"); continue; }
       const key = groupId + "|" + date + "|" + startTime;
       let online = sessionByKey.get(key);
       if (!online && String(t.entityId).startsWith("S-")) {

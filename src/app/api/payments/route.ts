@@ -29,8 +29,11 @@ export const POST = handler(async (req: Request) => {
   const type = body.type === "REFUND" || body.type === "ADJUSTMENT" ? body.type : "PAYMENT";
 
   // ===== فحص صلاحية السيرفر (مش إخفاء زرار) =====
-  // استرداد/تسوية: صلاحية مباشرة (REFUND_PAYMENT / ADJUST_BALANCE).
-  // اللي معندهوش: بيرجعلوه برسالة توضح طريق طلب الموافقة.
+  // الدفعة العادية: صلاحية RECORD_PAYMENT (المدير دايمًا + الاستقبال افتراضيًا —
+  // موظف الامتحانات TEACHER معندهاش أبدًا). الاسترداد/التسوية: صلاحية مباشرة.
+  if (type === "PAYMENT" && !hasPermission(user, "RECORD_PAYMENT")) {
+    throw new ApiError("تسجيل الدفعات محتاج صلاحية «تسجيل الدفعات» — كلم مدير السنتر.", 403);
+  }
   if (type !== "PAYMENT" && !hasPermission(user, type === "REFUND" ? "REFUND_PAYMENT" : "ADJUST_BALANCE")) {
     const approvalType = type === "REFUND" ? "REFUND" : "ADJUSTMENT";
     const canAsk = user.role === "RECEPTIONIST" && canRequest(user, approvalType);
