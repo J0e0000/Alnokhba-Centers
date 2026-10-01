@@ -473,8 +473,8 @@ function StaffTab() {
                   <h3 className="font-extrabold">{s.name}</h3>
                   <p className="text-xs text-muted-foreground font-semibold" dir="ltr">@{s.username}</p>
                 </div>
-                <Chip className={s.role === "MANAGER" ? "nk-brand-bg-soft nk-brand-text border-transparent" : s.isActive ? "bg-muted border-border" : "bg-rose-50 border-rose-200 text-rose-600"}>
-                  {s.role === "MANAGER" ? "مدير" : s.isActive ? "موظف استقبال" : "موقوف"}
+                <Chip className={s.role === "MANAGER" ? "nk-brand-bg-soft nk-brand-text border-transparent" : s.role === "TEACHER" ? "bg-violet-50 border-violet-200 text-violet-700" : s.isActive ? "bg-muted border-border" : "bg-rose-50 border-rose-200 text-rose-600"}>
+                  {s.role === "MANAGER" ? "مدير" : s.role === "TEACHER" ? "مدرس" : s.isActive ? "موظف استقبال" : "موقوف"}
                 </Chip>
               </div>
               {s.role === "RECEPTIONIST" && (
@@ -645,23 +645,31 @@ function PermissionsDialog({ staff, onClose, onSaved }: {
 }
 
 function AddStaffDialog({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = useState({ name: "", username: "", password: "", canAddStudents: true });
+  const [form, setForm] = useState({ name: "", username: "", password: "", canAddStudents: true, role: "RECEPTIONIST" });
   const [busy, setBusy] = useState(false);
 
   async function save() {
     setBusy(true);
     try {
-      await api("/api/staff", { method: "POST", body: { ...form, role: "RECEPTIONIST" } });
+      await api("/api/staff", { method: "POST", body: form });
       toast.success("تم إضافة الموظف.");
       onSaved();
     } catch { /* toast */ } finally { setBusy(false); }
   }
 
+  const roleLabels: Record<string, string> = { MANAGER: "مدير (صلاحيات كاملة)", TEACHER: "مدرس (امتحانات وكويزات وواجبات بس)", RECEPTIONIST: "موظف استقبال (عمليات يومية)" };
+
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>موظف استقبال جديد</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>موظف جديد</DialogTitle></DialogHeader>
         <div className="space-y-3.5">
+          <Field label="الوظيفة" required>
+            <select className={inputCls(false)} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+              <option value="RECEPTIONIST">{roleLabels.RECEPTIONIST}</option>
+              <option value="TEACHER">{roleLabels.TEACHER}</option>
+            </select>
+          </Field>
           <Field label="اسم الموظف" required>
             <input className={inputCls(false)} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="سارة محمد" />
           </Field>
@@ -671,9 +679,9 @@ function AddStaffDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
           <Field label="كلمة السر" required hint="6 حروف على الأقل">
             <input dir="ltr" type="text" className={inputCls(false)} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••" />
           </Field>
-          <label className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-3.5 py-2.5 cursor-pointer">
+          <label className={cn("flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-3.5 py-2.5", form.role !== "RECEPTIONIST" && "opacity-40 pointer-events-none")}>
             <span className="text-xs font-bold">يسمح له يضيف طلاب جدد</span>
-            <input type="checkbox" className="w-5 h-5 accent-[var(--c-primary)]" checked={form.canAddStudents}
+            <input type="checkbox" className="w-5 h-5 accent-[var(--c-primary)]" checked={form.canAddStudents} disabled={form.role !== "RECEPTIONIST"}
               onChange={(e) => setForm({ ...form, canAddStudents: e.target.checked })} />
           </label>
           <div className="flex gap-2">

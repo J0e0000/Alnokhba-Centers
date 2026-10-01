@@ -39,7 +39,8 @@ export const POST = handler(async (req: Request) => {
   const name = String(body.name ?? "").trim();
   const username = cleanRaw(String(body.username ?? "")).toLowerCase();
   const password = String(body.password ?? "");
-  const role = body.role === "MANAGER" ? "MANAGER" : "RECEPTIONIST";
+  // TEACHER = مدرس بحساب موظف — بيشوف الامتحانات/الكويزات/الواجبات بس (من غير فلوس ولا إعدادات)
+  const role = body.role === "MANAGER" || body.role === "TEACHER" ? body.role : "RECEPTIONIST";
 
   if (name.length < 3) throw new ApiError("اكتب اسم الموظف.");
   if (!/^[a-z0-9_.]{3,20}$/.test(username)) {
@@ -85,6 +86,9 @@ export const PATCH = handler(async (req: Request) => {
   if (body.canAddStudents !== undefined) data.canAddStudents = Boolean(body.canAddStudents);
   if (body.isActive !== undefined) data.isActive = Boolean(body.isActive);
   if (body.role !== undefined) {
+    if (!["MANAGER", "RECEPTIONIST", "TEACHER"].includes(String(body.role))) {
+      throw new ApiError("الوظيفة دي مش معروفة.", 400);
+    }
     const managerCount = await db.user.count({ where: { centerId: user.centerId, role: "MANAGER", isActive: true, NOT: { id: target.id } } });
     if (body.role === "MANAGER" && managerCount >= 1) throw new ApiError("في مدير واحد للسنتر.");
     if (target.id === user.id && body.role !== "MANAGER") throw new ApiError("مينفعش تنزل نفسك من مدير.");

@@ -5,6 +5,7 @@ import {
   ScanLine, Search, CreditCard, Users, CalendarDays, Clock, ArrowLeft,
   Wallet, TrendingUp, Receipt, AlertTriangle, GraduationCap, Banknote, Scale, DoorClosed,
   LockOpen, Loader2, Zap, Ban, CheckCircle2, ClipboardCheck,
+  FileCheck2, ListChecks, ClipboardList,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -146,6 +147,7 @@ export function DashboardView({ user, setView, openSession, goScanForSession }: 
   }
 
   const isManager = user.role === "MANAGER";
+  const isTeacher = user.role === "TEACHER";
   const planned = data.plannedSessions ?? [];
   const totalToday = data.sessions.length + planned.length;
   const nowSession = data.sessions.find((s) => s.status === "OPEN" && sessionPhase(s.startTime, s.endTime) === "now");
@@ -166,8 +168,18 @@ export function DashboardView({ user, setView, openSession, goScanForSession }: 
         <OpsSummaryStrip summary={data.opsSummary} openSession={openSession} setView={setView} />
       )}
 
+      {/* ===== Teacher: اختصارات التعليم — من غير فلوس ولا طلاب ===== */}
+      {isTeacher && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 nk-anim-stagger">
+          <BigAction icon={<FileCheck2 className="w-7 h-7" />} label="الامتحانات" desc="إنشاء ومتابعة الامتحانات" onClick={() => setView("exams")} primary />
+          <BigAction icon={<ListChecks className="w-7 h-7" />} label="الكويزات" desc="كويزات سريعة" onClick={() => setView("quizzes")} />
+          <BigAction icon={<ClipboardList className="w-7 h-7" />} label="الواجبات" desc="واجبات إلكترونية" onClick={() => setView("assignments")} />
+          <BigAction icon={<CalendarDays className="w-7 h-7" />} label="جدول النهاردة" desc={`${totalToday} حصة`} onClick={() => setView("schedule")} />
+        </div>
+      )}
+
       {/* ===== Receptionist: 5 primary actions ===== */}
-      {!isManager && (
+      {!isManager && !isTeacher && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 nk-anim-stagger">
           <BigAction icon={<ScanLine className="w-8 h-8" />} label="امسح QR" desc="تسجيل حضور فوري" onClick={() => setView("scan")} primary />
           <BigAction icon={<Search className="w-7 h-7" />} label="ابحث عن طالب" desc="بالاسم أو الكود" onClick={() => setView("students")} />
