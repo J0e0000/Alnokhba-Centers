@@ -346,7 +346,7 @@ function FormDialog({ kind, groups, initial, onClose, onSaved }: {
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto nk-scroll">
+      <DialogContent className="light-locked max-w-lg max-h-[90vh] overflow-y-auto nk-scroll">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             {isExam ? <FileCheck2 className="w-5 h-5 nk-brand-text" /> : <ClipboardList className="w-5 h-5 nk-brand-text" />}
@@ -541,7 +541,7 @@ function DetailDialog({ kind, id, ep, onClose }: { kind: "exams" | "assignments"
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto nk-scroll">
+      <DialogContent className="light-locked max-w-lg max-h-[90vh] overflow-y-auto nk-scroll">
         <DialogHeader>
           <DialogTitle className="text-base">{det?.title ?? "..."}</DialogTitle>
           <DialogDescription className="text-[11px]">

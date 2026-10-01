@@ -304,7 +304,7 @@ export function PortalApp() {
 
   if (boot === "loading") {
     return (
-      <div className="min-h-screen grid place-items-center bg-background">
+      <div className="light-locked min-h-screen grid place-items-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <AlNokhbaMark size={52} />
           <span className="w-7 h-7 rounded-full border-[3px] border-[var(--c-primary)] border-t-transparent animate-spin" />
@@ -316,7 +316,7 @@ export function PortalApp() {
   // النت واقع مؤقتًا — الجلسة محفوظة على الجهاز، مفيش تسجيل خروج
   if (boot === "offline") {
     return (
-      <div className="min-h-screen grid place-items-center bg-background p-6">
+      <div className="light-locked min-h-screen grid place-items-center bg-background p-6">
         <div className="nk-card rounded-3xl p-8 max-w-sm w-full text-center space-y-4">
           <AlNokhbaMark size={44} />
           <h1 className="text-lg font-extrabold nk-brand-text">النت واقع مؤقتًا</h1>
@@ -347,7 +347,7 @@ export function PortalApp() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background nk-safe-top">
+    <div className="light-locked min-h-screen flex flex-col bg-background nk-safe-top">
       {/* ===== بوب-أب الرسايل الجديدة (زي فيسبوك/إنستجرام) ===== */}
       {toasts.length > 0 && (
         <div className="fixed top-3 inset-x-3 z-[60] mx-auto max-w-lg flex flex-col gap-2 pointer-events-none" dir="rtl" aria-live="polite">
@@ -493,7 +493,7 @@ function PortalLogin({ onSuccess }: { onSuccess: () => void }) {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden nk-safe-top">
+    <main className="light-locked min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden nk-safe-top">
       <div aria-hidden className="pointer-events-none absolute -top-24 -start-24 w-96 h-96 rounded-full opacity-[0.16] nk-brand-bg blur-3xl" />
       <div aria-hidden className="pointer-events-none absolute -bottom-32 -end-24 w-[28rem] h-[28rem] rounded-full opacity-[0.12] nk-brand-bg blur-3xl" />
 
