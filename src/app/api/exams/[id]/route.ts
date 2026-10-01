@@ -3,6 +3,7 @@ import { ok, handler, readJson } from "@/lib/api";
 import { requireCenterUser, requireManager, ApiError } from "@/lib/auth";
 import { normalizeObjectiveQuestions, gradeObjectiveAttempt } from "@/lib/exam";
 import { logAudit, AUDIT } from "@/lib/audit";
+import { notifyGroupStudents } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -92,6 +93,13 @@ export const PATCH = handler(async (req: Request, ctx: RouteCtx) => {
       if (exam.status === "PUBLISHED") throw new ApiError("الامتحان منشور بالفعل.", 400);
       if (exam.questions.length === 0) throw new ApiError("الامتحان محتاج أسئلة قبل النشر.", 400);
       await db.exam.update({ where: { id: exam.id }, data: { status: "PUBLISHED" } });
+      // إشعار فوري لطلاب المجموعة — جوّه التطبيق + Web Push لو التطبيق مقفول
+      void notifyGroupStudents(
+        user.centerId, exam.groupId, "EXAM",
+        `امتحان جديد: ${exam.title}`,
+        "اتفرج على تبويب الامتحانات في البورتال — بالتوفيق!",
+        "/portal?tab=exams",
+      ).catch(() => {});
     } else if (action === "close") {
       await db.exam.update({ where: { id: exam.id }, data: { status: "CLOSED" } });
     } else {

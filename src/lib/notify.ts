@@ -2,16 +2,16 @@ import "server-only";
 import { db } from "@/lib/db";
 import { sendPushToStudents } from "@/lib/push";
 
-/**
- * إشعار لطلاب مجموعة معينة — بيتستخدم عند تغيير الجدول/الميعاد/المكان.
- * أنواع محدودة عمدًا (مفيش سبام): SCHEDULE_CHANGE | TIME_CHANGE | LOCATION_CHANGE
- */
+/** إشعار لطلاب مجموعة معينة — بيتستخدم عند تغيير الجدول/الميعاد/المكان، ونشر الامتحانات والواجبات.
+ *  أنواع محدودة عمدًا (مفيش سبام): SCHEDULE_CHANGE | TIME_CHANGE | LOCATION_CHANGE | EXAM | ASSIGNMENT
+ *  url = deep-link جوّه البورتال (مثال: /portal?tab=exams) — بتفتح التاب الصح لما الطالب يدوس على الإشعار */
 export async function notifyGroupStudents(
   centerId: string,
   groupId: string,
-  type: "SCHEDULE_CHANGE" | "TIME_CHANGE" | "LOCATION_CHANGE",
+  type: "SCHEDULE_CHANGE" | "TIME_CHANGE" | "LOCATION_CHANGE" | "EXAM" | "ASSIGNMENT",
   title: string,
   body: string,
+  url = "/portal",
 ): Promise<number> {
   const regs = await db.studentGroup.findMany({
     where: { groupId, status: "ACTIVE", student: { status: "ACTIVE" } },
@@ -28,6 +28,6 @@ export async function notifyGroupStudents(
     });
   }
 
-  void sendPushToStudents(centerId, studentIds, { title, body, url: "/portal", tag: `sch-${Date.now()}` }).catch(() => {});
+  void sendPushToStudents(centerId, studentIds, { title, body, url, tag: `${type.toLowerCase()}-${Date.now()}` }).catch(() => {});
   return studentIds.length;
 }

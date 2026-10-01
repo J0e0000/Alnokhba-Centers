@@ -31,20 +31,24 @@ export function PWARegister() {
   return null;
 }
 
+// ============================= حالة الاتصال (online/offline) =============================
+// useSyncExternalStore — النمط القياسي: مفيش setState جوه effect ولا hydration mismatch
+
+function subscribeOnline(onChange: () => void) {
+  window.addEventListener("online", onChange);
+  window.addEventListener("offline", onChange);
+  return () => {
+    window.removeEventListener("online", onChange);
+    window.removeEventListener("offline", onChange);
+  };
+}
+
+function getOnlineSnapshot(): boolean {
+  return navigator.onLine;
+}
+
 export function useOnlineStatus(): boolean {
-  const [online, setOnline] = useState(true);
-  useEffect(() => {
-    setOnline(navigator.onLine);
-    const up = () => setOnline(true);
-    const down = () => setOnline(false);
-    window.addEventListener("online", up);
-    window.addEventListener("offline", down);
-    return () => {
-      window.removeEventListener("online", up);
-      window.removeEventListener("offline", down);
-    };
-  }, []);
-  return online;
+  return useSyncExternalStore(subscribeOnline, getOnlineSnapshot, () => true);
 }
 
 // ============================= طابور الحضور الأوفلاين =============================
