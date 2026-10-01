@@ -126,9 +126,26 @@ function playChime() {
 export function PortalApp() {
   const [boot, setBoot] = useState<"loading" | "login" | "app" | "offline">("loading");
   const [home, setHome] = useState<HomeData | null>(null);
-  const [tab, setTab] = useState<TabId>("home");
+  // deep-link: /portal?tab=exams|assignments|quizzes|schedule|messages — بتفتح التاب المطلوب على طول
+  const [tab, setTab] = useState<TabId>(() => {
+    try {
+      const t = new URLSearchParams(window.location.search).get("tab");
+      if (t === "schedule" || t === "quizzes" || t === "exams" || t === "assignments" || t === "messages") return t;
+    } catch { /* ignore */ }
+    return "home";
+  });
   const [unread, setUnread] = useState(0);
   const [homeRefreshing, setHomeRefreshing] = useState(false);
+
+  // push/notificationclick بيوّجّه لتاب معين — نقرأ التاب من url الإشعار نفسه
+  const navigateFromUrl = useCallback((url?: string) => {
+    try {
+      const t = url ? new URL(url, window.location.origin).searchParams.get("tab") : null;
+      if (t === "schedule" || t === "quizzes" || t === "exams" || t === "assignments" || t === "messages") setTab(t);
+      else setTab("messages");
+    } catch { setTab("messages"); }
+    window.dispatchEvent(new CustomEvent("nk-portal-refresh"));
+  }, []);
 
   // تحديث بيانات الرئيسية (الرصيد + الجدول + الإعلانات) — بيتطلب من زرار التحديث ومن إشعار جديد
   const refreshHome = useCallback(async () => {
@@ -191,13 +208,13 @@ export function PortalApp() {
         setUnread((u) => u + 1);
         window.dispatchEvent(new CustomEvent("nk-portal-refresh"));
       } else if (d.type === "nk-navigate") {
-        setTab("messages");
-        window.dispatchEvent(new CustomEvent("nk-portal-refresh"));
+        // الإشعار ممكن يكون امتحان/واجب → افتح التاب الصح من url الإشعار
+        navigateFromUrl(d.url);
       }
     };
     navigator.serviceWorker.addEventListener("message", onMsg);
     return () => navigator.serviceWorker.removeEventListener("message", onMsg);
-  }, [boot, pushToast]);
+  }, [boot, pushToast, navigateFromUrl]);
 
   // فحص دوري كل 12 ثانية (بس والصفحة ظاهرة) — أي رسالة جديدة → بانر + صوت + تحديث البادج
   // (كان 30 ثانية — بقى 12 عشان الإشعار يوصل بسرعة)

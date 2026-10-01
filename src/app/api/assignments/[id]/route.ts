@@ -3,6 +3,7 @@ import { ok, handler, readJson } from "@/lib/api";
 import { requireCenterUser, ApiError } from "@/lib/auth";
 import { normalizeObjectiveQuestions } from "@/lib/exam";
 import { logAudit, AUDIT } from "@/lib/audit";
+import { notifyGroupStudents } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,13 @@ export const PATCH = handler(async (req: Request, ctx: RouteCtx) => {
       if (a.status === "PUBLISHED") throw new ApiError("الواجب منشور بالفعل.", 400);
       if (a.questions.length === 0) throw new ApiError("الواجب محتاج أسئلة قبل النشر.", 400);
       await db.assignment.update({ where: { id: a.id }, data: { status: "PUBLISHED" } });
+      // إشعار فوري لطلاب المجموعة — جوّه التطبيق + Web Push لو التطبيق مقفول
+      void notifyGroupStudents(
+        user.centerId, a.groupId, "ASSIGNMENT",
+        `واجب جديد: ${a.title}`,
+        "افتح تبويب الواجبات في البورتال وسلّم قبل الميعاد.",
+        "/portal?tab=assignments",
+      ).catch(() => {});
     } else if (action === "close") {
       await db.assignment.update({ where: { id: a.id }, data: { status: "CLOSED" } });
     } else {

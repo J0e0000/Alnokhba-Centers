@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Bell, CheckCheck, ClipboardCheck, UserPlus, Scale, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "./lib";
@@ -41,26 +41,27 @@ export function StaffNotificationsBell({ variant = "center" }: { variant?: "cent
   const [items, setItems] = useState<StaffNotif[]>([]);
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(false);
-  const primed = useRef(false);
+  const [primed, setPrimed] = useState(false);
 
   const load = useCallback(async () => {
     try {
       const d = await api<{ unread: number; notifications: StaffNotif[] }>("/api/notifications/staff", { silent: true });
       setItems(d.notifications);
       setUnread(d.unread);
-      primed.current = true;
+      setPrimed(true);
     } catch { /* silent */ }
   }, []);
 
   // بولينج سريع: 15 ثانية + فورًا مع أي حدث جديد
   useEffect(() => {
-    void load();
+    const first = setTimeout(() => void load(), 0); // أول تحميل — مؤجلة عشان مفيش setState متزامن جوه الإيفكت
     const t = setInterval(load, 15_000);
     const onFocus = () => void load();
     const onEvt = () => void load();
     window.addEventListener("focus", onFocus);
     window.addEventListener("nk-staff-notifs", onEvt);
     return () => {
+      clearTimeout(first);
       clearInterval(t);
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("nk-staff-notifs", onEvt);
@@ -126,7 +127,7 @@ export function StaffNotificationsBell({ variant = "center" }: { variant?: "cent
           )}
         </div>
         <div className="max-h-96 overflow-y-auto nk-scroll">
-          {!primed.current ? (
+          {!primed ? (
             <div className="py-10 grid place-items-center text-muted-foreground">
               <Loader2 className="w-5 h-5 animate-spin" />
             </div>

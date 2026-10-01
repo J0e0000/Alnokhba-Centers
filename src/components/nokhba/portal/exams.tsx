@@ -158,29 +158,44 @@ function ExamRunner({ id, onExit }: { id: string; onExit: () => void }) {
   const attemptsCacheKey = running ? `nk-exam-${running.attemptId}` : "";
 
   // ============================= تحميل الحالة =============================
+  // تطبيق حمولة محاولة شغالة (من GET أو من POST start) — السيرفر هو مرجع الوقت والإجابات
+  const applyRunning = useCallback((d: Extract<OpenState, { phase: "running" }>) => {
+    setState(d);
+    deadlineRef.current = Date.now() + d.remainingMs;
+    setRemaining(d.remainingMs);
+    const saved: Record<string, string> = {};
+    for (const a of d.answers) saved[a.questionId] = a.answer;
+    // دمج الإجابات المحلية اللي ممكن ماتبعتش (أوفلاين) — السيرفر مرجع، المحلي بيكمل الفاقد
+    try {
+      const local = JSON.parse(localStorage.getItem(`nk-exam-${d.attemptId}`) ?? "{}") as Record<string, string>;
+      for (const [qid, ans] of Object.entries(local)) {
+        if (!(qid in saved)) { saved[qid] = ans; pendingRef.current[qid] = ans; }
+      }
+    } catch { /* ignore */ }
+    setAnswers(saved);
+    scheduleFlush();
+  }, []);
+
   const openState = useCallback(async () => {
     setLoading(true);
     try {
       const d = await papi<OpenState>(`/api/portal/exams/${id}`);
-      setState(d);
-      if (d.phase === "running") {
-        deadlineRef.current = Date.now() + d.remainingMs;
-        setRemaining(d.remainingMs);
-        const saved: Record<string, string> = {};
-        for (const a of d.answers) saved[a.questionId] = a.answer;
-        // دمج الإجابات المحلية اللي ممكن ماتبعتش (أوفلاين) — السيرفر مرجع، المحلي بيكمل الفاقد
-        try {
-          const local = JSON.parse(localStorage.getItem(`nk-exam-${d.attemptId}`) ?? "{}") as Record<string, string>;
-          for (const [qid, ans] of Object.entries(local)) {
-            if (!(qid in saved)) { saved[qid] = ans; pendingRef.current[qid] = ans; }
-          }
-        } catch { /* ignore */ }
-        setAnswers(saved);
-        scheduleFlush();
-      }
+      if (d.phase === "running") { applyRunning(d); }
+      else setState(d);
     } catch { /* toast */ } finally { setLoading(false); }
-  }, [id]);
+  }, [id, applyRunning]);
   useEffect(() => { openState(); }, [openState]);
+
+  // بدء المحاولة فعليًا — POST start على السيرفر (startedAt/expiresAt من ساعة السيرفر)
+  const startExam = useCallback(async () => {
+    setLoading(true);
+    try {
+      const d = await papi<OpenState>(`/api/portal/exams/${id}`, { method: "POST", body: { action: "start" } });
+      if (d.phase === "running") { applyRunning(d); }
+      else if (d.phase === "result") { setState(d); }
+      else { await openState(); }
+    } catch { /* toast */ } finally { setLoading(false); }
+  }, [id, applyRunning, openState]);
 
   // ============================= حفظ إجابة (طابور + فلاش دوري) =============================
   const flush = useCallback(async () => {
@@ -425,7 +440,7 @@ function ExamRunner({ id, onExit }: { id: string; onExit: () => void }) {
             </p>
           </div>
           <button
-            onClick={() => { requestFullscreen(); openState(); }}
+            onClick={() => { requestFullscreen(); startExam(); }}
             className="w-full h-12 rounded-2xl nk-brand-bg text-white font-extrabold flex items-center justify-center gap-2">
             <PlayCircle className="w-5 h-5" /> ابدأ الامتحان
           </button>
