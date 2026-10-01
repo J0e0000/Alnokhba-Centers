@@ -106,34 +106,44 @@ export const POST = handler(async (req: Request) => {
   }
 
   // ============================= التسجيل (نفس منطق mark بالظبط) =============================
+  // بدون interactive transaction — بتكسر مع PgBouncer transaction-mode (serverless pooler).
+  // منع التكرار بيتحقق من unique(sessionId, studentId): اللي ينجح يعمل create هو اللي بيشحن.
   const price = effectivePrice(reg.priceOverride, null, session.price);
   const charge = price; // PRESENT
 
-  const result = await db.$transaction(async (tx) => {
-    const existing = await tx.attendance.findUnique({
-      where: { sessionId_studentId: { sessionId: session.id, studentId: student.id } },
-    });
-    if (existing) return { alreadyAttended: true as const, attendance: existing, charged: existing.charged ?? 0 };
-    const attendance = await tx.attendance.create({
+  let result: { alreadyAttended: boolean; attendance: { id: string; status: string; charged: number | null }; charged: number };
+  try {
+    const recordedBy = (await db.sessionQRToken.findUnique({ where: { id: qr.qrId }, select: { createdById: true } }))?.createdById ?? null;
+    const attendance = await db.attendance.create({
       data: {
         centerId: qr.centerId!, sessionId: session.id, studentId: student.id,
-        status: "PRESENT", charged: charge, recordedBy: (await db.sessionQRToken.findUnique({ where: { id: qr.qrId }, select: { createdById: true } }))?.createdById ?? null,
+        status: "PRESENT", charged: charge, recordedBy,
         method: "SESSION_QR",
         note: "تسجيل ذاتي — QR الحصة المتنقل (جهاز موثوق)",
       },
     });
     if (charge > 0) {
-      await tx.studentTransaction.create({
+      await db.studentTransaction.create({
         data: {
           centerId: qr.centerId!, studentId: student.id, sessionId: session.id,
           type: "CHARGE", amount: -charge,
           reason: `حصة ${session.group.subject.name} (QR الحصة)`,
           createdBy: "SESSION_QR",
         },
-      });
+      }).catch((e) => { console.error("[qr-charge-failed]", e); }); // الحضور نفسه اثبت — الخصم يتراجع يدويًا لو فشل
     }
-    return { alreadyAttended: false as const, attendance, charged: charge };
-  });
+    result = { alreadyAttended: false, attendance, charged: charge };
+  } catch (e) {
+    if (/unique constraint|P2002/i.test(e instanceof Error ? e.message : String(e))) {
+      const existing = await db.attendance.findUnique({
+        where: { sessionId_studentId: { sessionId: session.id, studentId: student.id } },
+      });
+      if (!existing) throw e;
+      result = { alreadyAttended: true, attendance: existing, charged: existing.charged ?? 0 };
+    } else {
+      throw e;
+    }
+  }
 
   if (result.alreadyAttended) {
     await logAudit({
