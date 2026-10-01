@@ -12,6 +12,8 @@ import { StudentProfileView } from "./student-profile";
 import { ScheduleView } from "./schedule";
 import { GroupsView } from "./groups";
 import { QuizManagerView } from "./quiz-manager";
+import { ExamManagerView } from "./exam-manager";
+import { AssignmentManagerView } from "./assignment-manager";
 import { BooksView } from "./books";
 import { MessagesView } from "./message-queue";
 import { AccountingView } from "./accounting";
@@ -200,6 +202,12 @@ export function App() {
         break;
       case "quizzes":
         content = <QuizManagerView />;
+        break;
+      case "exams":
+        content = <ExamManagerView user={user} />;
+        break;
+      case "assignments":
+        content = <AssignmentManagerView user={user} />;
         break;
       case "books":
         content = <BooksView user={user} />;

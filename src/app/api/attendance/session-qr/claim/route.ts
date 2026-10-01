@@ -9,51 +9,64 @@ import { cleanRaw } from "@/lib/normalize";
 
 export const dynamic = "force-dynamic";
 
-type ClaimBody = { token?: string; code?: string };
+type ClaimBody = { token?: string };
 
 /**
- * POST /api/attendance/session-qr/claim — الطالب يسجّل حضوره بنفسه من موبايله
- * بمسح كود QR الحصة المتنقل (الطريقة الثالثة للحضور — spec §3).
+ * POST /api/attendance/session-qr/claim — الطالب يسجّل حضوره بنفسه من موباه
+ * بمسح كود QR الحصة المتنقل (spec §9-12).
  *
- * الهوية: جلسة بورتال الطالب لو موجودة، وإلا كود الطالب (5 أرقام).
- * كل قواعد التحقق الحالية محترمة: توكن نشط + حصة مفتوحة وبتاريخ النهاردة +
- * الطالب مش مؤرشف + مسجّل في المجموعة (مفيش تسجيل ذاتي في مجموعات جديدة).
- * منع التكرار: unique(sessionId, studentId) — نفس قاعدة باقي الطرق.
- * التسجيل بيتحسب بنفس سعر وخصم الحضور العادي (PRESENT = خصم سعر الحصة).
+ * الهوية (spec §10 — مفيش تسجيل دخول متكرر + مفيش حضور مجهول):
+ * - جلسة بورتال موجودة على الجهاز (جهاز موثوق — بتتعمل مرة واحدة) → حضور فوري SCAN→VERIFY→SUCCESS
+ * - مفيش جلسة → NEED_ACTIVATE: الصفحة بتعمل تحقق لمرة واحدة (كود + موبايل) عن طريق
+ *   نفس دخول البورتال، وبعدها الجهاز بقى موثوق والمحاولة بيكمل لوحدها.
+ * الكود (5 أرقام) لوحده **مش** كفاية تاني — بلاش حضور بكود مسروق.
+ *
+ * التحقق: توكن نشط وغير منتهي (replay بيتسجل) + حصة مفتوحة بتاريخ النهاردة
+ * + الطالب مسجل في المجموعة + مش مؤرشف + مفيش حضور مكرر (unique sessionId+studentId).
  */
+
+function clientIp(req: Request): string {
+  return (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim().slice(0, 40) || "unknown";
+}
+
 export const POST = handler(async (req: Request) => {
   const body = await readJson<ClaimBody>(req);
   const rawToken = String(body.token ?? "").trim();
 
-  const qr = await resolveSessionQr(rawToken); // ApiError لو مش صالح/منتهي
+  // حدود محاولات معقولة لكل توكن+IP (نحّاس مبسّط على مستوى النسخة)
+  rateLimit(`qr-claim:${rawToken.slice(-10)}:${clientIp(req)}`, 20, 60_000);
+
+  let qr;
+  try {
+    qr = await resolveSessionQr(rawToken); // ApiError لو مش صالح/منتهي/متدوّر
+  } catch (e) {
+    if (e instanceof ApiError) {
+      const code = (e as ApiError & { code?: string }).code;
+      await logAudit({
+        user: { id: "QR_UNKNOWN", name: "محاولة QR غير ناجحة", centerId: null },
+        action: code === "EXPIRED" ? AUDIT.QR_SCAN_EXPIRED : AUDIT.QR_SCAN_REPLAY,
+        entity: "SESSION_QR",
+        entityId: rawToken.slice(-8),
+        reason: `${code ?? "INVALID"} — ${e.message}`,
+        after: { ip: clientIp(req) },
+      }).catch(() => {});
+    }
+    throw e;
+  }
   if (qr.scope !== "CENTERS" || !qr.centerId) {
     throw new ApiError("الكود ده مش كود حضور سنترز.", 400);
   }
 
   const portalStudent = await getPortalStudent().catch(() => null);
-
-  // ============================= هوية الطالب =============================
-  let student: { id: string; name: string; code: string; status: string } | null = null;
-  if (portalStudent && portalStudent.centerId === qr.centerId) {
-    student = { id: portalStudent.id, name: portalStudent.name, code: portalStudent.code, status: "ACTIVE" };
-  } else {
-    const code = cleanRaw(String(body.code ?? ""));
-    if (!/^\d{5}$/.test(code)) {
-      return ok({ ok: false, reason: "NEED_CODE", message: "اكتب كود الطالب (5 أرقام) لتسجيل حضورك." });
-    }
-    rateLimit(`qr-claim:${qr.qrId}:${code}`, 8, 60_000);
-    const byCode = await db.student.findFirst({
-      where: { centerId: qr.centerId, code },
-      select: { id: true, name: true, code: true, status: true },
+  if (!portalStudent || portalStudent.centerId !== qr.centerId) {
+    // مفيش جهاز موثوق — الصفحة هتعمل تحقق لمرة واحدة (كود + موبايل) وبعدها ترجع هنا
+    return ok({
+      ok: false,
+      reason: "NEED_ACTIVATE",
+      message: "فعّل جهازك مرة واحدة بكودك ورقم موبايلك — بعد كده حضورك هيبقى بضغطة واحدة.",
     });
-    student = byCode;
   }
-  if (!student) {
-    return ok({ ok: false, reason: "NOT_FOUND", message: "الكود ده مش موجود في السنتر — راجع الاستقبال." });
-  }
-  if (student.status === "ARCHIVED") {
-    return ok({ ok: false, reason: "ARCHIVED", message: "الحساب مؤرشف — راجع إدارة السنتر." });
-  }
+  const student = { id: portalStudent.id, name: portalStudent.name, code: portalStudent.code, status: "ACTIVE" as const };
 
   const session = await db.sessionInstance.findFirst({
     where: { id: qr.sessionId, centerId: qr.centerId },
@@ -74,11 +87,18 @@ export const POST = handler(async (req: Request) => {
     return ok({ ok: false, reason: "NOT_TODAY", message: "الكود ده لحصة تانية مش حصة النهاردة." });
   }
 
-  // لازم يكون مسجّل في المجموعة — مفيش تسجيل ذاتي في مجموعات جديدة
+  // لازم يكون مسجّل في المجموعة — مفيش حضور لطالب من بره المجموعة
   const reg = await db.studentGroup.findFirst({
     where: { groupId: session.groupId, studentId: student.id, status: "ACTIVE" },
   });
   if (!reg) {
+    await logAudit({
+      user: { id: student.id, name: student.name, centerId: qr.centerId },
+      action: AUDIT.UNAUTHORIZED_ATTENDANCE,
+      entity: "SESSION_QR", entityId: session.id,
+      reason: `طالب مش مسجل في مجموعة الحصة (${session.group.subject.name})`,
+      after: { studentCode: student.code },
+    }).catch(() => {});
     return ok({
       ok: false, reason: "NOT_REGISTERED",
       message: "انت مش مسجل في مجموعة الحصة دي — كلّم الاستقبال يسجلّك الأول.",
@@ -91,21 +111,21 @@ export const POST = handler(async (req: Request) => {
 
   const result = await db.$transaction(async (tx) => {
     const existing = await tx.attendance.findUnique({
-      where: { sessionId_studentId: { sessionId: session.id, studentId: student!.id } },
+      where: { sessionId_studentId: { sessionId: session.id, studentId: student.id } },
     });
     if (existing) return { alreadyAttended: true as const, attendance: existing, charged: existing.charged ?? 0 };
     const attendance = await tx.attendance.create({
       data: {
-        centerId: qr.centerId!, sessionId: session.id, studentId: student!.id,
+        centerId: qr.centerId!, sessionId: session.id, studentId: student.id,
         status: "PRESENT", charged: charge, recordedBy: (await db.sessionQRToken.findUnique({ where: { id: qr.qrId }, select: { createdById: true } }))?.createdById ?? null,
         method: "SESSION_QR",
-        note: "تسجيل ذاتي — QR الحصة المتنقل",
+        note: "تسجيل ذاتي — QR الحصة المتنقل (جهاز موثوق)",
       },
     });
     if (charge > 0) {
       await tx.studentTransaction.create({
         data: {
-          centerId: qr.centerId!, studentId: student!.id, sessionId: session.id,
+          centerId: qr.centerId!, studentId: student.id, sessionId: session.id,
           type: "CHARGE", amount: -charge,
           reason: `حصة ${session.group.subject.name} (QR الحصة)`,
           createdBy: "SESSION_QR",
@@ -115,11 +135,19 @@ export const POST = handler(async (req: Request) => {
     return { alreadyAttended: false as const, attendance, charged: charge };
   });
 
-  if (!result.alreadyAttended) {
+  if (result.alreadyAttended) {
+    await logAudit({
+      user: { id: student.id, name: student.name, centerId: qr.centerId },
+      action: AUDIT.DUPLICATE_ATTENDANCE,
+      entity: "SESSION_QR", entityId: session.id,
+      reason: "حضور متسجل من قبل — رفض الطلب المكرر",
+      after: { studentCode: student.code },
+    }).catch(() => {});
+  } else {
     await touchSessionQr(qr.qrId);
     await logAudit({
-      user: { id: "SESSION_QR", name: `QR الحصة — ${student.name}`, centerId: qr.centerId },
-      action: AUDIT.ATTENDANCE_RECORDED,
+      user: { id: student.id, name: student.name, centerId: qr.centerId },
+      action: AUDIT.QR_SCAN_SUCCESS,
       entity: "ATTENDANCE",
       entityId: result.attendance.id,
       after: { student: student.name, session: session.group.subject.name, method: "SESSION_QR", charged: result.charged },

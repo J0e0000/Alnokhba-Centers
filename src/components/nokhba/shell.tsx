@@ -6,6 +6,7 @@ import {
   Calculator, BarChart3, Settings, LogOut, MoreHorizontal, ChevronLeft,
   Building2, BadgeCheck, Receipt, MonitorCog, Activity, GraduationCap, Menu, BookOpen, MessageSquareText,
   ShieldAlert, UserCog, DatabaseBackup, LifeBuoy, Sparkles, ClipboardCheck, UserPlus, ClipboardList,
+  FileCheck2, NotebookPen,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -24,7 +25,7 @@ import { Button } from "@/components/ui/button";
 
 export type ViewId =
   | "home" | "scan" | "payments" | "students" | "schedule"
-  | "groups" | "quizzes" | "books" | "messages" | "accounting" | "reports" | "settings"
+  | "groups" | "quizzes" | "exams" | "assignments" | "books" | "messages" | "accounting" | "reports" | "settings"
   | "emergency" | "approvals";
 
 export const NAV_ICONS: Record<ViewId, ReactNode> = {
@@ -35,6 +36,8 @@ export const NAV_ICONS: Record<ViewId, ReactNode> = {
   schedule: <CalendarDays className="w-5 h-5" />,
   groups: <Layers className="w-5 h-5" />,
   quizzes: <ClipboardList className="w-5 h-5" />,
+  exams: <FileCheck2 className="w-5 h-5" />,
+  assignments: <NotebookPen className="w-5 h-5" />,
   books: <BookOpen className="w-5 h-5" />,
   messages: <MessageSquareText className="w-5 h-5" />,
   accounting: <Calculator className="w-5 h-5" />,
@@ -52,6 +55,8 @@ export const NAV_LABELS: Record<ViewId, string> = {
   schedule: "الجداول",
   groups: "المجموعات",
   quizzes: "الكويزات",
+  exams: "الامتحانات",
+  assignments: "الواجبات",
   books: "الكتب",
   messages: "الرسائل",
   accounting: "الحسابات",
@@ -62,7 +67,7 @@ export const NAV_LABELS: Record<ViewId, string> = {
 };
 
 const RECEPTION_NAV: ViewId[] = ["home", "scan", "payments", "students", "schedule", "books", "messages"];
-const MANAGER_NAV: ViewId[] = ["home", "scan", "payments", "students", "approvals", "groups", "quizzes", "schedule", "books", "messages", "accounting", "reports", "emergency", "settings"];
+const MANAGER_NAV: ViewId[] = ["home", "scan", "payments", "students", "approvals", "groups", "quizzes", "exams", "assignments", "schedule", "books", "messages", "accounting", "reports", "emergency", "settings"];
 
 export function CenterShell({
   user,

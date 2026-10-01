@@ -8,14 +8,16 @@ export const dynamic = "force-dynamic";
 
 /**
  * POST /api/attendance/session-qr — توليد/تجديد كود QR لحصة مفتوحة (الطريقة الثالثة للحضور).
- * كل استدعاء بيلغي الأكواد النشطة القديمة لنفس الحصة (rotate) — الكود قصير العمر (دقيقتين).
- * Body: { sessionId }
- * → { token, path, expiresAt, rotated }
+ * كل استدعاء بيلغي الأكواد النشطة القديمة لنفس الحصة (rotate).
+ * التدوير السريع (spec §9): rotateSeconds افتراضي 12ث — الكود يعيش التدوير + هامش شبكة،
+ * فالكود المصوّر/المشترك بيموت في ثواني. Body: { sessionId, rotateSeconds? }
+ * → { token, path, expiresAt, rotated, rotateSeconds }
  */
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
-  const body = await readJson<{ sessionId?: string }>(req);
+  const body = await readJson<{ sessionId?: string; rotateSeconds?: number }>(req);
   const sessionId = String(body.sessionId ?? "");
+  const rotateSeconds = Math.max(8, Math.min(60, Math.round(Number(body.rotateSeconds) || 12)));
 
   const session = await db.sessionInstance.findFirst({
     where: { id: sessionId, centerId: user.centerId },
@@ -31,14 +33,15 @@ export const POST = handler(async (req: Request) => {
     centerId: user.centerId,
     createdById: user.id,
     createdByName: user.name,
+    ttlMs: (rotateSeconds + 8) * 1000,
   });
 
   await logAudit({
     user,
-    action: AUDIT.ATTENDANCE_RECORDED,
+    action: AUDIT.QR_ISSUED,
     entity: "SESSION_QR",
     entityId: sessionId,
-    reason: `توليد كود QR حضور — ${session.group.subject.name}`,
+    reason: `توليد كود QR حضور — ${session.group.subject.name} (تدوير ${rotateSeconds}ث)`,
     after: { tokenTail: issued.token.slice(-6), expiresAt: issued.expiresAt },
   });
 
@@ -47,6 +50,7 @@ export const POST = handler(async (req: Request) => {
     path: `/s/${issued.token}`,
     expiresAt: issued.expiresAt,
     rotated: issued.rotated,
+    rotateSeconds,
     sessionLabel: `${session.group.subject.name} — ${session.group.grade.name} ${session.group.name}`,
   });
 });

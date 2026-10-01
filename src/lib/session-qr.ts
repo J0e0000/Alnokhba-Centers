@@ -13,7 +13,9 @@ import { ApiError } from "@/lib/auth";
    - كل قواعد التحقق الحالية محترمة (حصة مفتوحة + طالب مسجل + مش مؤرشف)
 ============================================================ */
 
-export const SESSION_QR_TTL_MS = 120_000; // دقيقتين صلاحية للتوكن الواحد
+export const SESSION_QR_TTL_MS = 120_000; // دقيقتين صلاحية افتراضية للتوكن الواحد
+// التدوير السريع (spec §9): كل استدعاء rotate بيلغي القديم — التوصكن يعيش مدة التدوير + هامش شبكة
+export const QR_ROTATE_GRACE_MS = 8_000;
 
 export type SessionQrScope = "CENTERS" | "ACADEMIA";
 
@@ -24,6 +26,7 @@ export async function issueSessionQr(opts: {
   centerId: string | null;
   createdById: string;
   createdByName: string;
+  ttlMs?: number; // للتدوير السريع: rotateSeconds + هامش
 }): Promise<{ token: string; expiresAt: string; rotated: boolean }> {
   // rotate: قفل أي توكن نشط قديم لنفس الحصة
   const old = await db.sessionQRToken.findMany({
@@ -37,6 +40,7 @@ export async function issueSessionQr(opts: {
     });
   }
   const token = randomBytes(20).toString("hex");
+  const ttl = Math.max(QR_ROTATE_GRACE_MS + 5_000, opts.ttlMs ?? SESSION_QR_TTL_MS);
   const row = await db.sessionQRToken.create({
     data: {
       scope: opts.scope,
@@ -44,7 +48,7 @@ export async function issueSessionQr(opts: {
       centerId: opts.centerId,
       token,
       isActive: true,
-      expiresAt: new Date(Date.now() + SESSION_QR_TTL_MS),
+      expiresAt: new Date(Date.now() + ttl),
       createdById: opts.createdById,
       createdByName: opts.createdByName,
     },
@@ -52,7 +56,8 @@ export async function issueSessionQr(opts: {
   return { token: row.token, expiresAt: row.expiresAt.toISOString(), rotated: old.length > 0 };
 }
 
-/** التحقق من التوكن (من غير استهلاك) — بيعيد معلومات الحصة للعرض */
+/** التحقق من التوكن (من غير استهلاك) — بيعيد معلومات الحصة للعرض.
+ *  الأخطاء بتحمل code: EXPIRED (قديم منتهي) | INACTIVE (توكن اتدوّر = replay) | INVALID (شكل غلط) */
 export async function resolveSessionQr(token: string): Promise<{
   qrId: string;
   scope: SessionQrScope;
@@ -62,11 +67,22 @@ export async function resolveSessionQr(token: string): Promise<{
   expiresAt: Date;
 }> {
   const t = token.trim().toLowerCase();
-  if (!/^[0-9a-f]{16,64}$/.test(t)) throw new ApiError("رابط الحضور مش صالح.", 400);
+  if (!/^[0-9a-f]{16,64}$/.test(t)) {
+    const e = new ApiError("رابط الحضور مش صالح.", 400);
+    (e as ApiError & { code?: string }).code = "INVALID";
+    throw e;
+  }
   const qr = await db.sessionQRToken.findUnique({ where: { token: t } });
-  if (!qr || !qr.isActive) throw new ApiError("كود الحضور ده مش شغال — اطلب من المشرف يحدّث الكود.", 410);
+  if (!qr || !qr.isActive) {
+    // توكن مش نشط = غالبًا اتدوّر (كود قديم متصوّر/مشارك) — replay
+    const e = new ApiError("كود الحضور ده مش شغال — الكود بيتجدد أوتوماتيك على شاشة الحصة، امسح الكود الجديد.", 410);
+    (e as ApiError & { code?: string }).code = "INACTIVE";
+    throw e;
+  }
   if (qr.expiresAt < new Date()) {
-    throw new ApiError("الكود انتهت صلاحيته — الكود بيتجدد أوتوماتيك على شاشة الحصة، حاول تاني.", 410);
+    const e = new ApiError("الكود انتهت صلاحيته — الكود بيتجدد أوتوماتيك على شاشة الحصة، حاول تاني.", 410);
+    (e as ApiError & { code?: string }).code = "EXPIRED";
+    throw e;
   }
   if (qr.scope === "ACADEMIA") {
     const s = await db.acaSession.findUnique({
