@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   Home, CalendarDays, Users, Wallet, LogOut, LogIn, UserRound, Smartphone,
   Clock, MapPin, GraduationCap, BadgeCheck, Loader2, RefreshCw, Banknote,
-  ArrowDownLeft, ArrowUpRight, KeyRound,
+  ArrowDownLeft, ArrowUpRight, KeyRound, FileCheck2, ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { normalizeDigits, formatTime12, formatDateAR } from "@/lib/normalize";
@@ -13,6 +13,7 @@ import { AlNokhbaMark } from "../shared";
 import { Tour } from "../tour";
 import { HelpButton } from "../help";
 import { TEACHER_TOUR } from "../help-content";
+import { TeacherExams, TeacherAssignments } from "./teaching";
 
 // ============================= API =============================
 
@@ -98,7 +99,7 @@ type StudentsData = {
   }[];
 };
 
-type TabId = "home" | "schedule" | "students" | "money";
+type TabId = "home" | "schedule" | "students" | "money" | "exams" | "assignments";
 
 // ============================= Helpers =============================
 
@@ -211,14 +212,18 @@ export function TeacherPortalApp() {
           {tab === "schedule" && <TeacherSchedule />}
           {tab === "students" && <TeacherStudents />}
           {tab === "money" && <TeacherMoney />}
+          {tab === "exams" && <TeacherExams />}
+          {tab === "assignments" && <TeacherAssignments />}
         </div>
       </main>
 
-      {/* ===== bottom nav — 4 تابات ===== */}
+      {/* ===== bottom nav — 6 تابات: الرئيسية / امتحانات / واجبات / جدولي / طلابي / فلوسي ===== */}
       <nav className="fixed bottom-0 inset-x-0 z-40 nk-portal-nav border-t" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 4px)" }} aria-label="تنقل المدرس">
-        <div className="mx-auto max-w-lg grid grid-cols-4 h-16">
+        <div className="mx-auto max-w-lg grid grid-cols-6 h-16">
           {([
             { id: "home", label: "الرئيسية", icon: <Home className="w-5 h-5" /> },
+            { id: "exams", label: "امتحانات", icon: <FileCheck2 className="w-5 h-5" /> },
+            { id: "assignments", label: "واجبات", icon: <ClipboardList className="w-5 h-5" /> },
             { id: "schedule", label: "جدولي", icon: <CalendarDays className="w-5 h-5" /> },
             { id: "students", label: "طلابي", icon: <Users className="w-5 h-5" /> },
             { id: "money", label: "فلوسي", icon: <Wallet className="w-5 h-5" /> },
