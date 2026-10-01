@@ -68,6 +68,8 @@ export const NAV_LABELS: Record<ViewId, string> = {
 
 const RECEPTION_NAV: ViewId[] = ["home", "scan", "payments", "students", "schedule", "books", "messages"];
 const MANAGER_NAV: ViewId[] = ["home", "scan", "payments", "students", "approvals", "groups", "quizzes", "exams", "assignments", "schedule", "books", "messages", "accounting", "reports", "emergency", "settings"];
+// مدرس بحساب موظف — امتحانات/كويزات/واجبات بس، من غير فلوس ولا طلاب ولا إعدادات
+const TEACHER_NAV: ViewId[] = ["home", "quizzes", "exams", "assignments", "schedule"];
 
 export function CenterShell({
   user,
@@ -82,7 +84,7 @@ export function CenterShell({
   view: ViewId;
   setView: (v: ViewId) => void;
 }) {
-  const nav = user.role === "MANAGER" ? MANAGER_NAV : RECEPTION_NAV;
+  const nav = user.role === "MANAGER" ? MANAGER_NAV : user.role === "TEACHER" ? TEACHER_NAV : RECEPTION_NAV;
   const center = user.center!;
   const [moreOpen, setMoreOpen] = useState(false);
 
