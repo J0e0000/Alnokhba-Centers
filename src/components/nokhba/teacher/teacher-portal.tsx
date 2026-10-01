@@ -149,7 +149,7 @@ export function TeacherPortalApp() {
 
   if (boot === "loading") {
     return (
-      <main className="min-h-screen grid place-items-center bg-background">
+      <main className="light-locked min-h-screen grid place-items-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <AlNokhbaMark size={52} />
           <span className="w-7 h-7 rounded-full border-[3px] border-[var(--c-primary)] border-t-transparent animate-spin" />
@@ -176,7 +176,7 @@ export function TeacherPortalApp() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background nk-safe-top">
+    <div className="light-locked min-h-screen flex flex-col bg-background nk-safe-top">
       {/* ===== header ===== */}
       <header className="nk-glass-bar sticky top-0 z-40">
         <div className="mx-auto max-w-lg px-4 h-14 flex items-center justify-between gap-2">
@@ -280,7 +280,7 @@ function TeacherLogin({ onSuccess }: { onSuccess: () => void }) {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden nk-safe-top">
+    <main className="light-locked min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden nk-safe-top">
       <div aria-hidden className="pointer-events-none absolute -top-24 -start-24 w-96 h-96 rounded-full opacity-[0.16] nk-brand-bg blur-3xl" />
       <div aria-hidden className="pointer-events-none absolute -bottom-32 -end-24 w-[28rem] h-[28rem] rounded-full opacity-[0.12] nk-brand-bg blur-3xl" />
 

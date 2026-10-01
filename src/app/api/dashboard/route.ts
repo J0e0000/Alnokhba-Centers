@@ -6,11 +6,24 @@ import { expectedCash } from "@/lib/finance";
 
 export const dynamic = "force-dynamic";
 
+// =====micro-cache للداشبورد (15 ثانية لكل سنتر+رول) =====
+// الداشبورد بيسأل ~15 استعلام — مع أي burst من الموظفين بيحرق connection pool
+// (ده اللي كان مسبب pool timeouts تحت الحمل). كاش 15s بيكسر الـ bursts
+// والأرقام المالية على الداشبورد بتفضل عمليّة — صفحة الفلوس نفسها دايمًا live.
+type DashEntry = { at: number; payload: unknown };
+const dashCache = new Map<string, DashEntry>();
+const DASH_TTL_MS = 15_000;
+
 /** GET /api/dashboard — role-aware daily dashboard */
 export const GET = handler(async () => {
   const user = await requireCenterUser();
   const centerId = user.centerId;
   const today = todayStr();
+
+  // 1) كاش-hit؟ رجّعه فورًا — بيحمي الداتابيز من الـ bursts
+  const cacheKey = `${centerId}:${user.role}`;
+  const hit = dashCache.get(cacheKey);
+  if (hit && Date.now() - hit.at < DASH_TTL_MS) return ok(hit.payload);
 
   const [todaySessions, cash, subscription, todaySlots] = await Promise.all([
     db.sessionInstance.findMany({
@@ -77,13 +90,15 @@ export const GET = handler(async () => {
 
   if (user.role === "RECEPTIONIST") {
     // Simple payload: today's sessions + quick counts. No heavy analytics.
-    return ok({
+    const payload = {
       ...base,
       role: "RECEPTIONIST",
       quickStats: {
         students: await db.student.count({ where: { centerId, status: "ACTIVE" } }),
       },
-    });
+    };
+    dashCache.set(cacheKey, { at: Date.now(), payload });
+    return ok(payload);
   }
 
   // ===== ملخص تشغيلي للمدير: إيه اللي محتاج انتباه دلوقتي =====
@@ -130,8 +145,7 @@ export const GET = handler(async () => {
     monthRevenueAgg,
     monthExpensesAgg,
     monthTeacherShareAgg,
-    outstandingAgg,
-    creditAgg,
+    ledgerByType,
     teacherPayables,
   ] = await Promise.all([
     db.student.count({ where: { centerId, status: "ACTIVE" } }),
@@ -140,18 +154,18 @@ export const GET = handler(async () => {
     db.sessionInstance.aggregate({ _sum: { totalRevenue: true, teacherShare: true, centerShare: true }, where: { centerId, status: "CLOSED", date: { gte: startOfMonth, lte: today } } }),
     db.expense.aggregate({ _sum: { amount: true }, where: { centerId, date: { gte: startOfMonth, lte: today } } }),
     db.teacherSettlement.aggregate({ _sum: { amount: true }, where: { centerId, type: "EARNED", date: { gte: startOfMonth, lte: today } } }),
-    db.studentTransaction.aggregate({ _sum: { amount: true }, where: { centerId, type: "CHARGE" } }),
-    db.studentTransaction.aggregate({ _sum: { amount: true }, where: { centerId } }),
+    // استعلام واحد groupBy بالنويع بدل full-scan اتنين (CHARGE + الكل) — نص الحمل بالظبط
+    db.studentTransaction.groupBy({ by: ["type"], _sum: { amount: true }, where: { centerId } }),
     db.teacherSettlement.groupBy({ by: ["teacherId"], _sum: { amount: true }, where: { centerId } }),
   ]);
 
-  const paymentsAll = (creditAgg._sum.amount ?? 0);
-  // فلترة دقيقة بتاريخ القاهرة — عشان دفعات بعد نص الليل تتحسب في يومها
-  const collectedToday = collectedTodayRows
-    .filter((t) => cairoDateStr(t.createdAt) === today)
-    .reduce((a, t) => a + t.amount, 0);
-  const chargesAll = Math.abs(outstandingAgg._sum.amount ?? 0);
-  const netStudentBalance = paymentsAll + (outstandingAgg._sum.amount ?? 0); // payments are +, charges are -
+  // نفس أرقام الكود القديم بالظبط — بس من groupBy واحد:
+  // outstandingAgg = مجموع CHARGE (سالب) / creditAgg = مجموع كل الأنواع (الصافي)
+  const chargeSum = ledgerByType.find((g) => g.type === "CHARGE")?._sum.amount ?? 0;
+  const allSum = ledgerByType.reduce((a, g) => a + (g._sum.amount ?? 0), 0);
+  const paymentsAll = allSum;
+  const chargesAll = Math.abs(chargeSum);
+  const netStudentBalance = allSum + chargeSum; // payments are +, charges are -
   const totalOwed = Math.max(-netStudentBalance, 0); // students owe center
   const totalCredit = Math.max(netStudentBalance, 0); // center owes students
 
@@ -164,6 +178,11 @@ export const GET = handler(async () => {
       return teacher ? { id: teacher.id, name: teacher.name, payable: t._sum.amount ?? 0 } : null;
     })
     .filter(Boolean);
+
+  // فلترة دقيقة بتاريخ القاهرة — عشان دفعات بعد نص الليل تتحسب في يومها
+  const collectedToday = collectedTodayRows
+    .filter((t) => cairoDateStr(t.createdAt) === today)
+    .reduce((a, t) => a + t.amount, 0);
 
   // Alerts
   const alerts: { level: "warn" | "info"; text: string }[] = [];
@@ -181,7 +200,7 @@ export const GET = handler(async () => {
     if (diff !== 0) alerts.push({ level: "warn", text: `فرق الصندوق النهاردة: ${(diff / 100).toLocaleString("en-EG")} جنيه` });
   }
 
-  return ok({
+  const managerPayload = {
     ...base,
     role: "MANAGER",
     opsSummary,
@@ -214,5 +233,7 @@ export const GET = handler(async () => {
       ? { plan: subscription.plan.name, status: subscription.status, renewalDate: subscription.renewalDate, pricePerStudent: subscription.pricePerStudent }
       : null,
     alerts,
-  });
+  };
+  dashCache.set(cacheKey, { at: Date.now(), payload: managerPayload });
+  return ok(managerPayload);
 });

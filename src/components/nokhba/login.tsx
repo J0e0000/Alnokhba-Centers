@@ -56,7 +56,7 @@ export function LoginScreen({ onLogin }: { onLogin: (user: SessionUser) => void 
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden nk-safe-top">
+    <main className="light-locked min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden nk-safe-top">
       {/* soft brand blobs — كحلي اللوجو + لمسة ذهبية */}
       <div aria-hidden className="pointer-events-none absolute -top-24 -start-24 w-96 h-96 rounded-full opacity-[0.14] nk-brand-bg blur-3xl" />
       <div aria-hidden className="pointer-events-none absolute -bottom-32 -end-24 w-[28rem] h-[28rem] rounded-full opacity-[0.10] nk-brand-bg blur-3xl" />

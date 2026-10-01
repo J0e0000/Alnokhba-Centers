@@ -89,7 +89,7 @@ export function LandingPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-background relative overflow-hidden nk-safe-top">
+    <main className="light-locked min-h-screen bg-background relative overflow-hidden nk-safe-top">
       {/* خلفية العلامة — كحلي اللوجو + لمسات ذهبية */}
       <div aria-hidden className="pointer-events-none absolute -top-32 -start-32 w-[30rem] h-[30rem] rounded-full opacity-[0.13] nk-brand-bg blur-3xl" />
       <div aria-hidden className="pointer-events-none absolute top-[30%] -end-40 w-[34rem] h-[34rem] rounded-full opacity-[0.08] nk-gold-bg blur-3xl" />

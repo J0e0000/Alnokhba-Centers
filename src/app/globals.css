@@ -241,6 +241,155 @@
 .dark .nk-gold-bg-soft { background: color-mix(in srgb, var(--c-accent) 20%, var(--card)); }
 .dark .nk-gold-border { border-color: color-mix(in srgb, var(--c-accent) 45%, var(--card)); }
 
+/* =====================================================================
+   إصلاح شامل للوضع الغامق (CO-1) — طبقة توافق الباليت
+   =====================================================================
+   المشكلة: معظم الواجهات اتبنت light-first بكلاسات زي bg-emerald-50 /
+   text-emerald-700 / border-amber-200 من غير نسخ dark: — فلما النظام
+   يبقى غامق النصوص الغامقة بتقع على خلفيات غامقة والقراءة بتتعثر.
+
+   الحل من مكان واحد: إعادة رسم درجات الباليت المستخدمة كخلفيات/بوردرات
+   تحت .dark (كل كلاسات 50/100/200 بتشاور على CSS variables فبتتحسم
+   ديناميكيًا)، والنصوص الغامقة بتتقلب لدرجات فاتحة مقروءة (≥4.5:1).
+
+   الحماية: كل overrides النصوص محمية بـ :not(.light-locked...) عشان
+   متسرقش للبوابات المقفولة على فاتح (بورتال الطالب/المدرس/الدخول/الهبوط)،
+   والخلفيات بتترجع لقيمها الفاتحة جوه .light-locked (شوف بلوك الاسترجاع تحت).
+   ===================================================================== */
+.dark {
+  /* خلفيات 50/100 → تدرجات غامقة من نفس العائلة */
+  --color-emerald-50: #07271d;
+  --color-emerald-100: #0a382a;
+  --color-rose-50: #2a0d15;
+  --color-rose-100: #3a1220;
+  --color-amber-50: #271a06;
+  --color-amber-100: #362409;
+  --color-sky-50: #0a2436;
+  --color-sky-100: #0e3149;
+  --color-orange-50: #271608;
+  --color-orange-100: #361f0c;
+  --color-red-50: #2a0e11;
+  --color-red-100: #391419;
+  --color-teal-50: #062725;
+  --color-gray-50: #161d2a;
+  --color-gray-100: #1c2534;
+  --color-slate-50: #161d2a;
+  --color-slate-100: #1c2534;
+  /* بوردرات 200 → بوردرات غامقة واضحة من نفس العائلة */
+  --color-emerald-200: #145c42;
+  --color-rose-200: #862a44;
+  --color-amber-200: #92400e;
+  --color-sky-200: #0c5a86;
+  --color-orange-200: #9a3412;
+  --color-red-200: #991b1b;
+  --color-teal-200: #115e59;
+  --color-gray-200: #2a3547;
+  --color-slate-200: #2a3547;
+}
+
+/* نصوص الوضع الغامق — درجات فاتحة (تباين AA على الخلفيات الغامقة)
+   محمية: متطبقش جوه أي .light-locked أو أبنائه */
+.dark .text-emerald-700:not(.light-locked, .light-locked *) { color: #6ee7b7; }
+.dark .text-emerald-600:not(.light-locked, .light-locked *) { color: #34d399; }
+.dark .text-emerald-500:not(.light-locked, .light-locked *) { color: #34d399; }
+.dark .text-emerald-800:not(.light-locked, .light-locked *) { color: #a7f3d0; }
+.dark .text-rose-700:not(.light-locked, .light-locked *) { color: #fb7185; }
+.dark .text-rose-600:not(.light-locked, .light-locked *) { color: #fb7185; }
+.dark .text-rose-500:not(.light-locked, .light-locked *) { color: #fb7185; }
+.dark .text-amber-700:not(.light-locked, .light-locked *) { color: #fbbf24; }
+.dark .text-amber-600:not(.light-locked, .light-locked *) { color: #fbbf24; }
+.dark .text-amber-800:not(.light-locked, .light-locked *) { color: #fcd34d; }
+.dark .text-amber-500:not(.light-locked, .light-locked *) { color: #fcd34d; }
+.dark .text-amber-800\/70:not(.light-locked, .light-locked *),
+.dark .text-amber-800\/80:not(.light-locked, .light-locked *) { color: color-mix(in oklab, #fcd34d 72%, transparent); }
+.dark .text-amber-900:not(.light-locked, .light-locked *) { color: #fde68a; }
+.dark .text-sky-700:not(.light-locked, .light-locked *) { color: #7dd3fc; }
+.dark .text-sky-600:not(.light-locked, .light-locked *) { color: #7dd3fc; }
+.dark .text-sky-800:not(.light-locked, .light-locked *) { color: #bae6fd; }
+.dark .text-orange-700:not(.light-locked, .light-locked *) { color: #fdba74; }
+.dark .text-orange-600:not(.light-locked, .light-locked *) { color: #fdba74; }
+.dark .text-red-700:not(.light-locked, .light-locked *) { color: #f87171; }
+.dark .text-red-600:not(.light-locked, .light-locked *) { color: #f87171; }
+.dark .text-red-500:not(.light-locked, .light-locked *) { color: #f87171; }
+.dark .text-red-400:not(.light-locked, .light-locked *) { color: #f87171; }
+.dark .text-gray-600:not(.light-locked, .light-locked *) { color: #9ca3af; }
+.dark .text-teal-700:not(.light-locked, .light-locked *) { color: #5eead4; }
+.dark .text-violet-700:not(.light-locked, .light-locked *) { color: #c4b5fd; }
+.dark .text-slate-500:not(.light-locked, .light-locked *) { color: #94a3b8; }
+/* بوردرات 300 الفاتحة تبقى غامقة في الدارك (نفس حماية النصوص) */
+.dark .border-amber-300:not(.light-locked, .light-locked *) { border-color: #92400e; }
+.dark .border-rose-300:not(.light-locked, .light-locked *) { border-color: #862a44; }
+.dark .border-emerald-300:not(.light-locked, .light-locked *) { border-color: #145c42; }
+.dark .border-orange-300:not(.light-locked, .light-locked *) { border-color: #9a3412; }
+
+/* الـ white overlays الثقيلة (كروت زجاجية بيضا) تبقى أسطح كارت في الدارك
+   — bg-white الصلب مش متلمس (خلفيات QR لازم تفضل بيضا عشان تتسحب) */
+.dark .bg-white\/60:not(.light-locked, .light-locked *) { background-color: color-mix(in srgb, var(--card) 60%, transparent); }
+.dark .bg-white\/70:not(.light-locked, .light-locked *) { background-color: color-mix(in srgb, var(--card) 70%, transparent); }
+.dark .bg-white\/80:not(.light-locked, .light-locked *) { background-color: color-mix(in srgb, var(--card) 80%, transparent); }
+.dark .bg-white\/85:not(.light-locked, .light-locked *) { background-color: color-mix(in srgb, var(--card) 85%, transparent); }
+.dark .bg-white\/90:not(.light-locked, .light-locked *) { background-color: color-mix(in srgb, var(--card) 90%, transparent); }
+.dark .bg-white\/95:not(.light-locked, .light-locked *) { background-color: color-mix(in srgb, var(--card) 95%, transparent); }
+.dark .bg-white\/97:not(.light-locked, .light-locked *) { background-color: color-mix(in srgb, var(--card) 97%, transparent); }
+
+/* شايمر التحميل نسخة غامقة (بره البوابات المقفولة فاتح) */
+.dark .nk-anim-shimmer:not(.light-locked, .light-locked *) {
+  background: linear-gradient(90deg, #1a2436 25%, #232f47 50%, #1a2436 75%);
+  background-size: 200% 100%;
+}
+
+/* =====================================================================
+   استرجاع الوضع الفاتح جوه البوابات المقفولة (.light-locked)
+   =====================================================================
+   الـ .dark remaps فوق بتتورث لكل السطر تحت html.dark — فبنرجّع القيم
+   الافتراضية جوه .light-locked (التصريح المباشر بيتغلب على الوراثة)،
+   وكمان بنرجّع نسخ الدارك لكلاسات nk-* البراندية لنسخها الفاتحة. */
+.light-locked {
+  /* إعادة إعلان اللون والخلفية مباشرة — body بيحسب text-foreground بقيمة الدارك
+     والـ descendants بتورّث اللون المحسوب مش الـ variable، فلازم نقطع الوراثة هنا */
+  color: var(--foreground);
+  background-color: var(--background);
+  --color-emerald-50: #ecfdf5;
+  --color-emerald-100: #d1fae5;
+  --color-rose-50: #fff1f2;
+  --color-rose-100: #ffe4e6;
+  --color-amber-50: #fffbeb;
+  --color-amber-100: #fef3c7;
+  --color-sky-50: #f0f9ff;
+  --color-sky-100: #e0f2fe;
+  --color-orange-50: #fff7ed;
+  --color-orange-100: #ffedd5;
+  --color-red-50: #fef2f2;
+  --color-red-100: #fee2e2;
+  --color-teal-50: #f0fdfa;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-emerald-200: #a7f3d0;
+  --color-rose-200: #fecdd3;
+  --color-amber-200: #fde68a;
+  --color-sky-200: #bae6fd;
+  --color-orange-200: #fed7aa;
+  --color-red-200: #fecaca;
+  --color-teal-200: #ccfbf1;
+  --color-gray-200: #e5e7eb;
+  --color-slate-200: #e2e8f0;
+}
+.light-locked .nk-card { background: #ffffff; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(20, 49, 89, 0.05); }
+.light-locked .nk-glass { background: color-mix(in srgb, #ffffff 82%, transparent); border: 1px solid color-mix(in srgb, #ffffff 60%, var(--border)); box-shadow: 0 8px 28px -14px rgba(20, 49, 89, 0.16); }
+.light-locked .nk-glass-bar { background: color-mix(in srgb, #ffffff 78%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
+.light-locked .nk-brand-bg-soft { background: color-mix(in srgb, var(--c-primary) 9%, #ffffff); }
+.light-locked .nk-brand-bg-soft-text { color: var(--c-primary-strong); }
+.light-locked .nk-brand-text { color: var(--c-primary-strong); }
+.light-locked .nk-brand-border { border-color: color-mix(in srgb, var(--c-primary) 28%, #ffffff); }
+.light-locked .nk-brand-row { background: color-mix(in srgb, var(--c-primary) 8%, #ffffff); border-color: color-mix(in srgb, var(--c-primary) 25%, #ffffff); }
+.light-locked .nk-gold { color: var(--c-accent); }
+.light-locked .nk-gold-bg-soft { background: color-mix(in srgb, var(--c-accent) 14%, #ffffff); }
+.light-locked .nk-gold-border { border-color: color-mix(in srgb, var(--c-accent) 38%, #ffffff); }
+.light-locked .nk-subject-text { color: color-mix(in srgb, var(--subject-color, #143159) 72%, #10131a); }
+.light-locked .nk-chip-subject { color: color-mix(in srgb, var(--subject-color, #143159) 72%, #10131a); background: color-mix(in srgb, var(--subject-color, #143159) 10%, transparent); }
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
