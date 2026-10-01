@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   Home, CalendarDays, MessageSquareText, LogOut, LogIn, QrCode, ChevronLeft,
   Clock, MapPin, UserRound, Smartphone, CheckCheck, Loader2, BellRing, Wallet, X, RefreshCw,
-  ClipboardList, GraduationCap, TrendingUp,
+  ClipboardList, GraduationCap, TrendingUp, FileCheck2, NotebookPen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { normalizeDigits, formatTime12, dayNameAR, formatDateAR } from "@/lib/normalize";
@@ -13,40 +13,13 @@ import { AlNokhbaMark } from "../shared";
 import { Tour } from "../tour";
 import { HelpButton } from "../help";
 import { STUDENT_TOUR } from "../help-content";
+import { PortalExams } from "./exams";
+import { PortalAssignments } from "./assignments";
 
 // ============================= API =============================
 
-type PapiError = Error & { status?: number };
-
-async function papi<T = Record<string, unknown>>(
-  path: string,
-  opts: { method?: string; body?: unknown; silent?: boolean } = {},
-): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(path, {
-      method: opts.method ?? "GET",
-      headers: opts.body ? { "Content-Type": "application/json" } : undefined,
-      body: opts.body ? JSON.stringify(opts.body) : undefined,
-      cache: "no-store",
-    });
-  } catch {
-    // الشبكة وقعت (نت مقطوع/سيرفر بيحمّل) — دي غلطة مؤقتة، مش خروج
-    const err = new Error("مفيش اتصال بالسيرفر دلوقتي — جرب تاني.") as PapiError;
-    err.status = 0;
-    if (!opts.silent) toast.error(err.message);
-    throw err;
-  }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const msg = (data as { error?: string }).error ?? "حصلت مشكلة مؤقتة — جرب مرة تانية.";
-    const err = new Error(msg) as PapiError;
-    err.status = res.status;
-    if (!opts.silent) toast.error(msg);
-    throw err;
-  }
-  return data as T;
-}
+export type { PapiError } from "./portal-api";
+import { papi } from "./portal-api";
 
 // ============================= Types =============================
 
@@ -102,7 +75,7 @@ type MessagesData = {
   }[];
 };
 
-type TabId = "home" | "schedule" | "quizzes" | "messages";
+type TabId = "home" | "schedule" | "quizzes" | "exams" | "assignments" | "messages";
 
 /** بوب-أب الرسايل الجديدة — نمط فيسبوك/إنستجرام */
 type ToastMsg = {
@@ -425,17 +398,21 @@ export function PortalApp() {
           {tab === "home" && <PortalHome data={home} onGoTab={setTab} onRefresh={refreshHome} refreshing={homeRefreshing} />}
           {tab === "schedule" && <PortalSchedule />}
           {tab === "quizzes" && <PortalQuizzes />}
+          {tab === "exams" && <PortalExams />}
+          {tab === "assignments" && <PortalAssignments />}
           {tab === "messages" && <PortalMessages onUnread={setUnread} />}
         </div>
       </main>
 
-      {/* ===== bottom nav — 3 تابات: الرئيسية / جدولي / الرسائل ===== */}
+      {/* ===== bottom nav — تابات: الرئيسية / جدولي / كويزات / امتحانات / واجبات / رسائل ===== */}
       <nav className="fixed bottom-0 inset-x-0 z-40 nk-portal-nav border-t" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 4px)" }} aria-label="تنقل الطالب">
-        <div className="mx-auto max-w-lg grid grid-cols-4 h-16">
+        <div className="mx-auto max-w-lg grid grid-cols-6 h-16">
           {([
               { id: "home", label: "الرئيسية", icon: <Home className="w-5 h-5" /> },
               { id: "schedule", label: "جدولي", icon: <CalendarDays className="w-5 h-5" /> },
-              { id: "quizzes", label: "الكويزات", icon: <ClipboardList className="w-5 h-5" /> },
+              { id: "quizzes", label: "كويزات", icon: <ClipboardList className="w-5 h-5" /> },
+              { id: "exams", label: "امتحانات", icon: <FileCheck2 className="w-5 h-5" /> },
+              { id: "assignments", label: "واجبات", icon: <NotebookPen className="w-5 h-5" /> },
               { id: "messages", label: "الرسائل", icon: <MessageSquareText className="w-5 h-5" />, badge: unread },
             ] as { id: TabId; label: string; icon: React.ReactNode; badge?: number }[]
           ).map((t) => (

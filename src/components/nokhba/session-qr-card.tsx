@@ -7,13 +7,13 @@ import { api } from "./lib";
 import { cn } from "@/lib/utils";
 
 /* ============================================================
-   QR الحصة المتنقل — الطريقة الثالثة للحضور (spec §3)
-   كود قصير العمر (دقيقتين) بيتجدد أوتوماتيك على الشاشة، مرتبط
-   بالحصة والسنتر، ومش صالح خارجها. الطالب يمسحه بموبايله فيسجل
-   حضوره بنفسه (بنفس قواعد وخصم الحضور العادي).
+   QR الحصة المتنقل — الطريقة الثالثة للحضور (spec §3 + §9)
+   كود قصير العمر بيتدوّر أوتوماتيك كل 12 ثانية (قابل للضبط) —
+   الكود المصوّر/المشترك بيموت في ثواني. مرتبط بالحصة والسنتر،
+   والطالب يمسحه بموبايله فيسجل حضوره (جهاز موثوق — بدون تسجيل دخول).
 ============================================================ */
 
-const ROTATE_MS = 60_000; // تجديد كل دقيقة (التوكن يعيش دقيقتين)
+const ROTATE_SECONDS = 12; // التدوير السريع (spec §9) — الكود يعيش التدوير + هامش شبكة
 
 export function SessionQrCard({ sessionId, compact }: { sessionId: string; compact?: boolean }) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -27,9 +27,9 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
 
   const issue = useCallback(async () => {
     try {
-      const res = await api<{ token: string; path: string; expiresAt: string }>(
+      const res = await api<{ token: string; path: string; expiresAt: string; rotateSeconds?: number }>(
         "/api/attendance/session-qr",
-        { method: "POST", body: { sessionId } },
+        { method: "POST", body: { sessionId, rotateSeconds: ROTATE_SECONDS } },
       );
       const url = await QRCode.toDataURL(res.path, { width: 512, margin: 1, errorCorrectionLevel: "M" });
       setQrDataUrl(url);
@@ -46,7 +46,7 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
 
   useEffect(() => {
     issue();
-    const rot = setInterval(issue, ROTATE_MS);
+    const rot = setInterval(issue, ROTATE_SECONDS * 1000);
     timerRef.current = setInterval(() => {
       if (expiresAt) setSecondsLeft(Math.max(0, Math.round((expiresAt - Date.now()) / 1000)));
     }, 1000);
@@ -119,9 +119,9 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
             <div className="min-w-0 space-y-1.5 text-xs font-bold text-muted-foreground">
               <p className="flex items-center gap-1.5 text-foreground/80">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                مرتبط بالحصة دي بس — مش صالح في حصة تانية أو بعد القفل
+                مرتبط بالحصة دي بس — ومفيش تسجيل دخول للطالب، بس جهازه لازم يكون مفعّل مرة واحدة
               </p>
-              <p>بيتحدّث تلقائيًا كل دقيقة — مينفعش يتتصور ويستخدم بعدين.</p>
+              <p>بيتدوّر كل 12 ثانية — مينفعش يتتصور أو يتشير ويستخدم بعدين.</p>
               <p>التكرار مستحيل: الطالب بيتسجل مرة واحدة بس في الحصة.</p>
               {path && (
                 <p className="nk-num text-[10px] truncate text-muted-foreground/70" dir="ltr">{path}</p>

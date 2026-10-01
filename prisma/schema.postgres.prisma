@@ -75,6 +75,8 @@ model Center {
   subscriptionEvents SubscriptionEvent[]
   backupRuns       BackupRun[]
   undoEntries      UndoEntry[]
+  exams            Exam[]
+  assignments      Assignment[]
 }
 
 model User {
@@ -207,6 +209,8 @@ model Group {
   sessions       SessionInstance[]
   schedules      ScheduleSlot[]
   quizzes        Quiz[]
+  exams          Exam[]
+  assignments    Assignment[]
 
   @@index([centerId])
 }
@@ -257,6 +261,8 @@ model Student {
   studentNotifications StudentNotification[]
   pushSubs    PushSubscription[]
   quizAttempts QuizAttempt[]
+  examAttempts ExamAttempt[]
+  assignmentSubmissions AssignmentSubmission[]
 
   @@unique([centerId, code])
   @@index([centerId, name])
@@ -1481,4 +1487,174 @@ model UndoEntry {
 
   @@index([centerId, userId, createdAt])
   @@index([centerId, status, createdAt])
+}
+
+// ============================= ONLINE EXAMS (الامتحانات الإلكترونية) =============================
+// نظام امتحانات صارم (مختلف عن الكويزات البسيطة عن قصد):
+// - السيرفر هو مصدر الحقيقة: startedAt/expiresAt/الدرجة/الحالة — الجهاز للعرض بس
+// - المحاولة ليها ترتيب أسئلة واختيارات ثابت (shuffle لكل محاولة) بيتخزن عليها
+// - مفيش إجابة صحيحة بتتنشر للطالب قبل التسليم نهائيًا
+// - أحداث أمن المحاولة تتسجل server-side (Tab hidden / خروج فول سكرين / ...)
+
+model Exam {
+  id              String   @id @default(cuid())
+  centerId        String
+  groupId         String // الامتحان لمجموعة واحدة (زي الكويز) — المجموعة بتجيب المادة والصف
+  sessionId       String? // SessionInstance اختياري — امتحان مرتبط بحصة
+  title           String
+  instructions    String?
+  status          String   @default("DRAFT") // DRAFT | PUBLISHED | CLOSED
+  startAt         DateTime // نافذة توفر الامتحان (server time)
+  endAt           DateTime
+  durationMin     Int // مدة المحاولة بالدقايق — expiresAt = startedAt + durationMin
+  maxScore        Int      @default(0) // مجموع نقاط الأسئلة (denormalized عند الحفظ)
+  attemptsAllowed Int      @default(1) // MVP: 1 — السكيما جاهزة لأكتر
+  shuffleQuestions Boolean @default(false)
+  shuffleOptions   Boolean @default(false)
+  allowAnswerEdit  Boolean @default(true) // تعديل الإجابات قبل التسليم
+  securityMode     String  @default("WARNING") // WARNING (تنبيهات) | STRICT (إنهاء فوري للمحاولة)
+  reviewVideoUrl   String? // فيديو المراجعة والتصحيح — يظهر بعد التسليم
+  createdById      String
+  createdByName    String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  center           Center   @relation(fields: [centerId], references: [id])
+  group            Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  questions        ExamQuestion[]
+  attempts         ExamAttempt[]
+
+  @@index([centerId, groupId, status])
+}
+
+model ExamQuestion {
+  id            String @id @default(cuid())
+  examId        String
+  order         Int    @default(0)
+  text          String
+  type          String @default("MCQ") // MCQ | TRUE_FALSE | NUM (رقمي موضوعي)
+  options       String? // JSON array of strings (MCQ)
+  correctAnswer String? // MCQ: index "0".."n" | TRUE_FALSE: "true"/"false" | NUM: "42"
+  points        Int    @default(1)
+  exam          Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@index([examId, order])
+}
+
+model ExamAttempt {
+  id            String    @id @default(cuid())
+  examId        String
+  studentId     String
+  centerId      String
+  attemptNo     Int       @default(1)
+  status        String    @default("IN_PROGRESS") // IN_PROGRESS | SUBMITTED | AUTO_SUBMITTED | INVALIDATED
+  startedAt     DateTime  @default(now()) // server clock — نهائي
+  expiresAt     DateTime // server clock — نهائي
+  submittedAt   DateTime?
+  score         Int?
+  questionOrder String // JSON [questionId,...] — ترتيب ثابت للمحاولة (shuffle)
+  optionOrder   String? // JSON { questionId: [origIdx,...] } — ترتيب الاختيارات المعروض
+  userAgent     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  exam          Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student       Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers       ExamAnswer[]
+  securityEvents ExamSecurityEvent[]
+
+  @@unique([examId, studentId]) // MVP: محاولة واحدة — attemptsAllowed للمرحلة الجاية
+  @@index([studentId, status])
+}
+
+model ExamAnswer {
+  id         String   @id @default(cuid())
+  attemptId  String
+  questionId String
+  answer     String // MCQ: displayed index | TRUE_FALSE: "true"/"false" | NUM: نص الرقم
+  savedAt    DateTime @default(now()) @updatedAt
+  attempt    ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+}
+
+model ExamSecurityEvent {
+  id        String   @id @default(cuid())
+  centerId  String
+  attemptId String
+  studentId String
+  type      String // EXAM_STARTED | RESUMED | ANSWER_SAVED | EXAM_SUBMITTED | EXAM_AUTO_SUBMITTED | TAB_HIDDEN | PAGE_LEFT | FULLSCREEN_EXIT | FOCUS_LOST | ATTEMPT_INVALIDATED
+  meta      String? // JSON — metadata آمنة بس (مفيش PII)
+  createdAt DateTime @default(now())
+  attempt   ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@index([centerId, createdAt])
+  @@index([attemptId])
+}
+
+// ============================= ASSIGNMENTS (الواجبات) =============================
+// الواجب مش امتحان: الطالب يسيب ويرجع ويكمل لحد آخر لحظة قبل الميعاد.
+// Mode A: ONLINE تصحيح آلي فوري. Mode B: FILE (تسليم ملف — المرحلة الجاية)
+// السكيما جاهزة للاتنين من دلوقتي عشان مفيش إعادة تصميم بعدين.
+
+model Assignment {
+  id             String   @id @default(cuid())
+  centerId       String
+  groupId        String
+  title          String
+  instructions   String?
+  mode           String   @default("ONLINE") // ONLINE (تصحيح آلي) | FILE (Phase 4)
+  status         String   @default("DRAFT") // DRAFT | PUBLISHED | CLOSED
+  deadline       DateTime // سيرفر بس — التسجيل بعد الميعاد مرفوض إلا لو allowLate
+  allowLate      Boolean  @default(false) // السماح بالتسليم المتأخر (يتعلّم late)
+  maxScore       Int      @default(0) // مجموع النقاط (ONLINE)
+  reviewVideoUrl String? // فيديو المراجعة — بعد التسليم/التصحيح
+  createdById    String
+  createdByName  String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  center         Center   @relation(fields: [centerId], references: [id])
+  group          Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  questions      AssignmentQuestion[]
+  submissions    AssignmentSubmission[]
+
+  @@index([centerId, groupId, status])
+}
+
+model AssignmentQuestion {
+  id            String @id @default(cuid())
+  assignmentId  String
+  order         Int    @default(0)
+  text          String
+  type          String @default("MCQ") // MCQ | TRUE_FALSE | NUM
+  options       String?
+  correctAnswer String?
+  points        Int    @default(1)
+  assignment    Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  @@index([assignmentId, order])
+}
+
+model AssignmentSubmission {
+  id           String    @id @default(cuid())
+  assignmentId String
+  studentId    String
+  centerId     String
+  status       String    @default("DRAFT") // DRAFT | SUBMITTED | GRADED
+  answers      String? // JSON [{questionId, answer}] — مسودة قابلة للاستكمال (save/resume)
+  draftSavedAt DateTime?
+  submittedAt  DateTime?
+  late         Boolean   @default(false)
+  score        Int?
+  gradedAt     DateTime?
+  gradedById   String?
+  // Phase 4 (FILE mode) — جاهزة في السكيما من دلوقتي
+  fileUrl        String?
+  fileReplacedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student      Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, studentId])
+  @@index([studentId, status])
 }
