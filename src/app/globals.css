@@ -877,6 +877,15 @@
   }
 }
 
+/* خط مسح الكاميرا في سكانر البورتال — بيلف فوق وتحت جوه إطار السكان */
+@keyframes nk-scan-sweep {
+  0% { top: 6%; }
+  100% { top: 90%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nk-scan-line { animation: none !important; top: 48% !important; }
+}
+
 /* شايمر التحميل (skeleton) — بلمحة كحلي فاتحة */
 @keyframes nk-shimmer {
   from { background-position: -200% 0; }
