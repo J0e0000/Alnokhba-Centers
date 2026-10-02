@@ -17,6 +17,19 @@ export const SESSION_QR_TTL_MS = 120_000; // دقيقتين صلاحية افت�
 // التدوير السريع (spec §9): كل استدعاء rotate بيلغي القديم — التوصكن يعيش مدة التدوير + هامش شبكة
 export const QR_ROTATE_GRACE_MS = 8_000;
 
+// ============================================================
+// الدفعة المتحركة (Dynamic Batch QR):
+// نداء واحد للسيرفر بيولّد 10 أكواد بيتقلوا بينهم بسرعة على الشاشة،
+// وكلهم بيموتوا مع بعض في نهاية الدفعة — الصورة/السكرين شوت بيمسك
+// كود واحد من العشرة وده بيتقفل مع الدفعة الجديدة. قبل نهاية الدفعة
+// الشاشة بتجيب دفعة جديدة في الخلفية فمفيش فراغ بين الأكواد أبدًا.
+// ============================================================
+export const QR_BATCH_DEFAULT_COUNT = 10;
+export const QR_BATCH_SLOT_SECONDS = 1.0; // كل كود بيعيش ثانية على الشاشة (تدوير سريع جدًا)
+export const QR_BATCH_TTL_MS = 22_000; // الدفعة تعيش دورتين تقريبًا قبل التبديل
+/** هامش صغير للـ claims اللي في الطريق لما الدفعة الجديدة تتبعت — بعده التوكن القديم بيموت نهائيًا */
+export const QR_BATCH_ROTATION_GRACE_MS = 8_000;
+
 export type SessionQrScope = "CENTERS" | "ACADEMIA";
 
 /** توليد توكن جديد (أو rotate) لحصة مفتوحة — يُستدعى من شاشة الحصة/المدرس فقط */
@@ -54,6 +67,60 @@ export async function issueSessionQr(opts: {
     },
   });
   return { token: row.token, expiresAt: row.expiresAt.toISOString(), rotated: old.length > 0 };
+}
+
+/** توليد دفعة أكواد متحركة (الموديل الجديد) — 10 أكواد بيولّدهم نداء واحد،
+ *  كلهم بنفس وقت الانتهاء، والدفعات الأقدم بتتقفل بهامش صغير يكفي الـ claims
+ *  اللي لسه في الطريق (الطالب مسح الكود والطلب جاي للسيرفر حالًا).
+ *  أكتر من دفعة نشطة في نفس اللحظة = عادي: كلها لنفس الحصة ونفس نافذة الأمان. */
+export async function issueSessionQrBatch(opts: {
+  scope: SessionQrScope;
+  sessionId: string;
+  centerId: string | null;
+  createdById: string;
+  createdByName: string;
+  count?: number;
+  ttlMs?: number;
+}): Promise<{ codes: { token: string; expiresAt: string }[]; batchExpiresAt: string; rotated: number }> {
+  const count = Math.max(4, Math.min(14, Math.round(opts.count ?? QR_BATCH_DEFAULT_COUNT)));
+  const ttl = Math.max(15_000, Math.min(60_000, opts.ttlMs ?? QR_BATCH_TTL_MS));
+
+  // الدفعات الأقدم: خليها تعيش هامش الدوران بس (مش أكتر من انتهائها الأصلي)
+  const old = await db.sessionQRToken.findMany({
+    where: { sessionId: opts.sessionId, scope: opts.scope, isActive: true },
+    select: { id: true, expiresAt: true },
+  });
+  let rotated = 0;
+  if (old.length) {
+    const graceCutoff = new Date(Date.now() + QR_BATCH_ROTATION_GRACE_MS);
+    for (const o of old) {
+      await db.sessionQRToken.update({
+        where: { id: o.id },
+        data: { expiresAt: o.expiresAt < graceCutoff ? o.expiresAt : graceCutoff },
+      }).catch(() => {});
+    }
+    rotated = old.length;
+  }
+
+  const expiresAt = new Date(Date.now() + ttl);
+  const tokens = Array.from({ length: count }, () => randomBytes(20).toString("hex"));
+  await db.sessionQRToken.createMany({
+    data: tokens.map((token) => ({
+      scope: opts.scope,
+      sessionId: opts.sessionId,
+      centerId: opts.centerId,
+      token,
+      isActive: true,
+      expiresAt,
+      createdById: opts.createdById,
+      createdByName: opts.createdByName,
+    })),
+  });
+  return {
+    codes: tokens.map((token) => ({ token, expiresAt: expiresAt.toISOString() })),
+    batchExpiresAt: expiresAt.toISOString(),
+    rotated,
+  };
 }
 
 /** التحقق من التوكن (من غير استهلاك) — بيعيد معلومات الحصة للعرض.
