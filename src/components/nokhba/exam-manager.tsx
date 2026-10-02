@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   FileCheck2, Plus, Loader2, Trash2, Send, Eye, X, CheckCircle2, Clock,
-  ShieldAlert, ShieldCheck, Timer, RotateCcw, Users, Ban,
+  ShieldAlert, ShieldCheck, Timer, RotateCcw, Users, Ban, Share2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "./lib";
 import { PageHeader, Chip, EmptyState, Loading, SectionCard } from "./shared";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAcademics } from "./students";
+import { ShareSheet } from "./share-sheet";
 import { toast } from "sonner";
 import type { SessionUser } from "./lib";
 
@@ -458,6 +459,7 @@ function ExamDetailDialog({ id, user, groups, onClose }: { id: string; user: Ses
   const [data, setData] = useState<ExamDetail | null>(null);
   const [busy, setBusy] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const load = useCallback(() => {
     api<{ exam: ExamDetail }>(`/api/exams/${id}`, { silent: true })
@@ -585,6 +587,12 @@ function ExamDetailDialog({ id, user, groups, onClose }: { id: string; user: Ses
                 رجوع لمسودة
               </button>
             )}
+            {data.status === "PUBLISHED" && (
+              <button onClick={() => setShareOpen(true)} disabled={busy}
+                className="h-11 rounded-xl nk-brand-bg-soft nk-brand-text border-2 nk-brand-border font-extrabold px-4 flex items-center gap-1.5">
+                <Share2 className="w-4 h-4" /> مشاركة
+              </button>
+            )}
             <button onClick={() => setEditOpen(true)} disabled={busy}
               className="h-11 rounded-xl border-2 border-border bg-card font-extrabold px-4">تعديل</button>
             <button onClick={onClose} className="h-11 rounded-xl border-2 border-border bg-card font-extrabold px-4">إغلاق</button>
@@ -604,6 +612,14 @@ function ExamDetailDialog({ id, user, groups, onClose }: { id: string; user: Ses
           initial={data}
         />
       )}
+
+      <ShareSheet
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        title={data.title}
+        description={`${data.subject} — ${data.groupName}`}
+        path={`/portal?tab=exams&open=${data.id}`}
+      />
     </>
   );
 }

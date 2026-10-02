@@ -5,7 +5,7 @@ import { logAudit, AUDIT } from "@/lib/audit";
 import { toPiastres, toEGP, todayStr } from "@/lib/normalize";
 import { studentBalance } from "@/lib/finance";
 import { sendPushToStudents } from "@/lib/push";
-import { notifyManagers, notifyUser } from "@/lib/staff-notify";
+import { notifyStaff, notifyUser } from "@/lib/staff-notify";
 import { APPROVAL_TYPES, canRequest, canDirect, type ApprovalType } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -212,9 +212,9 @@ export const POST = handler(async (req: Request) => {
     });
   });
 
-  // إشعار فوري لكل مدراء السنتر
+  // إشعار فوري لكل موظفين السنتر الشغالين (المدير يقرر — والفريق كله شايف الحركة)
   const amountLabel = payload.amountEgp !== undefined ? ` بمبلغ ${toEGP(toPiastres(Math.abs(payload.amountEgp))).toLocaleString("en-EG")} ج` : "";
-  await notifyManagers(user.centerId, {
+  await notifyStaff(user.centerId, {
     type: "APPROVAL_REQUEST",
     title: `طلب ${TYPE_LABEL[type]}${amountLabel}`,
     body: `${user.name} طلب ${TYPE_LABEL[type]}${student ? ` للطالب ${student.name} (كود ${student.code})` : ""}${payload.sessionLabel ? ` — حصة ${payload.sessionLabel}` : ""}${payload.groupLabel ? ` — ${payload.groupLabel}` : ""}. السبب: ${reason}`,

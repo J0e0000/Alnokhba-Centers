@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   NotebookPen, Plus, Loader2, Trash2, Send, Eye, X, CheckCircle2, Clock,
-  Users, Pencil, AlarmClock,
+  Users, Pencil, AlarmClock, Share2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "./lib";
 import { PageHeader, Chip, EmptyState, Loading, SectionCard } from "./shared";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAcademics } from "./students";
+import { ShareSheet } from "./share-sheet";
 import { toast } from "sonner";
 import type { SessionUser } from "./lib";
 
@@ -368,6 +369,7 @@ function AssignmentDetailDialog({ id, groups, onClose }: { id: string; groups: G
   const [data, setData] = useState<AssignmentDetail | null>(null);
   const [busy, setBusy] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [gradeScore, setGradeScore] = useState<Record<string, string>>({});
 
   const load = useCallback(() => {
@@ -484,6 +486,12 @@ function AssignmentDetailDialog({ id, groups, onClose }: { id: string; groups: G
                 رجوع لمسودة
               </button>
             )}
+            {data.status === "PUBLISHED" && (
+              <button onClick={() => setShareOpen(true)} disabled={busy}
+                className="h-11 rounded-xl nk-brand-bg-soft nk-brand-text border-2 nk-brand-border font-extrabold px-4 flex items-center gap-1.5">
+                <Share2 className="w-4 h-4" /> مشاركة
+              </button>
+            )}
             <button onClick={() => setEditOpen(true)} disabled={busy}
               className="h-11 rounded-xl border-2 border-border bg-card font-extrabold px-4">تعديل</button>
             <button onClick={onClose} className="h-11 rounded-xl border-2 border-border bg-card font-extrabold px-4">إغلاق</button>
@@ -503,6 +511,14 @@ function AssignmentDetailDialog({ id, groups, onClose }: { id: string; groups: G
           initial={data}
         />
       )}
+
+      <ShareSheet
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        title={data.title}
+        description={`${data.subject} — ${data.groupName}`}
+        path={`/portal?tab=assignments&open=${data.id}`}
+      />
     </>
   );
 }

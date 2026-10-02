@@ -15,6 +15,7 @@ import { HelpButton } from "../help";
 import { STUDENT_TOUR } from "../help-content";
 import { PortalExams } from "./exams";
 import { PortalAssignments } from "./assignments";
+import { PortalScanSheet, PortalScanFab } from "./scan";
 
 // ============================= API =============================
 
@@ -136,6 +137,11 @@ export function PortalApp() {
   });
   const [unread, setUnread] = useState(0);
   const [homeRefreshing, setHomeRefreshing] = useState(false);
+
+  // سكان الحضور: زرار عائم في كل الشاشات + ديب-لينك /portal?scan=1 يفتحه على طول
+  const [scanOpen, setScanOpen] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get("scan") === "1"; } catch { return false; }
+  });
 
   // push/notificationclick بيوّجّه لتاب معين — نقرأ التاب من url الإشعار نفسه
   const navigateFromUrl = useCallback((url?: string) => {
@@ -454,6 +460,14 @@ export function PortalApp() {
           ))}
         </div>
       </nav>
+
+      {/* ===== زرار سكان الحضور العائم + الشيت ===== */}
+      <PortalScanFab onClick={() => setScanOpen(true)} />
+      <PortalScanSheet
+        open={scanOpen}
+        onOpenChange={setScanOpen}
+        onDone={() => { void refreshHome(); }}
+      />
 
       {/* ===== الجولة التعليمية (أول دخول) + زرار المساعدة ===== */}
       <Tour steps={STUDENT_TOUR} open={tourOpen} onClose={finishTour} onFinish={finishTour} onNavigate={(v) => setTab(v as TabId)} />
@@ -1144,6 +1158,17 @@ function PortalQuizzes() {
       setResult(null);
     } catch { /* toast */ }
   }
+
+  // ديب-لينك من زرار المشاركة: /portal?tab=quizzes&open=<id> — يفتح الكويز على طول
+  useEffect(() => {
+    try {
+      const open = new URLSearchParams(window.location.search).get("open");
+      if (open) {
+        void openQuiz(open);
+        window.history.replaceState(null, "", "/portal?tab=quizzes");
+      }
+    } catch { /* ignore */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function submit() {
     if (!taking || submitting) return;

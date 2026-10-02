@@ -3,6 +3,8 @@ import { ok, handler, readJson } from "@/lib/api";
 import { requireCenterUser, ApiError } from "@/lib/auth";
 import { normalizeQuestions, assertGroupInCenter } from "@/lib/quiz";
 import { logAudit, AUDIT } from "@/lib/audit";
+import { notifyGroupStudents } from "@/lib/notify";
+import { notifyStaff } from "@/lib/staff-notify";
 
 export const dynamic = "force-dynamic";
 
@@ -92,6 +94,27 @@ export const POST = handler(async (req: Request) => {
     after: { title: quiz.title, questions: questions.length, status: quiz.status },
     reason: `إنشاء كويز — ${quiz.title}`,
   });
+
+  // النشر من شاشة الإنشاء نفسه — نفس إشعارات النشر من شاشة التفاصيل
+  if (body.publish) {
+    const g = await db.group.findUnique({
+      where: { id: groupId },
+      select: { name: true, subject: { select: { name: true } } },
+    });
+    void notifyGroupStudents(
+      user.centerId, groupId, "QUIZ",
+      `كويز جديد: ${quiz.title}`,
+      "افتح تبويب الكويزات في البورتال وحل قبل ما يقفل.",
+      "/portal?tab=quizzes",
+    ).catch(() => {});
+    void notifyStaff(user.centerId, {
+      type: "PUBLISH",
+      title: `كويز جديد: ${quiz.title}`,
+      body: `${g?.subject.name ?? ""} — ${g?.name ?? ""}. شاركه مع الطلاب من شاشة الكويزات (زرار مشاركة).`,
+      link: "quizzes",
+      refId: quiz.id,
+    }, { roles: ["MANAGER", "TEACHER"] }).catch(() => {});
+  }
 
   return ok({ quiz });
 });

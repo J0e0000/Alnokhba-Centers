@@ -4,6 +4,8 @@ import { requireCenterUser, ApiError } from "@/lib/auth";
 import { normalizeObjectiveQuestions } from "@/lib/exam";
 import { assertGroupInCenter } from "@/lib/quiz";
 import { logAudit, AUDIT } from "@/lib/audit";
+import { notifyGroupStudents } from "@/lib/notify";
+import { notifyStaff } from "@/lib/staff-notify";
 
 export const dynamic = "force-dynamic";
 
@@ -132,6 +134,27 @@ export const POST = handler(async (req: Request) => {
     entityId: exam.id,
     after: { title: exam.title, questions: questions.length, maxScore, status: exam.status, securityMode },
   });
+
+  // النشر من شاشة الإنشاء نفسه — نفس إشعارات النشر من شاشة التفاصيل
+  if (body.publish) {
+    const g = await db.group.findUnique({
+      where: { id: groupId },
+      select: { name: true, subject: { select: { name: true } } },
+    });
+    void notifyGroupStudents(
+      user.centerId, groupId, "EXAM",
+      `امتحان جديد: ${exam.title}`,
+      "اتفرج على تبويب الامتحانات في البورتال — بالتوفيق!",
+      "/portal?tab=exams",
+    ).catch(() => {});
+    void notifyStaff(user.centerId, {
+      type: "PUBLISH",
+      title: `امتحان جديد: ${exam.title}`,
+      body: `${g?.subject.name ?? ""} — ${g?.name ?? ""}. شاركه مع الطلاب من شاشة الامتحانات (زرار مشاركة).`,
+      link: "exams",
+      refId: exam.id,
+    }, { roles: ["MANAGER", "TEACHER"] }).catch(() => {});
+  }
 
   return ok({ exam });
 });

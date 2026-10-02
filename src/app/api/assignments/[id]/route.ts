@@ -1,9 +1,10 @@
 import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
-import { requireCenterUser, ApiError } from "@/lib/auth";
+import { requireCenterUser, requireManager, ApiError } from "@/lib/auth";
 import { normalizeObjectiveQuestions } from "@/lib/exam";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { notifyGroupStudents } from "@/lib/notify";
+import { notifyStaff } from "@/lib/staff-notify";
 
 export const dynamic = "force-dynamic";
 
@@ -82,6 +83,14 @@ export const PATCH = handler(async (req: Request, ctx: RouteCtx) => {
         "افتح تبويب الواجبات في البورتال وسلّم قبل الميعاد.",
         "/portal?tab=assignments",
       ).catch(() => {});
+      // إشعار للفريق الشغال (مدير + مدرس) — حد يشاركه مع الطلاب
+      void notifyStaff(user.centerId, {
+        type: "PUBLISH",
+        title: `واجب جديد: ${a.title}`,
+        body: `${a.group.subject.name} — ${a.group.name}. شاركه مع الطلاب من شاشة الواجبات (زرار مشاركة).`,
+        link: "assignments",
+        refId: a.id,
+      }, { roles: ["MANAGER", "TEACHER"] }).catch(() => {});
     } else if (action === "close") {
       await db.assignment.update({ where: { id: a.id }, data: { status: "CLOSED" } });
     } else {

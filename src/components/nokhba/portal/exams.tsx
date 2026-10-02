@@ -86,6 +86,17 @@ export function PortalExams() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
+  // ديب-لينك من زرار المشاركة: /portal?tab=exams&open=<id> — يفتح الامتحان على طول
+  useEffect(() => {
+    try {
+      const open = new URLSearchParams(window.location.search).get("open");
+      if (open) {
+        setOpenId(open);
+        window.history.replaceState(null, "", "/portal?tab=exams");
+      }
+    } catch { /* ignore */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (openId) return <ExamRunner id={openId} onExit={() => { setOpenId(null); load(); }} />;
 
   return (

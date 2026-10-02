@@ -11,12 +11,47 @@ import { db } from "@/lib/db";
 ============================================================ */
 
 export type StaffNotifInput = {
-  type: "APPROVAL_REQUEST" | "APPROVAL_DECIDED" | "SIGNUP_REQUEST" | "SYSTEM";
+  type: "APPROVAL_REQUEST" | "APPROVAL_DECIDED" | "SIGNUP_REQUEST" | "ATTENDANCE" | "PUBLISH" | "SYSTEM";
   title: string;
   body: string;
   link?: string;
   refId?: string;
 };
+
+export type StaffRole = "MANAGER" | "RECEPTIONIST" | "TEACHER";
+
+/**
+ * إشعار لكل موظفين السنتر الشغالين (مدير + استقبال + مدرس) — "الإشعار يوصل لأي حد بيشتغل".
+ * opts.roles: تحديد أدوار معينة (افتراضي: الكل). opts.exceptUserId: استثناء الموظف اللي عمل الحدث بنفسه.
+ */
+export async function notifyStaff(
+  centerId: string,
+  n: StaffNotifInput,
+  opts?: { roles?: StaffRole[]; exceptUserId?: string },
+): Promise<number> {
+  try {
+    const staff = await db.user.findMany({
+      where: {
+        centerId,
+        isActive: true,
+        role: { in: opts?.roles?.length ? opts.roles : ["MANAGER", "RECEPTIONIST", "TEACHER"] },
+      },
+      select: { id: true },
+    });
+    const targets = staff.filter((s) => s.id !== opts?.exceptUserId);
+    if (targets.length === 0) return 0;
+    await db.staffNotification.createMany({
+      data: targets.map((m) => ({
+        centerId, userId: m.id, type: n.type, title: n.title, body: n.body,
+        link: n.link ?? null, refId: n.refId ?? null,
+      })),
+    });
+    return targets.length;
+  } catch (e) {
+    console.error("staff-notify-failed", e);
+    return 0;
+  }
+}
 
 /** إشعار لكل مدراء سنتر معين (طلبات الموافقة مثلاً) */
 export async function notifyManagers(centerId: string, n: StaffNotifInput): Promise<number> {

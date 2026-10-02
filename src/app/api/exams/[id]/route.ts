@@ -4,6 +4,7 @@ import { requireCenterUser, requireManager, ApiError } from "@/lib/auth";
 import { normalizeObjectiveQuestions, gradeObjectiveAttempt } from "@/lib/exam";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { notifyGroupStudents } from "@/lib/notify";
+import { notifyStaff } from "@/lib/staff-notify";
 
 export const dynamic = "force-dynamic";
 
@@ -100,6 +101,14 @@ export const PATCH = handler(async (req: Request, ctx: RouteCtx) => {
         "اتفرج على تبويب الامتحانات في البورتال — بالتوفيق!",
         "/portal?tab=exams",
       ).catch(() => {});
+      // إشعار للفريق الشغال (مدير + مدرس) — حد يشاركه مع الطلاب
+      void notifyStaff(user.centerId, {
+        type: "PUBLISH",
+        title: `امتحان جديد: ${exam.title}`,
+        body: `${exam.group.subject.name} — ${exam.group.name}. شاركه مع الطلاب من شاشة الامتحانات (زرار مشاركة).`,
+        link: "exams",
+        refId: exam.id,
+      }, { roles: ["MANAGER", "TEACHER"] }).catch(() => {});
     } else if (action === "close") {
       await db.exam.update({ where: { id: exam.id }, data: { status: "CLOSED" } });
     } else {
