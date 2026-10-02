@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { QrCode, Loader2, CheckCircle2, AlertTriangle, XCircle, Keyboard, ShieldCheck, RefreshCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { papi } from "./portal-api";
-import { QrCameraScanner } from "../qr-scanner";
+import { CombiningQrScanner } from "../qr-scanner-combining";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 /* ============================================================
@@ -149,8 +149,9 @@ export function PortalScanSheet({
             <>
               <p className="text-xs font-bold text-muted-foreground leading-relaxed">
                 وجّه كاميرا موبايلك على كود <b>QR الحصة</b> اللي ظاهر على شاشة المشرف — حضورك بيتسجل فورًا لأنك مسجّل دخول بالفعل.
+                الكود بيلمع وبيتبدل كل ثانية (حماية من التصوير) — <b>ده طبيعي</b> والسكانر هنا بيقراه عادي.
               </p>
-              <QrCameraScanner key={scanNonce} active={scanning && !busy} onScan={onScan} />
+              <CombiningQrScanner key={scanNonce} active={scanning && !busy} onScan={onScan} />
               {busy && (
                 <div className="flex items-center justify-center gap-2 py-3 text-sm font-bold text-muted-foreground">
                   <Loader2 className="w-4 h-4 animate-spin" /> جاري تسجيل حضورك…
