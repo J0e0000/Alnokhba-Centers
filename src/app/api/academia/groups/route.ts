@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { ApiError } from "@/lib/auth";
+import { ApiError, rateLimit } from "@/lib/auth";
 import { requireAca, requireAcaPerm, assertGroupAccess } from "@/lib/academia/guard";
 import { findOccurrenceConflicts } from "@/lib/academia/conflicts";
 import { logAudit } from "@/lib/audit";
 import { acaHandler } from "@/lib/academia/handler";
 
-/** GET /api/academia/groups — role-scoped list (teacher: own only) */
+/** GET /api/academia/groups — role-scoped list (teacher: own only; student: own enrollments only) */
 async function GET_impl() {
   const user = await requireAca();
-  const where = user.role === "TEACHER" ? { teacherId: user.id } : {};
+  // أمان: الطالب يشوف مجموعاته المسجّل فيها بس — مفيش تعداد لكل المجموعات وأسعارها
+  const where = user.role === "TEACHER"
+    ? { teacherId: user.id }
+    : user.role === "STUDENT"
+      ? { enrollments: { some: { studentId: user.studentProfileId ?? "none", status: "ACTIVE" } } }
+      : {};
   const groups = await db.acaGroup.findMany({
     where,
     orderBy: { createdAt: "asc" },
@@ -32,10 +37,16 @@ async function GET_impl() {
 /** POST /api/academia/groups — create group (groups.manage) */
 async function POST_impl(req: NextRequest) {
   const user = await requireAcaPerm("groups.manage");
+  rateLimit(`aca-group-create:${user.id}`, 20, 60_000);
   const body = await req.json().catch(() => null);
   if (!body) throw new ApiError("البيانات ناقصة.", 400);
   const { name, subjectId, teacherId, gradeName, room, capacity, pricePerSession } = body;
   if (!name?.trim() || !subjectId || !teacherId) throw new ApiError("اسم المجموعة والمادة والمدرس مطلوبين.", 400);
+  if (name.trim().length > 60) throw new ApiError("اسم المجموعة طويل أوي (60 حرف كحد أقصى).", 400);
+  if (gradeName && String(gradeName).trim().length > 40) throw new ApiError("اسم المرحلة طويل أوي.", 400);
+  if (room && String(room).trim().length > 60) throw new ApiError("اسم القاعة طويل أوي.", 400);
+  const cap = Number(capacity);
+  if (capacity != null && (!Number.isFinite(cap) || cap < 1 || cap > 500)) throw new ApiError("سعة المجموعة لازم تكون من 1 لـ 500.", 400);
   const teacher = await db.user.findFirst({ where: { id: teacherId, role: "TEACHER", scope: "academia", isActive: true } });
   if (!teacher) throw new ApiError("المدرس ده مش موجود.", 400);
   const subject = await db.acaSubject.findUnique({ where: { id: subjectId } });

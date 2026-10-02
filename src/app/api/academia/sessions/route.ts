@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { ApiError } from "@/lib/auth";
+import { ApiError, rateLimit } from "@/lib/auth";
 import { requireAca, assertGroupAccess } from "@/lib/academia/guard";
 import { ensureSessionsForDate, defaultWorkspace } from "@/lib/academia/session-gen";
 import { findSessionConflicts } from "@/lib/academia/conflicts";
@@ -55,6 +55,7 @@ async function GET_impl(req: NextRequest) {
 /** POST /api/academia/sessions — create a manual or makeup session (conflict-checked) */
 async function POST_impl(req: NextRequest) {
   const user = await requireAca();
+  rateLimit(`aca-session-create:${user.id}`, 30, 60_000);
   const body = await req.json().catch(() => null);
   if (!body) throw new ApiError("البيانات ناقصة.", 400);
   const { groupId, date, startTime, endTime, room, isMakeup, title, topicId } = body;
@@ -63,6 +64,13 @@ async function POST_impl(req: NextRequest) {
   if (!user.permissions.includes("sessions.start")) throw new ApiError("مالكش صلاحية فتح الحصص.", 403);
   await assertGroupAccess(user, groupId);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new ApiError("التاريخ مش صحيح.", 400);
+  // تحقق صارم من صيغة الوقت — كان ممكن أي نص يتخزن ويبوظ منطق التعارض
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(endTime)) {
+    throw new ApiError("صيغة الوقت لازم تكون HH:MM.", 400);
+  }
+  if (endTime <= startTime) throw new ApiError("وقت النهاية لازم يكون بعد وقت البداية.", 400);
+  if (room && String(room).length > 60) throw new ApiError("اسم القاعة طويل أوي.", 400);
+  if (title && String(title).length > 120) throw new ApiError("العنوان طويل أوي.", 400);
 
   const conflicts = await findSessionConflicts({ groupId, date, startTime, endTime, room: room ?? null });
   if (conflicts.length > 0) {

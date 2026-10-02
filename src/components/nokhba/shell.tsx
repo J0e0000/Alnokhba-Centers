@@ -6,7 +6,7 @@ import {
   Calculator, BarChart3, Settings, LogOut, MoreHorizontal, ChevronLeft,
   Building2, BadgeCheck, Receipt, MonitorCog, Activity, GraduationCap, Menu, BookOpen, MessageSquareText,
   ShieldAlert, UserCog, DatabaseBackup, LifeBuoy, Sparkles, ClipboardCheck, UserPlus, ClipboardList,
-  FileCheck2, NotebookPen,
+  FileCheck2, NotebookPen, DoorClosed, CalendarClock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -23,13 +23,21 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
+/* ============================================================
+   Tabs Workflow — 7 تابات رئيسية، وكل تاب فيه خطواته الفرعية.
+   كل الوظائف الـ16 القديمة لسه موجودة — منظمة جوه التابات.
+============================================================ */
+
 export type ViewId =
-  | "home" | "scan" | "payments" | "students" | "schedule"
+  | "home" | "today" | "scan" | "payments" | "students" | "schedule"
   | "groups" | "quizzes" | "exams" | "assignments" | "books" | "messages" | "accounting" | "reports" | "settings"
-  | "emergency" | "approvals";
+  | "emergency" | "approvals" | "operations";
+
+export type TabId = "dashboard" | "today" | "classes" | "people" | "operations" | "reports" | "settings";
 
 export const NAV_ICONS: Record<ViewId, ReactNode> = {
   home: <LayoutDashboard className="w-5 h-5" />,
+  today: <CalendarClock className="w-5 h-5" />,
   scan: <ScanLine className="w-5 h-5" />,
   payments: <CreditCard className="w-5 h-5" />,
   students: <Users className="w-5 h-5" />,
@@ -45,10 +53,12 @@ export const NAV_ICONS: Record<ViewId, ReactNode> = {
   settings: <Settings className="w-5 h-5" />,
   emergency: <ShieldAlert className="w-5 h-5" />,
   approvals: <ClipboardCheck className="w-5 h-5" />,
+  operations: <DoorClosed className="w-5 h-5" />,
 };
 
 export const NAV_LABELS: Record<ViewId, string> = {
   home: "الرئيسية",
+  today: "حصص اليوم",
   scan: "الحضور",
   payments: "الدفع",
   students: "الطلاب",
@@ -64,12 +74,38 @@ export const NAV_LABELS: Record<ViewId, string> = {
   settings: "الإعدادات",
   emergency: "الطوارئ",
   approvals: "الموافقات",
+  operations: "القاعات والتشغيل",
 };
 
-const RECEPTION_NAV: ViewId[] = ["home", "scan", "payments", "students", "schedule", "books", "messages"];
-const MANAGER_NAV: ViewId[] = ["home", "scan", "payments", "students", "approvals", "groups", "quizzes", "exams", "assignments", "schedule", "books", "messages", "accounting", "reports", "emergency", "settings"];
-// مدرس بحساب موظف — امتحانات/كويزات/واجبات بس، من غير فلوس ولا طلاب ولا إعدادات
-const TEACHER_NAV: ViewId[] = ["home", "quizzes", "exams", "assignments", "schedule"];
+type TabDef = { id: TabId; label: string; icon: ReactNode; subs: ViewId[] };
+
+const TABS: TabDef[] = [
+  { id: "dashboard", label: "الرئيسية", icon: <LayoutDashboard className="w-5 h-5" />, subs: ["home"] },
+  { id: "today", label: "اليوم", icon: <CalendarClock className="w-5 h-5" />, subs: ["today", "scan", "approvals"] },
+  { id: "classes", label: "الحصص", icon: <Layers className="w-5 h-5" />, subs: ["schedule", "groups", "exams", "quizzes", "assignments"] },
+  { id: "people", label: "الطلاب والمعلمين", icon: <Users className="w-5 h-5" />, subs: ["students", "payments", "messages", "books"] },
+  { id: "operations", label: "القاعات والتشغيل", icon: <DoorClosed className="w-5 h-5" />, subs: ["operations", "accounting", "emergency"] },
+  { id: "reports", label: "التقارير", icon: <BarChart3 className="w-5 h-5" />, subs: ["reports"] },
+  { id: "settings", label: "الإعدادات", icon: <Settings className="w-5 h-5" />, subs: ["settings"] },
+];
+
+/** الوظائف المسموحة لكل دور — نفس قواعد النظام القديم بالظبط */
+const ROLE_ALLOWED: Record<"MANAGER" | "RECEPTIONIST" | "TEACHER", ViewId[]> = {
+  MANAGER: TABS.flatMap((t) => t.subs),
+  RECEPTIONIST: ["home", "today", "scan", "students", "payments", "books", "messages", "schedule"],
+  TEACHER: ["home", "schedule", "quizzes", "exams", "assignments"],
+};
+
+function tabsForRole(role: "MANAGER" | "RECEPTIONIST" | "TEACHER"): TabDef[] {
+  const allowed = ROLE_ALLOWED[role] ?? ROLE_ALLOWED.RECEPTIONIST;
+  return TABS
+    .map((t) => ({ ...t, subs: t.subs.filter((s) => allowed.includes(s)) }))
+    .filter((t) => t.subs.length > 0);
+}
+
+export function tabOfView(view: ViewId, role: "MANAGER" | "RECEPTIONIST" | "TEACHER"): TabDef | null {
+  return tabsForRole(role).find((t) => t.subs.includes(view)) ?? null;
+}
 
 export function CenterShell({
   user,
@@ -84,7 +120,9 @@ export function CenterShell({
   view: ViewId;
   setView: (v: ViewId) => void;
 }) {
-  const nav = user.role === "MANAGER" ? MANAGER_NAV : user.role === "TEACHER" ? TEACHER_NAV : RECEPTION_NAV;
+  const role = user.role === "MANAGER" ? "MANAGER" : user.role === "TEACHER" ? "TEACHER" : "RECEPTIONIST";
+  const tabs = useMemo(() => tabsForRole(role), [role]);
+  const activeTab = useMemo(() => tabOfView(view, role), [view, role]);
   const center = user.center!;
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -135,10 +173,9 @@ export function CenterShell({
     window.location.reload();
   }
 
-  // ===== إعلان أول استخدام — «النظام بقى أسهل» (يتقفل بالـ X وبيقفل للأبد) =====
+  // ===== إعلان أول استخدام =====
   const [showWelcome, setShowWelcome] = useState(false);
   useEffect(() => {
-    // deferred بعد الـ mount — مفيش محتوى في الـ HTML السيرفري → مفيش hydration mismatch
     const t = setTimeout(() => {
       try {
         if (!localStorage.getItem("nk-seen-restructure-v1")) setShowWelcome(true);
@@ -169,7 +206,6 @@ export function CenterShell({
     const t = setInterval(loadActive, 25000);
     const onFocus = () => loadActive();
     window.addEventListener("focus", onFocus);
-    // أي فتح/قفل حصة → حدّث الشريط فورًا (مفيش انتظار للبول التالي)
     window.addEventListener("nk-sessions-changed", loadActive);
     return () => {
       clearInterval(t);
@@ -182,7 +218,7 @@ export function CenterShell({
     if (activeLessons.length === 1) {
       window.dispatchEvent(new CustomEvent("nk-open-session", { detail: { id: activeLessons[0].id } }));
     } else {
-      setView("scan");
+      setView("today");
     }
   }
 
@@ -192,31 +228,35 @@ export function CenterShell({
     onLogout();
   }
 
-  const NavButton = ({ v, compact }: { v: ViewId; compact?: boolean }) => (
+  function goTab(t: TabDef) {
+    setView(t.subs[0]);
+    setMoreOpen(false);
+  }
+
+  const NavButton = ({ t, compact }: { t: TabDef; compact?: boolean }) => (
     <button
-      data-tour={`nav-${v}`}
-      onClick={() => { setView(v); setMoreOpen(false); }}
+      data-tour={`nav-tab-${t.id}`}
+      onClick={() => goTab(t)}
       className={cn(
         "flex items-center gap-3 rounded-xl font-bold transition w-full",
         compact ? "px-3 py-2.5 text-sm" : "px-4 py-3 text-[15px]",
-        view === v
+        activeTab?.id === t.id
           ? "nk-brand-grad text-white shadow-md"
           : "text-foreground/80 hover:bg-muted"
       )}
     >
-      {NAV_ICONS[v]}
-      <span>{NAV_LABELS[v]}</span>
-      {/* مؤشر التب النشط — إسفين البوابة الذهبية (هندسة اللوجو) */}
-      {view === v && <span className="ms-auto w-2.5 h-3.5 nk-portal-mark" aria-hidden />}
+      {t.icon}
+      <span>{t.label}</span>
+      {activeTab?.id === t.id && <span className="ms-auto w-2.5 h-3.5 nk-portal-mark" aria-hidden />}
     </button>
   );
 
-  const mobileBar = nav.slice(0, 4);
-  const mobileMore = nav.slice(4);
+  const mobileTabs = tabs.slice(0, 4);
+  const mobileMore = tabs.slice(4);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* ===== بانر الدعم الفني — فوق كل حاجة، واضح ومستمر ===== */}
+      {/* ===== بانر الدعم الفني ===== */}
       {support && (
         <div className="sticky top-0 z-[50] w-full bg-sky-700 text-white print:hidden" role="alert">
           <div className="mx-auto max-w-7xl px-3 md:px-6 h-auto py-2 flex items-center gap-2 flex-wrap">
@@ -243,7 +283,7 @@ export function CenterShell({
         </div>
       )}
 
-      {/* ===== إعلان أول استخدام — إزالة واحدة وخلاص ===== */}
+      {/* ===== إعلان أول استخدام ===== */}
       {showWelcome && !support && (
         <div className="relative nk-brand-bg-soft border-b nk-brand-border print:hidden">
           <div className="mx-auto max-w-7xl px-3 md:px-6 py-4 flex items-start gap-3">
@@ -254,10 +294,10 @@ export function CenterShell({
             <div className="flex-1 min-w-0">
               <h2 className="font-extrabold text-sm nk-brand-text">النخبة سنترز بقت أسهل</h2>
               <ul className="text-[11px] font-bold text-muted-foreground mt-1.5 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 leading-relaxed">
-                <li>• حصص اليوم كلها في مكان واحد على الرئيسية</li>
-                <li>• تسجيل حضور ودفع أسرع من المسح والبحث</li>
-                <li>• الحصة ليها حالة واضحة: شغالة / مقفولة</li>
-                <li>• الحسابات والتقارير أوضح وأسهل</li>
+                <li>• 7 تابات واضحة: كل حاجة ليها مكان</li>
+                <li>• الرئيسية بتقولك الحصة الجاية وتفتحها بضغطة</li>
+                <li>• وضع التركيز للحصة: تنقل مختفي وحفظ تلقائي</li>
+                <li>• القاعات والتشغيل في تاب لوحده</li>
               </ul>
             </div>
             <button onClick={dismissWelcome} aria-label="إغلاق الإعلان"
@@ -275,7 +315,6 @@ export function CenterShell({
             {center.logo ? (
               <img src={center.logo} alt={center.name} className="w-10 h-10 rounded-xl object-cover border border-border bg-card" />
             ) : (
-              /* لوجو النظام الأساسي — أعلى يمين الشاشة */
               <span className="w-10 h-10 rounded-xl bg-card border border-border grid place-items-center shrink-0 overflow-hidden" aria-hidden>
                 <img src="/logo.png" alt="" className="w-full h-full object-contain p-[6%]" draggable={false} />
               </span>
@@ -283,7 +322,7 @@ export function CenterShell({
             <div className="min-w-0 leading-tight">
               <h1 className="font-extrabold text-[15px] md:text-base truncate nk-brand-text">{center.name}</h1>
               <p className="text-[10px] md:text-[11px] text-muted-foreground font-bold tracking-wide">
-                {user.role === "MANAGER" ? "بورتال المدير" : "شاشة الاستقبال"} · نخبة سنترز
+                {role === "MANAGER" ? "بورتال المدير" : role === "TEACHER" ? "بورتال المدرس" : "شاشة الاستقبال"} · نخبة سنترز
               </p>
             </div>
           </div>
@@ -307,14 +346,57 @@ export function CenterShell({
             </Button>
           </div>
         </div>
-        {/* خط شعري كحلي-ذهبي — لحظة براند تحت الهيدر */}
         <div className="nk-brand-hairline" aria-hidden />
       </header>
 
+      {/* ===== شريط التابات الفرعية — لو التاب الحالي له خطوات ===== */}
+      {activeTab && activeTab.subs.length > 1 && (
+        <div className="border-b bg-background/80 backdrop-blur sticky top-16 z-30 print:hidden">
+          <div className="mx-auto max-w-7xl px-3 md:px-6 flex gap-2 overflow-x-auto nk-scroll py-2">
+            {activeTab.subs.map((s) => (
+              <button
+                key={s}
+                data-tour={`nav-${s}`}
+                onClick={() => setView(s)}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-bold whitespace-nowrap transition",
+                  view === s ? "nk-brand-grad text-white border-transparent shadow" : "bg-card border-border text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span className="scale-90">{NAV_ICONS[s]}</span>
+                {NAV_LABELS[s]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="mx-auto max-w-7xl w-full flex-1 flex gap-6 px-3 md:px-6 py-4 md:py-6">
-        {/* ===== Desktop sidebar ===== */}
-        <aside className="hidden lg:flex flex-col gap-2 w-60 shrink-0 sticky top-24 self-start print:hidden">
-          {nav.map((v) => <NavButton key={v} v={v} />)}
+        {/* ===== Desktop sidebar — 7 تابات + خطوات التاب النشط ===== */}
+        <aside className="hidden lg:flex flex-col gap-1 w-60 shrink-0 sticky top-24 self-start print:hidden">
+          {tabs.map((t) => (
+            <div key={t.id}>
+              <NavButton t={t} />
+              {activeTab?.id === t.id && t.subs.length > 1 && (
+                <div className="ms-4 mt-1 mb-2 border-s-2 border-border ps-2 grid gap-0.5">
+                  {t.subs.map((s) => (
+                    <button
+                      key={s}
+                      data-tour={`nav-${s}`}
+                      onClick={() => setView(s)}
+                      className={cn(
+                        "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12.5px] font-bold transition w-full text-start",
+                        view === s ? "nk-brand-text bg-muted font-extrabold" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                      )}
+                    >
+                      <span className="scale-75">{NAV_ICONS[s]}</span>
+                      {NAV_LABELS[s]}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
           {/* شريط الحالة المصغّر — كم حصة شغالة دلوقتي */}
           {activeLessons.length > 0 && (
             <button
@@ -342,7 +424,7 @@ export function CenterShell({
         <main className="flex-1 min-w-0 pb-24 lg:pb-6">{children}</main>
       </div>
 
-      {/* ===== شريط الحالة المصغّر على الموبايل — فوق الناف ===== */}
+      {/* ===== شريط الحالة المصغّر على الموبايل ===== */}
       {activeLessons.length > 0 && (
         <button
           onClick={openActiveLesson}
@@ -358,41 +440,41 @@ export function CenterShell({
         </button>
       )}
 
-      {/* ===== زكي — المساعد الذكي (قواعد حتمية، مش AI) ===== */}
+      {/* ===== زكي — المساعد الذكي ===== */}
       <ZakiAssistant />
 
-      {/* ===== Mobile bottom nav ===== */}
+      {/* ===== Mobile bottom nav — أول 4 تابات + المزيد ===== */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 nk-glass-bar border-t print:hidden" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 4px)" }} aria-label="التنقل الرئيسي">
         <div className="grid grid-cols-5 h-16">
-          {mobileBar.map((v) => (
+          {mobileTabs.map((t) => (
             <button
-              key={v}
-              data-tour={`nav-${v}`}
-              onClick={() => setView(v)}
+              key={t.id}
+              data-tour={`nav-tab-${t.id}`}
+              onClick={() => goTab(t)}
               className={cn(
                 "flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition",
-                view === v ? "nk-brand-text" : "text-muted-foreground"
+                activeTab?.id === t.id ? "nk-brand-text" : "text-muted-foreground"
               )}
             >
-              <span key={view === v ? `${v}-on` : `${v}-off`} className={cn("grid place-items-center", view === v && "nk-anim-tab")}>
-                {NAV_ICONS[v]}
+              <span key={activeTab?.id === t.id ? `${t.id}-on` : `${t.id}-off`} className={cn("grid place-items-center", activeTab?.id === t.id && "nk-anim-tab")}>
+                {t.icon}
               </span>
-              <span>{NAV_LABELS[v]}</span>
+              <span>{t.label}</span>
             </button>
           ))}
           {mobileMore.length > 0 ? (
             <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
               <SheetTrigger className={cn(
                 "flex flex-col items-center justify-center gap-1 text-[10px] font-bold",
-                mobileMore.includes(view) ? "nk-brand-text" : "text-muted-foreground"
+                mobileMore.some((t) => t.id === activeTab?.id) ? "nk-brand-text" : "text-muted-foreground"
               )}>
                 <MoreHorizontal className="w-5 h-5" />
                 <span>المزيد</span>
               </SheetTrigger>
               <SheetContent side="bottom" className="rounded-t-3xl px-4 pb-8 pt-3">
-                <SheetTitle className="text-start mb-2">القايمة</SheetTitle>
+                <SheetTitle className="text-start mb-2">التابات</SheetTitle>
                 <div className="grid gap-2">
-                  {mobileMore.map((v) => <NavButton key={v} v={v} compact />)}
+                  {mobileMore.map((t) => <NavButton key={t.id} t={t} compact />)}
                 </div>
               </SheetContent>
             </Sheet>
@@ -408,15 +490,15 @@ export function CenterShell({
         </div>
       </nav>
 
-      {/* ===== الجولة التعليمية + زرار المساعدة (كل الشاشات) ===== */}
+      {/* ===== الجولة التعليمية + زرار المساعدة ===== */}
       <Tour
-        steps={user.role === "MANAGER" ? CENTER_TOUR : RECEPTION_TOUR}
+        steps={role === "MANAGER" ? CENTER_TOUR : RECEPTION_TOUR}
         open={tourOpen}
         onClose={finishTour}
         onFinish={finishTour}
         onNavigate={(v) => setView(v as ViewId)}
       />
-      <HelpButton view={view} viewLabel={NAV_LABELS[view]} />
+      <HelpButton view={view} viewLabel={NAV_LABELS[view] ?? activeTab?.label ?? ""} />
     </div>
   );
 }
@@ -456,7 +538,6 @@ export function AdminShell({
   const tourKey = `nk-tour-admin-${user.id}`;
   useEffect(() => {
     const t = setTimeout(() => {
-      // تحت الأتمتة (اختبارات Playwright) مفيش جولة تلقائية — بتوقف التفاعل
       const automated = typeof navigator !== "undefined" && (navigator as Navigator & { webdriver?: boolean }).webdriver === true;
       try { if (!localStorage.getItem(tourKey) && !automated) setTourOpen(true); } catch { /* ignore */ }
     }, 700);

@@ -4,7 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { AlNokhbaMark } from "./shared";
 import { api, applyCenterBranding, type SessionUser } from "./lib";
 import { CenterShell, AdminShell, type ViewId, type AdminViewId } from "./shell";
-import { DashboardView } from "./dashboard";
+import { TabsDashboardView } from "./tabs-dashboard";
+import { TodayView } from "./today-view";
+import { OperationsView } from "./operations";
+import { FocusShell } from "./focus-shell";
+import { SuccessBarHost } from "./success-bar";
 import { ScanView } from "./scan";
 import { PaymentsView } from "./payments-view";
 import { StudentsView } from "./students";
@@ -147,6 +151,22 @@ export function App() {
   const openSession = (id: string) => { setSessionId(id); };
   const goScanForSession = (id: string) => { setSessionId(null); setSessionOverride(id); setView("scan"); };
 
+  // Focus Mode: الحصة بتتشال من الشل العام خالص — مساحة تركيز مستقلة
+  // (مفيش سايدبار ولا تنقل سفلي — بس شريط الحالة والخروج الآمن)
+  if (sessionId) {
+    return (
+      <FocusShell user={user} onExit={() => { setSessionId(null); }}>
+        <SessionLiveView
+          key={sessionId}
+          user={user}
+          sessionId={sessionId}
+          onBack={() => setSessionId(null)}
+          onGoScan={() => goScanForSession(sessionId)}
+        />
+      </FocusShell>
+    );
+  }
+
   let content: React.ReactNode;
   if (studentId) {
     content = (
@@ -157,20 +177,16 @@ export function App() {
         onBack={() => setStudentId(null)}
       />
     );
-  } else if (sessionId) {
-    content = (
-      <SessionLiveView
-        key={sessionId}
-        user={user}
-        sessionId={sessionId}
-        onBack={() => setSessionId(null)}
-        onGoScan={() => goScanForSession(sessionId)}
-      />
-    );
   } else {
     switch (view) {
       case "home":
-        content = <DashboardView user={user} setView={setView} openSession={openSession} goScanForSession={goScanForSession} />;
+        content = <TabsDashboardView user={user} setView={setView} openSession={openSession} goScanForSession={goScanForSession} />;
+        break;
+      case "today":
+        content = <TodayView user={user} setView={setView} openSession={openSession} goScanForSession={goScanForSession} />;
+        break;
+      case "operations":
+        content = <OperationsView user={user} setView={setView} />;
         break;
       case "scan":
         content = (
@@ -236,15 +252,19 @@ export function App() {
         content = <ApprovalsView user={user} />;
         break;
       default:
-        content = <DashboardView user={user} setView={setView} openSession={openSession} goScanForSession={goScanForSession} />;
+        content = <TabsDashboardView user={user} setView={setView} openSession={openSession} goScanForSession={goScanForSession} />;
     }
   }
 
   return (
     <PrintProvider>
       <CenterShell user={user} onLogout={onLogout} view={view} setView={(v) => { setView(v); setStudentId(null); setSessionId(null); }}>
+        {/* شريط النجاح الدائم — تحت الهيدر على طول، مبيختفيش لوحده */}
+        <div className="mb-3">
+          <SuccessBarHost />
+        </div>
         {/* حركة دخول لكل فيو — المفتاح بيعيد التشغيل مع كل تنقل */}
-        <div key={`${view}-${studentId ?? ""}-${sessionId ?? ""}`} className="nk-anim-view">
+        <div key={`${view}-${studentId ?? ""}`} className="nk-anim-view">
           {content}
         </div>
       </CenterShell>

@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { logAudit, AUDIT } from "@/lib/audit";
+import { ApiError } from "@/lib/auth";
 import type { SessionUser } from "@/lib/auth";
 
 /* ============================================================
@@ -57,7 +58,7 @@ export async function executeUndo(user: UndoUser, entryId?: string): Promise<{ l
         where: { centerId: user.centerId, userId: user.id, status: "ACTIVE" },
         orderBy: { createdAt: "desc" },
       });
-  if (!entry) throw new Error("مفيش حاجة تتراجع.");
+  if (!entry) throw new ApiError("مفيش حاجة تتراجع — كل العمليات لسه زي ما هي.", 400);
 
   const inverse = JSON.parse(entry.inverse) as Payload;
   switch (entry.entity) {
@@ -128,7 +129,7 @@ export async function executeRedo(user: UndoUser, entryId?: string): Promise<{ l
         where: { centerId: user.centerId, userId: user.id, status: "UNDONE" },
         orderBy: { undoneAt: "desc" },
       });
-  if (!entry) throw new Error("مفيش حاجة تتلفظ تاني.");
+  if (!entry) throw new ApiError("مفيش حاجة تتلفظ تاني — تراجع حاجة الأول.", 400);
 
   const forward = JSON.parse(entry.forward) as Payload;
   switch (entry.entity) {

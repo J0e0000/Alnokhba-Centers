@@ -18,6 +18,10 @@ async function POST_impl(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const { name, type, startDate, endDate } = body ?? {};
   if (!name?.trim() || !startDate || !endDate) throw new ApiError("الاسم وتاريخ البداية والنهاية مطلوبين.", 400);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(startDate)) || !/^\d{4}-\d{2}-\d{2}$/.test(String(endDate))) {
+    throw new ApiError("صيغة التواريخ لازم تكون YYYY-MM-DD.", 400);
+  }
+  if (!"TERM SEMESTER YEAR".split(" ").includes(type || "TERM")) throw new ApiError("نوع الفترة مش معروف.", 400);
   if (endDate < startDate) throw new ApiError("تاريخ النهاية لازم يكون بعد البداية.", 400);
   const t = await db.academicTerm.create({ data: { name: name.trim(), type: type || "TERM", startDate, endDate } });
   await logAudit({ user, action: "إضافة فترة دراسية", entity: "ACA_TERM", entityId: t.id, after: { name: t.name, startDate, endDate } });

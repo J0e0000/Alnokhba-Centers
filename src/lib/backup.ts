@@ -67,7 +67,9 @@ async function listBackupFiles(): Promise<{ file: string; size: number; createdA
 export async function createBackup(reason: "manual" | "scheduled"): Promise<{ file: string; size: number }> {
   await mkdir(BACKUP_DIR, { recursive: true });
   const now = new Date();
-  const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
+  // مللي ثانية + عشوائية: لو اتنين إنشاؤ نسخ حصلوا في نفس الثانية
+  // كان VACUUM INTO بيفشل بـ "output file already exists"
+  const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}-${String(now.getMilliseconds()).padStart(3, "0")}`;
   const file = `nokhba-backup-${stamp}.db`;
   const target = path.join(BACKUP_DIR, file);
 

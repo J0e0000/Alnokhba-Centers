@@ -7,9 +7,22 @@ import { dowOf } from "./dates";
    Idempotently materialize AcaSession rows from active weekly
    GroupSchedule occurrences for a given date. Called lazily by
    "today"/date endpoints — never duplicates existing sessions.
+   Race guard: in-flight map dedupes concurrent calls for the same
+   date within one server instance (find-then-create would otherwise
+   double-create under parallel GETs).
 ============================================================ */
 
-export async function ensureSessionsForDate(date: string): Promise<number> {
+const inFlight = new Map<string, Promise<number>>();
+
+export function ensureSessionsForDate(date: string): Promise<number> {
+  const running = inFlight.get(date);
+  if (running) return running;
+  const p = ensureSessionsForDateInner(date).finally(() => inFlight.delete(date));
+  inFlight.set(date, p);
+  return p;
+}
+
+async function ensureSessionsForDateInner(date: string): Promise<number> {
   const dow = dowOf(date);
   const occs = await db.acaGroupSchedule.findMany({
     where: { dayOfWeek: dow, status: "ACTIVE" },

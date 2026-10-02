@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { ApiError } from "@/lib/auth";
+import { ApiError, rateLimit } from "@/lib/auth";
 import { requireAca, assertGroupAccess } from "@/lib/academia/guard";
 import { parseWorkspace } from "@/lib/academia/session-gen";
 import { logAudit } from "@/lib/audit";
@@ -22,6 +22,8 @@ async function POST_impl(req: NextRequest, ctx: { params: Promise<{ id: string }
   });
   if (!session) throw new ApiError("الحصة دي مش موجودة.", 404);
   await assertGroupAccess(user, session.groupId);
+  // حد معدل العمليات — الأوتوسيف بيبعت طلبات متكررة، محتاج حماية من الاستغلال
+  rateLimit(`aca-rec:${user.id}`, 240, 60_000);
 
   const kind = body.kind;
 
@@ -33,6 +35,7 @@ async function POST_impl(req: NextRequest, ctx: { params: Promise<{ id: string }
     if (!studentId || !["PRESENT", "ABSENT", "LATE", "EXCUSED"].includes(status)) {
       throw new ApiError("اختار الطالب والحالة الصح.", 400);
     }
+    if (note != null && (typeof note !== "string" || note.length > 300)) throw new ApiError("الملاحظة طويلة أوي (300 حرف كحد أقصى).", 400);
     const enrolled = await db.acaEnrollment.findFirst({ where: { groupId: session.groupId, studentId, status: "ACTIVE" } });
     if (!enrolled) throw new ApiError("الطالب ده مش مسجل في المجموعة دي.", 400);
     const rec = await db.acaAttendance.upsert({
@@ -45,10 +48,13 @@ async function POST_impl(req: NextRequest, ctx: { params: Promise<{ id: string }
 
   if (kind === "interaction") {
     if (!user.permissions.includes("interaction.edit")) throw new ApiError("مالكش صلاحية تسجيل التفاعل.", 403);
+    if (session.status === "COMPLETED") throw new ApiError("الحصة مقفولة — التفاعل بيتسجل قبل الإتمام.", 403);
+    if (session.status === "CANCELLED") throw new ApiError("الحصة دي ملغية.", 400);
     const { studentId, rating, note } = body;
     if (!studentId || !["GREAT", "GOOD", "QUIET", "DISRUPTIVE"].includes(rating)) {
       throw new ApiError("التقييم مش صح.", 400);
     }
+    if (note != null && (typeof note !== "string" || note.length > 300)) throw new ApiError("الملاحظة طويلة أوي (300 حرف كحد أقصى).", 400);
     const enrolled = await db.acaEnrollment.findFirst({ where: { groupId: session.groupId, studentId, status: "ACTIVE" } });
     if (!enrolled) throw new ApiError("الطالب ده مش مسجل في المجموعة دي.", 400);
     await db.acaInteraction.upsert({
@@ -61,11 +67,14 @@ async function POST_impl(req: NextRequest, ctx: { params: Promise<{ id: string }
 
   if (kind === "homework") {
     if (!user.permissions.includes("homework.edit")) throw new ApiError("مالكش صلاحية تسجيل الواجب.", 403);
+    if (session.status === "COMPLETED") throw new ApiError("الحصة مقفولة — الواجب بيتسجل قبل الإتمام.", 403);
+    if (session.status === "CANCELLED") throw new ApiError("الحصة دي ملغية.", 400);
     const { studentId, completed, score, note } = body;
     if (!studentId || typeof completed !== "boolean") throw new ApiError("البيانات مش مكتملة.", 400);
     if (score !== null && score !== undefined && ![10, 5, -5].includes(Number(score))) {
       throw new ApiError("درجة الواجب تبقى 10 أو 5 أو -5.", 400);
     }
+    if (note != null && (typeof note !== "string" || note.length > 300)) throw new ApiError("الملاحظة طويلة أوي (300 حرف كحد أقصى).", 400);
     const enrolled = await db.acaEnrollment.findFirst({ where: { groupId: session.groupId, studentId, status: "ACTIVE" } });
     if (!enrolled) throw new ApiError("الطالب ده مش مسجل في المجموعة دي.", 400);
     await db.acaHomeworkRecord.upsert({
