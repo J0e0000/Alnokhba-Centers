@@ -19,14 +19,16 @@ export const QR_ROTATE_GRACE_MS = 8_000;
 
 // ============================================================
 // الدفعة المتحركة (Dynamic Batch QR):
-// نداء واحد للسيرفر بيولّد 10 أكواد بيتقلوا بينهم بسرعة على الشاشة،
+// نداء واحد للسيرفر بيولّد 10 أكواد بيتقلوا بينهم على الشاشة،
 // وكلهم بيموتوا مع بعض في نهاية الدفعة — الصورة/السكرين شوت بيمسك
 // كود واحد من العشرة وده بيتقفل مع الدفعة الجديدة. قبل نهاية الدفعة
 // الشاشة بتجيب دفعة جديدة في الخلفية فمفيش فراغ بين الأكواد أبدًا.
+// الإيقاع الحالي: كل كود 5 ثواني على الشاشة (طلب المستخدم — الكاميرا
+// بتلحق تركز وتقراه براحتها؛ أسرع من كده بيضايق الطلبة في المسح).
 // ============================================================
 export const QR_BATCH_DEFAULT_COUNT = 10;
-export const QR_BATCH_SLOT_SECONDS = 1.0; // كل كود بيعيش ثانية على الشاشة (تدوير سريع جدًا)
-export const QR_BATCH_TTL_MS = 22_000; // الدفعة تعيش دورتين تقريبًا قبل التبديل
+export const QR_BATCH_SLOT_SECONDS = 5.0; // كل كود بيعيش 5 ثواني على الشاشة (الكاميرا تلحق تقراه)
+export const QR_BATCH_TTL_MS = 55_000; // 10 أكواد × 5ث + هامش — الدفعة تغطي دورة كاملة
 /** هامش صغير للـ claims اللي في الطريق لما الدفعة الجديدة تتبعت — بعده التوكن القديم بيموت نهائيًا */
 export const QR_BATCH_ROTATION_GRACE_MS = 8_000;
 
@@ -83,7 +85,7 @@ export async function issueSessionQrBatch(opts: {
   ttlMs?: number;
 }): Promise<{ codes: { token: string; expiresAt: string }[]; batchExpiresAt: string; rotated: number }> {
   const count = Math.max(4, Math.min(14, Math.round(opts.count ?? QR_BATCH_DEFAULT_COUNT)));
-  const ttl = Math.max(15_000, Math.min(60_000, opts.ttlMs ?? QR_BATCH_TTL_MS));
+  const ttl = Math.max(15_000, Math.min(90_000, opts.ttlMs ?? QR_BATCH_TTL_MS));
 
   // الدفعات الأقدم: خليها تعيش هامش الدوران بس (مش أكتر من انتهائها الأصلي)
   const old = await db.sessionQRToken.findMany({

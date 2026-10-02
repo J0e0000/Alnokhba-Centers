@@ -10,7 +10,9 @@ import { RefreshCcw, SwitchCamera, ExternalLink, ScanLine } from "lucide-react";
  * جزء من البيانات (حماية من الصور/السكرين شوت). السكانر ده بيمسك
  * كذا كادر فيديو ورا بعض وبيدمجهم (per-pixel "أغمق يفوز") فيتكوّن
  * الكود الكامل — وبيقرا برضه الأكواد العادية الثابتة عادي.
- *
+ * الكود نفسه بيقعد ثابت 5 ثواني (الحد اللي الكاميرا بتلحق تركز وتقراه)،
+ * والطمرة أعمق (8 كادات) بتغطي أكتر من 3 أزواج أطوار مختلفة —
+ * فالدمج بيرجّع الكود كامل تقريبًا حتى مع اهتزاز الإيد أو إضاءة ضعيفة.
  * Robustness (same lessons as QrCameraScanner):
  * - onScan kept in a ref → the camera NEVER restarts on parent re-renders
  * - start/stop serialized through a promise chain
@@ -20,9 +22,9 @@ import { RefreshCcw, SwitchCamera, ExternalLink, ScanLine } from "lucide-react";
 type Frame = { data: Uint8ClampedArray; width: number; height: number };
 
 const FRAME_FPS_MS = 66;      // ~15fps grab
-const BUFFER_SIZE = 6;        // ~400ms of frames
+const BUFFER_SIZE = 8;        // ~530ms of frames — عمق دمج أعلى = قراءة أثبت
 const COMPOSITE_EVERY = 3;    // دمج كل 3 كادات (~5Hz) — تكلفة CPU معقولة
-const MAX_DIM = 560;          // تصغير الكادر لسرعة التحويل
+const MAX_DIM = 640;          // تصغير الكادر لسرعة التحويل (640 = تعيينة أحسن للأكواد البعيدة)
 
 export function CombiningQrScanner({ onScan, active }: { onScan: (text: string) => void; active: boolean }) {
   const [status, setStatus] = useState<"starting" | "running" | "error">("starting");
@@ -178,7 +180,7 @@ export function CombiningQrScanner({ onScan, active }: { onScan: (text: string) 
         {status === "running" && (
           <div className="absolute bottom-2 inset-x-0 flex justify-center">
             <span className="rounded-full bg-black/55 text-white backdrop-blur px-3 py-1 text-[10px] font-bold flex items-center gap-1.5">
-              <ScanLine className="w-3.5 h-3.5" /> الكود اللي بيومض ده طبيعي — السكانر بيقراه بدمج الكادات
+              <ScanLine className="w-3.5 h-3.5" /> الكود بيلمع وبيتبدل كل 5 ثواني — طبيعي، ثبّت الكاميرا وهو هيتقري
             </span>
           </div>
         )}
