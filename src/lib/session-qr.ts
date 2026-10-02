@@ -18,19 +18,18 @@ export const SESSION_QR_TTL_MS = 120_000; // دقيقتين صلاحية افت�
 export const QR_ROTATE_GRACE_MS = 8_000;
 
 // ============================================================
-// الدفعة المتحركة (Dynamic Batch QR):
-// نداء واحد للسيرفر بيولّد 10 أكواد بيتقلوا بينهم على الشاشة،
-// وكلهم بيموتوا مع بعض في نهاية الدفعة — الصورة/السكرين شوت بيمسك
-// كود واحد من العشرة وده بيتقفل مع الدفعة الجديدة. قبل نهاية الدفعة
-// الشاشة بتجيب دفعة جديدة في الخلفية فمفيش فراغ بين الأكواد أبدًا.
-// الإيقاع الحالي: كل كود 5 ثواني على الشاشة (طلب المستخدم — الكاميرا
-// بتلحق تركز وتقراه براحتها؛ أسرع من كده بيضايق الطلبة في المسح).
+// موديل Slot QR (الحل النهائي بعد تجربة الدفعة المتحركة):
+// كود واحد على الشاشة لمدة 10 ثواني (الحد الأدنى الكاميرا بتلحق تقراه
+// براحتها تامة — أي سكانر عادي بيقراه لأن الكود ثابت وسليم من غير لمعة)،
+// وكل كود جديد بيتولد والكود اللي قبله بيموت لوحده بعد هامش شبكة صغير —
+// يعني الصورة/السكرين شوت بيمسك كود عمره 10 ثواني كحد أقصى وبيموت فورًا.
+// الحماية من التصوير هنا = العمر القصير جدًا (مش التشويه البصري اللي
+// كان بيكسّر السكانر العادي). قبل نهاية كل ثانية العاشرة الشاشة بتجيب
+// الكود الجاي في الخلفية فمفيش فراغ.
 // ============================================================
-export const QR_BATCH_DEFAULT_COUNT = 10;
-export const QR_BATCH_SLOT_SECONDS = 5.0; // كل كود بيعيش 5 ثواني على الشاشة (الكاميرا تلحق تقراه)
-export const QR_BATCH_TTL_MS = 55_000; // 10 أكواد × 5ث + هامش — الدفعة تغطي دورة كاملة
-/** هامش صغير للـ claims اللي في الطريق لما الدفعة الجديدة تتبعت — بعده التوكن القديم بيموت نهائيًا */
-export const QR_BATCH_ROTATION_GRACE_MS = 8_000;
+export const QR_SLOT_SECONDS = 10; // كل كود بيعيش 10 ثواني على الشاشة
+export const QR_SLOT_GRACE_MS = 4_000; // الكود بيكمل شغال 4ث بعد ما يتنزل عن الشاشة (الـ claims اللي في الطريق)
+export const QR_ACTIVATION_GRACE_MS = 90_000; // تفعيل أول مرة (كود+موبايل) بياخد وقت — الطالب اللي فتح الرابط وهو حاضر مكانه محفوظ لمدة دقيقة ونص
 
 export type SessionQrScope = "CENTERS" | "ACADEMIA";
 
@@ -71,63 +70,41 @@ export async function issueSessionQr(opts: {
   return { token: row.token, expiresAt: row.expiresAt.toISOString(), rotated: old.length > 0 };
 }
 
-/** توليد دفعة أكواد متحركة (الموديل الجديد) — 10 أكواد بيولّدهم نداء واحد،
- *  كلهم بنفس وقت الانتهاء، والدفعات الأقدم بتتقفل بهامش صغير يكفي الـ claims
- *  اللي لسه في الطريق (الطالب مسح الكود والطلب جاي للسيرفر حالًا).
- *  أكتر من دفعة نشطة في نفس اللحظة = عادي: كلها لنفس الحصة ونفس نافذة الأمان. */
-export async function issueSessionQrBatch(opts: {
+/** توليد كود السلوت الحالي (الموديل الجديد) — كود واحد لكل نداء، بيكمل شغال
+ *  مدة السلوت + هامش شبكة صغير وبعده بيموت لوحده (اللي قبله بيموت قبله).
+ *  أكتر من شاشة عرض في نفس اللحظة = عادي: كل كود بيعيش عمره القصير بنفسه. */
+export async function issueSessionQrSlot(opts: {
   scope: SessionQrScope;
   sessionId: string;
   centerId: string | null;
   createdById: string;
   createdByName: string;
-  count?: number;
-  ttlMs?: number;
-}): Promise<{ codes: { token: string; expiresAt: string }[]; batchExpiresAt: string; rotated: number }> {
-  const count = Math.max(4, Math.min(14, Math.round(opts.count ?? QR_BATCH_DEFAULT_COUNT)));
-  const ttl = Math.max(15_000, Math.min(90_000, opts.ttlMs ?? QR_BATCH_TTL_MS));
-
-  // الدفعات الأقدم: خليها تعيش هامش الدوران بس (مش أكتر من انتهائها الأصلي)
-  const old = await db.sessionQRToken.findMany({
-    where: { sessionId: opts.sessionId, scope: opts.scope, isActive: true },
-    select: { id: true, expiresAt: true },
-  });
-  let rotated = 0;
-  if (old.length) {
-    const graceCutoff = new Date(Date.now() + QR_BATCH_ROTATION_GRACE_MS);
-    for (const o of old) {
-      await db.sessionQRToken.update({
-        where: { id: o.id },
-        data: { expiresAt: o.expiresAt < graceCutoff ? o.expiresAt : graceCutoff },
-      }).catch(() => {});
-    }
-    rotated = old.length;
-  }
-
-  const expiresAt = new Date(Date.now() + ttl);
-  const tokens = Array.from({ length: count }, () => randomBytes(20).toString("hex"));
-  await db.sessionQRToken.createMany({
-    data: tokens.map((token) => ({
+  slotSeconds?: number;
+}): Promise<{ token: string; expiresAt: string; slotSeconds: number }> {
+  const slotSeconds = Math.max(5, Math.min(30, Math.round(opts.slotSeconds ?? QR_SLOT_SECONDS)));
+  const token = randomBytes(20).toString("hex");
+  const ttl = slotSeconds * 1000 + QR_SLOT_GRACE_MS;
+  const row = await db.sessionQRToken.create({
+    data: {
       scope: opts.scope,
       sessionId: opts.sessionId,
       centerId: opts.centerId,
       token,
       isActive: true,
-      expiresAt,
+      expiresAt: new Date(Date.now() + ttl),
       createdById: opts.createdById,
       createdByName: opts.createdByName,
-    })),
+    },
   });
-  return {
-    codes: tokens.map((token) => ({ token, expiresAt: expiresAt.toISOString() })),
-    batchExpiresAt: expiresAt.toISOString(),
-    rotated,
-  };
+  return { token: row.token, expiresAt: row.expiresAt.toISOString(), slotSeconds };
 }
 
 /** التحقق من التوكن (من غير استهلاك) — بيعيد معلومات الحصة للعرض.
+ *  graceMs: سماحية إضافية بعد انتهاء الصلاحية (بتستخدم بس في claim بعد
+ *  تفعيل أول مرة — الطالب اللي فتح الرابط وهو حاضر وبيكتب كوده وموبايله
+ *  بياخد وقت أطول من عمر الكود، فمكانه محفوظ لمدة قصيرة محسوبة).
  *  الأخطاء بتحمل code: EXPIRED (قديم منتهي) | INACTIVE (توكن اتدوّر = replay) | INVALID (شكل غلط) */
-export async function resolveSessionQr(token: string): Promise<{
+export async function resolveSessionQr(token: string, opts?: { graceMs?: number }): Promise<{
   qrId: string;
   scope: SessionQrScope;
   centerId: string | null;
@@ -148,7 +125,8 @@ export async function resolveSessionQr(token: string): Promise<{
     (e as ApiError & { code?: string }).code = "INACTIVE";
     throw e;
   }
-  if (qr.expiresAt < new Date()) {
+  const graceMs = Math.max(0, Math.min(120_000, opts?.graceMs ?? 0));
+  if (qr.expiresAt.getTime() < Date.now() - graceMs) {
     const e = new ApiError("الكود انتهت صلاحيته — الكود بيتجدد أوتوماتيك على شاشة الحصة، حاول تاني.", 410);
     (e as ApiError & { code?: string }).code = "EXPIRED";
     throw e;

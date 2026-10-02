@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
 import { rateLimit, ApiError } from "@/lib/auth";
 import { getPortalStudent } from "@/lib/portal-auth";
-import { resolveSessionQr, touchSessionQr } from "@/lib/session-qr";
+import { resolveSessionQr, touchSessionQr, QR_ACTIVATION_GRACE_MS } from "@/lib/session-qr";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { studentBalance, effectivePrice } from "@/lib/finance";
 import { cleanRaw } from "@/lib/normalize";
@@ -11,7 +11,7 @@ import { notifyStaff } from "@/lib/staff-notify";
 
 export const dynamic = "force-dynamic";
 
-type ClaimBody = { token?: string };
+type ClaimBody = { token?: string; afterActivation?: boolean };
 
 /**
  * POST /api/attendance/session-qr/claim — الطالب يسجّل حضوره بنفسه من موباه
@@ -34,13 +34,17 @@ function clientIp(req: Request): string {
 export const POST = handler(async (req: Request) => {
   const body = await readJson<ClaimBody>(req);
   const rawToken = String(body.token ?? "").trim();
+  // afterActivation: الصفحة بتتمه الـ claim ده فور نجاح تفعيل أول مرة (كود + موبايل) —
+  // التفعيل بياخد وقت أطول من عمر الكود (10ث)، فبنسمح بتوكن انتهى من ثواني/دقيقة
+  // (الطالب ده كان حاضر مكان الحصة فعلًا — ومحاولة الـ claim متسجلة في الـ audit للمراجعة).
+  const afterActivation = body.afterActivation === true;
 
   // حدود محاولات معقولة لكل توكن+IP (نحّاس مبسّط على مستوى النسخة)
   rateLimit(`qr-claim:${rawToken.slice(-10)}:${clientIp(req)}`, 20, 60_000);
 
   let qr;
   try {
-    qr = await resolveSessionQr(rawToken); // ApiError لو مش صالح/منتهي/متدوّر
+    qr = await resolveSessionQr(rawToken, { graceMs: afterActivation ? QR_ACTIVATION_GRACE_MS : 0 }); // ApiError لو مش صالح/منتهي/متدوّر
   } catch (e) {
     if (e instanceof ApiError) {
       const code = (e as ApiError & { code?: string }).code;
@@ -49,7 +53,7 @@ export const POST = handler(async (req: Request) => {
         action: code === "EXPIRED" ? AUDIT.QR_SCAN_EXPIRED : AUDIT.QR_SCAN_REPLAY,
         entity: "SESSION_QR",
         entityId: rawToken.slice(-8),
-        reason: `${code ?? "INVALID"} — ${e.message}`,
+        reason: `${code ?? "INVALID"}${afterActivation ? " (بعد تفعيل)" : ""} — ${e.message}`,
         after: { ip: clientIp(req) },
       }).catch(() => {});
     }
@@ -170,7 +174,7 @@ export const POST = handler(async (req: Request) => {
       entity: "ATTENDANCE",
       entityId: result.attendance.id,
       after: { student: student.name, session: session.group.subject.name, method: "SESSION_QR", charged: result.charged },
-      reason: "تسجيل ذاتي عبر QR الحصة المتنقل",
+      reason: afterActivation ? "تسجيل ذاتي عبر QR الحصة (أول مرة — بعد تفعيل الجهاز)" : "تسجيل ذاتي عبر QR الحصة المتنقل",
     });
 
     // إشعار الطالب: حضورك اتسجل (بورتال + Web Push)
