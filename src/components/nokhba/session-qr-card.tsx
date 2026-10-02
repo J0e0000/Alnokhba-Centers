@@ -9,8 +9,8 @@ import { cn } from "@/lib/utils";
 /* ============================================================
    QR الحصة المتحرك — الجيل الجديد (Dynamic Batch QR)
    - نداء واحد للسيرفر بيولّد دفعة 10 أكواد، والشاشة بتفل بينهم
-     بسرعة (كل كود ~ثانية) — صورة/سكرين شوت بيمسك كود واحد منهم
-     وبيموت مع نهاية الدفعة (~22ث).
+     كل كود 5 ثواني (راحة للكاميرا تركز وتقراه) — صورة/سكرين شوت
+     بيمسك كود واحد منهم وبيموت مع نهاية الدفعة (~55ث).
    - وضع الحماية من التصوير (افتراضي): الكود مرسوم بطريقة temporal
      interlace — الشاشة بتبدّل بين طورين كل ~66ms، كل طور ناقصه
      ~45% من بيانات الكود (أكتر من قدرة تصحيح أخطاء QR) فأي كادر
@@ -21,10 +21,11 @@ import { cn } from "@/lib/utils";
    - قبل نهاية الدفعة الشاشة بتجيب دفعة جديدة في الخلفية — مفيش فراغ.
 ============================================================ */
 
-const FLIP_MS = 66; // تبديل الطور ~15 مرة في الثانية
+const FLIP_MS = 66; // تبديل الطور ~15 مرة في الثانية (حماية من التصوير — مش الإيقاع)
 const KNOCKOUT_RATIO = 0.45; // نسبة البيانات المحذوفة من كل كادر (QR-H يصحح 30% بس)
 const CANVAS_PX = 660;
 const PREFETCH_BEFORE_MS = 8000; // تجيب دفعة جديدة قبل نهاية الحالية بـ 8 ثواني
+const DEFAULT_SLOT_MS = 5000; // كل كود 5 ثواني على الشاشة — الكاميرا تلحق تقراه
 
 type BatchCode = { token: string; expiresAt: string };
 type BatchRes = { codes: BatchCode[]; batchExpiresAt: string; slotSeconds: number; sessionLabel?: string };
@@ -153,8 +154,9 @@ function QrCanvas({ payload, antiCapture, className }: { payload: string; antiCa
 export function SessionQrCard({ sessionId, compact }: { sessionId: string; compact?: boolean }) {
   const [codes, setCodes] = useState<BatchCode[]>([]);
   const [batchExpiresAt, setBatchExpiresAt] = useState<number | null>(null);
-  const [slotMs, setSlotMs] = useState(1000);
+  const [slotMs, setSlotMs] = useState(DEFAULT_SLOT_MS);
   const [idx, setIdx] = useState(0);
+  const [slotLeft, setSlotLeft] = useState(0); // عدّاد الكود الحالي (للعرض)
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(0); // بعد الماونت بس — مفيش hydration mismatch
@@ -163,6 +165,7 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
   const fetchingRef = useRef(false);
   const mountedRef = useRef(true);
   const batchExpiryRef = useRef<number | null>(null);
+  const slotEndRef = useRef(0); // وقت انتهاء الكود الحالي على الشاشة
   const lastFetchAtRef = useRef(0);
 
   // إعداد وضع الحماية (محفوظ لكل جهاز)
@@ -188,7 +191,10 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
       batchExpiryRef.current = new Date(res.batchExpiresAt).getTime();
       setCodes(res.codes);
       setBatchExpiresAt(batchExpiryRef.current);
-      setSlotMs(Math.round((res.slotSeconds ?? 1) * 1000));
+      const ms = Math.round((res.slotSeconds ?? 5) * 1000);
+      setSlotMs(ms);
+      slotEndRef.current = Date.now() + ms;
+      setSlotLeft(Math.ceil(ms / 1000));
       setIdx(0);
       setError(null);
     } catch (e) {
@@ -216,14 +222,19 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
       setNow(t);
       const exp = batchExpiryRef.current;
       if (exp && t > exp - PREFETCH_BEFORE_MS) fetchBatch(); // قبل النهاية بـ 8ث: دفعة جديدة في الخلفية
+      if (slotEndRef.current) setSlotLeft(Math.max(0, Math.ceil((slotEndRef.current - t) / 1000)));
     }, 500);
     return () => clearInterval(iv);
   }, [fetchBatch]);
 
-  // التدوير السريع بين الأكواد
+  // تدوير الأكواد — كل كود بيفضل على الشاشة slotMs (5 ثواني افتراضيًا)
   useEffect(() => {
     if (codes.length < 2) return;
-    const iv = setInterval(() => setIdx((i) => (i + 1) % codes.length), slotMs);
+    if (!slotEndRef.current) slotEndRef.current = Date.now() + slotMs;
+    const iv = setInterval(() => {
+      slotEndRef.current = Date.now() + slotMs;
+      setIdx((i) => (i + 1) % codes.length);
+    }, slotMs);
     return () => clearInterval(iv);
   }, [codes.length, slotMs]);
 
@@ -261,7 +272,7 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
   );
 
   const modeHint = anti
-    ? "الكود بيتقل بين 10 أكواد كل ثانية ومرسوم بطريقة تبوّظ أي صورة أو سكرين شوت — سكانر البورتال هو اللي بيقراه (بيدمج كذا كادر)."
+    ? "الكود بيتقل بين 10 أكواد كل 5 ثواني ومرسوم بطريقة تبوّظ أي صورة أو سكرين شوت — سكانر البورتال هو اللي بيقراه (بيدمج كذا كادر)."
     : "وضع التوافق: كود ثابت يفتح من أي كاميرا موبايل — استخدمه لو سكانر البورتال مش شغال عند حد.";
 
   return (
@@ -275,7 +286,7 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
             <div className="min-w-0">
               <h3 className="font-extrabold text-sm leading-tight">QR الحصة المتحرك — حضور ذاتي</h3>
               <p className="text-[11px] font-bold text-muted-foreground">
-                10 أكواد بيتقلوا كل ثانية — الصورة بتبوّظ والسكان بيشغل
+                10 أكواد بيتقلوا كل 5 ثواني — الكاميرا بتلحق والصورة بتبوّظ
               </p>
             </div>
           </div>
@@ -330,7 +341,9 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
               <p>الطالب بيسجّل دخول البورتال مرة واحدة — وبعدها سكان الكود = حضور فوري.</p>
               <div className="flex items-center gap-2">
                 {dots}
-                <span className="nk-num text-[10px]">{codes.length} أكواد في الدفعة</span>
+                <span className="nk-num text-[10px]">
+                  {codes.length} أكواد في الدفعة{slotLeft > 0 ? ` — الكود الجاي بعد ${slotLeft}ث` : ""}
+                </span>
               </div>
               {active && (
                 <p className="nk-num text-[10px] truncate text-muted-foreground/70" dir="ltr">
@@ -369,6 +382,11 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
                   <Timer className="w-4 h-4" /> الدفعة تتجدد بعد {secondsLeft}ث
                 </span>
                 {dots}
+                {slotLeft > 0 && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-black text-muted-foreground nk-num">
+                    كود جديد بعد {slotLeft}ث
+                  </span>
+                )}
               </div>
             </div>
           </div>

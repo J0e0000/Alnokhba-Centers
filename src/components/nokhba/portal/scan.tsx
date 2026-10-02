@@ -149,7 +149,7 @@ export function PortalScanSheet({
             <>
               <p className="text-xs font-bold text-muted-foreground leading-relaxed">
                 وجّه كاميرا موبايلك على كود <b>QR الحصة</b> اللي ظاهر على شاشة المشرف — حضورك بيتسجل فورًا لأنك مسجّل دخول بالفعل.
-                الكود بيلمع وبيتبدل كل ثانية (حماية من التصوير) — <b>ده طبيعي</b> والسكانر هنا بيقراه عادي.
+                الكود بيلمع وبيتبدل كل 5 ثواني (حماية من التصوير) — <b>ده طبيعي</b>: ثبّت كاميراكا على الكود وحوالي ثانية وهو بيتقري.
               </p>
               <CombiningQrScanner key={scanNonce} active={scanning && !busy} onScan={onScan} />
               {busy && (
