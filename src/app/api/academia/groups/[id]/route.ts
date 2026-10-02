@@ -115,7 +115,16 @@ async function POST_impl(req: NextRequest, ctx: Ctx) {
     if (!studentId) throw new ApiError("اختار الطالب.", 400);
     const student = await db.acaStudentProfile.findUnique({ where: { id: studentId } });
     if (!student) throw new ApiError("الطالب ده مش موجود.", 404);
-    const dup = await db.acaEnrollment.findUnique({ where: { groupId_studentId: { groupId: id, studentId } } });
+    // سعة المجموعة — منع التسجيل فوق السعة المعلنة
+    const g = await db.acaGroup.findUnique({ where: { id }, select: { capacity: true, isActive: true } });
+    if (!g) throw new ApiError("المجموعة دي مش موجودة.", 404);
+    if (!g.isActive) throw new ApiError("المجموعة دي موقوفة — مينفعش إضافة طلاب.", 400);
+    const activeCount = await db.acaEnrollment.count({ where: { groupId: id, status: "ACTIVE" } });
+    const dupForCap = await db.acaEnrollment.findUnique({ where: { groupId_studentId: { groupId: id, studentId } } });
+    if (g.capacity != null && !dupForCap && activeCount >= g.capacity) {
+      throw new ApiError(`المجموعة مليانة (السعة ${g.capacity}) — زوّد السعة الأول.`, 409);
+    }
+    const dup = dupForCap;
     if (dup && dup.status === "ACTIVE") throw new ApiError("الطالب مسجل خلاص في المجموعة دي.", 400);
     if (dup) {
       await db.acaEnrollment.update({ where: { id: dup.id }, data: { status: "ACTIVE" } });
@@ -141,6 +150,17 @@ async function POST_impl(req: NextRequest, ctx: Ctx) {
     const { name, gradeName, room, capacity, pricePerSession, isActive, teacherId } = body;
     const before = await db.acaGroup.findUnique({ where: { id } });
     if (!before) throw new ApiError("المجموعة دي مش موجودة.", 404);
+    // أمان: الـ teacherId الجديد لازم يكون مدرس أكاديميا فعّال — مينفعش أي user id من العميل
+    let nextTeacherId = before.teacherId;
+    if (teacherId !== undefined && teacherId !== before.teacherId) {
+      const t = await db.user.findFirst({ where: { id: String(teacherId), role: "TEACHER", scope: "academia", isActive: true } });
+      if (!t) throw new ApiError("المدرس ده مش موجود أو مش فعال.", 400);
+      nextTeacherId = t.id;
+    }
+    const cap = Number(capacity);
+    if (capacity !== undefined && capacity != null && (!Number.isFinite(cap) || cap < 1 || cap > 500)) {
+      throw new ApiError("سعة المجموعة لازم تكون من 1 لـ 500.", 400);
+    }
     await db.acaGroup.update({
       where: { id },
       data: {
@@ -150,10 +170,10 @@ async function POST_impl(req: NextRequest, ctx: Ctx) {
         capacity: Number(capacity) > 0 ? Number(capacity) : before.capacity,
         pricePerSession: pricePerSession === undefined ? before.pricePerSession : (pricePerSession == null ? null : Math.round(Number(pricePerSession) * 100)),
         isActive: isActive === undefined ? before.isActive : Boolean(isActive),
-        teacherId: teacherId || before.teacherId,
+        teacherId: nextTeacherId,
       },
     });
-    await logAudit({ user, action: "تعديل بيانات مجموعة", entity: "ACA_GROUP", entityId: id, before: { name: before.name }, after: { name: name ?? before.name } });
+    await logAudit({ user, action: "تعديل بيانات مجموعة", entity: "ACA_GROUP", entityId: id, before: { name: before.name, teacherId: before.teacherId }, after: { name: name ?? before.name, teacherId: nextTeacherId } });
     return NextResponse.json({ ok: true });
   }
 

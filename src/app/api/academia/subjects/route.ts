@@ -44,18 +44,24 @@ async function POST_impl(req: NextRequest) {
   }
   if (type === "unit") {
     if (!subjectId || !title?.trim()) throw new ApiError("اختار المادة واكتب اسم الوحدة.", 400);
+    const subj = await db.acaSubject.findUnique({ where: { id: subjectId }, select: { id: true } });
+    if (!subj) throw new ApiError("المادة دي مش موجودة.", 400);
     const count = await db.acaUnit.count({ where: { subjectId } });
     const u = await db.acaUnit.create({ data: { subjectId, title: title.trim(), order: count } });
     return NextResponse.json({ unit: { id: u.id } }, { status: 201 });
   }
   if (type === "topic") {
     if (!unitId || !title?.trim()) throw new ApiError("اختار الوحدة واكتب اسم الدرس.", 400);
+    const unit = await db.acaUnit.findUnique({ where: { id: unitId }, select: { id: true } });
+    if (!unit) throw new ApiError("الوحدة دي مش موجودة.", 400);
     const count = await db.acaTopic.count({ where: { unitId } });
     const t = await db.acaTopic.create({ data: { unitId, title: title.trim(), order: count } });
     return NextResponse.json({ topic: { id: t.id } }, { status: 201 });
   }
   if (type === "lesson") {
     if (!topicId || !title?.trim()) throw new ApiError("اختار الدرس الأب واكتب اسم الجزء.", 400);
+    const topic = await db.acaTopic.findUnique({ where: { id: topicId }, select: { id: true } });
+    if (!topic) throw new ApiError("الدرس الأب مش موجود.", 400);
     const count = await db.acaLesson.count({ where: { topicId } });
     const l = await db.acaLesson.create({ data: { topicId, title: title.trim(), order: count } });
     return NextResponse.json({ lesson: { id: l.id } }, { status: 201 });

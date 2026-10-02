@@ -9,9 +9,11 @@ import { acaHandler } from "@/lib/academia/handler";
 async function GET_impl() {
   const user = await requireAcaStaff();
   const today = todayStr();
+  // أمان: المدرس يشوف بس بيانات مجموعاته — مفيش تسريب عبر السنتر كله
+  const teacherScope = user.role === "TEACHER" ? { group: { teacherId: user.id } } : {};
 
   const [pendingRequests, todaySessions, completedToday, upcomingExams, atRiskGroups] = await Promise.all([
-    db.acaRequest.count({ where: { status: "PENDING" } }),
+    db.acaRequest.count({ where: { status: "PENDING", ...(user.role === "TEACHER" ? { requestedById: user.id } : {}) } }),
     db.acaSession.findMany({
       where: { date: today, status: { not: "CANCELLED" }, ...(user.role === "TEACHER" ? { teacherId: user.id } : {}) },
       include: { group: { select: { name: true, subject: { select: { name: true, color: true } } } } },
@@ -24,7 +26,7 @@ async function GET_impl() {
       orderBy: { date: "asc" },
       take: 6,
     }),
-    db.acaSession.findMany({ where: { date: today, status: "SCHEDULED", startTime: { lt: new Date(new Date().getTime() + 2 * 3600 * 1000).toISOString().slice(11, 16) } }, select: { id: true, startTime: true, group: { select: { name: true } } } }),
+    db.acaSession.findMany({ where: { date: today, status: "SCHEDULED", startTime: { lt: new Date(new Date().getTime() + 2 * 3600 * 1000).toISOString().slice(11, 16) }, ...teacherScope }, select: { id: true, startTime: true, group: { select: { name: true } } } }),
   ]);
 
   const needsAttendance = todaySessions.filter((s) => s.status === "SCHEDULED");

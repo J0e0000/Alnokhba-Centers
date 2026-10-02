@@ -35,7 +35,15 @@ async function GET_impl(_req: NextRequest, ctx: Ctx) {
   });
   if (!profile) throw new ApiError("الطالب ده مش موجود.", 404);
 
-  const groupIds = profile.enrollments.filter((e) => e.status === "ACTIVE").map((e) => e.groupId);
+  // أمان (IDOR): المدرس يشوف سجل الطالب في مجموعاته هو بس — مش في مجموعات المدرسين التانيين
+  const allActiveGroupIds = profile.enrollments.filter((e) => e.status === "ACTIVE").map((e) => e.groupId);
+  const visibleGroupIds = user.role === "TEACHER"
+    ? allActiveGroupIds.filter((gid) => (user.teacherGroupIds ?? []).includes(gid))
+    : allActiveGroupIds;
+  // بيانات ولي الأمر والملاحظات الإدارية = للإدارة بس (students.manage)
+  const canSeeAdminFields = user.role === "ADMIN" || user.role === "MANAGER"
+    || (user.role === "TEACHER" && user.permissions.includes("students.manage"));
+  const groupIds = visibleGroupIds;
 
   const [attendance, homework, examResults, sessionsCount] = await Promise.all([
     db.acaAttendance.findMany({ where: { studentId: id, session: { groupId: { in: groupIds } } }, include: { session: { select: { id: true, date: true, startTime: true, group: { select: { name: true, subject: { select: { name: true, color: true } } } } } } }, orderBy: { markedAt: "desc" }, take: 100 }),
@@ -89,10 +97,14 @@ async function GET_impl(_req: NextRequest, ctx: Ctx) {
     student: {
       profileId: profile.id, code: profile.code, name: profile.user.name,
       username: profile.user.username, gradeName: profile.gradeName,
-      parentName: profile.parentName, parentPhone: profile.parentPhone,
-      notes: profile.notes, since: profile.user.createdAt, isActive: profile.user.isActive,
+      parentName: canSeeAdminFields ? profile.parentName : null,
+      parentPhone: canSeeAdminFields ? profile.parentPhone : null,
+      notes: canSeeAdminFields ? profile.notes : null,
+      since: profile.user.createdAt, isActive: profile.user.isActive,
     },
-    groups: profile.enrollments.filter((e) => e.status !== "LEFT").map((e) => ({
+    groups: profile.enrollments
+      .filter((e) => e.status !== "LEFT" && visibleGroupIds.includes(e.groupId))
+      .map((e) => ({
       id: e.group.id, name: e.group.name, status: e.status,
       subject: e.group.subject, teacher: e.group.teacher,
       schedules: e.group.schedules,

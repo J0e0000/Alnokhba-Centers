@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { ApiError, generateQrToken } from "@/lib/auth";
-import { randomBytes } from "crypto";
+import { ApiError, rateLimit } from "@/lib/auth";
 import { requireAca, requireAcaPerm } from "@/lib/academia/guard";
 import { logAudit } from "@/lib/audit";
 import { acaHandler } from "@/lib/academia/handler";
@@ -78,6 +77,11 @@ async function POST_impl(req: NextRequest) {
   const uname = username.trim().toLowerCase();
   if (!/^[a-z0-9_.]{3,30}$/.test(uname)) throw new ApiError("اسم المستخدم: حروف إنجليزية وأرقام و . و _ بس (3-30).", 400);
   if (password.length < 6) throw new ApiError("كلمة السر: 6 حروف على الأقل.", 400);
+  if (password.length > 128) throw new ApiError("كلمة السر طويلة أوي (128 حرف كحد أقصى).", 400);
+  if (name.trim().length > 80) throw new ApiError("اسم الطالب طويل أوي.", 400);
+  if (parentName && String(parentName).trim().length > 80) throw new ApiError("اسم ولي الأمر طويل أوي.", 400);
+  if (notes && String(notes).length > 2000) throw new ApiError("الملاحظات طويلة أوي (2000 حرف كحد أقصى).", 400);
+  rateLimit(`aca-student-create:${user.id}`, 20, 60_000);
   if (parentPhone && !/^0\d{9,10}$/.test(normalizeDigits(String(parentPhone)).replace(/\D/g, ""))) {
     throw new ApiError("رقم ولي الأمر مش صحيح — مثال: 01012345678.", 400);
   }

@@ -87,6 +87,8 @@ export function queueScan(item: Omit<PendingScan, "status">) {
   if (items.some((i) => i.idemKey === item.idemKey)) return; // مفيش تكرار
   items.push({ ...item, status: "PENDING" });
   writePending(items);
+  // إشعار واجهة وضع التركيز إن الطابور اتغير (عداد الحفظ المحلي)
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("nk-pending-changed"));
 }
 
 /** مزامنة كل المسح المعلق — رسالة-بمسج بإعادة محاولة per-item
@@ -118,6 +120,7 @@ export async function syncPending(): Promise<{ synced: number; failed: number }>
     }
   }
   writePending(next);
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("nk-pending-changed"));
   return { synced, failed };
 }
 

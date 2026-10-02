@@ -118,6 +118,10 @@ async function PATCH_impl(req: NextRequest, ctx: Ctx) {
   if (action === "reschedule") {
     const { date, startTime, endTime, room } = body;
     if (!date || !startTime || !endTime) throw new ApiError("اختار التاريخ والوقت الجديد.", 400);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) throw new ApiError("التاريخ مش صحيح.", 400);
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(startTime)) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(endTime))) {
+      throw new ApiError("صيغة الوقت لازم تكون HH:MM.", 400);
+    }
     if (session.status === "COMPLETED") throw new ApiError("الحصة دي خلصت.", 400);
     const conflicts = await findSessionConflicts({ groupId: session.groupId, date, startTime, endTime, room: room ?? session.room, excludeSessionId: session.id });
     if (conflicts.length > 0) return NextResponse.json({ conflicts }, { status: 409 });
@@ -144,6 +148,10 @@ async function PATCH_impl(req: NextRequest, ctx: Ctx) {
 
   if (action === "setTopic") {
     const topicId = body.topicId || null;
+    if (topicId) {
+      const exists = await db.acaTopic.findUnique({ where: { id: String(topicId) }, select: { id: true } });
+      if (!exists) throw new ApiError("الدرس ده مش موجود في المنهج.", 400);
+    }
     await db.acaSession.update({ where: { id }, data: { topicId } });
     return NextResponse.json({ ok: true });
   }

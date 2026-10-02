@@ -12,6 +12,7 @@ import { api, fmt, fmtE, formatTime12, ATTENDANCE_LABEL, userCan, userCanRequest
 import { PageHeader, Chip, Loading, SectionCard, EmptyState, MoneyStat, Stat } from "./shared";
 import { usePrint, PrintableAttendanceSheet } from "./print";
 import { feedback } from "./feedback";
+import { showSuccess } from "./success-bar";
 import { ScanView } from "./scan";
 import { SessionQrCard } from "./session-qr-card";
 import {
@@ -166,6 +167,20 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
       setTab("review"); // الملخص التشغيلي بعد القفل
       load();
       loadPayments();
+      // شريط النجاح الدائم — طباعة فورية + تراجع (إعادة فتح) بدون ما يختفي لوحده
+      showSuccess({
+        message: "تم حفظ الحصة بنجاح",
+        sub: `نصيب المدرس ${fmt(res.economics.teacherShare)} ج · نصيب السنتر ${fmt(res.economics.centerShare)} ج · حضر ${res.economics.presentCount}`,
+        printLabel: "طباعة",
+        onPrint: () => printAttendance(),
+        undoLabel: "تراجع",
+        onUndo: async () => {
+          await api(`/api/sessions/${sessionId}`, { method: "POST", body: { action: "reopen", reason: "تراجع من شريط النجاح بعد القفل" } });
+          toast.success("رجّعنا الحصة شغالة تاني — الحسابات اتلغت بحركة عكسية.");
+          window.dispatchEvent(new CustomEvent("nk-sessions-changed"));
+          load();
+        },
+      });
     } catch { /* toast */ } finally { setBusy(false); }
   }
 

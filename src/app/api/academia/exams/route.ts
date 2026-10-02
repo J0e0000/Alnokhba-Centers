@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { ApiError } from "@/lib/auth";
-import { requireAca, requireAcaPerm, assertGroupAccess, assertStudentAccess } from "@/lib/academia/guard";
+import { requireAca, requireAcaPerm, assertGroupAccess } from "@/lib/academia/guard";
 import { logAudit } from "@/lib/audit";
 import { acaHandler } from "@/lib/academia/handler";
+
+const EXAM_TYPES = ["QUIZ", "MIDTERM", "FINAL", "PRACTICAL", "HOMEWORK_EXAM"];
 
 /** GET /api/academia/exams?groupId= — exams with results summary (grades view) */
 async function GET_impl(req: NextRequest) {
@@ -52,10 +54,13 @@ async function POST_impl(req: NextRequest) {
     if (!user.permissions.includes("exams.manage")) throw new ApiError("مالكش صلاحية إنشاء الامتحانات.", 403);
     const { groupId, title, type, date, maxScore, topicId, termId } = body;
     if (!groupId || !title?.trim() || !date) throw new ApiError("اختار المجموعة واكتب العنوان والتاريخ.", 400);
+    if (title.trim().length > 120) throw new ApiError("عنوان الامتحان طويل أوي (120 حرف كحد أقصى).", 400);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) throw new ApiError("صيغة التاريخ مش مظبوطة (YYYY-MM-DD).", 400);
+    if (!EXAM_TYPES.includes(type)) throw new ApiError("نوع الامتحان مش معروف.", 400);
     const g = await assertGroupAccess(user, groupId);
-    const max = Number(maxScore) > 0 ? Math.round(Number(maxScore)) : 100;
+    const max = Number(maxScore) > 0 ? Math.min(1000, Math.round(Number(maxScore))) : 100;
     const exam = await db.acaExam.create({
-      data: { groupId, subjectId: g.subjectId, title: title.trim(), type: type || "QUIZ", date, maxScore: max, topicId: topicId || null, termId: termId || null, createdBy: user.id },
+      data: { groupId, subjectId: g.subjectId, title: title.trim(), type, date, maxScore: max, topicId: topicId || null, termId: termId || null, createdBy: user.id },
     });
     await logAudit({ user, action: "إنشاء امتحان", entity: "ACA_EXAM", entityId: exam.id, after: { title: exam.title, date, maxScore: max } });
     return NextResponse.json({ exam: { id: exam.id } }, { status: 201 });
@@ -65,22 +70,35 @@ async function POST_impl(req: NextRequest) {
     if (!user.permissions.includes("grades.edit")) throw new ApiError("مالكش صلاحية رصد الدرجات.", 403);
     const { examId, results } = body; // results: [{studentId, score|null, note?}]
     if (!examId || !Array.isArray(results)) throw new ApiError("بيانات الدرجات ناقصة.", 400);
+    if (results.length === 0 || results.length > 200) throw new ApiError("عدد الدرجات لازم يكون من 1 لـ 200 في المرة.", 400);
     const exam = await db.acaExam.findUnique({ where: { id: examId } });
     if (!exam) throw new ApiError("الامتحان ده مش موجود.", 404);
     await assertGroupAccess(user, exam.groupId);
+    // أمان: الدرجات بتتقيد بطلاب مسجلين فعلاً في مجموعة الامتحان نفسها —
+    // مفيش درجات يتيمة لطلاب مجموعات تانية (كان ممكن استغلال assertStudentAccess عبر مجموعة مشتركة)
+    const requestedIds = [...new Set((results as { studentId?: unknown }[]).map((r) => String(r.studentId ?? "")))];
+    const enrolled = await db.acaEnrollment.findMany({
+      where: { groupId: exam.groupId, status: "ACTIVE", studentId: { in: requestedIds } },
+      select: { studentId: true },
+    });
+    const enrolledSet = new Set(enrolled.map((e) => e.studentId));
+    const rejected = requestedIds.filter((sid) => !enrolledSet.has(sid));
+    if (rejected.length > 0) {
+      throw new ApiError(`${rejected.length} طالب مش مسجل في مجموعة الامتحان دي — صحّح القايمة الأول.`, 403);
+    }
     let changed = 0;
     type ResultInput = { studentId: string; score?: number | string | null; note?: string };
     for (const r of results as ResultInput[]) {
-      await assertStudentAccess(user, r.studentId);
       const score = r.score === null || r.score === "" ? null : Number(r.score);
       if (score != null && (Number.isNaN(score) || score < 0 || score > exam.maxScore)) {
         throw new ApiError(`درجة بره النطاق (0 - ${exam.maxScore}).`, 400);
       }
+      const note = typeof r.note === "string" ? r.note.slice(0, 300) : null;
       const before = await db.acaExamResult.findUnique({ where: { examId_studentId: { examId, studentId: r.studentId } } });
       await db.acaExamResult.upsert({
         where: { examId_studentId: { examId, studentId: r.studentId } },
-        create: { examId, studentId: r.studentId, score, note: r.note || null, enteredById: user.id },
-        update: { score, note: r.note || null, enteredById: user.id },
+        create: { examId, studentId: r.studentId, score, note, enteredById: user.id },
+        update: { score, note, enteredById: user.id },
       });
       if (before && before.score !== score) {
         changed += 1;

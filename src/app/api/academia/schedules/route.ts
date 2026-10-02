@@ -3,11 +3,17 @@ import { db } from "@/lib/db";
 import { requireAca } from "@/lib/academia/guard";
 import { acaHandler } from "@/lib/academia/handler";
 
-/** GET /api/academia/schedules — weekly recurring grid (teacher: own only) */
+/** GET /api/academia/schedules — weekly recurring grid (teacher: own; student: enrolled groups only) */
 async function GET_impl() {
   const user = await requireAca();
+  // أمان: الطالب يشوف جدول مجموعاته بس — مش الجدول الأسبوعي الكامل للسنتر
+  const scope = user.role === "TEACHER"
+    ? { group: { teacherId: user.id } }
+    : user.role === "STUDENT"
+      ? { group: { enrollments: { some: { studentId: user.studentProfileId ?? "none", status: "ACTIVE" } } } }
+      : {};
   const occs = await db.acaGroupSchedule.findMany({
-    where: { status: "ACTIVE", ...(user.role === "TEACHER" ? { group: { teacherId: user.id } } : {}) },
+    where: { status: "ACTIVE", ...scope },
     include: {
       group: { select: { id: true, name: true, room: true, subject: { select: { name: true, color: true } }, teacher: { select: { id: true, name: true } } } },
     },
