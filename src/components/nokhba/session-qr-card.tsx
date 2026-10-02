@@ -50,28 +50,22 @@ function QrCanvas({ payload, className }: { payload: string; className?: string 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !payload || !px) return;
-    try {
-      const grid = QRCode.create(payload, { errorCorrectionLevel: "H" }).modules.size + 4; // + هامش 2 من كل ناحية
-      const dpr = Math.min(window.devicePixelRatio || 1, 3);
-      // أكبر شبكة صحيحة تلائم المساحة: كل مودول = عدد صحيح من بكسلات الجهاز — عرض 1:1 بدون أي إعادة قياس
-      const n = Math.max(2, Math.floor((px * dpr) / grid));
-      const bitmap = n * grid;
-      const cssPx = Math.round(bitmap / dpr);
-      QRCode.toCanvas(canvas, payload, {
-        width: bitmap,
-        margin: 2,
-        errorCorrectionLevel: "H",
-        color: { dark: "#111827", light: "#ffffff" },
+    // البت ماب = مقاس العرض × كثافة الشاشة بالظبط → عرض 1:1 (صفر تصغير/تكبير = مفيش تهذيب/تبهيت)،
+    // والمودولز بياخدوا أكبر حجم ممكن من المساحة (مهم لأن نسخة الكود بتختلف حسب طول الرابط).
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const bitmap = Math.max(96, Math.min(1200, Math.round(px * dpr)));
+    QRCode.toCanvas(canvas, payload, {
+      width: bitmap,
+      margin: 2,
+      errorCorrectionLevel: "H",
+      color: { dark: "#111827", light: "#ffffff" },
+    })
+      .then(() => {
+        // node-qrcode بيكتب width/height inline بالبكسل — بنظبطهم على مقاس العرض بالظبط
+        canvas.style.width = `${px}px`;
+        canvas.style.height = `${px}px`;
       })
-        .then(() => {
-          // node-qrcode بيكتب width/height inline بالبكسل — بنظبطهم على مقاس العرض بالظبط
-          canvas.style.width = `${cssPx}px`;
-          canvas.style.height = `${cssPx}px`;
-        })
-        .catch(() => {});
-    } catch {
-      /* payload فاضي/غير صالح */
-    }
+      .catch(() => {});
   }, [payload, px]);
 
   return (
@@ -235,7 +229,7 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
           </div>
         ) : (
           <div className="flex items-center gap-3.5">
-            {qrBox("w-32 h-32 md:w-44 md:h-44 shrink-0")}
+            {qrBox("w-40 h-40 md:w-48 md:h-48 shrink-0")}
             <div className="min-w-0 space-y-1.5 text-xs font-bold text-muted-foreground">
               <p className="flex items-center gap-1.5 text-foreground/80">
                 <Camera className="w-3.5 h-3.5 nk-brand-text shrink-0" />
