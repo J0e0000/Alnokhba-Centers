@@ -36,14 +36,14 @@ export default function SessionQrClaimPage({ params }: { params: Promise<{ token
   const [fatal, setFatal] = useState<string | null>(null);
   const [activated, setActivated] = useState(false);
 
-  async function claim() {
+  async function claim(afterActivation = false) {
     setBusy(true);
     setFatal(null);
     try {
       const res = await fetch("/api/attendance/session-qr/claim", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ token, afterActivation }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -81,7 +81,7 @@ export default function SessionQrClaimPage({ params }: { params: Promise<{ token
         return;
       }
       setActivated(true);
-      await claim(); // الجهاز بقى موثوق — أكمل الحضور أوتوماتيك
+      await claim(true); // الجهاز بقى موثوق — أكمل الحضور أوتوماتيك (الكود مفضل مكانه مهما أخد وقت التفعيل)
     } catch {
       setFatal("مفيش اتصال بالسيرفر — بص على النت وجرب تاني.");
     } finally {
@@ -224,7 +224,7 @@ export default function SessionQrClaimPage({ params }: { params: Promise<{ token
 
         <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground font-bold border-t border-border/60 pt-3">
           <Clock3 className="w-3.5 h-3.5" />
-          الكود بيتجدد كل ثواني على شاشة المشرف — لو انتهى امسح الكود الجديد
+          الكود بيتغير كل 10 ثواني على شاشة المشرف — لو انتهى امسح الكود الجديد
         </div>
       </motion.div>
     </div>

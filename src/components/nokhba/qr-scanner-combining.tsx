@@ -4,15 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { RefreshCcw, SwitchCamera, ExternalLink, ScanLine } from "lucide-react";
 
 /**
- * Combining QR scanner — سكانر بيقرا الأكواد المحمية من التصوير.
+ * QR scanner — بيقرا كود حضور الحصة (موديل Slot QR).
  *
- * الكود المعروض على الشاشة بيتقلب بين طورين كل ~66ms وكل طور ناقصه
- * جزء من البيانات (حماية من الصور/السكرين شوت). السكانر ده بيمسك
- * كذا كادر فيديو ورا بعض وبيدمجهم (per-pixel "أغمق يفوز") فيتكوّن
- * الكود الكامل — وبيقرا برضه الأكواد العادية الثابتة عادي.
- * الكود نفسه بيقعد ثابت 5 ثواني (الحد اللي الكاميرا بتلحق تركز وتقراه)،
- * والطمرة أعمق (8 كادات) بتغطي أكتر من 3 أزواج أطوار مختلفة —
- * فالدمج بيرجّع الكود كامل تقريبًا حتى مع اهتزاز الإيد أو إضاءة ضعيفة.
+ * الكود المعروض على الشاشة ثابت وسليم 10 ثواني (بيتغير كل 10ث والقديم بيموت)،
+ * فأي كاميرا بتقراه في ثانية من المسار المباشر. وبرضه بنفس محرك الدمج
+ * القديم بيغطي أي حالات صعبة (مسافة/اضاءة ضعيفة/اهتزاز) بدمج كذا كادر.
  * Robustness (same lessons as QrCameraScanner):
  * - onScan kept in a ref → the camera NEVER restarts on parent re-renders
  * - start/stop serialized through a promise chain
@@ -180,7 +176,7 @@ export function CombiningQrScanner({ onScan, active }: { onScan: (text: string) 
         {status === "running" && (
           <div className="absolute bottom-2 inset-x-0 flex justify-center">
             <span className="rounded-full bg-black/55 text-white backdrop-blur px-3 py-1 text-[10px] font-bold flex items-center gap-1.5">
-              <ScanLine className="w-3.5 h-3.5" /> الكود بيلمع وبيتبدل كل 5 ثواني — طبيعي، ثبّت الكاميرا وهو هيتقري
+              <ScanLine className="w-3.5 h-3.5" /> الكود بيتغير كل 10 ثواني — وجّه الكاميرا على الشاشة وهيتقري في ثانية
             </span>
           </div>
         )}
