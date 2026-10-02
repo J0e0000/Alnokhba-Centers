@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import QRCode from "qrcode";
 import { QrCode, Loader2, RotateCw, Maximize2, X, Timer, Camera, ScanLine } from "lucide-react";
 import { api } from "./lib";
@@ -38,7 +39,15 @@ function QrCanvas({ payload, className }: { payload: string; className?: string 
       margin: 2,
       errorCorrectionLevel: "H",
       color: { dark: "#111827", light: "#ffffff" },
-    }).catch(() => {});
+    })
+      .then(() => {
+        // node-qrcode بيكتب width/height inline بالبكسل (660px) على الكانفس —
+        // وده كان بيخلي الكود يغرق الصفحة كلها ويتغطى على الجداول.
+        // بنرجّع التحكم للـ Tailwind (w-full h-full) عشان يلتزم بمقاس الكونتينر دايمًا.
+        canvas.style.width = "100%";
+        canvas.style.height = "100%";
+      })
+      .catch(() => {});
   }, [payload]);
 
   if (!payload) {
@@ -144,7 +153,7 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
   const progress = slotEnd && slotMs ? Math.max(0, Math.min(1, (slotEnd - now) / slotMs)) : 0;
 
   const qrBox = (size: string) => (
-    <div className={cn("relative rounded-2xl bg-white p-2.5 grid place-items-center shadow-inner", size)}>
+    <div className={cn("relative rounded-2xl bg-white p-2.5 grid place-items-center shadow-inner overflow-hidden", size)}>
       {payload ? (
         <QrCanvas payload={payload} />
       ) : (
@@ -223,8 +232,10 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
         )}
       </div>
 
-      {/* عرض ملء الشاشة — للتابلت/البروجيكتور عند باب القاعة */}
-      {full && (
+      {/* عرض ملء الشاشة — للتابلت/البروجيكتور عند باب القاعة
+          بيتعمله Portal لـ body عشان يهرب من أنسستور فيه transform
+          (nk-anim-view) بيخلي fixed يتحسب جوه الكونتينر بدل الشاشة كلها */}
+      {full && createPortal(
         <div className="fixed inset-0 z-[90] bg-white dark:bg-[#0b1220] grid place-items-center p-6" onClick={() => setFull(false)}>
           <button
             onClick={() => setFull(false)}
@@ -234,7 +245,7 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
             <X className="w-5 h-5" />
           </button>
           <div className="flex flex-col items-center gap-5 max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
-            <div className="w-full max-w-sm aspect-square bg-white rounded-3xl p-4 shadow-xl border border-border">
+            <div className="w-full max-w-sm aspect-square bg-white rounded-3xl p-4 shadow-xl border border-border overflow-hidden">
               {payload ? <QrCanvas payload={payload} /> : <Loader2 className="w-10 h-10 animate-spin text-slate-400" />}
             </div>
             <div className="text-center space-y-2">
@@ -256,7 +267,8 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
               <p className="text-[11px] font-bold text-muted-foreground">الكود بيتغير كل 10 ثواني — الصورة أو السكرين شوت بيموت مع الكود الجاي</p>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
