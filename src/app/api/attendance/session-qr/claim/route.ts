@@ -6,6 +6,8 @@ import { resolveSessionQr, touchSessionQr } from "@/lib/session-qr";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { studentBalance, effectivePrice } from "@/lib/finance";
 import { cleanRaw } from "@/lib/normalize";
+import { notifyStudentsAttendance } from "@/lib/notify";
+import { notifyStaff } from "@/lib/staff-notify";
 
 export const dynamic = "force-dynamic";
 
@@ -99,6 +101,13 @@ export const POST = handler(async (req: Request) => {
       reason: `طالب مش مسجل في مجموعة الحصة (${session.group.subject.name})`,
       after: { studentCode: student.code },
     }).catch(() => {});
+    // تنبيه فوري للموظفين — محاولة حضور من بره المجموعة
+    void notifyStaff(qr.centerId, {
+      type: "ATTENDANCE",
+      title: "محاولة حضور مرفوضة",
+      body: `${student.name} (كود ${student.code}) حاول يسجّل حضوره في ${session.group.subject.name} وهو مش مسجل في المجموعة — راجعوا الحالة.`,
+      link: "today",
+    }).catch(() => {});
     return ok({
       ok: false, reason: "NOT_REGISTERED",
       message: "انت مش مسجل في مجموعة الحصة دي — كلّم الاستقبال يسجلّك الأول.",
@@ -163,6 +172,21 @@ export const POST = handler(async (req: Request) => {
       after: { student: student.name, session: session.group.subject.name, method: "SESSION_QR", charged: result.charged },
       reason: "تسجيل ذاتي عبر QR الحصة المتنقل",
     });
+
+    // إشعار الطالب: حضورك اتسجل (بورتال + Web Push)
+    void notifyStudentsAttendance(
+      qr.centerId, [student.id],
+      "تم تسجيل حضورك ✅",
+      `حصة ${session.group.subject.name} — حضورك اتحسب بنجاح. بالتوفيق!`,
+    ).catch(() => {});
+    // إشعار فوري لكل موظفين السنتر الشغالين: حد سجّل حضوره بنفسه
+    void notifyStaff(qr.centerId, {
+      type: "ATTENDANCE",
+      title: "حضور ذاتي — QR الحصة",
+      body: `${student.name} سجّل حضوره بنفسه في ${session.group.subject.name} (${qr.sessionLabel}).`,
+      link: "today",
+      refId: session.id,
+    }).catch(() => {});
   }
 
   const balance = await studentBalance(student.id);

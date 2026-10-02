@@ -76,6 +76,17 @@ export function PortalAssignments() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
+  // ديب-لينك من زرار المشاركة: /portal?tab=assignments&open=<id> — يفتح الواجب على طول
+  useEffect(() => {
+    try {
+      const open = new URLSearchParams(window.location.search).get("open");
+      if (open) {
+        setOpenId(open);
+        window.history.replaceState(null, "", "/portal?tab=assignments");
+      }
+    } catch { /* ignore */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (openId) return <AssignmentRunner id={openId} onExit={() => { setOpenId(null); load(); }} />;
 
   return (

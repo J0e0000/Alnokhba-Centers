@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Bell, CheckCheck, ClipboardCheck, UserPlus, Scale, Loader2 } from "lucide-react";
+import { Bell, CheckCheck, ClipboardCheck, UserPlus, Scale, Loader2, UserCheck, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "./lib";
 import {
@@ -33,6 +33,8 @@ const TYPE_ICON: Record<string, React.ReactNode> = {
   APPROVAL_REQUEST: <ClipboardCheck className="w-4 h-4" />,
   APPROVAL_DECIDED: <Scale className="w-4 h-4" />,
   SIGNUP_REQUEST: <UserPlus className="w-4 h-4" />,
+  ATTENDANCE: <UserCheck className="w-4 h-4" />,
+  PUBLISH: <Send className="w-4 h-4" />,
   SYSTEM: <Bell className="w-4 h-4" />,
 };
 

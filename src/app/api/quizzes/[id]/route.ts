@@ -3,6 +3,8 @@ import { ok, handler, readJson } from "@/lib/api";
 import { requireCenterUser, ApiError } from "@/lib/auth";
 import { normalizeQuestions } from "@/lib/quiz";
 import { logAudit, AUDIT } from "@/lib/audit";
+import { notifyGroupStudents } from "@/lib/notify";
+import { notifyStaff } from "@/lib/staff-notify";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +55,23 @@ export const PATCH = handler(async (req: Request, ctx: RouteCtx) => {
   if (action === "publish" || action === "close" || action === "reopen") {
     const to = action === "publish" ? "PUBLISHED" : action === "close" ? "CLOSED" : "DRAFT";
     const updated = await db.quiz.update({ where: { id }, data: { status: to } });
+    if (action === "publish") {
+      // إشعار فوري لطلاب المجموعة (كان مفقود — الكويز كان بينشر من غير أي إشعار)
+      void notifyGroupStudents(
+        user.centerId, updated.groupId, "QUIZ",
+        `كويز جديد: ${updated.title}`,
+        "افتح تبويب الكويزات في البورتال وحل قبل ما يقفل.",
+        "/portal?tab=quizzes",
+      ).catch(() => {});
+      // إشعار للفريق الشغال (مدير + مدرس)
+      void notifyStaff(user.centerId, {
+        type: "PUBLISH",
+        title: `كويز جديد: ${updated.title}`,
+        body: `${quiz.group.subject.name} — ${quiz.group.name}. شاركه مع الطلاب من شاشة الكويزات (زرار مشاركة).`,
+        link: "quizzes",
+        refId: updated.id,
+      }, { roles: ["MANAGER", "TEACHER"] }).catch(() => {});
+    }
     await logAudit({
       user, action: AUDIT.ATTENDANCE_UPDATED, entity: "QUIZ", entityId: id,
       before: { status: quiz.status }, after: { status: to }, reason: `تغيير حالة الكويز ${quiz.title}`,

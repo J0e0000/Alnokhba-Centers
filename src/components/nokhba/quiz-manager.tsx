@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  ClipboardList, Plus, Loader2, Trash2, Send, Eye, Pencil, X, CheckCircle2, Clock,
+  ClipboardList, Plus, Loader2, Trash2, Send, Eye, Pencil, X, CheckCircle2, Clock, Share2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "./lib";
 import { PageHeader, Chip, EmptyState, Loading, SectionCard } from "./shared";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAcademics } from "./students";
+import { ShareSheet } from "./share-sheet";
 import { toast } from "sonner";
 
 /* ============================================================
@@ -275,6 +276,7 @@ function QuizDetailDialog({ id, onClose }: { id: string; onClose: () => void }) 
   const [data, setData] = useState<QuizDetail | null>(null);
   const [scores, setScores] = useState<Record<string, Record<string, number>>>({});
   const [busy, setBusy] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const load = useCallback(() => {
     api<{ quiz: QuizDetail }>(`/api/quizzes/${id}`, { silent: true })
@@ -306,6 +308,7 @@ function QuizDetailDialog({ id, onClose }: { id: string; onClose: () => void }) 
   const statusStyle = STATUS_STYLE[data.status];
 
   return (
+    <>
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto nk-scroll">
         <DialogHeader>
@@ -405,6 +408,12 @@ function QuizDetailDialog({ id, onClose }: { id: string; onClose: () => void }) 
               رجوع لمسودة
             </button>
           )}
+          {data.status === "PUBLISHED" && (
+            <button onClick={() => setShareOpen(true)} disabled={busy}
+              className="h-11 rounded-xl nk-brand-bg-soft nk-brand-text border-2 nk-brand-border font-extrabold px-4 flex items-center gap-1.5">
+              <Share2 className="w-4 h-4" /> مشاركة
+            </button>
+          )}
           <button onClick={onClose} className="h-11 rounded-xl border-2 border-border bg-card font-extrabold px-4">إغلاق</button>
         </div>
         <p className="text-[10px] font-bold text-muted-foreground">
@@ -412,5 +421,14 @@ function QuizDetailDialog({ id, onClose }: { id: string; onClose: () => void }) 
         </p>
       </DialogContent>
     </Dialog>
+
+    <ShareSheet
+      open={shareOpen}
+      onOpenChange={setShareOpen}
+      title={data.title}
+      description={`${data.subject} — ${data.groupName}`}
+      path={`/portal?tab=quizzes&open=${data.id}`}
+    />
+    </>
   );
 }

@@ -4,8 +4,11 @@ import { requireCenterUser, canRegisterStudents, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { studentBalance, effectivePrice } from "@/lib/finance";
 import { hasPermission } from "@/lib/permissions";
+import { notifyStudentsAttendance } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
+
+const ATT_LABEL: Record<string, string> = { PRESENT: "حاضر", LATE: "متأخر", EXCUSED: "بعذر" };
 
 type MarkBody = {
   studentId?: string;
@@ -107,6 +110,14 @@ export const POST = handler(async (req: Request) => {
       reason: `تحضير جماعي — ${session.group.subject.name}`,
     });
 
+    // إشعار لكل الطلاب اللي اتسجل حضورهم النهاردة (بورتال + Web Push)
+    void notifyStudentsAttendance(
+      user.centerId,
+      toMark.map((r) => r.student.id),
+      "تم تسجيل حضورك ✅",
+      `حصة ${session.group.subject.name} — حضورك اتحسب بنجاح. بالتوفيق!`,
+    ).catch(() => {});
+
     return ok({
       marked: toMark.length,
       alreadyAttended: attendedSet.size,
@@ -201,6 +212,13 @@ export const POST = handler(async (req: Request) => {
       entityId: result.attendance.id,
       after: { student: student.name, session: session.group.subject.name, status, charged: charge },
     });
+
+    // إشعار الطالب بحضوره (بورتال + Web Push)
+    void notifyStudentsAttendance(
+      user.centerId, [studentId],
+      "تم تسجيل حضورك ✅",
+      `حصة ${session.group.subject.name} — حالة حضورك: ${ATT_LABEL[status] ?? status}.`,
+    ).catch(() => {});
   }
 
   const balance = await studentBalance(studentId);
@@ -290,5 +308,13 @@ export const PATCH = handler(async (req: Request) => {
     after: { status, charged: newCharged },
     reason: `الطالب ${att.student.name}`,
   });
+
+  // إشعار الطالب بتغيير حالة حضوره
+  void notifyStudentsAttendance(
+    user.centerId, [att.studentId],
+    "تحديث حالة الحضور",
+    `حصة ${att.session.group.subject.name} — حالة حضورك بقت: ${ATT_LABEL[status] ?? status}.`,
+  ).catch(() => {});
+
   return ok({ ok: true });
 });

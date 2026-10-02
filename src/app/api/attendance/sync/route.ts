@@ -4,6 +4,7 @@ import { requireCenterUser, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { effectivePrice } from "@/lib/finance";
 import { cleanRaw } from "@/lib/normalize";
+import { notifyStudentsAttendance } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -92,6 +93,13 @@ export const POST = handler(async (req: Request) => {
       entityId: idemKey,
       after: { student: student.name, session: session.group.subject.name, syncedOffline: true },
     });
+
+    // إشعار الطالب — الحضور اتسجل بعد مزامنة الأوفلاين
+    void notifyStudentsAttendance(
+      user.centerId, [student.id],
+      "تم تسجيل حضورك ✅",
+      `حصة ${session.group.subject.name} — حضورك اتحسب بنجاح. بالتوفيق!`,
+    ).catch(() => {});
   }
 
   return ok({ studentName: student.name, alreadyAttended: result.alreadyAttended });

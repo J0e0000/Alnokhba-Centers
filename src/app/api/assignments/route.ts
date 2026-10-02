@@ -4,6 +4,8 @@ import { requireCenterUser, ApiError } from "@/lib/auth";
 import { normalizeObjectiveQuestions } from "@/lib/exam";
 import { assertGroupInCenter } from "@/lib/quiz";
 import { logAudit, AUDIT } from "@/lib/audit";
+import { notifyGroupStudents } from "@/lib/notify";
+import { notifyStaff } from "@/lib/staff-notify";
 
 export const dynamic = "force-dynamic";
 
@@ -106,6 +108,27 @@ export const POST = handler(async (req: Request) => {
     user, action: AUDIT.ASSIGNMENT_CREATED, entity: "ASSIGNMENT", entityId: assignment.id,
     after: { title: assignment.title, questions: questions.length, maxScore, deadline, status: assignment.status },
   });
+
+  // النشر من شاشة الإنشاء نفسه — نفس إشعارات النشر من شاشة التفاصيل
+  if (body.publish) {
+    const g = await db.group.findUnique({
+      where: { id: groupId },
+      select: { name: true, subject: { select: { name: true } } },
+    });
+    void notifyGroupStudents(
+      user.centerId, groupId, "ASSIGNMENT",
+      `واجب جديد: ${assignment.title}`,
+      "افتح تبويب الواجبات في البورتال وسلّم قبل الميعاد.",
+      "/portal?tab=assignments",
+    ).catch(() => {});
+    void notifyStaff(user.centerId, {
+      type: "PUBLISH",
+      title: `واجب جديد: ${assignment.title}`,
+      body: `${g?.subject.name ?? ""} — ${g?.name ?? ""}. شاركه مع الطلاب من شاشة الواجبات (زرار مشاركة).`,
+      link: "assignments",
+      refId: assignment.id,
+    }, { roles: ["MANAGER", "TEACHER"] }).catch(() => {});
+  }
 
   return ok({ assignment });
 });

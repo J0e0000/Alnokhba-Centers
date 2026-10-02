@@ -15,6 +15,8 @@ const TYPE_META: Record<string, { icon: string; label: string }> = {
   ADJUSTMENT: { icon: "⚖️", label: "تسوية" },
   EXAM: { icon: "📝", label: "امتحان" },
   ASSIGNMENT: { icon: "📚", label: "واجب" },
+  QUIZ: { icon: "🧠", label: "كويز" },
+  ATTENDANCE: { icon: "✅", label: "حضور" },
 };
 
 /** GET /api/portal/notifications — رسائل الطالب (إعلانات + إشعارات النظام) + الغير مقروء */
