@@ -18,7 +18,6 @@ import { cn } from "@/lib/utils";
      وتبدّله فورًا — مفيش فراغ أبدًا.
 ============================================================ */
 
-const CANVAS_PX = 660;
 const DEFAULT_SLOT_MS = 10_000; // كل كود 10 ثواني على الشاشة
 const PREFETCH_BEFORE_MS = 1500; // نجيب الكود الجاي قبل نهاية الحالي بثانية ونص (السيرفر بيبعت كود جديد فورًا)
 const FETCH_GAP_MS = 2500; // منع النداءات المتلاحية
@@ -26,38 +25,64 @@ const FETCH_BACKOFF_MS = 8000; // تراجع بعد فشل (مفيش Hammering �
 
 type SlotRes = { token: string; expiresAt: string; slotSeconds: number; sessionLabel?: string };
 
-/* ---------------- كانفس الكود الثابت (يُرسم مرة واحدة لكل كود) ---------------- */
+/* ---------------- كانفس الكود الثابت (يُرسم على مقاس العرض الفعلي — صفر تشويش) ----------------
+   السرّ للقراءة السريعة بالكاميرا: البت ماب بيتولد بنفس مقاس العرض × كثافة الشاشة،
+   ومحاذي لشبكة صحيحة (كل مودول = عدد صحيح من البكسلات) — فمفيش تصغير/تمويه خالص.
+   الكود القديم كان بيرسم 660px ويتصغّر بالـ CSS لـ 92px → المودولز بتتبهت والكاميرا متعرفش تفرقهم. */
 
 function QrCanvas({ payload, className }: { payload: string; className?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [px, setPx] = useState(0); // مقاس العرض الفعلي بالـ CSS px
+
+  // قيس الكونتينر (بيتغير بين الكارت العادي والعرض بحجم الشاشة)
+  useEffect(() => {
+    const box = boxRef.current;
+    if (!box) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = Math.round(entries[0].contentRect.width);
+      if (w > 0) setPx((prev) => (Math.abs(prev - w) > 1 ? w : prev));
+    });
+    ro.observe(box);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !payload) return;
-    QRCode.toCanvas(canvas, payload, {
-      width: CANVAS_PX,
-      margin: 2,
-      errorCorrectionLevel: "H",
-      color: { dark: "#111827", light: "#ffffff" },
-    })
-      .then(() => {
-        // node-qrcode بيكتب width/height inline بالبكسل (660px) على الكانفس —
-        // وده كان بيخلي الكود يغرق الصفحة كلها ويتغطى على الجداول.
-        // بنرجّع التحكم للـ Tailwind (w-full h-full) عشان يلتزم بمقاس الكونتينر دايمًا.
-        canvas.style.width = "100%";
-        canvas.style.height = "100%";
+    if (!canvas || !payload || !px) return;
+    try {
+      const grid = QRCode.create(payload, { errorCorrectionLevel: "H" }).modules.size + 4; // + هامش 2 من كل ناحية
+      const dpr = Math.min(window.devicePixelRatio || 1, 3);
+      // أكبر شبكة صحيحة تلائم المساحة: كل مودول = عدد صحيح من بكسلات الجهاز — عرض 1:1 بدون أي إعادة قياس
+      const n = Math.max(2, Math.floor((px * dpr) / grid));
+      const bitmap = n * grid;
+      const cssPx = Math.round(bitmap / dpr);
+      QRCode.toCanvas(canvas, payload, {
+        width: bitmap,
+        margin: 2,
+        errorCorrectionLevel: "H",
+        color: { dark: "#111827", light: "#ffffff" },
       })
-      .catch(() => {});
-  }, [payload]);
+        .then(() => {
+          // node-qrcode بيكتب width/height inline بالبكسل — بنظبطهم على مقاس العرض بالظبط
+          canvas.style.width = `${cssPx}px`;
+          canvas.style.height = `${cssPx}px`;
+        })
+        .catch(() => {});
+    } catch {
+      /* payload فاضي/غير صالح */
+    }
+  }, [payload, px]);
 
-  if (!payload) {
-    return (
-      <div className={cn("grid place-items-center bg-white rounded-xl", className)}>
-        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-      </div>
-    );
-  }
-  return <canvas ref={canvasRef} width={CANVAS_PX} height={CANVAS_PX} className={cn("block w-full h-full", className)} aria-label="كود حضور الحصة" />;
+  return (
+    <div ref={boxRef} className={cn("grid w-full h-full place-items-center", className)}>
+      {px > 0 ? (
+        <canvas ref={canvasRef} width={px} height={px} aria-label="كود حضور الحصة" />
+      ) : (
+        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+      )}
+    </div>
+  );
 }
 
 /* ---------------- الكارت الرئيسي ---------------- */
@@ -210,13 +235,17 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
           </div>
         ) : (
           <div className="flex items-center gap-3.5">
-            {qrBox("w-28 h-28 shrink-0")}
+            {qrBox("w-32 h-32 md:w-44 md:h-44 shrink-0")}
             <div className="min-w-0 space-y-1.5 text-xs font-bold text-muted-foreground">
               <p className="flex items-center gap-1.5 text-foreground/80">
                 <Camera className="w-3.5 h-3.5 nk-brand-text shrink-0" />
                 <span>الكود ثابت 10 ثواني وسليم — يُقرأ بأي كاميرا موبايل أو من سكانر البورتال، وبيتغير أوتوماتيك والقديم بيموت فورًا.</span>
               </p>
               <p>الطالب بيسجّل دخول البورتال مرة واحدة — وبعدها سكان الكود = حضور فوري.</p>
+              <p className="flex items-center gap-1.5">
+                <ScanLine className="w-3.5 h-3.5 nk-brand-text shrink-0" />
+                <span>مش بيتقري؟ دوس ⛶ (عرض بحجم الشاشة) وقرّب الكاميرا 20–30 سم من الكود.</span>
+              </p>
               <div className="flex items-center gap-2">
                 <div className="h-1.5 flex-1 rounded-full bg-border overflow-hidden min-w-16">
                   <div className={cn("h-full rounded-full transition-[width] duration-300 ease-linear", low ? "bg-amber-500" : "nk-brand-bg")}
@@ -245,7 +274,7 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
             <X className="w-5 h-5" />
           </button>
           <div className="flex flex-col items-center gap-5 max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
-            <div className="w-full max-w-sm aspect-square bg-white rounded-3xl p-4 shadow-xl border border-border overflow-hidden">
+            <div className="w-full max-w-md aspect-square bg-white rounded-3xl p-4 shadow-xl border border-border overflow-hidden">
               {payload ? <QrCanvas payload={payload} /> : <Loader2 className="w-10 h-10 animate-spin text-slate-400" />}
             </div>
             <div className="text-center space-y-2">
