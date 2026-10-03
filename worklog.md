@@ -36,3 +36,26 @@ Work Log:
 
 Stage Summary:
 - The core business rule (session_id + device_id = unique) is enforced by the DATABASE, not code: parallel same-device submissions produce exactly one row (race-tested). Students check in with zero login (code only); device identity is a random UUID cookie/localStorage value (no PII, no hardware IDs, honestly documented as bypassable — risk engine + staff review cover the incognito/browser-change gap instead of pretending). Grace window is server-authoritative and anchored to a signed live-sighting proof, so screenshots die with the code while legitimate students keep typing. Suspicious attempts (device reuse, rapid multi-student, same-IP bursts) surface in the teacher dashboard as reviewable flags, never auto-accusations. Existing flows untouched: portal self-scan (/s + claim), staff QR, slot rotation, mark/manual — all green.
+
+---
+Task ID: N (technical SEO + AI discoverability + rebrand)
+Agent: main (Super Z)
+Task: 30-phase technical SEO audit & implementation + rebrand all user-facing old name ("نخبة سنترز"/"AlNokhba Centers") → "Alnokhba Managment".
+
+Work Log:
+- AUDIT: full crawl of routing/metadata/robots/assets — only "/" is public-indexable; login/app/portal/teacher/staff-screen/academia private; /s /a /c ephemeral tokens; zero metadata/canonical/OG/schema/404 before.
+- SEO LIB: src/lib/seo.ts — SITE_NAME/SITE_URL (NEXT_PUBLIC_SITE_URL, default prod domain), SITE_DESCRIPTION, PUBLIC_PATHS/PRIVATE_PATHS single source, pageMetadata() (title absolute + canonical + OG ar_EG + twitter + robots), privateLayoutMetadata() (noindex), JSON-LD builders (Organization/WebSite/SoftwareApplication — no fake schema: no SearchAction/FAQPage).
+- LAYOUT: metadataBase, title.default+template, icons/manifest/appleWebApp, OG/Twitter defaults, robots googleBot max-image-preview, optional GOOGLE_SITE_VERIFICATION env hook (no secrets in code), Cairo woff2 preloads (crossOrigin).
+- HOME: page.tsx → server component exporting metadata (canonical https://alnokhba-centers.vercel.app) + 3 JSON-LD scripts; LandingPage stays client/SSR.
+- ROBOTS/SITEMAP: app/robots.ts (Disallow login/app/portal/teacher/staff-screen/academia/s///a///c//api/ + Sitemap + Host) replaced static permissive robots.txt (deleted); app/sitemap.ts from PUBLIC_PATHS (home only, no-trailing-slash canonical match).
+- NOINDEX LAYOUTS ×9: login, app, portal, teacher, staff-screen, s/[token], a/[token], c/[token], academia (covers session/[id]).
+- 404: not-found.tsx branded RTL with home/login links, status 404, noindex.
+- AI: public/llms.txt (brand, products incl. Academia, public pages, canonical, notes that portals/token links are not content).
+- OG IMAGE: scripts/gen_og_image.js (Playwright, logo data-URI, Cairo) → public/og.jpg 1200×630 55KB.
+- REBRAND (user-facing strings only; kept AlNokhbaMark identifier, academia product name, demo center name/slogans, backup filename prefixes, domain): layout title/applicationName, manifest name/short_name, sw.js notification titles ×3, shared.tsx AlNokhbaMark wordmark (line2 → Arabic descriptor, tracking-normal to protect Arabic shaping), landing (aria-label/wordmark/hero/footer/copyright + typo رصيدهمقل→رصيدهم قل), login h1+subtitle+إدارة strings, shell ×4, print fallbacks+generated-by ×5, cards/reports fallbacks, help-content tours ×3, settings identity note, admin pricing subtitle, auth.ts admin msg, api/auth messages ×4, emergency boot/shell/excel/toast, backup creator+sheet. Zero old-name matches left in src/+public/.
+- FIXES DURING VALIDATION: double title-template ("...| Alnokhba Managment | Alnokhba Managment") → title {absolute} in pageMetadata + privateLayoutMetadata; canonical/sitemap trailing-slash aligned; home title shortened to default brand line.
+- VALIDATION: tsc src 0 errors; eslint 0 errors on all changed files; next build OK (/robots.txt /sitemap.xml /_not-found in output); dev crawl: title/canonical/OG/3×JSON-LD valid JSON/robots/sitemap/llms/og.jpg 200/login+app+portal noindex/404 status+branded/security headers intact/1×H1; agent-browser 390px: no h-scroll, brand+footer render (seo-mobile-home.png, seo-mobile-footer.png, seo-404.png); regressions e2e_qr_slot 15/15 + tabs_security 25/25 + e2e_notifications 7/7 + e2e_capabilities 37/37 + e2e_device_lock 33/33 = 117/117.
+- DEPLOY: commit b5b0e31 → Vercel; prod verified: new title, dynamic robots with Disallows, sitemap.xml, canonical, og:image, llms.txt 200, og.jpg 200 image/jpeg, /login noindex, branded 404 (HTTP 404), 1×H1, old robots.txt gone.
+
+Stage Summary:
+- Public surface = exactly one canonical indexable page ("/") with full metadata + 3 legitimate JSON-LD entities + branded OG image; every private/token route is noindex AND robots-disallowed (auth still the real gate); dynamic robots/sitemap are generated from one PATHS source in seo.ts (maintainable); GSC verification is a zero-secret env hook (GOOGLE_SITE_VERIFICATION) with manual steps documented; llms.txt added as AI-discovery convention (not claimed as ranking factor). Rebrand to "Alnokhba Managment" shipped across all user-facing surfaces without touching internal identifiers, DB data, Academia product name, or the production domain. 117/117 regression checks green; production live.
