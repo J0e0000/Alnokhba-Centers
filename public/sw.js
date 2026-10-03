@@ -1,5 +1,5 @@
 /* ============================================================
-   نخبة سنترز — Service Worker
+   Alnokhba Managment — Service Worker
    النطاق متعمّد ضيق: تدعيم الحضور أوفلاين + إشعارات Web Push.
    - pre-cache للهيكل (shell) عشان التطبيق يفتح من غير نت
    - الـ API مش بيتكاش أبداً (الداتا لازم تكون حية)
@@ -67,8 +67,8 @@ self.addEventListener("fetch", (event) => {
 self.addEventListener("push", (event) => {
   if (!event.data) return;
   let payload = {};
-  try { payload = event.data.json(); } catch (e) { payload = { title: "نخبة سنترز", body: event.data.text() }; }
-  const title = payload.title || "نخبة سنترز";
+  try { payload = event.data.json(); } catch (e) { payload = { title: "Alnokhba Managment", body: event.data.text() }; }
+  const title = payload.title || "Alnokhba Managment";
   const options = {
     body: payload.body || "",
     icon: "/icon-192.png",
@@ -118,7 +118,7 @@ self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "nk-show-notification") {
     const { title, body, url, tag } = event.data.payload || {};
     event.waitUntil && event.waitUntil(
-      self.registration.showNotification(title || "نخبة سنترز", {
+      self.registration.showNotification(title || "Alnokhba Managment", {
         body: body || "",
         icon: "/icon-192.png",
         badge: "/icon-192.png",

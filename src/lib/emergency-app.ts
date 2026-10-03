@@ -92,8 +92,8 @@ ${brandOverride}
 <body>
 <div class="nk-boot" id="nk-boot">
   <div class="nk-boot-card">
-    <img class="nk-boot-logo" src="${logo}" alt="النخبة">
-    <h2 style="margin:0;color:var(--navy);font-size:19px">ALNOKHBA CENTERS</h2>
+    <img class="nk-boot-logo" src="${logo}" alt="Alnokhba Managment">
+    <h2 style="margin:0;color:var(--navy);font-size:19px">ALNOKHBA MANAGMENT</h2>
     <p style="margin:2px 0 0;font-weight:800;color:var(--gold-deep);font-size:12px">وضع الطوارئ — ${license.centerName}</p>
     <div class="nk-spin"></div>
     <p class="nk-hint">جاري التحقق من رخصة الطوارئ الموقّعة…</p>

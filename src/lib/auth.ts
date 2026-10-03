@@ -340,7 +340,7 @@ export async function requireManager(): Promise<SessionUser & { centerId: string
 
 export async function requireAdmin(): Promise<SessionUser> {
   const user = await requireUser();
-  if (user.role !== "ADMIN") throw new ApiError("البورتال ده لأدمن النخبة بس.", 403);
+  if (user.role !== "ADMIN") throw new ApiError("البورتال ده لأدمن Alnokhba Managment بس.", 403);
   return user;
 }
 

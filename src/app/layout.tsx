@@ -2,10 +2,22 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { PWARegister } from "@/components/nokhba/pwa";
+import { SITE_NAME, SITE_DESCRIPTION, SITE_URL } from "@/lib/seo";
+
+/* تحقق Google Search Console — اختياري وآمن:
+   لو المالك ضاف GOOGLE_SITE_VERIFICATION في متغيرات البيئة على Vercel
+   بيتحقق تلقائيًا من غير ما نكشف أي سر في الكود. من غيره الموقع شغال عادي
+   والمالك يتحقق بطريقة ملف HTML أو DNS (موثقة في تقرير SEO). */
+const GOOGLE_VERIFICATION = process.env.GOOGLE_SITE_VERIFICATION || undefined;
 
 export const metadata: Metadata = {
-  title: "نخبة سنترز | AlNokhba Centers",
-  description: "نظام إدارة السنترات — حضور، حسابات، ومتابعة الطلاب من غير وجع دماغ",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} — منصة إدارة السنترات التعليمية`,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
   icons: {
     icon: [
       { url: "/favicon.png", sizes: "48x48", type: "image/png" },
@@ -14,7 +26,32 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   manifest: "/manifest.webmanifest",
-  applicationName: "نخبة سنترز",
+  appleWebApp: {
+    capable: true,
+    title: SITE_NAME,
+    statusBarStyle: "default",
+  },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    locale: "ar_EG",
+    url: `${SITE_URL}/`,
+    title: `${SITE_NAME} — منصة إدارة السنترات التعليمية`,
+    description: SITE_DESCRIPTION,
+    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: `${SITE_NAME} — منصة إدارة السنترات التعليمية` }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE_NAME} — منصة إدارة السنترات التعليمية`,
+    description: SITE_DESCRIPTION,
+    images: ["/og.jpg"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
+  },
+  ...(GOOGLE_VERIFICATION ? { verification: { google: GOOGLE_VERIFICATION } } : {}),
 };
 
 export const viewport: Viewport = {
@@ -35,6 +72,11 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
+      <head>
+        {/* تحميل مسبق لخطوط Cairo الذاتية — LCP أسرع لأول رسم نصي */}
+        <link rel="preload" href="/fonts/cairo-arabic.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/cairo-latin.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+      </head>
       <body className="font-sans antialiased bg-background text-foreground min-h-screen">
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
         {children}

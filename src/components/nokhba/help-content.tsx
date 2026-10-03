@@ -88,7 +88,7 @@ export const FAQ_IMAGES: Record<string, { src: string; alt: string; caption?: st
 export const CENTER_TOUR: TourStep[] = [
   {
     noSpot: true,
-    title: "أهلاً بيك في نخبة سنترز 👋",
+    title: "أهلاً بيك في Alnokhba Managment 👋",
     body: "دي جولة سريعة (دقيقتين) بتوريّلك النظام كله شاشة شاشة. تقدر تتخطاها دلوقتي وترجعلها أي وقت من زرار المساعدة ❓ اللي تحت عالشمال.",
   },
   {
@@ -174,12 +174,12 @@ export const RECEPTION_TOUR: TourStep[] = CENTER_TOUR.filter(
   (s) => !["groups", "accounting", "reports", "emergency", "settings", "approvals"].includes(s.view ?? ""),
 );
 
-/* ============ جولة الأدمن (منصة النخبة) ============ */
+/* ============ جولة الأدمن (منصة Alnokhba Managment) ============ */
 
 export const ADMIN_TOUR: TourStep[] = [
   {
     noSpot: true,
-    title: "أهلاً بيك في بورتال منصة النخبة 👋",
+    title: "أهلاً بيك في بورتال Alnokhba Managment 👋",
     body: "من هنا بتدير كل السناتر المشتركة في المنصة: الاشتراكات، الفواتير، والمراقبة. جولة دقيقة واحدة وخلاص.",
   },
   {
