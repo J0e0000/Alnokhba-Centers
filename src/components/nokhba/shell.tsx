@@ -498,7 +498,7 @@ export function CenterShell({
         onFinish={finishTour}
         onNavigate={(v) => setView(v as ViewId)}
       />
-      <HelpButton view={view} viewLabel={NAV_LABELS[view] ?? activeTab?.label ?? ""} />
+      <HelpButton view={view} viewLabel={NAV_LABELS[view] ?? activeTab?.label ?? ""} role={role} />
     </div>
   );
 }
@@ -672,7 +672,7 @@ export function AdminShell({
 
       {/* الجولة + المساعدة */}
       <Tour steps={ADMIN_TOUR} open={tourOpen} onClose={finishTour} onFinish={finishTour} onNavigate={(v) => setView(v as AdminViewId)} />
-      <HelpButton view={`admin-${view}`} viewLabel={`أدمن — ${ADMIN_NAV.find((n) => n.id === view)?.label ?? view}`} />
+      <HelpButton view={`admin-${view}`} viewLabel={`أدمن — ${ADMIN_NAV.find((n) => n.id === view)?.label ?? view}`} role="ADMIN" />
     </div>
   );
 }

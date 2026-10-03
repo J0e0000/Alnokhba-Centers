@@ -3,6 +3,7 @@ import { ok, handler, readJson } from "@/lib/api";
 import { requireCenterUser, rateLimit } from "@/lib/auth";
 import { cleanRaw } from "@/lib/normalize";
 import { studentBalance, effectivePrice, amountDueToday } from "@/lib/finance";
+import { hasCapability } from "@/lib/center-capabilities";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,16 @@ export const POST = handler(async (req: Request) => {
   const raw = String(body.query ?? "").trim();
   const q = cleanRaw(raw);
   if (!q) return ok({ status: "RED", message: "امسح الكود أو اكتب كود الطالب." });
+
+  // بوابة قدرات المركز: مسح توكن الكارت = static_qr — كتابة الكود = static_qr أو name_attendance
+  const tokenLike = q.length >= 16 && /^[0-9a-f]+$/i.test(q);
+  if (tokenLike) {
+    if (!(await hasCapability(user.centerId, "static_qr"))) {
+      return ok({ status: "RED", message: "مسح كروت الطلاب مقفول في المركز ده — كلّم المدير." });
+    }
+  } else if (!(await hasCapability(user.centerId, "static_qr")) && !(await hasCapability(user.centerId, "name_attendance"))) {
+    return ok({ status: "RED", message: "حضور الطلاب بالكود/الاسم مقفول في المركز ده — كلّم المدير." });
+  }
 
   // Resolve: QR token (long hex) → exact, else 5-digit code → exact
   const isToken = q.length >= 16 && /^[0-9a-f]+$/i.test(q);

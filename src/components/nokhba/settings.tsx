@@ -4,11 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   Palette, MessageCircle, Users, ScrollText, Loader2, Save, Plus, Pencil, Trash2,
-  ShieldCheck, Eye, Upload, Variable, Smartphone, SlidersHorizontal,
+  ShieldCheck, Eye, Upload, Variable, Smartphone, SlidersHorizontal, ScanLine,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, applyCenterBranding, darkenForAA, type SessionUser } from "./lib";
 import { PageHeader, Chip, Loading, SectionCard, EmptyState } from "./shared";
+import { AttendanceTab } from "./settings-attendance";
 import { Field, inputCls } from "./students";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
@@ -130,6 +131,7 @@ function readableOn(bg: string | null | undefined): string {
 
 const TABS = [
   { id: "branding", label: "هوية السنتر", icon: <Palette className="w-4 h-4" /> },
+  { id: "attendance", label: "الحضور والpresence", icon: <ScanLine className="w-4 h-4" /> },
   { id: "whatsapp", label: "قوالب واتساب", icon: <MessageCircle className="w-4 h-4" /> },
   { id: "staff", label: "الموظفين", icon: <Users className="w-4 h-4" /> },
   { id: "prefs", label: "تفضيلاتي", icon: <SlidersHorizontal className="w-4 h-4" /> },
@@ -156,6 +158,7 @@ export function SettingsView({ user, onBrandingChanged }: { user: SessionUser; o
       </div>
 
       {tab === "branding" && <BrandingTab user={user} onBrandingChanged={onBrandingChanged} />}
+      {tab === "attendance" && <AttendanceTab />}
       {tab === "whatsapp" && <WhatsAppTab />}
       {tab === "staff" && <StaffTab />}
       {tab === "prefs" && <PersonalPrefsTab />}

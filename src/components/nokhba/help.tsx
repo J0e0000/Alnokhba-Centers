@@ -6,18 +6,52 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { FAQ_ITEMS, type FaqItem } from "./help-content";
+import { defaultCapabilityMap, type CapabilityKey, type CapabilityMap } from "@/lib/capabilities";
 
 /** لقطات شاشة إرشادية للأسئلة الشائعة — المفاتيح المرتبطة بعناصر الـ FAQ.
  *  الصور نفسها اختيارية: لو مش موجودة، البطاقة بتتعرض نصيّ بس. */
 const FAQ_IMAGES: Record<string, { src: string; alt: string; caption?: string } | undefined> = {};
 
 /* ============================================================
-   زرار المساعدة — موجود في كل شاشة:
-   أسئلة وإجابات عن الشاشة الحالية بالذات + بحث في الكل
-   + زرار إعادة تشغيل الجولة التعليمية (nk-start-tour event)
+   نظام المساعدة المدرك للدور والسياق (Role-aware + Context-aware Q&A)
+   ------------------------------------------------------------
+   - كل سؤال له أدوار (roles) وقدرات مطلوبة (requiresCaps).
+   - شاشات المدير بس: أسئلتها مش بتظهر للاستقبال/المعلم.
+   - أسئلة ميزة مقفولة في المركز بتختفي تلقائيًا.
+   - السياق: أسئلة الشاشة الحالية بتتصدر القايمة دايمًا.
 ============================================================ */
 
-export function HelpButton({ view, viewLabel }: { view: string; viewLabel: string }) {
+/** شاشات المدير حصرًا — أسئلتها متتعرضش لباقي الأدوار */
+const MANAGER_ONLY_VIEWS = new Set([
+  "settings", "accounting", "emergency", "approvals", "monitor", "billing", "centers", "subscriptions", "backups",
+]);
+
+/** فلترة الأسئلة: دور المستخدم + قدرات مركزه */
+export function filterQa(
+  items: FaqItem[],
+  ctx: { role?: string | null; caps?: CapabilityMap | null },
+): FaqItem[] {
+  const caps = ctx.caps ?? defaultCapabilityMap();
+  return items.filter((f) => {
+    if (f.roles && ctx.role && !f.roles.includes(ctx.role)) return false;
+    if (!f.roles && ctx.role && MANAGER_ONLY_VIEWS.has(f.view) && ctx.role !== "MANAGER" && ctx.role !== "ADMIN") return false;
+    if (f.requiresCaps?.length && !f.requiresCaps.every((k) => caps[k as CapabilityKey]?.enabled)) return false;
+    if (f.anyCaps?.length && !f.anyCaps.some((k) => caps[k as CapabilityKey]?.enabled)) return false;
+    return true;
+  });
+}
+
+export function HelpButton({
+  view,
+  viewLabel,
+  role,
+  caps,
+}: {
+  view: string;
+  viewLabel: string;
+  role?: string | null;
+  caps?: CapabilityMap | null;
+}) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -26,25 +60,27 @@ export function HelpButton({ view, viewLabel }: { view: string; viewLabel: strin
     setOpenGroups((prev) => (prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]));
   }
 
-  const contextual = useMemo(() => FAQ_ITEMS.filter((f) => f.view === view), [view]);
-  const general = useMemo(() => FAQ_ITEMS.filter((f) => f.view === "general"), []);
+  const ctx = useMemo(() => ({ role, caps }), [role, caps]);
+  const visibleAll = useMemo(() => filterQa(FAQ_ITEMS, ctx), [ctx]);
+  const contextual = useMemo(() => visibleAll.filter((f) => f.view === view), [visibleAll, view]);
+  const general = useMemo(() => visibleAll.filter((f) => f.view === "general"), [visibleAll]);
 
   const results = useMemo(() => {
     const needle = q.trim();
     if (!needle) return null;
-    return FAQ_ITEMS.filter((f) => f.q.includes(needle) || f.a.includes(needle) || f.viewLabel.includes(needle));
-  }, [q]);
+    return visibleAll.filter((f) => f.q.includes(needle) || f.a.includes(needle) || f.viewLabel.includes(needle));
+  }, [q, visibleAll]);
 
   const groups = useMemo(() => {
     const byLabel = new Map<string, FaqItem[]>();
-    for (const f of FAQ_ITEMS) {
+    for (const f of visibleAll) {
       if (f.view === "general") continue;
       const arr = byLabel.get(f.viewLabel) ?? [];
       arr.push(f);
       byLabel.set(f.viewLabel, arr);
     }
     return [...byLabel.entries()];
-  }, []);
+  }, [visibleAll]);
 
   return (
     <>

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { applyCenterBranding, type SessionUser } from "./lib";
 import { AlNokhbaMark } from "./shared";
 import { UndoRedoButtons } from "./undo-buttons";
+import { HelpButton } from "./help";
 import { readPending, syncPending } from "./pwa";
 import { SuccessBarHost } from "./success-bar";
 
@@ -115,6 +116,9 @@ export function FocusShell({ user, children, onExit }: {
       <main className="flex-1 min-w-0 pb-16">{children}</main>
 
       <ExitConfirmDialog open={confirmOpen} onOpenChange={setConfirmOpen} onConfirm={doExit} />
+
+      {/* المساعدة المدركة للدور والسياق — شاشة الحصة الحية */}
+      <HelpButton view="session-live" viewLabel="الحصة الحية" role={user.role} />
     </div>
   );
 }

@@ -28,6 +28,8 @@ import { SessionLiveView } from "./session-live";
 import { EmergencyView } from "./emergency";
 import { ApprovalsView } from "./approvals";
 import { clearPending } from "./pwa";
+import { CapsProvider } from "./caps";
+import type { CapabilityMap } from "@/lib/capabilities";
 
 import { CommandPalette } from "./command-palette";
 import {
@@ -45,13 +47,26 @@ export function App() {
   const [sessionOverride, setSessionOverride] = useState<string | null>(null);
   const [addNewStudent, setAddNewStudent] = useState(false);
   const [adminView, setAdminView] = useState<AdminViewId>("centers");
-
+  const [caps, setCaps] = useState<CapabilityMap | null>(null);
 
   useEffect(() => {
     api<{ user: SessionUser | null }>("/api/auth", { silent: true })
       .then((d) => setUser(d.user))
       .catch(() => setUser(null));
   }, []);
+
+  // قدرات المركز — الواجهات بتتكيف بيها (والسيرفر بيفرضها على الـ API)
+  useEffect(() => {
+    if (!user?.centerId) return;
+    const load = () => {
+      api<{ capabilities: CapabilityMap }>("/api/center/capabilities", { silent: true })
+        .then((d) => setCaps(d.capabilities))
+        .catch(() => {});
+    };
+    load();
+    window.addEventListener("nk-caps-changed", load);
+    return () => window.removeEventListener("nk-caps-changed", load);
+  }, [user?.centerId]);
 
   // تحديث بيانات المستخدم من أي مكان (إعدادات الطباعة مثلاً)
   useEffect(() => {
@@ -155,15 +170,17 @@ export function App() {
   // (مفيش سايدبار ولا تنقل سفلي — بس شريط الحالة والخروج الآمن)
   if (sessionId) {
     return (
-      <FocusShell user={user} onExit={() => { setSessionId(null); }}>
-        <SessionLiveView
-          key={sessionId}
-          user={user}
-          sessionId={sessionId}
-          onBack={() => setSessionId(null)}
-          onGoScan={() => goScanForSession(sessionId)}
-        />
-      </FocusShell>
+      <CapsProvider value={caps}>
+        <FocusShell user={user} onExit={() => { setSessionId(null); }}>
+          <SessionLiveView
+            key={sessionId}
+            user={user}
+            sessionId={sessionId}
+            onBack={() => setSessionId(null)}
+            onGoScan={() => goScanForSession(sessionId)}
+          />
+        </FocusShell>
+      </CapsProvider>
     );
   }
 
@@ -257,24 +274,26 @@ export function App() {
   }
 
   return (
-    <PrintProvider>
-      <CenterShell user={user} onLogout={onLogout} view={view} setView={(v) => { setView(v); setStudentId(null); setSessionId(null); }}>
-        {/* شريط النجاح الدائم — تحت الهيدر على طول، مبيختفيش لوحده */}
-        <div className="mb-3">
-          <SuccessBarHost />
-        </div>
-        {/* حركة دخول لكل فيو — المفتاح بيعيد التشغيل مع كل تنقل */}
-        <div key={`${view}-${studentId ?? ""}`} className="nk-anim-view">
-          {content}
-        </div>
-      </CenterShell>
-      {/* Ctrl+K بحث سريع */}
-      <CommandPalette
-        user={user}
-        setView={(v) => { setView(v); setStudentId(null); setSessionId(null); }}
-        onOpenStudent={(id) => setStudentId(id)}
-      />
-    </PrintProvider>
+    <CapsProvider value={caps}>
+      <PrintProvider>
+        <CenterShell user={user} onLogout={onLogout} view={view} setView={(v) => { setView(v); setStudentId(null); setSessionId(null); }}>
+          {/* شريط النجاح الدائم — تحت الهيدر على طول، مبيختفيش لوحده */}
+          <div className="mb-3">
+            <SuccessBarHost />
+          </div>
+          {/* حركة دخول لكل فيو — المفتاح بيعيد التشغيل مع كل تنقل */}
+          <div key={`${view}-${studentId ?? ""}`} className="nk-anim-view">
+            {content}
+          </div>
+        </CenterShell>
+        {/* Ctrl+K بحث سريع */}
+        <CommandPalette
+          user={user}
+          setView={(v) => { setView(v); setStudentId(null); setSessionId(null); }}
+          onOpenStudent={(id) => setStudentId(id)}
+        />
+      </PrintProvider>
+    </CapsProvider>
   );
 }
 

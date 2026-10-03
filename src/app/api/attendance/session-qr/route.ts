@@ -3,6 +3,7 @@ import { ok, handler, readJson } from "@/lib/api";
 import { requireCenterUser, ApiError } from "@/lib/auth";
 import { issueSessionQr } from "@/lib/session-qr";
 import { logAudit, AUDIT } from "@/lib/audit";
+import { requireCapability } from "@/lib/center-capabilities";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,8 @@ export const dynamic = "force-dynamic";
  */
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
+  // بوابة قدرة المركز: QR الحصة المتغير = dynamic_qr
+  await requireCapability(user.centerId, "dynamic_qr");
   const body = await readJson<{ sessionId?: string; rotateSeconds?: number }>(req);
   const sessionId = String(body.sessionId ?? "");
   const rotateSeconds = Math.max(8, Math.min(60, Math.round(Number(body.rotateSeconds) || 12)));

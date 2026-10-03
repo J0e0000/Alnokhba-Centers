@@ -15,6 +15,8 @@ import { feedback } from "./feedback";
 import { showSuccess } from "./success-bar";
 import { ScanView } from "./scan";
 import { SessionQrCard } from "./session-qr-card";
+import { useCaps } from "./caps";
+import { ActionSquare } from "./action-button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -69,6 +71,7 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
   const [reopenReason, setReopenReason] = useState("");
   const [payments, setPayments] = useState<SessionPayments | null>(null);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const caps = useCaps();
 
   const load = useCallback(() => {
     api<SessionDetail>(`/api/sessions/${sessionId}`).then(setData).catch(() => {});
@@ -294,6 +297,40 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
         </div>
       </div>
 
+      {/* ===== الخطوة الجاية — إجراء أساسي واحد واضح (تعقيد النظام مش على المستخدم) ===== */}
+      {!cancelled && (
+        <div className="nk-card rounded-2xl p-3 flex items-center gap-3" data-tour="session-next-action">
+          <span className="w-11 h-11 rounded-2xl nk-brand-bg-soft nk-brand-text grid place-items-center shrink-0">
+            {!closed && data.attendance.length === 0 ? <ScanLine className="w-5.5 h-5.5" /> : !closed ? <CheckCircle2 className="w-5.5 h-5.5" /> : <ClipboardCheck className="w-5.5 h-5.5" />}
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="font-extrabold text-sm">
+              {!closed && data.attendance.length === 0 ? "الحصة جاهزة — سجّل الحضور" : !closed ? (canEnd ? "الحضور اتحضر — اعتمد وقفل الحصة" : "الحضور اتحضر — راجع قبل القفل") : "الحصة خلصت — راجع النتائج"}
+            </p>
+            <p className="text-[11px] font-bold text-muted-foreground">
+              {!closed && data.attendance.length === 0
+                ? (caps.static_qr.enabled || caps.name_attendance.enabled || caps.dynamic_qr.enabled
+                    ? "امسح كارت أو استخدم QR الحصة أو علّم بالاسم"
+                    : "مفيش طرق حضور مفعّلة في المركز — كلّم المدير")
+                : !closed ? "القفل بيثبّت الإجماليات ويقفل الحسابات"
+                : "الإجماليات والحضور محفوظين"}
+            </p>
+          </div>
+          <ActionSquare
+            icon={!closed && data.attendance.length === 0 ? <ScanLine className="w-6 h-6" /> : !closed ? <CheckCircle2 className="w-6 h-6" /> : <ClipboardCheck className="w-6 h-6" />}
+            label={!closed && data.attendance.length === 0 ? "احضر" : !closed ? (canEnd ? "اعتمد وقفل" : "راجع") : "النتائج"}
+            variant={!closed && data.attendance.length === 0 ? "primary" : !closed ? (canEnd ? "success" : "secondary") : "secondary"}
+            size="lg"
+            onClick={() => {
+              if (!closed && data.attendance.length === 0) setTab("attendance");
+              else if (!closed && canEnd) setCloseOpen(true);
+              else setTab("review");
+            }}
+            tooltip={!closed && data.attendance.length === 0 ? "الخطوة الجاية: تسجيل الحضور" : !closed && canEnd ? "اعتماد الحضور وقفل الحصة" : "مراجعة الحصة"}
+          />
+        </div>
+      )}
+
       {/* ===== التابات — خط الأنابيب في نفس مساحة العمل ===== */}
       <div className="grid grid-cols-4 gap-1.5 nk-card rounded-2xl p-1.5" role="tablist" aria-label="خطوات الحصة" data-tour="session-tabs">
         {TABS.map((t) => (
@@ -398,18 +435,25 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
             </>
           ) : (
             <>
-              {/* الطرق الثلاثة للحضور — واضحة للجميع (spec §3) */}
+              {/* الطرق المتاحة للحضور — بتتكيف مع قدرات المركز (المعطّل مش بيظهر خالص) */}
               <div className="nk-card rounded-2xl p-3 flex flex-wrap items-center gap-1.5 text-[11px] font-extrabold">
                 <span className="text-muted-foreground me-1">طرق تسجيل الحضور:</span>
-                <span className="rounded-full border border-border bg-card px-2.5 py-1">١ · مسح كارت الطالب</span>
-                <span className="rounded-full border border-border bg-card px-2.5 py-1">٢ · البحث / التحديد اليدوي</span>
-                <span className="rounded-full nk-brand-bg text-white px-2.5 py-1 inline-flex items-center gap-1"><QrCode className="w-3 h-3" /> ٣ · QR الحصة المتنقل</span>
+                {caps.static_qr.enabled && <span className="rounded-full border border-border bg-card px-2.5 py-1">١ · مسح كارت الطالب</span>}
+                {caps.name_attendance.enabled && <span className="rounded-full border border-border bg-card px-2.5 py-1">٢ · البحث / التحديد اليدوي</span>}
+                {caps.dynamic_qr.enabled && <span className="rounded-full nk-brand-bg text-white px-2.5 py-1 inline-flex items-center gap-1"><QrCode className="w-3 h-3" /> ٣ · QR الحصة المتنقل</span>}
+                {!caps.static_qr.enabled && !caps.name_attendance.enabled && !caps.dynamic_qr.enabled && (
+                  <span className="rounded-full border border-amber-300 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 px-2.5 py-1 inline-flex items-center gap-1">
+                    مفيش طرق حضور مفعّلة في المركز — كلّم المدير
+                  </span>
+                )}
               </div>
               {/* المسح المدمج — نفس محرك شاشة الحضور المجرب، بس مربوط بالحصة دي */}
-              <ScanView user={user} embedded sessionOverride={sessionId} clearSessionOverride={() => {}} />
-              <SessionQrCard sessionId={sessionId} />
+              {(caps.static_qr.enabled || caps.name_attendance.enabled) && (
+                <ScanView user={user} embedded sessionOverride={sessionId} clearSessionOverride={() => {}} />
+              )}
+              {caps.dynamic_qr.enabled && <SessionQrCard sessionId={sessionId} />}
               <AttendanceTable data={data} printAttendance={printAttendance} showPrint />
-              {data.absent.length > 0 && (
+              {data.absent.length > 0 && caps.name_attendance.enabled && (
                 <SectionCard
                   title={`مسجلين ومحضروش (${data.absent.length})`}
                   icon={<UserX className="w-4 h-4" />}

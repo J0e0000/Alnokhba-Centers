@@ -1,15 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CalendarClock, LockOpen, Loader2, Zap, PlayCircle, Ban, DoorClosed,
-  Printer, ClipboardCheck, ScanLine,
+  Printer, ClipboardCheck, ScanLine, LogIn, CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api, fmt, formatTime12, DAY_TABS, type SessionUser } from "./lib";
 import { PageHeader, SectionCard, EmptyState, Loading } from "./shared";
 import { usePrint, PrintableDaySchedule, type DayScheduleHall } from "./print";
+import { ActionSquare, ActionPill } from "./action-button";
+import { useCaps } from "./caps";
+import { CombiningQrScanner } from "./qr-scanner-combining";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { ViewId } from "./shell";
 
 /* ============================================================
@@ -52,6 +56,8 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
   const [data, setData] = useState<SessionsData | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [opening, setOpening] = useState<string | null>(null);
+  const [checkinOpen, setCheckinOpen] = useState(false);
+  const caps = useCaps();
   const printSheet = usePrint();
 
   const load = useCallback(() => {
@@ -78,8 +84,12 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
   async function openPlanned(scheduleId: string) {
     setOpening(scheduleId);
     try {
-      const res = await api<{ session: { id: string } }>("/api/sessions", { method: "POST", body: { scheduleId } });
+      const res = await api<{ session: { id: string }; teacherAutoAttendance: { teacherName: string } | null }>("/api/sessions", { method: "POST", body: { scheduleId } });
       toast.success("الحصة فتحت خلاص 🟢 — جاهز للمسح");
+      // حضور المدرس التلقائي — بدء الحصة = تسجيل المدرس حاضر
+      if (res.teacherAutoAttendance) {
+        toast.success(`حضور المدرس اتسجل تلقائيًا — ${res.teacherAutoAttendance.teacherName} ✅`, { duration: 5000 });
+      }
       window.dispatchEvent(new CustomEvent("nk-sessions-changed"));
       openSession(res.session.id);
     } catch { /* toast */ } finally { setOpening(null); }
@@ -116,6 +126,11 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
 
   const live = data.sessions.filter((s) => s.status === "OPEN");
   const isManager = user.role === "MANAGER";
+  const isStaff = user.role === "MANAGER" || user.role === "RECEPTIONIST";
+  // التكيف مع قدرات المركز: شاشة المسح بتظهر لو فيها طريقة شغالة على الأقل
+  const scanScreenAvailable = caps.static_qr.enabled || caps.name_attendance.enabled;
+  // حضور الموظفين الذاتي — لو الميزة مفعّلة والموظف معندوش حضور النهاردة (بيتحدد بالسيرفر)
+  const canSelfCheckin = isStaff && caps.staff_qr_checkin.enabled;
 
   return (
     <div className="space-y-5 nk-anim-stagger">
@@ -133,7 +148,8 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
         }
       />
 
-      {/* CTA المسح — أهم إجراء تشغيلي في اليوم */}
+      {/* CTA المسح — أهم إجراء تشغيلي في اليوم (مخفي لو مفيش طرق مسح مفعّلة) */}
+      {scanScreenAvailable && (
       <button
         onClick={() => setView("scan")}
         className="w-full nk-brand-grad nk-portal-card rounded-2xl p-4 text-white flex items-center gap-3.5 shadow-lg active:scale-[0.99] transition"
@@ -147,6 +163,19 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
           <span className="rounded-full bg-white/20 px-3 py-1 text-[11px] font-extrabold">{live.length} حصة شغالة</span>
         )}
       </button>
+      )}
+
+      {/* حضور الموظف الذاتي — امسح كود شاشة المركز (لو الميزة مفعّلة) */}
+      {canSelfCheckin && (
+        <div className="nk-card rounded-2xl p-4 flex items-center gap-3.5">
+          <span className="rounded-xl p-2.5 nk-brand-bg-soft nk-brand-text"><LogIn className="w-5 h-5" /></span>
+          <div className="flex-1 min-w-0">
+            <p className="font-extrabold text-sm">تسجيل حضورك</p>
+            <p className="text-[11px] font-bold text-muted-foreground">امسح كود شاشة المركز — مرة واحدة في اليوم</p>
+          </div>
+          <ActionSquare icon={<ScanLine className="w-5 h-5" />} label="امسح" variant="primary" size="sm" onClick={() => setCheckinOpen(true)} tooltip="فتح ماسح كود حضور الموظفين" />
+        </div>
+      )}
 
       {/* ===== حصص النهاردة بحالاتها ===== */}
       <SectionCard title="حصص النهاردة" icon={<CalendarClock className="w-4 h-4" />}>
@@ -184,24 +213,17 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
                       )}
                     </p>
                   </button>
-                  {/* الإجراء الواضح لكل حالة */}
+                  {/* الإجراء الواضح لكل حالة — هرمية: أساسي واضح + ثانوي هادي */}
                   {isOpen && (
                     <div className="shrink-0 flex items-center gap-2">
-                      <button onClick={() => openSession(s.id)} className="rounded-xl px-4 py-3 font-extrabold text-sm flex items-center gap-2 active:scale-[0.98] transition border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,white)] bg-card nk-brand-text">
-                        <PlayCircle className="w-4.5 h-4.5" />
-                        متابعة الحصة
-                      </button>
-                      <button onClick={() => goScanForSession(s.id)} className="rounded-xl px-4 py-3 font-extrabold text-sm flex items-center gap-2 active:scale-[0.98] transition shadow nk-brand-bg text-white">
-                        <Zap className="w-4.5 h-4.5" />
-                        امسح الحضور
-                      </button>
+                      <ActionPill icon={<PlayCircle className="w-4 h-4" />} label="متابعة" onClick={() => openSession(s.id)} tooltip="فتح شاشة الحصة الحية" />
+                      {scanScreenAvailable && (
+                        <ActionSquare icon={<Zap className="w-5 h-5" />} label="امسح" variant="primary" size="sm" onClick={() => goScanForSession(s.id)} tooltip="مسح حضور الحصة دي" />
+                      )}
                     </div>
                   )}
                   {closed && (
-                    <button onClick={() => openSession(s.id)} className="shrink-0 rounded-xl px-4 py-3 font-extrabold text-sm flex items-center gap-2 active:scale-[0.98] transition bg-muted hover:bg-muted/70">
-                      <ClipboardCheck className="w-4.5 h-4.5" />
-                      عرض النتائج
-                    </button>
+                    <ActionPill icon={<ClipboardCheck className="w-4 h-4" />} label="عرض النتائج" onClick={() => openSession(s.id)} tooltip="مراجعة إجمالي الحصة" className="bg-muted border-transparent" />
                   )}
                 </div>
               );
@@ -224,14 +246,15 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
                     <span className="nk-num">{fmt(p.price)} ج · {p.students} طالب</span>
                   </p>
                 </div>
-                <button
-                  onClick={() => openPlanned(p.scheduleId)}
+                <ActionSquare
+                  icon={opening === p.scheduleId ? <Loader2 className="w-5 h-5 animate-spin" /> : <LockOpen className="w-5 h-5" />}
+                  label="ابدأ"
+                  variant="primary"
+                  size="sm"
                   disabled={opening === p.scheduleId}
-                  className="shrink-0 rounded-xl px-4 py-3 font-extrabold text-sm flex items-center gap-2 active:scale-[0.98] transition shadow border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,white)] bg-card nk-brand-text disabled:opacity-60"
-                >
-                  {opening === p.scheduleId ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : <LockOpen className="w-4.5 h-4.5" />}
-                  افتح الحصة
-                </button>
+                  onClick={() => openPlanned(p.scheduleId)}
+                  tooltip="فتح الحصة — حضور المدرس بيتسجل تلقائيًا"
+                />
               </div>
             ))}
           </div>
@@ -247,6 +270,66 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
           <span className="rounded-xl p-2.5 nk-brand-bg-soft nk-brand-text"><ClipboardCheck className="w-5 h-5" /></span>
           <span className="flex-1 text-start font-extrabold text-sm">طلبات محتاجة موافقة</span>
         </button>
+      )}
+
+      {/* ===== شيت حضور الموظف — امسح كود شاشة المركز ===== */}
+      <Dialog open={checkinOpen} onOpenChange={setCheckinOpen}>
+        <DialogContent dir="rtl" className="max-w-md rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <span className="w-9 h-9 rounded-xl nk-brand-bg grid place-items-center shrink-0"><LogIn className="w-5 h-5 text-white" /></span>
+              تسجيل حضورك — امسح كود المركز
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs font-bold text-muted-foreground leading-relaxed">
+              وجّه الكاميرا على الكود المعروض على شاشة المركز — الكود بيتغير كل ثواني قليلة، امسح أحدث كود.
+            </p>
+            <StaffCheckinScanner onDone={(msg) => { setCheckinOpen(false); toast.success(msg, { duration: 5000, icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" /> }); }} />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+/** سكانر كود حضور الموظفين — بياخد /c/<token> ويسجّل على طول */
+function StaffCheckinScanner({ onDone }: { onDone: (msg: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  const lastRef = useRef({ token: "", at: 0 });
+
+  async function claim(token: string) {
+    const now = Date.now();
+    if (lastRef.current.token === token && now - lastRef.current.at < 4000) return;
+    lastRef.current = { token, at: now };
+    setBusy(true);
+    try {
+      const r = await api<{ ok: boolean; alreadyCheckedIn?: boolean; message?: string }>("/api/attendance/staff-qr/claim", {
+        method: "POST", body: { token }, silent: true,
+      });
+      onDone(r.alreadyCheckedIn ? "حضورك متسجل بالفعل النهاردة 👍" : (r.message ?? "تم تسجيل حضورك ✅"));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "مش قادرين نسجل حضورك — جرب تاني.");
+    } finally { setBusy(false); }
+  }
+
+  function onScan(text: string) {
+    if (busy) return;
+    const m = text.trim().match(/\/c\/([0-9a-fA-F]{16,64})/) ?? ( /^[0-9a-fA-F]{16,64}$/.test(text.trim()) ? [null, text.trim()] : null );
+    if (!m) {
+      toast.error("الكود ده مش كود حضور موظفين — امسح كود شاشة المركز.");
+      return;
+    }
+    void claim(m[1].toLowerCase());
+  }
+
+  return (
+    <div className="relative">
+      <CombiningQrScanner active={!busy} onScan={onScan} />
+      {busy && (
+        <div className="absolute inset-0 grid place-items-center bg-black/45 rounded-2xl text-white text-sm font-extrabold">
+          <Loader2 className="w-5 h-5 animate-spin ms-2" /> جاري تسجيل حضورك…
+        </div>
       )}
     </div>
   );
