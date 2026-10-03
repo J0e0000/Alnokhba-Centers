@@ -2,9 +2,9 @@
 # ============================================================
 # E2E test — Slot QR (الموديل النهائي بعد تجربة الدفعة المتحركة):
 # 1) نداء واحد بيطلع كود واحد سليم (40 hex) — أي سكانر عادي بيقراه
-#    - الإيقاع: الكود ثابت 10 ثواني على الشاشة (قابل للضبط 5..30)
+#    - الإيقاع: الكود ثابت 10 ثواني على الشاشة (قابل للضبط 5..60 — spec §3)
 #    - TTL الكود = السلوت + هامش شبكة 4ث (14ث) وبعده بيموت نهائيًا
-# 2) clamps: slotSeconds 1→5 (أسرع من كده الكاميرا مش بتلحق)، 99→30
+# 2) clamps: slotSeconds 1→5 (أسرع من كده الكاميرا مش بتلحق)، 99→60 (spec §3)
 # 3) من غير تسجيل دخول → 401
 # 4) "الكود اللي قبله يتلغي": الكود القديم بيكمل شغال خلال هامش 4ث بس
 #    وبعدها ميت (410) — الصورة/السكرين شوت بيمسك كود ميت خلال ثواني
@@ -72,7 +72,7 @@ check "slot: TTL = slot+4s (~14s)" "ok" "$TTL" "photo dies in seconds"
 check "slot: slotSeconds=10 (camera-readable)" "ok" "$SLOT" "user-requested pace"
 [ -n "$T1" ] || { echo "NO TOKEN — abort"; exit 1; }
 
-# ── 3) clamps: slotSeconds 1→5 (حد الكاميرا)، 99→30 ──
+# ── 3) clamps: slotSeconds 1→5 (حد الكاميرا)، 99→60 (spec §3) ──
 SL=$(curl -s -b $JAR/mgr.jar -X POST "$BASE/api/attendance/session-qr/slot" \
   -H "Content-Type: application/json" -d "{\"sessionId\":\"$SESSION\",\"slotSeconds\":1}" \
   | python3 -c "import json,sys; print(json.load(sys.stdin).get('slotSeconds'))" 2>/dev/null)
@@ -80,7 +80,7 @@ check "slot: floor 1→5 (camera keeps up)" "5" "$SL" "readability floor"
 SH=$(curl -s -b $JAR/mgr.jar -X POST "$BASE/api/attendance/session-qr/slot" \
   -H "Content-Type: application/json" -d "{\"sessionId\":\"$SESSION\",\"slotSeconds\":99}" \
   | python3 -c "import json,sys; print(json.load(sys.stdin).get('slotSeconds'))" 2>/dev/null)
-check "slot: ceiling 99→30" "30" "$SH" "freshness ceiling"
+check "slot: ceiling 99→60" "60" "$SH" "freshness ceiling"
 
 # ── 4) دخول الطالب (بورتال) ──
 read -r SCODE SPHONE <<< $(npx tsx -e "

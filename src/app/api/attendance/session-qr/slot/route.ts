@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
 import { requireCenterUser, ApiError, rateLimit } from "@/lib/auth";
 import { issueSessionQrSlot, QR_SLOT_SECONDS } from "@/lib/session-qr";
+import { getCenterCapabilities, capabilityNumber } from "@/lib/center-capabilities";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { requireCapability } from "@/lib/center-capabilities";
 
@@ -26,7 +27,14 @@ export const POST = handler(async (req: Request) => {
   await requireCapability(user.centerId, "dynamic_qr");
   const body = await readJson<{ sessionId?: string; slotSeconds?: number }>(req);
   const sessionId = String(body.sessionId ?? "");
-  const slotSeconds = Math.max(5, Math.min(30, Math.round(Number(body.slotSeconds) || QR_SLOT_SECONDS)));
+  // قابل للضبط 5..60 ثانية (spec §3 — ممنوع hardcode): الأول من قدرة المركز dynamic_qr.config.slotSeconds،
+  // والطلب بيقدر يحدد قيمة داخل الحدود (للعرض بحجم شاشة مختلف مثلًا)
+  const caps = await getCenterCapabilities(user.centerId);
+  const configured = capabilityNumber(
+    (caps.dynamic_qr?.config ?? {}) as Record<string, unknown>,
+    "slotSeconds", QR_SLOT_SECONDS, 5, 60,
+  );
+  const slotSeconds = Math.max(5, Math.min(60, Math.round(Number(body.slotSeconds) || configured)));
 
   rateLimit(`qr-slot:${user.centerId}:${user.id}`, 30, 60_000);
 

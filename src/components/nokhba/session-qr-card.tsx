@@ -168,7 +168,8 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
   const secondsLeft = slotEnd ? Math.max(0, Math.ceil((slotEnd - now) / 1000)) : 0;
   const low = secondsLeft > 0 && secondsLeft <= 3;
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const payload = token ? `${origin}/s/${token}` : "";
+  // الرابط العام للحضور بقفل الجهاز (/a/<token>) — توكن opaque بس، مفيش IDs حساسة (spec §21)
+  const payload = token ? `${origin}/a/${token}` : "";
   const progress = slotEnd && slotMs ? Math.max(0, Math.min(1, (slotEnd - now) / slotMs)) : 0;
 
   const qrBox = (size: string) => (
@@ -233,9 +234,9 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
             <div className="min-w-0 space-y-1.5 text-xs font-bold text-muted-foreground">
               <p className="flex items-center gap-1.5 text-foreground/80">
                 <Camera className="w-3.5 h-3.5 nk-brand-text shrink-0" />
-                <span>الكود ثابت 10 ثواني وسليم — يُقرأ بأي كاميرا موبايل أو من سكانر البورتال، وبيتغير أوتوماتيك والقديم بيموت فورًا.</span>
+                <span>الكود ثابت 10 ثواني وسليم — يتقري بأي كاميرا موبايل، وبيتغير أوتوماتيك والقديم بيموت فورًا.</span>
               </p>
-              <p>الطالب بيسجّل دخول البورتال مرة واحدة — وبعدها سكان الكود = حضور فوري.</p>
+              <p>الطالب بيمسح الكود بكاميرا موبايله ويكتب كود الطالب — حضور في ثواني من غير تسجيل دخول، والجهاز بيتقفل للحصة (جهاز واحد = حضور واحد).</p>
               <p className="flex items-center gap-1.5">
                 <ScanLine className="w-3.5 h-3.5 nk-brand-text shrink-0" />
                 <span>مش بيتقري؟ دوس ⛶ (عرض بحجم الشاشة) وقرّب الكاميرا 20–30 سم من الكود.</span>
@@ -275,7 +276,7 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
               <p className="text-xl font-black">امسح الكود وسجّل حضورك</p>
               <p className={cn("text-sm font-bold flex items-center justify-center gap-1.5 nk-brand-text")}>
                 <ScanLine className="w-4 h-4" />
-                بأي كاميرا موبايل — أو من زرار QR العائم في البورتال
+                بكاميرا موبايلك — اكتب كود الطالب وسجّل حضورك في ثواني
               </p>
               <div className="flex items-center justify-center gap-3">
                 <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-black nk-num",

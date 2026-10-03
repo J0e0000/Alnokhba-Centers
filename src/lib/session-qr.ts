@@ -81,7 +81,8 @@ export async function issueSessionQrSlot(opts: {
   createdByName: string;
   slotSeconds?: number;
 }): Promise<{ token: string; expiresAt: string; slotSeconds: number }> {
-  const slotSeconds = Math.max(5, Math.min(30, Math.round(opts.slotSeconds ?? QR_SLOT_SECONDS)));
+  // قابل للضبط 5..60 ثانية (spec §3 — ممنوع hardcode 10) — الافتراضي 10
+  const slotSeconds = Math.max(5, Math.min(60, Math.round(opts.slotSeconds ?? QR_SLOT_SECONDS)));
   const token = randomBytes(20).toString("hex");
   const ttl = slotSeconds * 1000 + QR_SLOT_GRACE_MS;
   const row = await db.sessionQRToken.create({
