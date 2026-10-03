@@ -51,6 +51,9 @@ export const GET = handler(async (_req: Request, ctx: Ctx) => {
     attendance: session.attendance.map((a) => ({
       id: a.id, studentId: a.studentId, name: a.student.name, code: a.student.code,
       status: a.status, charged: a.charged, at: a.createdAt,
+      method: a.method,
+      riskScore: a.riskScore,
+      riskFlags: a.riskFlags ? ((): string[] => { try { return JSON.parse(a.riskFlags) as string[]; } catch { return []; } })() : [],
     })),
     absent: absent.map((r) => ({ studentId: r.student.id, name: r.student.name, code: r.student.code })),
   });

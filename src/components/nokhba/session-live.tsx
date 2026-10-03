@@ -31,8 +31,34 @@ type SessionDetail = {
     presentCount: number; totalRevenue: number; teacherShare: number; centerShare: number;
     collected: number; outstanding: number;
   };
-  attendance: { id: string; studentId: string; name: string; code: string; status: string; charged: number | null; at: string }[];
+  attendance: { id: string; studentId: string; name: string; code: string; status: string; charged: number | null; at: string; method?: string; riskScore?: number; riskFlags?: string[] }[];
   absent: { studentId: string; name: string; code: string }[];
+};
+
+// محاولات الحضور العام (نجاح/رفض) — مصدر قسم "النشاط المشبوه" (device-locked attendance)
+type CheckInAttemptRow = {
+  id: string; outcome: string; studentName: string | null; studentCode: string | null;
+  riskScore: number; riskFlags: string[]; deviceTail: string | null; ip: string | null; at: string;
+};
+type AttemptsRes = { attempts: CheckInAttemptRow[]; suspiciousCount: number };
+
+const ATTEMPT_OUTCOME_LABEL: Record<string, string> = {
+  ACCEPTED: "اتقبل ✅",
+  ALREADY_SAME_STUDENT: "متسجل من قبل",
+  ALREADY_ATTENDED: "متسجل من قبل",
+  DEVICE_LOCKED: "جهاز متكرر ⛔",
+  EXPIRED_TOKEN: "كود منتهي",
+  REPLAYED_TOKEN: "كود قديم (سكرين شوت)",
+  INVALID_TOKEN: "كود غير صالح",
+  CLOSED_SESSION: "الحصة مقفولة",
+  CANCELLED_SESSION: "الحصة ملغاة",
+  NOT_TODAY: "حصة تانية",
+  INVALID_STUDENT: "كود طالب مش معروف",
+  INACTIVE_STUDENT: "طالب مش نشط",
+  NOT_REGISTERED: "مش مسجل في المجموعة",
+  CAPABILITY_OFF: "الخدمة مقفولة بالمركز",
+  RATE_LIMITED: "محاولات كتير",
+  INVALID_REQUEST: "طلب شكله غلط",
 };
 
 type SessionPayments = {
@@ -71,13 +97,24 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
   const [reopenReason, setReopenReason] = useState("");
   const [payments, setPayments] = useState<SessionPayments | null>(null);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [attempts, setAttempts] = useState<AttemptsRes | null>(null);
   const caps = useCaps();
 
   const load = useCallback(() => {
     api<SessionDetail>(`/api/sessions/${sessionId}`).then(setData).catch(() => {});
   }, [sessionId]);
 
-  useEffect(() => { load(); const t = setInterval(load, 8000); return () => clearInterval(t); }, [load]);
+  // محاولات الحضور العام — نفس بولينج الحصة (8ث) — بتغذي العداد المشبوه والقائمة
+  const loadAttempts = useCallback(() => {
+    api<AttemptsRes>(`/api/attendance/public/attempts?sessionId=${sessionId}`).then(setAttempts).catch(() => {});
+  }, [sessionId]);
+
+  useEffect(() => {
+    load(); loadAttempts();
+    const t = setInterval(load, 8000);
+    const t2 = setInterval(loadAttempts, 8000);
+    return () => { clearInterval(t); clearInterval(t2); };
+  }, [load, loadAttempts]);
 
   // مدفوعات الحصة — بتتحمل لما المراجعة تتفتح أو بعد القفل (مش بولينج مستمر)
   const loadPayments = useCallback(async () => {
@@ -276,9 +313,10 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
           {s.room && <span className="nk-brand-bg-soft dark:bg-[color-mix(in_srgb,var(--c-primary)_26%,var(--card))] nk-brand-text rounded-full px-2.5 py-1">{s.room}</span>}
           <span className="text-muted-foreground">{s.teacher}</span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
           <MiniStat label="حاضر" value={e.presentCount} tone={e.presentCount > 0 ? "ok" : "muted"} icon={<GraduationCap className="w-3.5 h-3.5" />} />
           <MiniStat label={`غايب من ${registered}`} value={data.absent.length} tone={data.absent.length > 0 ? "warn" : "muted"} icon={<UserX className="w-3.5 h-3.5" />} />
+          <MiniStat label="مشبوه" value={attempts?.suspiciousCount ?? 0} tone={(attempts?.suspiciousCount ?? 0) > 0 ? "warn" : "muted"} icon={<AlertTriangle className="w-3.5 h-3.5" />} />
           <MiniStat label="دفع بالحصة" value={payments?.total ?? 0} tone={(payments?.total ?? 0) > 0 ? "ok" : "muted"} icon={<ReceiptText className="w-3.5 h-3.5" />} />
           <MiniStat label="متأخر" value={e.outstanding > 0 ? Math.round(e.outstanding / 100) : 0} tone={e.outstanding > 0 ? "warn" : "muted"} icon={<AlertTriangle className="w-3.5 h-3.5" />} />
         </div>
@@ -419,6 +457,7 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
 
           {/* ملخص سريع للحضور الحالي */}
           <AttendanceTable data={data} printAttendance={printAttendance} showPrint />
+          <SuspiciousCard attempts={attempts} />
         </div>
       )}
 
@@ -453,6 +492,7 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
               )}
               {caps.dynamic_qr.enabled && <SessionQrCard sessionId={sessionId} />}
               <AttendanceTable data={data} printAttendance={printAttendance} showPrint />
+              <SuspiciousCard attempts={attempts} />
               {data.absent.length > 0 && caps.name_attendance.enabled && (
                 <SectionCard
                   title={`مسجلين ومحضروش (${data.absent.length})`}
@@ -871,6 +911,7 @@ function AttendanceTable({ data, printAttendance, showPrint }: {
               <tr className="bg-muted/50 border-b">
                 <th className="px-3 py-2.5 text-start font-extrabold text-xs whitespace-nowrap">الطالب</th>
                 <th className="px-3 py-2.5 text-start font-extrabold text-xs whitespace-nowrap">الكود</th>
+                <th className="px-3 py-2.5 text-start font-extrabold text-xs whitespace-nowrap">الطريقة</th>
                 <th className="px-3 py-2.5 text-end font-extrabold text-xs whitespace-nowrap nk-num">المبلغ</th>
                 <th className="px-3 py-2.5 text-center font-extrabold text-xs whitespace-nowrap">الحالة</th>
                 <th className="px-3 py-2.5 text-end font-extrabold text-xs whitespace-nowrap">الوقت</th>
@@ -883,10 +924,23 @@ function AttendanceTable({ data, printAttendance, showPrint }: {
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span className="w-8 h-8 rounded-lg nk-brand-bg-soft dark:bg-[color-mix(in_srgb,var(--c-primary)_26%,var(--card))] nk-brand-text grid place-items-center font-extrabold text-xs shrink-0">{a.name.trim()[0]}</span>
                       <span className="font-bold text-sm truncate">{a.name}</span>
+                      {(a.riskScore ?? 0) > 0 && (
+                        <span
+                          title={`⚠️ ${a.riskFlags?.join(" + ") ?? ""}`}
+                          className="shrink-0 rounded-full bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200 px-1.5 py-0.5 text-[10px] font-black"
+                        >
+                          ⚠️ {a.riskScore}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-3 py-2.5">
                     <span className="nk-num font-bold text-sm" dir="ltr">{a.code}</span>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className="text-[11px] font-bold text-muted-foreground whitespace-nowrap">
+                      {a.method === "SESSION_QR" ? "QR الحصة" : a.method === "QR_SCAN" ? "مسح كارت" : a.method === "MANUAL" ? "يدوي" : a.method ?? "—"}
+                    </span>
                   </td>
                   <td className="px-3 py-2.5 text-end nk-num font-extrabold whitespace-nowrap" dir="ltr">
                     {fmt(a.charged ?? 0)} <span className="text-muted-foreground text-[10px]">ج</span>
@@ -908,6 +962,70 @@ function AttendanceTable({ data, printAttendance, showPrint }: {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+/* ============================================================
+   النشاط المشبوه (spec §16) — المحاولات المرفوضة/المعلمة من محرك المخاطر
+   المدرّس بي شوف ملخص بسيط؛ التفاصيل التقنية بيتفتحها عند الطلب.
+   مفيش لوائح تقنية مكدسة — علامات بالعربي + وقت + كود.
+============================================================ */
+function SuspiciousCard({ attempts }: { attempts: AttemptsRes | null }) {
+  const [open, setOpen] = useState(false);
+  if (!attempts) return null;
+  const suspicious = attempts.attempts.filter(
+    (a) => !["ACCEPTED", "ALREADY_SAME_STUDENT", "ALREADY_ATTENDED"].includes(a.outcome) || a.riskScore > 0,
+  );
+  if (suspicious.length === 0) return null;
+
+  return (
+    <SectionCard
+      title={`⚠️ النشاط المشبوه (${suspicious.length})`}
+      icon={<AlertTriangle className="w-4 h-4" />}
+      action={
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="border-2 border-border bg-card font-extrabold rounded-xl px-3.5 py-2 flex items-center gap-1.5 text-xs active:scale-[0.98] hover:bg-muted/50"
+          aria-expanded={open}
+        >
+          {open ? "إخفاء التفاصيل" : "عرض التفاصيل"}
+          <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", open && "rotate-90")} />
+        </button>
+      }
+    >
+      <p className="text-xs font-bold text-muted-foreground bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-xl px-3 py-2.5 leading-relaxed">
+        محاولات حضور رفضها النظام أو عليها إشارات غير عادية — إدارة الحضور بتراجعها بنفسها. النظام مش بيتهم حد، بيصعّد الشك بس.
+      </p>
+      {open && (
+        <div className="mt-3 space-y-1.5 max-h-72 overflow-y-auto nk-scroll">
+          {suspicious.map((a) => (
+            <div key={a.id} className="rounded-xl border border-border bg-card px-3 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+              <span className={cn(
+                "font-black whitespace-nowrap",
+                a.outcome === "DEVICE_LOCKED" ? "text-rose-700 dark:text-rose-300"
+                  : a.outcome.startsWith("ALREADY") || a.outcome === "ACCEPTED" ? "text-amber-700 dark:text-amber-300"
+                  : "text-muted-foreground",
+              )}>
+                {ATTEMPT_OUTCOME_LABEL[a.outcome] ?? a.outcome}
+              </span>
+              {a.studentName && <span className="font-bold">{a.studentName}</span>}
+              {a.studentCode && <span className="nk-num text-muted-foreground" dir="ltr">كود {a.studentCode}</span>}
+              <span className="nk-num text-muted-foreground" dir="ltr">
+                {new Date(a.at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+              </span>
+              {a.riskFlags.length > 0 && (
+                <span className="text-amber-700 dark:text-amber-300 font-bold">⚠️ {a.riskFlags.join(" + ")}</span>
+              )}
+              {(a.deviceTail || a.ip) && (
+                <span className="text-[10px] text-muted-foreground/80 nk-num" dir="ltr" title="إشارات تقنية للمراجعة (مش هوية)">
+                  [{a.deviceTail ? `dev …${a.deviceTail}` : ""}{a.deviceTail && a.ip ? " · " : ""}{a.ip ? `ip ${a.ip}` : ""}]
+                </span>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </SectionCard>

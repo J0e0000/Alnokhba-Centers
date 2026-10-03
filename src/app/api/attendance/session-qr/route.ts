@@ -50,7 +50,7 @@ export const POST = handler(async (req: Request) => {
 
   return ok({
     token: issued.token,
-    path: `/s/${issued.token}`,
+    path: `/a/${issued.token}`, // صفحة الحضور العامة بقفل الجهاز (spec: no-login check-in)
     expiresAt: issued.expiresAt,
     rotated: issued.rotated,
     rotateSeconds,

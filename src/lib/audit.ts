@@ -141,4 +141,8 @@ export const AUDIT = {
   FINGERPRINT_EVENT: "حدث حضور ببصمة",
   DEVICE_ADDED: "إضافة جهاز حضور",
   DEVICE_REMOVED: "إيقاف جهاز حضور",
+  // الحضور العام بقفل الجهاز (device-locked)
+  PUBLIC_CHECKIN_REJECTED: "رفض محاولة حضور عام",
+  DEVICE_ALREADY_USED: "رفض — جهاز اتسجل بيه حضور في نفس الحصة",
+  SUSPICIOUS_ACTIVITY: "اكتشاف نشاط مشبوه في الحضور",
 } as const;

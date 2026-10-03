@@ -32,11 +32,11 @@ type ClaimResult = {
 
 const STATUS_LABEL: Record<string, string> = { PRESENT: "حاضر", LATE: "متأخر", EXCUSED: "بعذر" };
 
-/** استخراج توكن الحصة من أي نص متصوّر: رابط كامل /s/<token> أو التوكن نفسه */
+/** استخراج توكن الحصة من أي نص متصوّر: رابط كامل /a/<token> أو /s/<token> أو التوكن نفسه */
 export function extractSessionToken(text: string): string | null {
   const t = text.trim();
   if (!t) return null;
-  const m = t.match(/\/s\/([0-9a-fA-F]{16,64})/);
+  const m = t.match(/\/[as]\/([0-9a-fA-F]{16,64})/);
   if (m) return m[1].toLowerCase();
   if (/^[0-9a-fA-F]{16,64}$/.test(t)) return t.toLowerCase();
   return null;
@@ -170,12 +170,12 @@ export function PortalScanSheet({
           {/* ============================= لصق الرابط ============================= */}
           {scanning && pasteMode && (
             <div className="space-y-2 rounded-2xl border border-border bg-muted/30 p-3">
-              <label className="text-xs font-bold block">الصق رابط الحصة (/s/…)</label>
+              <label className="text-xs font-bold block">الصق رابط الحصة (/a/… أو /s/…)</label>
               <input
                 value={pasted}
                 onChange={(e) => setPasted(e.target.value)}
                 dir="ltr"
-                placeholder="https://…/s/xxxxxxxx…"
+                placeholder="https://…/a/xxxxxxxx…"
                 className="w-full h-10 rounded-xl border border-input bg-card px-3 text-xs font-bold nk-num"
               />
               <div className="flex gap-2">

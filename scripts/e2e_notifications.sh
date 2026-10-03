@@ -25,8 +25,10 @@ import json,sys
 d=json.load(sys.stdin)
 ss=d.get('sessions') or d.get('today',{}).get('sessions') or []
 ss=[s for s in ss if not str(s.get('id','')).startswith('slot:')]
-open_s=[s for s in ss if s.get('status')=='OPEN']
-print(open_s[0]['id'] if open_s else (ss[0]['id'] if ss else ''))" 2>/dev/null)
+# الحالة في /api/today عرضية (LIVE/UPCOMING/COMPLETED حسب الوقت) —
+# المهم حالة الحصة الفعلية في الداتابيز (OPEN) — فنبعد المكتملة/الملغاة بس
+cand=[s for s in ss if s.get('status') not in ('COMPLETED','CANCELLED')]
+print(cand[0]['id'] if cand else '')" 2>/dev/null)
 echo "session: $SESSION"
 
 QR=$(curl -s -b $JAR/mgr.jar -X POST "$BASE/api/attendance/session-qr" -H "Content-Type: application/json" -d "{\"sessionId\":\"$SESSION\"}")

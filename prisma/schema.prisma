@@ -76,6 +76,7 @@ model Center {
   undoEntries      UndoEntry[]
   exams            Exam[]
   assignments      Assignment[]
+  checkInAttempts  CheckInAttempt[]
 }
 
 model User {
@@ -343,12 +344,24 @@ model Attendance {
   charged    Int? // actual charge in piastres (null = not charged)
   note       String?
   recordedBy String?
+  // قفل الجهاز لكل حصة (device-locked attendance — spec "ONE DEVICE = ONE ATTENDANCE PER SESSION"):
+  // device_id معرّف عشوائي من المتصفح (UUID من كوكي/LocalStorage — مش PII ومش معرّف هاردوير)،
+  // unique(sessionId, deviceId) على مستوى الداتابيز هي آخر خط دفاع ضد السباق (قاعدة العمل الأساسية).
+  deviceId   String?
+  // بيانات تدقيق/كشف إساءة (risk signals — مش هوية): IP مجرد إشارة (NAT/واي فاي مشترك) وUA للتحليل
+  ipAddress  String?
+  userAgent  String?
+  riskScore  Int            @default(0) // درجة الخطورة المحسوبة وقت القبول (0 = عادي)
+  riskFlags  String? // JSON array من علامات الخطورة وقت القبول (لو حصلت)
   createdAt  DateTime       @default(now())
   session    SessionInstance @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   student    Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, studentId])
+  // القاعدة الأساسية: جهاز واحد = حضور واحد ناجح لكل حصة (الـ NULLs مش بتتعارض — الحضور الموظفين/اليدوي بيفضل شغال)
+  @@unique([sessionId, deviceId])
   @@index([centerId, studentId])
+  @@index([deviceId])
 }
 
 // ============================= FINANCIAL LEDGER =============================
@@ -1422,6 +1435,31 @@ model FingerprintEnrollment {
   center       Center    @relation(fields: [centerId], references: [id], onDelete: Cascade)
 
   @@index([centerId, active])
+}
+
+// ============================= CHECK-IN ATTEMPTS (سجل محاولات الحضور العام — تدقيق + كشف إساءة) =============================
+// كل محاولة حضور عام (نجاح أو رفض) بتتسجل هنا — ده مصدر لوحة "نشاط مشبوه" ومحرك المخاطر.
+// مفيش بيانات حساسة: كود الطالب المقصوص + آخر التوكن بس + IP/UA كإشارات تدقيق (data minimization).
+model CheckInAttempt {
+  id          String   @id @default(cuid())
+  centerId    String
+  sessionId   String
+  outcome     String // ACCEPTED | ALREADY_SAME_STUDENT | ALREADY_ATTENDED | DEVICE_LOCKED | EXPIRED_TOKEN | REPLAYED_TOKEN | INVALID_TOKEN | CLOSED_SESSION | CANCELLED_SESSION | NOT_TODAY | INVALID_STUDENT | INACTIVE_STUDENT | NOT_REGISTERED | RATE_LIMITED | CAPABILITY_OFF | INVALID_REQUEST
+  studentId   String? // لو الكود اتحل لطالب حقيقي
+  studentCode String? // الكود المكتوب (مقصوص — للتدقيق)
+  deviceId    String?
+  ipAddress   String?
+  userAgent   String?
+  riskScore   Int      @default(0)
+  riskFlags   String? // JSON array
+  tokenTail   String? // آخر 8 حروف من التوكن (مش التوكن نفسه)
+  createdAt   DateTime @default(now())
+  center      Center   @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@index([deviceId])
+  @@index([ipAddress, createdAt])
+  @@index([centerId, createdAt])
 }
 
 model SessionQRToken {
