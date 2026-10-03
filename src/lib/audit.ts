@@ -132,4 +132,13 @@ export const AUDIT = {
   QR_SCAN_REPLAY: "إعادة استخدام كود QR",
   DUPLICATE_ATTENDANCE: "محاولة حضور مكررة",
   UNAUTHORIZED_ATTENDANCE: "محاولة حضور غير مصرح بها",
+  // قدرات المركز + الحضور الموحد
+  CAPABILITIES_UPDATED: "تعديل ميزات المركز",
+  STAFF_CHECKIN: "حضور موظف",
+  TEACHER_AUTO_ATTENDANCE: "حضور المدرس التلقائي (بدء الحصة)",
+  STAFF_QR_ISSUED: "توليد كود حضور موظفين",
+  FINGERPRINT_ENROLLED: "تسجيل بصمة",
+  FINGERPRINT_EVENT: "حدث حضور ببصمة",
+  DEVICE_ADDED: "إضافة جهاز حضور",
+  DEVICE_REMOVED: "إيقاف جهاز حضور",
 } as const;

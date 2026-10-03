@@ -8,6 +8,8 @@ import { studentBalance, effectivePrice } from "@/lib/finance";
 import { cleanRaw } from "@/lib/normalize";
 import { notifyStudentsAttendance } from "@/lib/notify";
 import { notifyStaff } from "@/lib/staff-notify";
+import { requireCapability } from "@/lib/center-capabilities";
+import { recordAttendanceEvent } from "@/lib/attendance-core";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +64,10 @@ export const POST = handler(async (req: Request) => {
   if (qr.scope !== "CENTERS" || !qr.centerId) {
     throw new ApiError("الكود ده مش كود حضور سنترز.", 400);
   }
+
+  // بوابة قدرات المركز: المسح الذاتي للطالب = dynamic_qr + student_self_scan
+  await requireCapability(qr.centerId, "dynamic_qr");
+  await requireCapability(qr.centerId, "student_self_scan");
 
   const portalStudent = await getPortalStudent().catch(() => null);
   if (!portalStudent || portalStudent.centerId !== qr.centerId) {
@@ -168,6 +174,17 @@ export const POST = handler(async (req: Request) => {
     }).catch(() => {});
   } else {
     await touchSessionQr(qr.qrId);
+    await recordAttendanceEvent({
+      centerId: qr.centerId,
+      personType: "STUDENT",
+      method: "DYNAMIC_QR",
+      status: "PRESENT",
+      studentId: student.id,
+      displayName: student.name,
+      role: "STUDENT",
+      sessionId: session.id,
+      metadata: { afterActivation, charged: result.charged, sessionLabel: qr.sessionLabel },
+    });
     await logAudit({
       user: { id: student.id, name: student.name, centerId: qr.centerId },
       action: AUDIT.QR_SCAN_SUCCESS,

@@ -37,8 +37,9 @@ SESSION=$(curl -s -b $JAR/mgr.jar "$BASE/api/today" | python3 -c "
 import json,sys
 d=json.load(sys.stdin)
 ss=d.get('sessions') or d.get('today',{}).get('sessions') or []
-open_s=[s for s in ss if s.get('status') in ('OPEN','LIVE')]
-print(open_s[0]['id'] if open_s else (ss[0]['id'] if ss else ''))" 2>/dev/null)
+real=[s for s in ss if not str(s.get('id','')).startswith('slot:')]
+open_s=[s for s in real if s.get('status') in ('OPEN','LIVE','UPCOMING')]
+print(open_s[0]['id'] if open_s else '')" 2>/dev/null)
 echo "session: $SESSION"
 [ -n "$SESSION" ] || { echo "NO SESSION TODAY — abort"; exit 1; }
 

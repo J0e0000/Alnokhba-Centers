@@ -5,6 +5,7 @@ import { logAudit, AUDIT } from "@/lib/audit";
 import { studentBalance, effectivePrice } from "@/lib/finance";
 import { hasPermission } from "@/lib/permissions";
 import { notifyStudentsAttendance } from "@/lib/notify";
+import { assertAttendanceMethodAllowed, assertAttendanceStatusAllowed, recordAttendanceEvent, unifiedMethodFromTableMethod } from "@/lib/attendance-core";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,8 @@ export const POST = handler(async (req: Request) => {
 
   const sessionId = String(body.sessionId ?? "");
   const attMethod = ["MANUAL", "QR_SCAN", "SESSION_QR"].includes(body.method ?? "") ? body.method! : "MANUAL";
+  // بوابة قدرات المركز: كل طريقة حضور محتاج قدرتها مفعّلة (name_attendance / static_qr / dynamic_qr)
+  await assertAttendanceMethodAllowed(user.centerId, attMethod);
 
   // ============================= BULK =============================
   if (body.bulk) {
@@ -96,6 +99,19 @@ export const POST = handler(async (req: Request) => {
       return sum;
     });
 
+    // أحداث الحضور الموحدة (طريقة واحدة لكل الأشخاص) — للطريقة/التدقيق
+    await Promise.all(toMark.map((r) => recordAttendanceEvent({
+      centerId: user.centerId,
+      personType: "STUDENT",
+      method: unifiedMethodFromTableMethod(attMethod),
+      status: "PRESENT",
+      studentId: r.student.id,
+      displayName: r.student.name,
+      role: "STUDENT",
+      sessionId,
+      metadata: { bulk: true, charged: effectivePrice(r.priceOverride, null, session.price) },
+    })));
+
     await logAudit({
       user,
       action: AUDIT.ATTENDANCE_RECORDED,
@@ -129,6 +145,8 @@ export const POST = handler(async (req: Request) => {
   // ============================= SINGLE =============================
   const studentId = String(body.studentId ?? "");
   const status = ["PRESENT", "LATE", "EXCUSED"].includes(body.status ?? "") ? body.status! : "PRESENT";
+  // بوابة قدرات المركز: حالة «متأخر» محتاجة قدرة late_checkin مفعّلة
+  await assertAttendanceStatusAllowed(user.centerId, status);
 
   const session = await db.sessionInstance.findFirst({
     where: { id: sessionId, centerId: user.centerId },
@@ -205,6 +223,17 @@ export const POST = handler(async (req: Request) => {
   });
 
   if (!result.alreadyAttended) {
+    await recordAttendanceEvent({
+      centerId: user.centerId,
+      personType: "STUDENT",
+      method: unifiedMethodFromTableMethod(attMethod),
+      status,
+      studentId,
+      displayName: student.name,
+      role: "STUDENT",
+      sessionId,
+      metadata: { charged: result.charged },
+    });
     await logAudit({
       user,
       action: AUDIT.ATTENDANCE_RECORDED,
@@ -242,6 +271,8 @@ export const PATCH = handler(async (req: Request) => {
   const id = String(body.attendanceId ?? "");
   const status = String(body.status ?? "");
   if (!["PRESENT", "LATE", "EXCUSED"].includes(status)) throw new ApiError("حالة الحضور دي مش معروفة.");
+  // بوابة قدرات المركز: حالة «متأخر» محتاجة قدرة late_checkin
+  await assertAttendanceStatusAllowed(user.centerId, status);
 
   const att = await db.attendance.findFirst({
     where: { id, centerId: user.centerId },

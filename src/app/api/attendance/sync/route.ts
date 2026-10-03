@@ -5,6 +5,8 @@ import { logAudit, AUDIT } from "@/lib/audit";
 import { effectivePrice } from "@/lib/finance";
 import { cleanRaw } from "@/lib/normalize";
 import { notifyStudentsAttendance } from "@/lib/notify";
+import { hasCapability } from "@/lib/center-capabilities";
+import { recordAttendanceEvent } from "@/lib/attendance-core";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +38,14 @@ export const POST = handler(async (req: Request) => {
   const isToken = q.length >= 16 && /^[0-9a-f]+$/i.test(q);
   const isCode = q.length === 5 && /^\d+$/.test(q);
   if (!isToken && !isCode) throw new ApiError("الكود ده مش شكله كود طالب.");
+
+  // بوابة قدرة المركز: مزامنة أوفلاين = حضور بطريقة QR ثابت/كود (static/name)
+  if (isToken && !(await hasCapability(user.centerId, "static_qr"))) {
+    throw new ApiError("مسح كروت الطلاب مقفول في المركز ده — كلّم المدير.", 403);
+  }
+  if (!isToken && !(await hasCapability(user.centerId, "static_qr")) && !(await hasCapability(user.centerId, "name_attendance"))) {
+    throw new ApiError("حضور الطلاب بالكود/الاسم مقفول في المركز ده — كلّم المدير.", 403);
+  }
 
   const sessionId = String(body.sessionId ?? "");
   const session = await db.sessionInstance.findFirst({
@@ -86,6 +96,17 @@ export const POST = handler(async (req: Request) => {
   });
 
   if (!result.alreadyAttended) {
+    await recordAttendanceEvent({
+      centerId: user.centerId,
+      personType: "STUDENT",
+      method: isToken ? "STATIC_QR" : "NAME",
+      status: "PRESENT",
+      studentId: student.id,
+      displayName: student.name,
+      role: "STUDENT",
+      sessionId,
+      metadata: { syncedOffline: true, idemKey },
+    });
     await logAudit({
       user,
       action: AUDIT.ATTENDANCE_RECORDED,

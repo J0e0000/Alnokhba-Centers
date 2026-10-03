@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { normalizeDigits, formatTime12, dayNameAR, formatDateAR } from "@/lib/normalize";
+import { defaultCapabilityMap, type CapabilityMap } from "@/lib/capabilities";
 import { AlNokhbaMark } from "../shared";
 import { Tour } from "../tour";
 import { HelpButton } from "../help";
@@ -50,6 +51,7 @@ type HomeData = {
     sessionsAttended: number; sessionsTotal: number;
     attendanceRate: number | null; quizAvg: number | null; quizzesGraded: number;
   } | null;
+  capabilities?: CapabilityMap | null;
 };
 
 type WeekData = {
@@ -127,6 +129,8 @@ function playChime() {
 export function PortalApp() {
   const [boot, setBoot] = useState<"loading" | "login" | "app" | "offline">("loading");
   const [home, setHome] = useState<HomeData | null>(null);
+  // قدرات المركز — البورتال بيعرض بس طرق الحضور المفعّلة (والسيرفر بيفرضها على الـ API)
+  const caps = home?.capabilities ?? defaultCapabilityMap();
   // deep-link: /portal?tab=exams|assignments|quizzes|schedule|messages — بتفتح التاب المطلوب على طول
   const [tab, setTab] = useState<TabId>(() => {
     try {
@@ -418,7 +422,7 @@ export function PortalApp() {
       <main className="flex-1 w-full mx-auto max-w-lg px-4 py-4 pb-28">
         {/* حركة دخول لكل تابة — المفتاح بيعيد التشغيل مع كل تنقل */}
         <div key={tab} className="nk-anim-view">
-          {tab === "home" && <PortalHome data={home} onGoTab={setTab} onRefresh={refreshHome} refreshing={homeRefreshing} />}
+          {tab === "home" && <PortalHome data={home} onGoTab={setTab} onRefresh={refreshHome} refreshing={homeRefreshing} caps={caps} />}
           {tab === "schedule" && <PortalSchedule />}
           {tab === "quizzes" && <PortalQuizzes />}
           {tab === "exams" && <PortalExams />}
@@ -461,17 +465,21 @@ export function PortalApp() {
         </div>
       </nav>
 
-      {/* ===== زرار سكان الحضور العائم + الشيت ===== */}
-      <PortalScanFab onClick={() => setScanOpen(true)} />
-      <PortalScanSheet
-        open={scanOpen}
-        onOpenChange={setScanOpen}
-        onDone={() => { void refreshHome(); }}
-      />
+      {/* ===== زرار سكان الحضور العائم + الشيت — بس لو المسح الذاتي مفعّل في المركز ===== */}
+      {caps.student_self_scan.enabled && caps.dynamic_qr.enabled && (
+        <>
+          <PortalScanFab onClick={() => setScanOpen(true)} />
+          <PortalScanSheet
+            open={scanOpen}
+            onOpenChange={setScanOpen}
+            onDone={() => { void refreshHome(); }}
+          />
+        </>
+      )}
 
-      {/* ===== الجولة التعليمية (أول دخول) + زرار المساعدة ===== */}
+      {/* ===== الجولة التعليمية (أول دخول) + زرار المساعدة (مدرك للدور والقدرات) ===== */}
       <Tour steps={STUDENT_TOUR} open={tourOpen} onClose={finishTour} onFinish={finishTour} onNavigate={(v) => setTab(v as TabId)} />
-      <HelpButton view="student-portal" viewLabel="بورتال الطالب" />
+      <HelpButton view="student-portal" viewLabel="بورتال الطالب" role="STUDENT" caps={caps} />
     </div>
   );
 }
@@ -578,8 +586,8 @@ function PortalLogin({ onSuccess }: { onSuccess: () => void }) {
 
 // ============================= Home =============================
 
-function PortalHome({ data, onGoTab, onRefresh, refreshing }: {
-  data: HomeData; onGoTab: (t: TabId) => void; onRefresh: () => void; refreshing: boolean;
+function PortalHome({ data, onGoTab, onRefresh, refreshing, caps }: {
+  data: HomeData; onGoTab: (t: TabId) => void; onRefresh: () => void; refreshing: boolean; caps: CapabilityMap;
 }) {
   const s = data.student!;
   const first = s.name.split(" ")[0];
@@ -702,7 +710,8 @@ function PortalHome({ data, onGoTab, onRefresh, refreshing }: {
         )}
       </section>
 
-      {/* QR — دايمًا في المتناول */}
+      {/* QR — دايمًا في المتناول (بس لو كروت الطلاب مفعّلة في المركز) */}
+      {caps.static_qr.enabled && (
       <section data-tour="portal-qr" className="nk-card nk-anim-lift rounded-2xl p-5 text-center relative overflow-hidden">
         <div aria-hidden className="pointer-events-none absolute -top-16 -end-16 w-40 h-40 rounded-full opacity-[0.08] nk-brand-bg blur-2xl" />
         <h3 className="font-extrabold text-base mb-1">كود الطالب</h3>
@@ -715,6 +724,7 @@ function PortalHome({ data, onGoTab, onRefresh, refreshing }: {
           <span className="nk-num text-2xl font-extrabold tracking-[0.25em]" dir="ltr">{s.code}</span>
         </div>
       </section>
+      )}
 
       {/* messages shortcut */}
       <button

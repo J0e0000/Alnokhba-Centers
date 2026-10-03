@@ -8,6 +8,7 @@ import {
   getPortalStudent, createPortalSession, destroyPortalSession, verifyStudentLogin,
 } from "@/lib/portal-auth";
 import { latestAnnouncementsFor, computeNextLesson } from "./schedule/route";
+import { getCenterCapabilities } from "@/lib/center-capabilities";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export const GET = handler(async () => {
   const student = await getPortalStudent();
   if (!student) return ok({ student: null });
 
-  const [unread, nextLesson, lastAnnouncement, qrDataUrl, balance, progress] = await Promise.all([
+  const [unread, nextLesson, lastAnnouncement, qrDataUrl, balance, progress, capabilities] = await Promise.all([
     db.studentNotification.count({ where: { studentId: student.id, readAt: null } }),
     computeNextLesson(student.id),
     latestAnnouncementsFor(student.id, student.centerId, student.gradeId ?? null, 1),
@@ -27,6 +28,7 @@ export const GET = handler(async () => {
     }),
     studentBalance(student.id),
     portalProgress(student.id, student.centerId),
+    getCenterCapabilities(student.centerId),
   ]);
 
   return ok({
@@ -41,6 +43,8 @@ export const GET = handler(async () => {
     nextLesson,
     lastAnnouncement: lastAnnouncement[0] ?? null,
     progress,
+    // قدرات المركز — البورتال بيعرض بس طرق الحضور المفعّلة
+    capabilities,
   });
 });
 

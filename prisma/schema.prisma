@@ -66,6 +66,11 @@ model Center {
   staffNotifications StaffNotification[]
   quizzes          Quiz[]
   sessionQrTokens  SessionQRToken[]
+  capabilities     CenterCapability[]
+  attendanceEvents AttendanceEvent[]
+  attendanceDevices AttendanceDevice[]
+  staffQrTokens    StaffQrToken[]
+  fingerprintEnrollments FingerprintEnrollment[]
   subscriptionEvents SubscriptionEvent[]
   backupRuns       BackupRun[]
   undoEntries      UndoEntry[]
@@ -1313,6 +1318,111 @@ model AcaInsight {
 // ============================= DYNAMIC SESSION QR (QR الحصة المتنقل) =============================
 // التوكن بيتعمله rotate كل ما الموظف يطلب توليد جديد — قصير العمر، مرتبط بالحصة والسنتر،
 // ومش صالح خارج الحصة المقصودة. الاستخدام بيتسجل (مين/إمتى/كام مرة) — spec §3.
+
+// ============================= CENTER CAPABILITIES (ميزات المركز القابلة للتشغيل/الإيقاف) =============================
+// مفتاح لكل قدرة (name_attendance / static_qr / dynamic_qr / student_self_scan /
+// staff_qr_checkin / fingerprint / late_checkin / teacher_auto_attendance)
+// enabled + config JSON اختياري (مثال: fingerprint { maxUsers: 3 })
+// الصلاحيات الحسابية (Account permissions) منفصلة تمامًا عن قدرات المركز (Center capabilities) —
+// الفحص النهائي = صلاحية الحساب + قدرة المركز + السياق + الملكية.
+model CenterCapability {
+  id        String   @id @default(cuid())
+  centerId  String
+  key       String
+  enabled   Boolean  @default(true)
+  config    String? // JSON اختياري حسب المفتاح
+  updatedAt DateTime @updatedAt
+  center    Center   @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  @@unique([centerId, key])
+  @@index([centerId])
+}
+
+// ============================= UNIFIED ATTENDANCE EVENTS (سجل الحضور الموحّد) =============================
+// الحضور هو المفهوم الأساسي — QR/بدء الحصة/البصمة/الاسم مجرد طرق تحقق (method).
+// صف واحد لكل حدث حضور لأي شخص (طالب أو موظف):
+//   personType STUDENT | STAFF   +   method NAME | STATIC_QR | DYNAMIC_QR | SESSION_START | FINGERPRINT
+//   sessionId nullable (حضور موظفين مش مربوط بحصة)   +   deviceId (شاشة QR / جهاز بصمة)
+// ملاحظة: جدول Attendance تفاصيله التشغيلية للحصة (شحن/ملاحظات) — الأحداث دي هي السجل الموحّد للتدقيق والتقارير عبر كل الطرق.
+model AttendanceEvent {
+  id          String   @id @default(cuid())
+  centerId    String
+  personType  String // STUDENT | STAFF
+  studentId   String? // لو طالب
+  userId      String? // لو موظف (User)
+  teacherId   String? // لو مدرس (Teacher — مش User)
+  displayName String // اسم العرض (denormalized)
+  role        String? // MANAGER | RECEPTIONIST | TEACHER | STUDENT
+  method      String // NAME | STATIC_QR | DYNAMIC_QR | SESSION_START | FINGERPRINT
+  status      String   @default("PRESENT") // PRESENT | LATE | EXCUSED | CHECK_IN
+  sessionId   String? // nullable — مش كل حضور مربوط بحصة
+  deviceId    String?
+  metadata    String? // JSON حسب الطريقة
+  occurredAt  DateTime @default(now())
+  center      Center   @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  @@index([centerId, occurredAt])
+  @@index([centerId, method])
+  @@index([sessionId])
+  @@index([studentId])
+  @@index([userId])
+}
+
+// ============================= ATTENDANCE DEVICES (أجهزة الحضور الثابتة) =============================
+// شاشة QR ثابتة في المركز أو جهاز بصمة — بيتبعتلها deviceKey مرة واحدة عند الإنشاء
+// والسيرفر بيخزن hash بس. الجهاز بيبقى معرّف بالمركز (tenant) في كل النداءات.
+model AttendanceDevice {
+  id         String    @id @default(cuid())
+  centerId   String
+  name       String
+  kind       String    @default("QR_SCREEN") // QR_SCREEN | FINGERPRINT_SCANNER
+  keyHash    String // sha256(deviceKey) — المفتاح نفسه بيتعرض مرة واحدة فقط
+  active     Boolean   @default(true)
+  lastSeenAt DateTime?
+  createdAt  DateTime  @default(now())
+  center     Center    @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  @@index([centerId])
+}
+
+// ============================= STAFF QR TOKENS (حضور الموظفين بشاشة QR) =============================
+// نفس فلسفة Slot QR: توكن قصير العمر بيتدوّر — الصورة القديمة بتموت خلال ثواني.
+// التوكن مرتبط بالمركز (+الجهاز) — والتحقق كله server-side، ومفيش IDs حساسة في الرابط العام /c/<token>.
+model StaffQrToken {
+  id        String   @id @default(cuid())
+  centerId  String
+  deviceId  String?
+  token     String   @unique // opaque hex — هو اللي بيتشفر في QR
+  isActive  Boolean  @default(true) // rotation = قفل القديم
+  expiresAt DateTime
+  useCount  Int      @default(0)
+  createdAt DateTime @default(now())
+  center    Center   @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  @@index([centerId, isActive])
+}
+
+// ============================= FINGERPRINT ENROLLMENTS (بصمات مسجّلة) =============================
+// البصمة تكامل مع عتاد خارجي (Scanner/SDK/API) — النواة مستقلة عن الهاردوير.
+// الجهاز/الـ SDK بيه مطابقة وبيبعت templateHash الطالب/الموظف المطابق — أو template خام للمطابقة server-side في وضع الاختبار.
+// أقصى عدد مسجّلين لكل مركز بيتتحكم فيه من قدرة fingerprint.config.maxUsers (افتراضي 3).
+model FingerprintEnrollment {
+  id           String    @id @default(cuid())
+  centerId     String
+  personType   String // STAFF | STUDENT
+  userId       String? // موظف (User) — لو بصمة موظف إدارة
+  teacherId    String? // مدرس (Teacher) — لإثبات الحضور المادي قبل بدء الحصة
+  studentId    String?
+  displayName  String
+  label        String // "بصمة الاستقبال" ...
+  templateHash String    @unique // hash للقالب — مفيش بيانات بيومترية خام بتتخزن
+  active       Boolean   @default(true)
+  lastUsedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  center       Center    @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  @@index([centerId, active])
+}
 
 model SessionQRToken {
   id            String   @id @default(cuid())
