@@ -28,7 +28,7 @@ export function StudentCard({ card, center, index }: { card: CardData; center: C
         )}
         <div style={{ lineHeight: 1.15 }}>
           <div style={{ fontSize: "3.6mm", fontWeight: 800 }}>{center?.name ?? "السنتر"}</div>
-          <div style={{ fontSize: "2.2mm", fontWeight: 700, opacity: 0.85 }}>{center?.slogan ?? "AlNokhba Centers"}</div>
+          <div style={{ fontSize: "2.2mm", fontWeight: 700, opacity: 0.85 }}>{center?.slogan ?? "Alnokhba Managment"}</div>
         </div>
         <div style={{ marginInlineStart: "auto", fontSize: "2.2mm", fontWeight: 800, letterSpacing: "0.4mm", opacity: 0.85 }}>ALNOKHBA</div>
       </div>
@@ -108,7 +108,7 @@ export function StudentCardPrint({ open, onClose, studentIds, center }: {
               <button
                 onClick={() => print(
                   <PrintableCards cards={cards} center={center} />,
-                  `كروت الطلاب — ${center?.name ?? "نخبة سنترز"}`,
+                  `كروت الطلاب — ${center?.name ?? "Alnokhba Managment"}`,
                 )}
                 className="flex-1 nk-brand-bg text-white font-extrabold rounded-xl px-4 py-3.5 shadow flex items-center justify-center gap-2 active:scale-[0.99]"
               >

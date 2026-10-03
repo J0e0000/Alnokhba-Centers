@@ -274,7 +274,7 @@ function buildXlsx(d){
 
   // ===== 1) لوحة التقرير =====
   var rows = [];
-  rows.push([cellS("ALNOKHBA CENTERS — تقرير الطوارئ", 1, 1, 1)]);
+  rows.push([cellS("ALNOKHBA MANAGMENT — تقرير الطوارئ", 1, 1, 1)]);
   rows.push([cellS(d.centerName + " — وضع الطوارئ (" + fmtDate(d.generatedAt) + " ← " + fmtDate(d.expiresAt) + ")", 2, 2, 1)]);
   rows.push([cellS("اتصدّر: " + fmtDate(d.exportedAt), 9, 3, 1)]);
   rows.push([]);
@@ -359,7 +359,7 @@ function buildXlsx(d){
   var info = [];
   info.push(headerRow(["البند", "القيمة"], 3, 1));
   var infoRows = [
-    ["المنتج", "ALNOKHBA CENTERS — نظام الطوارئ"],
+    ["المنتج", "ALNOKHBA MANAGMENT — نظام الطوارئ"],
     ["السنتر", d.centerName],
     ["معرف السنتر", d.centerId],
     ["معرف الحزمة", d.packageId],

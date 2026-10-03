@@ -2,7 +2,7 @@
 // يعمل كـ classic script عادي — بيتشارك المتغيرات العامة مع الجزء الثاني.
 
 export const APP_JS_1 = `
-// ================= ALNOKHBA CENTERS — EMERGENCY MODE =================
+// ================= ALNOKHBA MANAGMENT — EMERGENCY MODE =================
 "use strict";
 
 var TAGS = { license: "nk-license-raw", snapshot: "nk-snapshot-raw", meta: "nk-meta" };
@@ -203,7 +203,7 @@ async function verifyBoot(meta) {
   try {
     var key = await crypto.subtle.importKey("spki", b64ToBuf(meta.publicKey), { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
     var sigOk = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, b64ToBuf(meta.signature), encUtf8(ST.licenseRaw));
-    if (!sigOk) return { ok: false, reason: "توقيع الرخصة مش صحيح — الملف اتعدّل أو مش موقّع من سيرفر النخبة." };
+    if (!sigOk) return { ok: false, reason: "توقيع الرخصة مش صحيح — الملف اتعدّل أو مش موقّع من سيرفر Alnokhba Managment." };
     var digest = await sha256Hex(textOf(TAGS.snapshot));
     if (digest !== ST.license.snapshotDigest) return { ok: false, reason: "بيانات اللقطة مش مطابقة للبصمة الموقّعة — الملف اتعدّل بعد التوليد." };
     return { ok: true };
@@ -299,8 +299,8 @@ function phoneTail(s) { return normDigits(s).replace(/[^0-9]/g, ""); }
 function renderShell() {
   document.body.innerHTML =
     '<div class="nk-top"><div class="nk-top-in">' +
-      '<img class="nk-logo" id="nk-logo-img" alt="النخبة">' +
-      '<div class="nk-top-txt"><b>' + esc(ST.license.centerName) + '</b><span>ALNOKHBA CENTERS — وضع الطوارئ</span></div>' +
+      '<img class="nk-logo" id="nk-logo-img" alt="Alnokhba Managment">' +
+      '<div class="nk-top-txt"><b>' + esc(ST.license.centerName) + '</b><span>ALNOKHBA MANAGMENT — وضع الطوارئ</span></div>' +
       '<div class="nk-days" id="nk-days"></div>' +
       '<span class="nk-emg-badge"><span class="nk-dot"></span>طوارئ</span>' +
     '</div></div>' +

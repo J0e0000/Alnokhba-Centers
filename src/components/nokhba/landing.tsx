@@ -13,7 +13,7 @@ import { api, type SessionUser } from "./lib";
 import { AlNokhbaMark } from "./shared";
 
 /* ============================================================
-   صفحة الهبوط (Landing) — البوابة العامة لمنتج ALNOKHBA CENTERS.
+   صفحة الهبوط (Landing) — البوابة العامة لمنصة Alnokhba Managment.
    هوية اللوجو الرسمي: كحلي #143159 + ذهبي D5A134 + Cairo.
    أقسام: Navbar · Hero بموك-أب حقيقي · ١١ ميزة · ٤ خطوات ·
    وضع الطوارئ · الأمان · سير العمل (٣ أدوار) · CTA · فوتر.
@@ -98,11 +98,11 @@ export function LandingPage() {
       {/* ================= NAVBAR ================= */}
       <header className="sticky top-0 z-40 border-b border-border/70 bg-white/85 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-2.5 group" aria-label="النخبة سنترز — الرئيسية">
+          <Link href="/" className="flex items-center gap-2.5 group" aria-label="Alnokhba Managment — الرئيسية">
             <AlNokhbaMark size={40} />
             <span className="hidden sm:block leading-tight">
-              <span className="block font-extrabold text-sm nk-brand-text">نخبة سنترز</span>
-              <span className="block text-[10px] font-bold text-[color:var(--c-accent-strong,var(--gold-deep))] tracking-wide">ALNOKHBA CENTERS</span>
+              <span className="block font-extrabold text-sm nk-brand-text">Alnokhba Managment</span>
+              <span className="block text-[10px] font-bold text-[color:var(--c-accent-strong,var(--gold-deep))] tracking-normal">إدارة السنترات التعليمية</span>
             </span>
           </Link>
 
@@ -162,7 +162,7 @@ export function LandingPage() {
             <div className="text-center lg:text-start">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white/80 px-3.5 py-1.5 text-xs font-bold text-muted-foreground mb-5">
                 <Sparkles className="w-3.5 h-3.5 nk-brand-text" />
-                نظام تشغيل السنترات التعليمية — من منظومة النخبة
+                نظام تشغيل السنترات التعليمية — Alnokhba Managment
               </span>
               <h1 className="text-3xl md:text-5xl font-extrabold leading-[1.25] tracking-tight">
                 شغّل سنترك
@@ -173,7 +173,7 @@ export function LandingPage() {
               </h1>
               <span className="block nk-portal-divider mx-auto lg:mx-0 mt-5" aria-hidden />
               <p className="text-muted-foreground mt-4 text-sm md:text-base leading-relaxed max-w-xl mx-auto lg:mx-0">
-                النخبة سنترز بيجمع الطلاب والمدرسين والحصص والحضور والدفعات والاشتراكات
+                Alnokhba Managment بيجمع الطلاب والمدرسين والحصص والحضور والدفعات والاشتراكات
                 وعمليات السنتر كلها في نظام واحد بسيط — من غير وجع دماغ، وبحسابات دقيقة بالقرش.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 mt-7">
@@ -250,7 +250,7 @@ export function LandingPage() {
                 </div>
                 <div className="flex items-center gap-2 mt-3 text-[11px] font-bold text-muted-foreground">
                   <BellRing className="w-3.5 h-3.5 text-amber-500" />
-                  تنبيه: ٣ طلاب رصيدهمقل — طابور واتساب جاهز
+                  تنبيه: ٣ طلاب رصيدهم قل — طابور واتساب جاهز
                 </div>
               </div>
 
@@ -472,8 +472,8 @@ export function LandingPage() {
             <div className="flex flex-col gap-3">
               <AlNokhbaMark size={40} />
               <p className="text-xs text-muted-foreground leading-relaxed max-w-xs font-bold">
-                نخبة سنترز — نظام تشغيل السنترات التعليمية: حضور بالـ QR، حسابات بالقروش،
-                اشتراكات، مستحقات مدرسين، ووضع طوارئ أوفلاين. امتداد من منظومة النخبة التعليمية.
+                Alnokhba Managment — نظام تشغيل السنترات التعليمية: حضور بالـ QR، حسابات بالقروش،
+                اشتراكات، مستحقات مدرسين، ووضع طوارئ أوفلاين.
               </p>
             </div>
             <nav className="flex flex-col gap-1.5 text-sm font-bold" aria-label="تنقل الفوتر">
@@ -491,7 +491,7 @@ export function LandingPage() {
             </div>
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-7 pt-5 border-t border-border/60 text-[11px] font-bold text-muted-foreground">
-            <span>© <span className="nk-num" dir="ltr">2026</span> نخبة سنترز — ALNOKHBA CENTERS</span>
+            <span>© <span className="nk-num" dir="ltr">2026</span> Alnokhba Managment</span>
             <span className="flex items-center gap-1.5"><Calculator className="w-3.5 h-3.5" /> مبني لعمليات السنترات في مصر — بالعربي وبالمصري</span>
           </div>
         </footer>

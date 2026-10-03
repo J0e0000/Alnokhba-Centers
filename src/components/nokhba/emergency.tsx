@@ -83,7 +83,7 @@ export function EmergencyView({ user }: { user: SessionUser }) {
       try {
         const data = JSON.parse(String(reader.result));
         if (data?.typ !== "ALNOKHBA_EMERGENCY_RECOVERY") {
-          toast.error("الملف ده مش ملف استرداد طوارئ النخبة.");
+          toast.error("الملف ده مش ملف استرداد طوارئ Alnokhba Managment.");
           return;
         }
         setRecFile({ name: f.name, data });
