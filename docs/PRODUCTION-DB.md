@@ -54,8 +54,31 @@ npx tsx scripts/migrate_sqlite_to_postgres.ts "postgresql://..."
 - `schema.postgres.prisma` ملف مولّد: عدّل `prisma/schema.prisma` الأساسي ثم
   `python3 scripts/build_postgres_schema.py`.
 
+## ⚠️ قاعدة إجبارية قبل أي deploy فيه تغيير سكيما
+**أي تعديل على `prisma/schema.prisma` لازم يعدي `prisma/schema.postgres.prisma` معاه:**
+```bash
+python3 scripts/build_postgres_schema.py
+```
+البناء على Vercel بيولّد الـ Prisma client **من `schema.postgres.prisma`** — لو الملف
+اتقديم عن الأساسي، الـ client المنشور مش هيعرف الموديلز الجديدة وكل endpoint بيلمسها
+هيرجّع 500 «حصل خطأ غير متوقع في السيرفر» (ده اللي حصل فعليًا مع موديلز
+Capabilities/AttendanceEvent/CheckInAttempt — 6 جداول ناقصة في الإنتاج).
+
+## آلية مزامنة السكيما (بعد درس 10-03)
+- `vercel-build.sh` بيعمل `prisma db push` بعد الـ generate — **إضافي فقط**
+  (من غير `--accept-data-loss` فأي تغيير تدميري بيفشل بدل ما يلمس البيانات)
+  وبتوقيت حماية 120ث (DDL فوق transaction pooler ممكن يعلق — لو فشل البناء
+  بيكمل عادي والجداول تتظبط يدويًا).
+- المسار اليدوي الأضمن (session pooler — بورت 5432):
+  ```bash
+  DATABASE_URL="<session-pooler-url>" npx prisma db push \
+    --schema=prisma/schema.postgres.prisma --skip-generate
+  ```
+
 ## ملاحظات تشغيلية
 - Supabase + serverless لازم pooler (بورت 6543) + `?pgbouncer=true&connection_limit=1`
   عشان الـ Prisma connections متنفدش.
 - أول deploy بعد الربط: `vercel-build.sh` بيعمل `db push` → كل الجداول بتتعمل لوحدها.
 - لو عايز تشوف بياناتك: Supabase Table Editor أو `npx prisma studio` محليًا على نفس الرابط.
+- عبارات DDL مفردة (autocommit) شغالة على transaction pooler عادي — اللي بيعلق هو
+  الـ interactive transactions والمجموعات؛ خد ده في الاعتبار لو عملت سكريبت صيانة.
