@@ -134,6 +134,7 @@ export const AUDIT = {
   UNAUTHORIZED_ATTENDANCE: "محاولة حضور غير مصرح بها",
   // قدرات المركز + الحضور الموحد
   CAPABILITIES_UPDATED: "تعديل ميزات المركز",
+  SCHEMA_SYNC: "مزامنة سكيما قاعدة البيانات",
   STAFF_CHECKIN: "حضور موظف",
   TEACHER_AUTO_ATTENDANCE: "حضور المدرس التلقائي (بدء الحصة)",
   STAFF_QR_ISSUED: "توليد كود حضور موظفين",
