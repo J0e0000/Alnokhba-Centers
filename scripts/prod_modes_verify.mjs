@@ -47,13 +47,16 @@ if (sid) {
   // 4) قفل + CSV
   const close = await api(`/api/sessions/${sid}`, { method: "POST", body: JSON.stringify({ action: "close" }) }, jar);
   ok(`close OPEN (mode=${close.data?.mode})`, close.data?.closed === true && close.data?.mode === "OPEN");
-  const csv = await fetch(`${BASE}/api/sessions/${sid}/export`, { headers: { cookie: jar.cookie } });
-  const text = await csv.text();
-  ok("CSV 200 + BOM + name", csv.status === 200 && text.charCodeAt(0) === 0xFEFF && text.includes("طالب إنتاج اختبار"));
+  const csvRes = await fetch(`${BASE}/api/sessions/${sid}/export`, { headers: { cookie: jar.cookie } });
+  const buf = new Uint8Array(await csvRes.arrayBuffer());
+  const text = new TextDecoder().decode(buf);
+  ok("CSV 200 + BOM bytes + name", csvRes.status === 200 && buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF && text.includes("طالب إنتاج اختبار"));
   ok("CSV clean (no device/token)", !text.includes("77777777") && !text.includes(token));
 
-  // تنظيف: إلغاء الأثر — الحصة مقفولة تظل في السجل كاختبار (تُحذف يدويًا لو حابب)
-  console.log(`\nsession: ${sid}`);
+  // تنظيف: إعادة فتح ثم إلغاء جلسة الاختبار (مش بتتمسح — بتتلغي وبتفضل في السجل زي باقي جلسات الاختبار)
+  await api(`/api/sessions/${sid}`, { method: "POST", body: JSON.stringify({ action: "reopen", reason: "تنظيف جلسة اختبار إنتاج (وضعا الحضور)" }) }, jar);
+  await api(`/api/sessions/${sid}`, { method: "POST", body: JSON.stringify({ action: "cancel", reason: "جلسة اختبار وضعا الحضور — تنظيف آلي" }) }, jar);
+  console.log(`\nsession: ${sid} (cancelled)`);
 }
 
 console.log(`\nPASS ${PASS} / FAIL ${FAIL}`);
