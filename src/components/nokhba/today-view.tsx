@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CalendarClock, LockOpen, Loader2, Zap, PlayCircle, Ban, DoorClosed,
-  Printer, ClipboardCheck, ScanLine, LogIn, CheckCircle2,
+  Printer, ClipboardCheck, ScanLine, LogIn, CheckCircle2, Plus, Users, Globe2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,7 @@ type SessionCard = {
   id: string; startTime: string; endTime: string; room: string | null; status: string;
   subject: string; grade: string; groupName: string; teacher: string; price: number;
   presentCount: number; openedAt: string | null;
+  studentSource?: string; studentCodeLength?: number | null;
   closedAggregates: { totalRevenue: number; teacherShare: number; centerShare: number; presentCount: number } | null;
 };
 
@@ -57,6 +58,7 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [opening, setOpening] = useState<string | null>(null);
   const [checkinOpen, setCheckinOpen] = useState(false);
+  const [newOpen, setNewOpen] = useState(false);
   const caps = useCaps();
   const printSheet = usePrint();
 
@@ -138,13 +140,22 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
         title="يوم كامل في مكان واحد"
         subtitle={`${data.date} — ${data.sessions.length + data.suggestions.length} حصة`}
         action={
-          <button
-            onClick={printDaySchedule}
-            className="rounded-xl border-2 border-border bg-card px-3.5 py-2.5 font-extrabold text-xs flex items-center gap-1.5 hover:border-[color-mix(in_srgb,var(--c-primary)_35%,white)] transition"
-          >
-            <Printer className="w-4 h-4" />
-            طباعة جدول القاعات
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setNewOpen(true)}
+              className="nk-brand-bg text-white rounded-xl px-3.5 py-2.5 font-extrabold text-xs flex items-center gap-1.5 shadow active:scale-[0.98] transition"
+            >
+              <Plus className="w-4 h-4" />
+              حصة جديدة
+            </button>
+            <button
+              onClick={printDaySchedule}
+              className="rounded-xl border-2 border-border bg-card px-3.5 py-2.5 font-extrabold text-xs flex items-center gap-1.5 hover:border-[color-mix(in_srgb,var(--c-primary)_35%,white)] transition"
+            >
+              <Printer className="w-4 h-4" />
+              طباعة جدول القاعات
+            </button>
+          </div>
         }
       />
 
@@ -199,16 +210,25 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
                       <span className={cn("nk-num text-center rounded-xl py-1.5 px-2.5 text-sm font-extrabold border", isOpen ? "bg-emerald-600 text-white border-transparent" : "bg-card border-border")} dir="ltr">
                         {formatTime12(s.startTime)}
                       </span>
-                      <span className="font-extrabold text-[15px]">{s.subject} — {s.grade} {s.groupName}</span>
+                      <span className="font-extrabold text-[15px]">{s.subject}{s.grade !== "—" ? ` — ${s.grade} ${s.groupName}` : ""}</span>
+                      {/* مصدر الطلاب — شارة واضحة (spec §8): مفتوحة = من غير كشف */}
+                      {s.studentSource === "OPEN" ? <StatusChip tone="blue"><Globe2 className="w-3 h-3 inline" /> مفتوحة</StatusChip> : null}
                       {isOpen && <StatusChip tone="green">شغالة 🟢</StatusChip>}
                       {closed && <StatusChip tone="muted"><DoorClosed className="w-3 h-3 inline" /> خلصت</StatusChip>}
                       {cancelled && <StatusChip tone="red"><Ban className="w-3 h-3 inline" /> ملغاة</StatusChip>}
                     </div>
                     <p className="text-xs font-bold text-muted-foreground mt-1.5 flex items-center gap-2 flex-wrap">
-                      <span>{s.teacher}</span>
+                      {s.studentSource === "OPEN" ? (
+                        // الحضور المفتوح: العدد المسجل هو كل المعلومة — مفيش غياب ولا حسابات (spec §15)
+                        <span className="nk-num">اتسجل {s.presentCount}{s.studentCodeLength ? ` · كود ${s.studentCodeLength} أرقام` : ""}</span>
+                      ) : (
+                        <>
+                          <span>{s.teacher}</span>
+                          <span className="nk-num">{fmt(s.price)} ج · حضر {s.presentCount}</span>
+                        </>
+                      )}
                       {s.room && <span className="nk-brand-text font-extrabold">{s.room}</span>}
-                      <span className="nk-num">{fmt(s.price)} ج · حضر {s.presentCount}</span>
-                      {closed && s.closedAggregates && (
+                      {closed && s.studentSource !== "OPEN" && s.closedAggregates && (
                         <span className="nk-num text-emerald-700 dark:text-emerald-300 font-extrabold">إيراد {fmt(s.closedAggregates.totalRevenue)} ج</span>
                       )}
                     </p>
@@ -223,7 +243,7 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
                     </div>
                   )}
                   {closed && (
-                    <ActionPill icon={<ClipboardCheck className="w-4 h-4" />} label="عرض النتائج" onClick={() => openSession(s.id)} tooltip="مراجعة إجمالي الحصة" className="bg-muted border-transparent" />
+                    <ActionPill icon={<ClipboardCheck className="w-4 h-4" />} label={s.studentSource === "OPEN" ? "النتائج + CSV" : "عرض النتائج"} onClick={() => openSession(s.id)} tooltip="مراجعة إجمالي الحصة" className="bg-muted border-transparent" />
                   )}
                 </div>
               );
@@ -271,6 +291,13 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
           <span className="flex-1 text-start font-extrabold text-sm">طلبات محتاجة موافقة</span>
         </button>
       )}
+
+      {/* ===== شيت حصة جديدة — اسم + مصدر طلاب + خلاص (spec §3) ===== */}
+      <NewSessionDialog
+        open={newOpen}
+        onOpenChange={setNewOpen}
+        onCreated={(id) => { setNewOpen(false); window.dispatchEvent(new CustomEvent("nk-sessions-changed")); openSession(id); }}
+      />
 
       {/* ===== شيت حضور الموظف — امسح كود شاشة المركز ===== */}
       <Dialog open={checkinOpen} onOpenChange={setCheckinOpen}>
@@ -335,16 +362,232 @@ function StaffCheckinScanner({ onDone }: { onDone: (msg: string) => void }) {
   );
 }
 
-function StatusChip({ children, tone }: { children: React.ReactNode; tone: "green" | "amber" | "red" | "muted" }) {
+function StatusChip({ children, tone }: { children: React.ReactNode; tone: "green" | "amber" | "red" | "muted" | "blue" }) {
   return (
     <span className={cn(
       "text-[10.5px] font-extrabold rounded-full px-2 py-0.5",
       tone === "green" && "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
       tone === "amber" && "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
       tone === "red" && "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300",
+      tone === "blue" && "bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300",
       tone === "muted" && "bg-muted text-muted-foreground",
     )}>
       {children}
     </span>
+  );
+}
+
+/* ============================================================
+   شيت حصة جديدة (spec §3): اسم + مصدر طلاب + إعداد واحد لكل مصدر + ابدأ.
+   - قاعدة بيانات/كشف: اختار المجموعة (الكشف) — الغايب بيتحسب تلقائيًا بعد القفل
+   - حضور مفتوح: طول كود الطالب (افتراضي 5 — قابل للضبط، مش hardcode)
+   — الإعداد الأدنى الممكن؛ مفيش صفحة إعدادات كاملة
+============================================================ */
+
+type GroupOption = { id: string; name: string; subject: string; grade: string; students: number };
+
+function timeNowRounded(): string {
+  const d = new Date();
+  d.setMinutes(Math.ceil(d.getMinutes() / 5) * 5, 0, 0);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function timePlus90(start: string): string {
+  const [h, m] = start.split(":").map(Number);
+  const t = h * 60 + m + 90;
+  return `${String(Math.floor(t / 60) % 24).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+}
+
+export function NewSessionDialog({ open, onOpenChange, onCreated }: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onCreated: (sessionId: string) => void;
+}) {
+  const [source, setSource] = useState<"ROSTER" | "OPEN">("ROSTER");
+  const [name, setName] = useState("");
+  const [groups, setGroups] = useState<GroupOption[] | null>(null);
+  const [groupId, setGroupId] = useState("");
+  const [allowUnreg, setAllowUnreg] = useState(false);
+  const [codeLen, setCodeLen] = useState("5");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  // وقت افتراضي منطقي: من دلوقتي → بعد ساعة ونص (مربوطة بفتح الشيت مش بالمونت)
+  useEffect(() => {
+    if (open) {
+      const s = timeNowRounded();
+      setStartTime(s);
+      setEndTime(timePlus90(s));
+      setSource("ROSTER");
+      setName("");
+      setAllowUnreg(false);
+      setCodeLen("5");
+    }
+  }, [open]);
+
+  // المجموعات النشطة (الكشف المتاح) — بتتجيب أول ما الشيت يتفتح
+  useEffect(() => {
+    if (!open || groups) return;
+    api<{ groups: GroupOption[] }>("/api/academics")
+      .then((d) => setGroups(d.groups))
+      .catch(() => setGroups([]));
+  }, [open, groups]);
+
+  const codeLenNum = Math.max(3, Math.min(12, Math.round(Number(codeLen) || 5)));
+  const canSubmit =
+    !busy &&
+    (source === "OPEN" ? name.trim().length >= 2 : groupId !== "") &&
+    startTime && endTime && endTime > startTime;
+
+  async function create() {
+    setBusy(true);
+    try {
+      const body = source === "OPEN"
+        ? { studentSource: "OPEN", name: name.trim(), studentCodeLength: codeLenNum, startTime, endTime }
+        : { studentSource: "ROSTER", groupId, startTime, endTime, allowUnregistered: allowUnreg };
+      const res = await api<{ session: { id: string } }>("/api/sessions", { method: "POST", body });
+      toast.success(source === "OPEN" ? "الحصة المفتوحة فتحت 🟢 — اعرض الكود وخلي الطلاب يسجلوا" : "الحصة فتحت 🟢 — جاهزة للمسح");
+      onCreated(res.session.id);
+    } catch { /* toast */ } finally { setBusy(false); }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent dir="rtl" className="max-w-md rounded-3xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <span className="w-9 h-9 rounded-xl nk-brand-bg grid place-items-center shrink-0"><Plus className="w-5 h-5 text-white" /></span>
+            حصة جديدة
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          {/* المصدر أولاً — القرار الوحيد المهم (spec §16) */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setSource("ROSTER")}
+              className={cn(
+                "rounded-2xl border-2 p-3 text-start transition active:scale-[0.98]",
+                source === "ROSTER" ? "nk-brand-bg text-white border-transparent shadow" : "border-border bg-card hover:bg-muted/50",
+              )}
+            >
+              <Users className="w-5 h-5 mb-1.5" />
+              <span className="block font-extrabold text-sm">قاعدة بيانات</span>
+              <span className={cn("block text-[10.5px] font-bold leading-snug", source === "ROSTER" ? "opacity-90" : "text-muted-foreground")}>
+                كشف مجموعة — الغايب بيتحسب تلقائيًا
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSource("OPEN")}
+              className={cn(
+                "rounded-2xl border-2 p-3 text-start transition active:scale-[0.98]",
+                source === "OPEN" ? "nk-brand-bg text-white border-transparent shadow" : "border-border bg-card hover:bg-muted/50",
+              )}
+            >
+              <Globe2 className="w-5 h-5 mb-1.5" />
+              <span className="block font-extrabold text-sm">حضور مفتوح</span>
+              <span className={cn("block text-[10.5px] font-bold leading-snug", source === "OPEN" ? "opacity-90" : "text-muted-foreground")}>
+                من غير كشف — أي حد يسجل باسمه
+              </span>
+            </button>
+          </div>
+
+          {source === "OPEN" && (
+            <div>
+              <label htmlFor="ns-name" className="text-xs font-bold block mb-1">اسم الحصة</label>
+              <input
+                id="ns-name"
+                value={name}
+                onChange={(e) => setName(e.target.value.slice(0, 80))}
+                placeholder="مثلاً: رياضيات — الأسبوع 4"
+                className="w-full h-11 rounded-xl border-2 border-input bg-card px-3.5 font-bold text-sm"
+              />
+            </div>
+          )}
+
+          {source === "ROSTER" && (
+            <div className="space-y-2">
+              <label htmlFor="ns-group" className="text-xs font-bold block">المجموعة (الكشف)</label>
+              {!groups ? (
+                <div className="h-11 rounded-xl bg-muted animate-pulse" />
+              ) : groups.length === 0 ? (
+                <p className="text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 rounded-xl px-3 py-2.5">
+                  مفيش مجموعات نشطة — ضيف مجموعة الأول من تاب الحصص.
+                </p>
+              ) : (
+                <select
+                  id="ns-group"
+                  value={groupId}
+                  onChange={(e) => setGroupId(e.target.value)}
+                  className="w-full h-11 rounded-xl border-2 border-input bg-card px-3 font-bold text-sm"
+                >
+                  <option value="">اختار المجموعة…</option>
+                  {groups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.subject} — {g.grade} {g.name} ({g.students} طالب)
+                    </option>
+                  ))}
+                </select>
+              )}
+              {/* إعداد إداري ثانوي — قبول غير المسجلين بدل رفضهم (spec §22) */}
+              <label className="flex items-center gap-2.5 rounded-xl bg-muted/50 px-3.5 py-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={allowUnreg}
+                  onChange={(e) => setAllowUnreg(e.target.checked)}
+                  className="w-4 h-4 accent-[color-mix(in_srgb,var(--c-primary)_88%,black)]"
+                />
+                <span className="text-xs font-bold leading-snug">
+                  قبول الطلاب غير المسجلين في الكشف (بدل رفضهم)
+                  <span className="block text-[10.5px] font-semibold text-muted-foreground">هيتسجلوا باسمهم ويبانوا في القائمة كـ«غير مسجل» — من غير خصم</span>
+                </span>
+              </label>
+            </div>
+          )}
+
+          {source === "OPEN" && (
+            <div>
+              <label htmlFor="ns-codelen" className="text-xs font-bold block mb-1">طول كود الطالب (أرقام)</label>
+              <input
+                id="ns-codelen"
+                value={codeLen}
+                onChange={(e) => setCodeLen(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                inputMode="numeric"
+                className="w-full h-11 rounded-xl border-2 border-input bg-card px-3.5 font-extrabold text-sm nk-num"
+                dir="ltr"
+              />
+              <p className="text-[10.5px] font-bold text-muted-foreground mt-1">
+                الطالب لازم يكتب {codeLenNum} أرقام بالظبط — غيّرها براحتك (3 إلى 12).
+              </p>
+            </div>
+          )}
+
+          {/* وقت الحصة — افتراضي منطقي وقابل للتعديل */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label htmlFor="ns-start" className="text-xs font-bold block mb-1">من</label>
+              <input id="ns-start" type="time" value={startTime} onChange={(e) => { setStartTime(e.target.value); setEndTime(timePlus90(e.target.value)); }}
+                className="w-full h-11 rounded-xl border-2 border-input bg-card px-3 font-bold text-sm nk-num" dir="ltr" />
+            </div>
+            <div>
+              <label htmlFor="ns-end" className="text-xs font-bold block mb-1">إلى</label>
+              <input id="ns-end" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)}
+                className="w-full h-11 rounded-xl border-2 border-input bg-card px-3 font-bold text-sm nk-num" dir="ltr" />
+            </div>
+          </div>
+
+          <button
+            onClick={create}
+            disabled={!canSubmit}
+            className="w-full h-12 rounded-2xl nk-brand-bg text-white font-extrabold shadow active:scale-[0.99] disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <PlayCircle className="w-5 h-5" />}
+            {busy ? "جاري الفتح…" : "ابدأ الحضور"}
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

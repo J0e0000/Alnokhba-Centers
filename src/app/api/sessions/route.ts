@@ -42,14 +42,14 @@ async function assertNoSessionConflicts(opts: {
     // تعارض قاعة — نفس القاعة بنفس الوقت
     if (opts.room && s.room && s.room === opts.room) {
       throw new ApiError(
-        `القاعة محجوزة في نفس الوقت — عندها حصة ${s.group.subject.name} من ${s.startTime} لـ ${s.endTime}. اختار وقت أو قاعة تانية.`,
+        `القاعة محجوزة في نفس الوقت — عندها حصة ${s.group?.subject.name ?? s.name ?? "تانية"} من ${s.startTime} لـ ${s.endTime}. اختار وقت أو قاعة تانية.`,
         409,
       );
     }
-    // تعارض مدرس — المدرس واحد في قاعتين في نفس الوقت
-    if (opts.teacherId && s.group.teacherId === opts.teacherId) {
+    // تعارض مدرس — المدرس واحد في قاعتين في نفس الوقت (حصص الحضور المفتوح مالهاش مدرس)
+    if (opts.teacherId && s.group?.teacherId === opts.teacherId) {
       throw new ApiError(
-        `المدرس محجوز في حصة تانية في نفس الوقت (${s.group.subject.name} من ${s.startTime} لـ ${s.endTime}) — اختار وقت تاني.`,
+        `المدرس محجوز في حصة تانية في نفس الوقت (${s.group?.subject.name ?? ""} من ${s.startTime} لـ ${s.endTime}) — اختار وقت تاني.`,
         409,
       );
     }
@@ -142,13 +142,19 @@ export const GET = handler(async (req: Request) => {
     sessions: sessions.map((s) => ({
       id: s.id,
       startTime: s.startTime, endTime: s.endTime, room: s.room, status: s.status,
-      subject: s.group.subject.name, grade: s.group.grade.name, groupName: s.group.name,
-      teacher: s.group.teacher?.name ?? "—", teacherId: s.group.teacherId,
+      // حصص الحضور المفتوح (بدون مجموعة): الاسم هو اللي بيتعرض — حصص الكشف زي ما هي
+      subject: s.group?.subject.name ?? s.name ?? "حصة",
+      grade: s.group?.grade.name ?? "—", groupName: s.group?.name ?? "—",
+      teacher: s.group?.teacher?.name ?? "—", teacherId: s.group?.teacherId ?? null,
       price: s.price, teacherPercent: s.teacherPercent,
+      // مصدر الطلاب + إعداداته (شارة "مفتوحة" في القائمة — spec §8)
+      studentSource: s.studentSource, studentCodeLength: s.studentCodeLength,
+      allowUnregistered: s.allowUnregistered,
       // وقت البداية الفعلي = لحظة فتح الحصة (الجدول بيتخطط — الفتح بيتسجل)
       openedAt: s.status !== "CANCELLED" ? s.createdAt.toISOString() : null,
       attendanceCount: s.attendance.length,
-      presentCount: s.attendance.filter((a) => a.status !== "EXCUSED").length,
+      // حصص الكشف: حاضر = مش بعذر · الحضور المفتوح: كل صف اتسجل = حضور ناجح (مفيش غياب — spec §15)
+      presentCount: s.studentSource === "OPEN" ? s.attendance.length : s.attendance.filter((a) => a.status !== "EXCUSED").length,
       closed: s.status === "CLOSED",
       aggregates: s.status === "CLOSED"
         ? { totalRevenue: s.totalRevenue ?? 0, teacherShare: s.teacherShare ?? 0, centerShare: s.centerShare ?? 0, presentCount: s.presentCount ?? 0 }
@@ -164,13 +170,53 @@ export const GET = handler(async (req: Request) => {
   });
 });
 
-type OpenBody = { scheduleId?: string; groupId?: string; date?: string; startTime?: string; endTime?: string; room?: string };
+type OpenBody = {
+  scheduleId?: string; groupId?: string; date?: string; startTime?: string; endTime?: string; room?: string;
+  // وضع الحضور (spec §1): ROSTER (كشف/مجموعة — الافتراضي زي ما كان) | OPEN (حضور مفتوح من غير كشف)
+  studentSource?: "ROSTER" | "OPEN";
+  name?: string; // اسم الحصة (إجباري للحضور المفتوح)
+  studentCodeLength?: number; // للحضور المفتوح: طول كود الطالب المطلوب
+  allowUnregistered?: boolean; // للكشف: قبول غير المسجلين بدل رفضهم
+};
 
-/** POST /api/sessions — open/materialize a session from a schedule slot (or ad-hoc) */
+/** POST /api/sessions — open/materialize a session from a schedule slot, ad-hoc group, or Open Attendance */
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
   const body = await readJson<OpenBody>(req);
   const date = body.date || todayStr();
+
+  // ============ الحضور المفتوح (spec §1B) — حصة من غير مجموعة/كشف ============
+  if (body.studentSource === "OPEN") {
+    const name = String(body.name ?? "").trim().replace(/\s+/g, " ");
+    if (name.length < 2 || name.length > 80) throw new ApiError("اكتب اسم الحصة (حرفين على الأقل).", 400);
+    // طول الكود قابل للضبط (spec §2 — ممنوع hardcode 5): 3..12 رقم
+    const codeLen = Math.max(3, Math.min(12, Math.round(Number(body.studentCodeLength ?? 5))));
+    if (!body.startTime || !body.endTime || !/^\d{2}:\d{2}$/.test(body.startTime) || !/^\d{2}:\d{2}$/.test(body.endTime)) {
+      throw new ApiError("حدد وقت بداية ونهاية الحصة.");
+    }
+    if (body.endTime <= body.startTime) throw new ApiError("وقت النهاية لازم يكون بعد وقت البداية.");
+    const room = body.room ?? null;
+    // تعارض القاعة بس (مفيش مدرس/مجموعة للحضور المفتوح)
+    await assertNoSessionConflicts({ centerId: user.centerId, date, startTime: body.startTime, endTime: body.endTime, room, teacherId: null });
+
+    const session = await db.sessionInstance.create({
+      data: {
+        centerId: user.centerId, groupId: null, name, date, scheduleId: null,
+        startTime: body.startTime, endTime: body.endTime, room,
+        price: 0, teacherPercent: 0, // مفيش حسابات للحضور المفتوح — تسجيل حضور بس
+        studentSource: "OPEN", studentCodeLength: codeLen,
+        status: "OPEN", openedBy: user.id,
+      },
+    });
+    await logAudit({
+      user,
+      action: AUDIT.SESSION_OPENED,
+      entity: "SESSION",
+      entityId: session.id,
+      after: { name, date, startTime: body.startTime, studentSource: "OPEN", studentCodeLength: codeLen },
+    });
+    return ok({ session: { id: session.id }, teacherAutoAttendance: null }, { status: 201 });
+  }
 
   let group; let startTime: string; let endTime: string; let room: string | null; let scheduleId: string | null = null;
 
@@ -233,6 +279,8 @@ export const POST = handler(async (req: Request) => {
       centerId: user.centerId, groupId: group.id, date, scheduleId,
       startTime, endTime, room,
       price: group.sessionPrice, teacherPercent: group.teacherPercent,
+      studentSource: "ROSTER",
+      allowUnregistered: body.allowUnregistered === true,
       status: "OPEN", openedBy: user.id,
     },
   });
@@ -242,7 +290,7 @@ export const POST = handler(async (req: Request) => {
     action: AUDIT.SESSION_OPENED,
     entity: "SESSION",
     entityId: session.id,
-    after: { group: group.name, date, startTime },
+    after: { group: group.name, date, startTime, allowUnregistered: body.allowUnregistered === true },
   });
 
   // حضور المدرس التلقائي — بدء الحصة = تسجيل المدرس حاضر (قدرة المركز بتتحكم)

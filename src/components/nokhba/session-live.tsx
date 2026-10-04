@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   ChevronRight, Clock, DoorClosed, Lock, LockOpen, Users, UserX, Loader2,
   Banknote, GraduationCap, Wallet, TrendingUp, AlertTriangle, RotateCcw, Printer, CheckCircle2,
-  CalendarX, Send, LayoutDashboard, ScanLine, Wrench, ClipboardCheck, ReceiptText, Info, QrCode,
+  CalendarX, Send, LayoutDashboard, ScanLine, Wrench, ClipboardCheck, ReceiptText, Info, QrCode, Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, fmt, fmtE, formatTime12, ATTENDANCE_LABEL, userCan, userCanRequest, type SessionUser } from "./lib";
@@ -26,12 +26,13 @@ type SessionDetail = {
     id: string; date: string; startTime: string; endTime: string; room: string | null; status: string;
     subject: string; grade: string; groupName: string; teacher: string; price: number;
     teacherPercent: number; openedAt: string | null; closedAt: string | null;
+    studentSource: string; studentCodeLength: number | null; allowUnregistered: boolean;
   };
   economics: {
     presentCount: number; totalRevenue: number; teacherShare: number; centerShare: number;
     collected: number; outstanding: number;
   };
-  attendance: { id: string; studentId: string; name: string; code: string; status: string; charged: number | null; at: string; method?: string; riskScore?: number; riskFlags?: string[] }[];
+  attendance: { id: string; studentId: string | null; name: string; code: string; unregistered?: boolean; status: string; charged: number | null; at: string; method?: string; riskScore?: number; riskFlags?: string[] }[];
   absent: { studentId: string; name: string; code: string }[];
 };
 
@@ -56,6 +57,8 @@ const ATTEMPT_OUTCOME_LABEL: Record<string, string> = {
   INVALID_STUDENT: "كود طالب مش معروف",
   INACTIVE_STUDENT: "طالب مش نشط",
   NOT_REGISTERED: "مش مسجل في المجموعة",
+  INVALID_NAME: "اسم ناقص/مش صالح",
+  INVALID_CODE_LENGTH: "كود بطول غلط",
   CAPABILITY_OFF: "الخدمة مقفولة بالمركز",
   RATE_LIMITED: "محاولات كتير",
   INVALID_REQUEST: "طلب شكله غلط",
@@ -159,12 +162,18 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
   const closed = s.status === "CLOSED";
   const cancelled = s.status === "CANCELLED";
   const readOnly = closed || cancelled;
+  const isOpenMode = s.studentSource === "OPEN"; // حضور مفتوح — مفيش كشف/غياب/حسابات (spec §15)
   const registered = data.attendance.length + data.absent.length;
   const lateCount = data.attendance.filter((a) => a.status === "LATE").length;
-  // إلغاء الحصة: صلاحية مباشرة (CANCEL_SESSION — المدير دايمًا) أو طلب موافقة للمدير
+  // إلغاء الحصة: صلاحية مباشرة (CANCEL_SESSION) أو طلب موافقة للمدير
   const canCancelDirect = userCan(user, "CANCEL_SESSION");
   const canCancelRequest = userCanRequest(user, "REQUEST_SESSION_CANCELLATION");
   const canEnd = userCan(user, "END_SESSION");
+
+  // تصدير CSV (spec §11) — بعد القفل بس؛ نفس جلسة الموظف بتنزّل الملف على طول
+  function downloadCsv() {
+    window.location.href = `/api/sessions/${sessionId}/export`;
+  }
 
   // إلغاء مباشر (صلاحية) أو طلب إلغاء (يروح للمدير) — بيتأكد من السبب قبل الإرسال
   async function submitCancel() {
@@ -198,29 +207,37 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
   async function closeSession() {
     setBusy(true);
     try {
-      const res = await api<{ economics: SessionDetail["economics"] }>(`/api/sessions/${sessionId}`, {
+      const res = await api<{ economics: SessionDetail["economics"]; mode?: string }>(`/api/sessions/${sessionId}`, {
         method: "POST", body: { action: "close" },
       });
-      toast.success(`تم قفل الحصة — نصيب المدرس ${fmt(res.economics.teacherShare)} ج ونصيب السنتر ${fmt(res.economics.centerShare)} ج.`);
       window.dispatchEvent(new CustomEvent("nk-sessions-changed"));
       setCloseOpen(false);
       setTab("review"); // الملخص التشغيلي بعد القفل
       load();
       loadPayments();
-      // شريط النجاح الدائم — طباعة فورية + تراجع (إعادة فتح) بدون ما يختفي لوحده
-      showSuccess({
-        message: "تم حفظ الحصة بنجاح",
-        sub: `نصيب المدرس ${fmt(res.economics.teacherShare)} ج · نصيب السنتر ${fmt(res.economics.centerShare)} ج · حضر ${res.economics.presentCount}`,
-        printLabel: "طباعة",
-        onPrint: () => printAttendance(),
-        undoLabel: "تراجع",
-        onUndo: async () => {
-          await api(`/api/sessions/${sessionId}`, { method: "POST", body: { action: "reopen", reason: "تراجع من شريط النجاح بعد القفل" } });
-          toast.success("رجّعنا الحصة شغالة تاني — الحسابات اتلغت بحركة عكسية.");
-          window.dispatchEvent(new CustomEvent("nk-sessions-changed"));
-          load();
-        },
-      });
+      // شريط النجاح الدائم — حسب وضع الحصة (spec §10)
+      if (isOpenMode) {
+        showSuccess({
+          message: "تم قفل الحصة بنجاح",
+          sub: `اتسجل ${res.economics.presentCount} طالب · الحصة دي حضور مفتوح — مفيش كشف ولا غياب`,
+          printLabel: "تصدير CSV",
+          onPrint: () => downloadCsv(),
+        });
+      } else {
+        showSuccess({
+          message: "تم حفظ الحصة بنجاح",
+          sub: `نصيب المدرس ${fmt(res.economics.teacherShare)} ج · نصيب السنتر ${fmt(res.economics.centerShare)} ج · حضر ${res.economics.presentCount}`,
+          printLabel: "طباعة",
+          onPrint: () => printAttendance(),
+          undoLabel: "تراجع",
+          onUndo: async () => {
+            await api(`/api/sessions/${sessionId}`, { method: "POST", body: { action: "reopen", reason: "تراجع من شريط النجاح بعد القفل" } });
+            toast.success("رجّعنا الحصة شغالة تاني — الحسابات اتلغت بحركة عكسية.");
+            window.dispatchEvent(new CustomEvent("nk-sessions-changed"));
+            load();
+          },
+        });
+      }
     } catch { /* toast */ } finally { setBusy(false); }
   }
 
@@ -274,8 +291,10 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
       </button>
 
       <PageHeader
-        title={`${s.subject} — ${s.grade} ${s.groupName}`}
-        subtitle={`${formatTime12(s.startTime)} — ${formatTime12(s.endTime)}${s.room ? ` · ${s.room}` : ""} · ${s.teacher}`}
+        title={isOpenMode ? s.subject : `${s.subject} — ${s.grade} ${s.groupName}`}
+        subtitle={isOpenMode
+          ? `${formatTime12(s.startTime)} — ${formatTime12(s.endTime)}${s.room ? ` · ${s.room}` : ""} · حضور مفتوح`
+          : `${formatTime12(s.startTime)} — ${formatTime12(s.endTime)}${s.room ? ` · ${s.room}` : ""} · ${s.teacher}`}
         action={
           cancelled ? (
             <Chip className="bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300"><CalendarX className="w-3.5 h-3.5" /> ملغاة</Chip>
@@ -311,14 +330,24 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
           )}
           <span className="inline-flex items-center gap-1 text-muted-foreground"><Clock className="w-3.5 h-3.5" /><span className="nk-num">{formatTime12(s.startTime)} – {formatTime12(s.endTime)}</span></span>
           {s.room && <span className="nk-brand-bg-soft dark:bg-[color-mix(in_srgb,var(--c-primary)_26%,var(--card))] nk-brand-text rounded-full px-2.5 py-1">{s.room}</span>}
-          <span className="text-muted-foreground">{s.teacher}</span>
+          {!isOpenMode && <span className="text-muted-foreground">{s.teacher}</span>}
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-          <MiniStat label="حاضر" value={e.presentCount} tone={e.presentCount > 0 ? "ok" : "muted"} icon={<GraduationCap className="w-3.5 h-3.5" />} />
-          <MiniStat label={`غايب من ${registered}`} value={data.absent.length} tone={data.absent.length > 0 ? "warn" : "muted"} icon={<UserX className="w-3.5 h-3.5" />} />
-          <MiniStat label="مشبوه" value={attempts?.suspiciousCount ?? 0} tone={(attempts?.suspiciousCount ?? 0) > 0 ? "warn" : "muted"} icon={<AlertTriangle className="w-3.5 h-3.5" />} />
-          <MiniStat label="دفع بالحصة" value={payments?.total ?? 0} tone={(payments?.total ?? 0) > 0 ? "ok" : "muted"} icon={<ReceiptText className="w-3.5 h-3.5" />} />
-          <MiniStat label="متأخر" value={e.outstanding > 0 ? Math.round(e.outstanding / 100) : 0} tone={e.outstanding > 0 ? "warn" : "muted"} icon={<AlertTriangle className="w-3.5 h-3.5" />} />
+        <div className={cn("grid grid-cols-2 gap-2", !isOpenMode && "sm:grid-cols-5")}>
+          {isOpenMode ? (
+            // الحضور المفتوح: العدد المسجل هو المهم — مفيش غياب ولا فلوس (spec §9/§15)
+            <>
+              <MiniStat label="اتسجل" value={data.attendance.length} tone={data.attendance.length > 0 ? "ok" : "muted"} icon={<GraduationCap className="w-3.5 h-3.5" />} />
+              <MiniStat label="مشبوه" value={attempts?.suspiciousCount ?? 0} tone={(attempts?.suspiciousCount ?? 0) > 0 ? "warn" : "muted"} icon={<AlertTriangle className="w-3.5 h-3.5" />} />
+            </>
+          ) : (
+            <>
+              <MiniStat label="حاضر" value={e.presentCount} tone={e.presentCount > 0 ? "ok" : "muted"} icon={<GraduationCap className="w-3.5 h-3.5" />} />
+              <MiniStat label={`غايب من ${registered}`} value={data.absent.length} tone={data.absent.length > 0 ? "warn" : "muted"} icon={<UserX className="w-3.5 h-3.5" />} />
+              <MiniStat label="مشبوه" value={attempts?.suspiciousCount ?? 0} tone={(attempts?.suspiciousCount ?? 0) > 0 ? "warn" : "muted"} icon={<AlertTriangle className="w-3.5 h-3.5" />} />
+              <MiniStat label="دفع بالحصة" value={payments?.total ?? 0} tone={(payments?.total ?? 0) > 0 ? "ok" : "muted"} icon={<ReceiptText className="w-3.5 h-3.5" />} />
+              <MiniStat label="متأخر" value={e.outstanding > 0 ? Math.round(e.outstanding / 100) : 0} tone={e.outstanding > 0 ? "warn" : "muted"} icon={<AlertTriangle className="w-3.5 h-3.5" />} />
+            </>
+          )}
         </div>
         {/* تقدم الخط التشغيلي */}
         <div className="flex items-center gap-1.5" aria-label="تقدم الحصة">
@@ -399,7 +428,7 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
           {!readOnly && (
             <div className="grid grid-cols-2 gap-2.5">
               <button onClick={() => setTab("attendance")} className="nk-brand-grad text-white font-extrabold rounded-2xl px-4 py-4 shadow flex items-center justify-center gap-2 active:scale-[0.99]">
-                <ScanLine className="w-5 h-5" /> ابدأ تسجيل الحضور
+                {isOpenMode ? <><QrCode className="w-5 h-5" /> اعرض كود الحضور</> : <><ScanLine className="w-5 h-5" /> ابدأ تسجيل الحضور</>}
               </button>
               <button onClick={() => setTab("review")} className="border-2 border-border bg-card text-foreground font-extrabold rounded-2xl px-4 py-4 flex items-center justify-center gap-2 active:scale-[0.99] transition hover:bg-muted/50">
                 <ClipboardCheck className="w-5 h-5" /> المراجعة قبل القفل
@@ -408,14 +437,22 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
           )}
 
           {/* الأرقام */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Stat label="حضر" value={e.presentCount} hint={`من ${registered} مسجل`} icon={<GraduationCap className="w-4 h-4" />} tone="brand" />
-            <MoneyStat label="قيمة الحصص" piastres={e.totalRevenue} hint={`سعر الحصة ${fmt(s.price)} ج`} />
-            <MoneyStat label="المحصّل" piastres={e.collected} tone="success" icon={<Banknote className="w-4 h-4" />} />
-            <MoneyStat label="المتأخر" piastres={e.outstanding} tone={e.outstanding > 0 ? "warning" : "muted"} icon={<AlertTriangle className="w-4 h-4" />} />
-          </div>
+          {isOpenMode ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <Stat label="اتسجل" value={data.attendance.length} hint={s.studentCodeLength ? `كود ${s.studentCodeLength} أرقام` : "حضور مفتوح"} icon={<GraduationCap className="w-4 h-4" />} tone="brand" />
+              <Stat label="محاولات مرفوضة" value={attempts?.suspiciousCount ?? 0} hint="من قفل الجهاز والإعدادات" icon={<AlertTriangle className="w-4 h-4" />} />
+              <Stat label="الحالة" value={closed ? "مقفولة" : "شغالة"} hint={s.room ?? undefined} icon={<CheckCircle2 className="w-4 h-4" />} />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Stat label="حضر" value={e.presentCount} hint={`من ${registered} مسجل`} icon={<GraduationCap className="w-4 h-4" />} tone="brand" />
+              <MoneyStat label="قيمة الحصص" piastres={e.totalRevenue} hint={`سعر الحصة ${fmt(s.price)} ج`} />
+              <MoneyStat label="المحصّل" piastres={e.collected} tone="success" icon={<Banknote className="w-4 h-4" />} />
+              <MoneyStat label="المتأخر" piastres={e.outstanding} tone={e.outstanding > 0 ? "warning" : "muted"} icon={<AlertTriangle className="w-4 h-4" />} />
+            </div>
+          )}
 
-          {closed && (
+          {closed && !isOpenMode && (
             <div className="grid grid-cols-2 gap-3">
               <MoneyStat label="نصيب المدرس" piastres={e.teacherShare} tone="brand" icon={<Wallet className="w-4 h-4" />} hint={`${s.teacherPercent}% متفق عليها`} />
               <MoneyStat label="نصيب السنتر" piastres={e.centerShare} tone="success" icon={<TrendingUp className="w-4 h-4" />} hint={`${100 - s.teacherPercent}%`} />
@@ -443,15 +480,17 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
           {/* بيانات الحصة */}
           <SectionCard title="بيانات الحصة" icon={<Info className="w-4 h-4" />}>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-              <InfoCell label="المجموعة" value={`${s.grade} ${s.groupName}`} />
-              <InfoCell label="المادة" value={s.subject} />
-              <InfoCell label="المدرس" value={s.teacher} />
+              {!isOpenMode && <InfoCell label="المجموعة" value={`${s.grade} ${s.groupName}`} />}
+              <InfoCell label={isOpenMode ? "الاسم" : "المادة"} value={s.subject} />
+              {!isOpenMode && <InfoCell label="المدرس" value={s.teacher} />}
               <InfoCell label="اليوم" value={s.date} mono />
               <InfoCell label="الميعاد" value={`${formatTime12(s.startTime)} — ${formatTime12(s.endTime)}`} mono />
               <InfoCell label="القاعة" value={s.room ?? "—"} />
+              {isOpenMode && <InfoCell label="مصدر الطلاب" value="حضور مفتوح (بدون كشف)" />}
+              {isOpenMode && s.studentCodeLength && <InfoCell label="طول الكود" value={`${s.studentCodeLength} أرقام`} mono />}
               {s.openedAt && <InfoCell label="بدأت فعليًا" value={formatTime12(s.openedAt.slice(11, 16))} mono />}
               {lateCount > 0 && <InfoCell label="متأخرين" value={`${lateCount} طالب`} />}
-              <InfoCell label="سعر الحصة" value={`${fmt(s.price)} ج`} mono />
+              {!isOpenMode && <InfoCell label="سعر الحصة" value={`${fmt(s.price)} ج`} mono />}
             </div>
           </SectionCard>
 
@@ -474,26 +513,29 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
             </>
           ) : (
             <>
-              {/* الطرق المتاحة للحضور — بتتكيف مع قدرات المركز (المعطّل مش بيظهر خالص) */}
-              <div className="nk-card rounded-2xl p-3 flex flex-wrap items-center gap-1.5 text-[11px] font-extrabold">
-                <span className="text-muted-foreground me-1">طرق تسجيل الحضور:</span>
-                {caps.static_qr.enabled && <span className="rounded-full border border-border bg-card px-2.5 py-1">١ · مسح كارت الطالب</span>}
-                {caps.name_attendance.enabled && <span className="rounded-full border border-border bg-card px-2.5 py-1">٢ · البحث / التحديد اليدوي</span>}
-                {caps.dynamic_qr.enabled && <span className="rounded-full nk-brand-bg text-white px-2.5 py-1 inline-flex items-center gap-1"><QrCode className="w-3 h-3" /> ٣ · QR الحصة المتنقل</span>}
-                {!caps.static_qr.enabled && !caps.name_attendance.enabled && !caps.dynamic_qr.enabled && (
-                  <span className="rounded-full border border-amber-300 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 px-2.5 py-1 inline-flex items-center gap-1">
-                    مفيش طرق حضور مفعّلة في المركز — كلّم المدير
-                  </span>
-                )}
-              </div>
+              {/* الطرق المتاحة للحضور — بتتكيف مع قدرات المركز (المعطّل مش بيظهر خالص)
+                  حصص الحضور المفتوح: الـ QR بس — مفيش كشف تتصل به طرق الكارت/الاسم (spec §1B) */}
+              {!isOpenMode && (
+                <div className="nk-card rounded-2xl p-3 flex flex-wrap items-center gap-1.5 text-[11px] font-extrabold">
+                  <span className="text-muted-foreground me-1">طرق تسجيل الحضور:</span>
+                  {caps.static_qr.enabled && <span className="rounded-full border border-border bg-card px-2.5 py-1">١ · مسح كارت الطالب</span>}
+                  {caps.name_attendance.enabled && <span className="rounded-full border border-border bg-card px-2.5 py-1">٢ · البحث / التحديد اليدوي</span>}
+                  {caps.dynamic_qr.enabled && <span className="rounded-full nk-brand-bg text-white px-2.5 py-1 inline-flex items-center gap-1"><QrCode className="w-3 h-3" /> ٣ · QR الحصة المتنقل</span>}
+                  {!caps.static_qr.enabled && !caps.name_attendance.enabled && !caps.dynamic_qr.enabled && (
+                    <span className="rounded-full border border-amber-300 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 px-2.5 py-1 inline-flex items-center gap-1">
+                      مفيش طرق حضور مفعّلة في المركز — كلّم المدير
+                    </span>
+                  )}
+                </div>
+              )}
               {/* المسح المدمج — نفس محرك شاشة الحضور المجرب، بس مربوط بالحصة دي */}
-              {(caps.static_qr.enabled || caps.name_attendance.enabled) && (
+              {!isOpenMode && (caps.static_qr.enabled || caps.name_attendance.enabled) && (
                 <ScanView user={user} embedded sessionOverride={sessionId} clearSessionOverride={() => {}} />
               )}
               {caps.dynamic_qr.enabled && <SessionQrCard sessionId={sessionId} />}
               <AttendanceTable data={data} printAttendance={printAttendance} showPrint />
               <SuspiciousCard attempts={attempts} />
-              {data.absent.length > 0 && caps.name_attendance.enabled && (
+              {!isOpenMode && data.absent.length > 0 && caps.name_attendance.enabled && (
                 <SectionCard
                   title={`مسجلين ومحضروش (${data.absent.length})`}
                   icon={<UserX className="w-4 h-4" />}
@@ -584,6 +626,28 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
         <div className="space-y-4 nk-anim-view">
           {cancelled ? (
             <EmptyState icon={<CalendarX className="w-8 h-8" />} title="الحصة ملغاة" hint="مفيش مراجعة — الحضور المسجل قبل الإلغاء محفوظ زي ما هو." />
+          ) : closed && isOpenMode ? (
+            /* ===== ملخص ما بعد القفل — حضور مفتوح (spec §10/§15): مفيش كشف ولا غياب ===== */
+            <SectionCard title="ملخص الحصة" icon={<CheckCircle2 className="w-4 h-4 text-emerald-600" />}>
+              <div className="rounded-2xl bg-muted/60 border p-4 space-y-1.5 text-sm">
+                <SummaryRow label="الاسم" value={s.subject} />
+                <SummaryRow label="الميعاد" value={`${formatTime12(s.startTime)} — ${formatTime12(s.endTime)}`} mono />
+                <div className="border-t my-1" />
+                <SummaryRow label="إجمالي الحضور المسجل" value={`${data.attendance.length} طالب`} strong highlight />
+                <SummaryRow label="نوع الحصة" value="حضور مفتوح — بدون كشف" />
+              </div>
+              <p className="text-[11px] font-bold text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-900 rounded-xl px-3 py-2.5 leading-relaxed mt-3">
+                مفيش كشف مستهدف اتحدد للحصة دي — عشان كده مفيش غياب ولا نسبة حضور. اللي اتسجل = الحضور الفعلي بس.
+              </p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                <button onClick={downloadCsv} className="flex-1 min-w-[150px] nk-brand-bg text-white font-extrabold rounded-xl px-4 py-3 flex items-center justify-center gap-2 text-sm shadow active:scale-[0.98]">
+                  <Download className="w-4.5 h-4.5" /> تصدير CSV (Excel)
+                </button>
+                <button onClick={onBack} className="flex-1 min-w-[150px] border-2 border-border bg-card font-extrabold rounded-xl px-4 py-3 flex items-center justify-center gap-2 text-sm active:scale-[0.98] transition hover:bg-muted/50">
+                  رجوع للرئيسية
+                </button>
+              </div>
+            </SectionCard>
           ) : closed ? (
             /* ===== ملخص ما بعد القفل ===== */
             <SectionCard title="ملخص الحصة" icon={<CheckCircle2 className="w-4 h-4 text-emerald-600" />}>
@@ -604,6 +668,11 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
                 <SummaryRow label={`نصيب السنتر (${100 - s.teacherPercent}%)`} value={fmtE(e.centerShare)} strong highlight />
               </div>
               <div className="flex flex-wrap gap-2 mt-3">
+                {isOpenMode && (
+                  <button onClick={downloadCsv} className="flex-1 min-w-[150px] border-2 border-border bg-card nk-brand-text font-extrabold rounded-xl px-4 py-3 flex items-center justify-center gap-2 text-sm active:scale-[0.98] transition hover:bg-muted/50">
+                    <Download className="w-4.5 h-4.5" /> تصدير CSV
+                  </button>
+                )}
                 <button onClick={printAttendance} className="flex-1 min-w-[150px] border-2 border-border bg-card font-extrabold rounded-xl px-4 py-3 flex items-center justify-center gap-2 text-sm active:scale-[0.98] transition hover:bg-muted/50">
                   <Printer className="w-4.5 h-4.5" /> طباعة كشف الحضور
                 </button>
@@ -617,26 +686,38 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
             <>
               <SectionCard title="مراجعة قبل قفل الحصة" icon={<ClipboardCheck className="w-4 h-4" />}>
                 <div className="rounded-2xl bg-muted/60 border p-4 space-y-1.5 text-sm">
-                  <SummaryRow label="الحضور" value={`${e.presentCount} حاضر · ${data.absent.length} غايب`} strong />
+                  {isOpenMode ? (
+                    <SummaryRow label="الحضور المسجل" value={`${data.attendance.length} طالب`} strong />
+                  ) : (
+                    <SummaryRow label="الحضور" value={`${e.presentCount} حاضر · ${data.absent.length} غايب`} strong />
+                  )}
                   {lateCount > 0 && <SummaryRow label="منهم متأخرين" value={`${lateCount} طالب`} />}
-                  <SummaryRow label="مدفوعات مسجلة بالحصة" value={`${payments?.total ?? (paymentsLoading ? "…" : 0)}`} strong />
-                  <SummaryRow label="قيمة الحصص" value={fmtE(e.totalRevenue)} />
-                  <SummaryRow label="المحصّل" value={fmtE(e.collected)} />
-                  <SummaryRow label="المتأخر على الطلاب" value={fmtE(e.outstanding)} />
+                  {!isOpenMode && <SummaryRow label="مدفوعات مسجلة بالحصة" value={`${payments?.total ?? (paymentsLoading ? "…" : 0)}`} strong />}
+                  {!isOpenMode && <SummaryRow label="قيمة الحصص" value={fmtE(e.totalRevenue)} />}
+                  {!isOpenMode && <SummaryRow label="المحصّل" value={fmtE(e.collected)} />}
+                  {!isOpenMode && <SummaryRow label="المتأخر على الطلاب" value={fmtE(e.outstanding)} />}
                 </div>
 
                 {/* بنود محتاجة انتباه */}
                 <div className="mt-3 space-y-2">
-                  {data.absent.length > 0 && (
-                    <ReviewFlag tone="warn" text={`${data.absent.length} طالب مسجل ومحضرش — لو الحصة خلصت خلاص، ده طبيعي. بس راجع إن مفيش حد اتسجل بالغلط.`} />
+                  {isOpenMode ? (
+                    data.attendance.length === 0
+                      ? <ReviewFlag tone="warn" text="لسه محدش سجّل حضور — اتأكد إن الكود معروض للطلاب قبل القفل." />
+                      : <ReviewFlag tone="ok" text={`الحصة دي حضور مفتوح — هيتقفل بـ${data.attendance.length} تسجيل، ومفيش غياب لأن مفيش كشف.`} />
+                  ) : (
+                    <>
+                      {data.absent.length > 0 && (
+                        <ReviewFlag tone="warn" text={`${data.absent.length} طالب مسجل ومحضرش — لو الحصة خلصت خلاص، ده طبيعي. بس راجع إن مفيش حد اتسجل بالغلط.`} />
+                      )}
+                      {e.presentCount === 0 && (
+                        <ReviewFlag tone="warn" text="مفيش أي حضور مسجل — لو الحصة فعلًا اتعملت، سجّل الحضور الأول قبل القفل." />
+                      )}
+                    </>
                   )}
-                  {e.presentCount === 0 && (
-                    <ReviewFlag tone="warn" text="مفيش أي حضور مسجل — لو الحصة فعلًا اتعملت، سجّل الحضور الأول قبل القفل." />
-                  )}
-                  {e.outstanding > 0 && (
+                  {!isOpenMode && e.outstanding > 0 && (
                     <ReviewFlag tone="info" text={`متأخرات ${fmt(e.outstanding)} ج على حاضري الحصة — تقدر تقفل براحتك، المتأخرات بتفضل على حساب الطالب.`} />
                   )}
-                  {data.absent.length === 0 && e.presentCount > 0 && e.outstanding === 0 && (
+                  {!isOpenMode && data.absent.length === 0 && e.presentCount > 0 && e.outstanding === 0 && (
                     <ReviewFlag tone="ok" text="كل حاجة مكتملة — كل المسجلين اتحدد وضعهم ومفيش متأخرات." />
                   )}
                 </div>
@@ -717,25 +798,44 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
           </DialogHeader>
           <div className="space-y-3">
             <div className="rounded-2xl bg-muted/60 border p-4 space-y-1.5 text-sm">
-              <SummaryRow label="الحصة" value={s.subject} />
-              <SummaryRow label="المجموعة" value={`${s.grade} ${s.groupName}`} />
-              <SummaryRow label="الحضور" value={String(e.presentCount)} strong />
-              <SummaryRow label="قيمة الحصة" value={fmtE(s.price)} />
-              <SummaryRow label="إجمالي قيمة الحصص" value={fmtE(e.totalRevenue)} strong />
-              <SummaryRow label="المحصّل" value={fmtE(e.collected)} />
-              <SummaryRow label="المتأخر على الطلاب" value={fmtE(e.outstanding)} />
-              <div className="border-t my-1" />
-              <SummaryRow label={`نصيب المدرس (${s.teacherPercent}%)`} value={fmtE(e.teacherShare)} strong highlight />
-              <SummaryRow label={`نصيب السنتر (${100 - s.teacherPercent}%)`} value={fmtE(e.centerShare)} strong highlight />
+              {isOpenMode ? (
+                // حصص الحضور المفتوح — ملخص مختلف تمامًا (spec §10): العدد المسجل + توضيح مفيش كشف
+                <>
+                  <SummaryRow label="الحصة" value={s.subject} />
+                  <SummaryRow label="إجمالي الحضور المسجل" value={String(data.attendance.length)} strong highlight />
+                  <SummaryRow label="نوع الحصة" value="حضور مفتوح — بدون كشف" />
+                </>
+              ) : (
+                <>
+                  <SummaryRow label="الحصة" value={s.subject} />
+                  <SummaryRow label="المجموعة" value={`${s.grade} ${s.groupName}`} />
+                  <SummaryRow label="الحضور" value={String(e.presentCount)} strong />
+                  <SummaryRow label="قيمة الحصة" value={fmtE(s.price)} />
+                  <SummaryRow label="إجمالي قيمة الحصص" value={fmtE(e.totalRevenue)} strong />
+                  <SummaryRow label="المحصّل" value={fmtE(e.collected)} />
+                  <SummaryRow label="المتأخر على الطلاب" value={fmtE(e.outstanding)} />
+                  <div className="border-t my-1" />
+                  <SummaryRow label={`نصيب المدرس (${s.teacherPercent}%)`} value={fmtE(e.teacherShare)} strong highlight />
+                  <SummaryRow label={`نصيب السنتر (${100 - s.teacherPercent}%)`} value={fmtE(e.centerShare)} strong highlight />
+                </>
+              )}
             </div>
-            {data.absent.length > 0 && (
+            {isOpenMode ? (
               <p className="text-[11px] font-bold text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-900 rounded-xl px-3 py-2 leading-relaxed">
-                في {data.absent.length} طالب محضرش — القفل مش هيعلمهم حاضر، هيفضلوا من غير تحضير (ده الصح لو غابوا فعلًا).
+                مفيش كشف مستهدف للحصة دي — فمفيش غياب ولا حسابات. بعد القفل تقدر تصدّر CSV بالأسماء المسجلة.
               </p>
+            ) : (
+              <>
+                {data.absent.length > 0 && (
+                  <p className="text-[11px] font-bold text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-900 rounded-xl px-3 py-2 leading-relaxed">
+                    في {data.absent.length} طالب محضرش — الغايبين بيتحسبوا غياب تلقائي من الكشف بعد القفل، ومفيش محتاج تعلّم حد غايب بإيدك.
+                  </p>
+                )}
+                <p className="text-[11px] text-muted-foreground font-semibold">
+                  بعد القفل: الإيراد ومستحق المدرس بيتسجلوا، والحضور بيتثبت. التعديل بعدها للمدير بس وبسبب مسجل.
+                </p>
+              </>
             )}
-            <p className="text-[11px] text-muted-foreground font-semibold">
-              بعد القفل: الإيراد ومستحق المدرس بيتسجلوا، والحضور بيتثبت. التعديل بعدها للمدير بس وبسبب مسجل.
-            </p>
             <div className="flex gap-2">
               <button onClick={closeSession} disabled={busy}
                 className="flex-1 bg-rose-600 text-white font-extrabold rounded-xl py-3.5 shadow active:scale-[0.99] disabled:opacity-60 flex items-center justify-center gap-2">
@@ -936,6 +1036,9 @@ function AttendanceTable({ data, printAttendance, showPrint }: {
                   </td>
                   <td className="px-3 py-2.5">
                     <span className="nk-num font-bold text-sm" dir="ltr">{a.code}</span>
+                    {a.unregistered && (
+                      <span className="ms-1.5 rounded-full bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200 px-1.5 py-0.5 text-[9.5px] font-black whitespace-nowrap">غير مسجل</span>
+                    )}
                   </td>
                   <td className="px-3 py-2.5">
                     <span className="text-[11px] font-bold text-muted-foreground whitespace-nowrap">
@@ -943,7 +1046,7 @@ function AttendanceTable({ data, printAttendance, showPrint }: {
                     </span>
                   </td>
                   <td className="px-3 py-2.5 text-end nk-num font-extrabold whitespace-nowrap" dir="ltr">
-                    {fmt(a.charged ?? 0)} <span className="text-muted-foreground text-[10px]">ج</span>
+                    {a.charged == null ? <span className="text-muted-foreground text-[10px]">بدون خصم</span> : <>{fmt(a.charged)} <span className="text-muted-foreground text-[10px]">ج</span></>}
                   </td>
                   <td className="px-3 py-2.5 text-center">
                     <span className={cn(

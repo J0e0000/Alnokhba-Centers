@@ -63,5 +63,10 @@ export const GET = handler(async (req: Request) => {
     sessionLabel: qr.sessionLabel,
     status: session.status,
     pv,
+    // وضع الحضور (spec §1): OPEN = مطلوب اسم + كود بطول محدد · ROSTER = كود الطالب (والاسم فحص ناعم)
+    studentSource: session.studentSource,
+    expectedCodeLength: session.studentSource === "OPEN"
+      ? Math.max(3, Math.min(12, session.studentCodeLength ?? 5))
+      : null,
   });
 });

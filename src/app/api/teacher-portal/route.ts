@@ -65,7 +65,7 @@ export const GET = handler(async () => {
     const dateStr = d.toISOString().slice(0, 10);
     for (const s of slots.filter((x) => x.dayOfWeek === dow)) {
       if (add === 0 && s.endTime <= nowHM) continue;
-      const g = groupById.get(s.groupId);
+      const g = s.groupId ? groupById.get(s.groupId) : undefined;
       if (!g) continue;
       nextLesson = {
         date: dateStr, dayName: dateStr === today ? "النهاردة" : dayNameAR(dow),
@@ -100,7 +100,7 @@ export const GET = handler(async () => {
     },
     today,
     todaySessions: todaySessions.map((s) => {
-      const g = groupById.get(s.groupId);
+      const g = s.groupId ? groupById.get(s.groupId) : undefined;
       return {
         id: s.id,
         subject: g?.subject.name ?? "",
@@ -114,7 +114,7 @@ export const GET = handler(async () => {
       };
     }),
     todayScheduled: todaySlots.map((s) => {
-      const g = groupById.get(s.groupId);
+      const g = s.groupId ? groupById.get(s.groupId) : undefined;
       return {
         subject: g?.subject.name ?? "",
         groupName: g?.name ?? "",

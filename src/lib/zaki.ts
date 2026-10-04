@@ -48,8 +48,8 @@ async function ruleGroupAttendanceDrop(centerId: string, out: ZakiFinding[]) {
   const byGroup = (rows: typeof recent) => {
     const m = new Map<string, { sessions: string[]; name: string; subject: string; teacher: string }>();
     for (const s of rows) {
-      if (!m.has(s.groupId)) m.set(s.groupId, { sessions: [], name: s.group.name, subject: s.group.subject.name, teacher: s.group.teacher?.name ?? "—" });
-      m.get(s.groupId)!.sessions.push(s.id);
+      if (s.groupId && s.group && !m.has(s.groupId)) m.set(s.groupId, { sessions: [], name: s.group.name, subject: s.group.subject.name, teacher: s.group.teacher?.name ?? "—" });
+      if (s.groupId) m.get(s.groupId)?.sessions.push(s.id);
     }
     return m;
   };
@@ -164,11 +164,11 @@ async function ruleUnclosedSessions(centerId: string, out: ZakiFinding[]) {
     dimension: "OPERATIONAL",
     severity: open.length >= 4 ? "WARNING" : "INFO",
     what: `${open.length} حصة مفتوحة من يوم/أيام فاتت ومتقفلتش`,
-    where: open.slice(0, 3).map((s) => `${s.group.subject.name} — ${s.group.name} (${s.date})`).join("، ") + (open.length > 3 ? " وغيرها" : ""),
+    where: open.slice(0, 3).map((s) => `${s.group?.subject.name ?? s.name ?? "حصة"} — ${s.group?.name ?? "—"} (${s.date})`).join("، ") + (open.length > 3 ? " وغيرها" : ""),
     why: "الحصة المفتوحة بتخلي الحسابات معلّقة: مفيش إيراد مسجّل ولا تسوية مدرس لحد ما تتقفل",
     action: "افتح الجدول، اقفل الحصص القديمة بعد مراجعة الحضور — أو ألغِها لو اتلغت فعلًا",
     go: { view: "schedule" },
-    data: { sessions: open.map((s) => ({ id: s.id, label: `${s.group.subject.name} ${s.group.name} ${s.date}` })) },
+    data: { sessions: open.map((s) => ({ id: s.id, label: `${s.group?.subject.name ?? s.name ?? "حصة"} ${s.group?.name ?? ""} ${s.date}`.trim() })) },
   });
 }
 
@@ -318,7 +318,7 @@ export async function answerZaki(centerId: string, key: string): Promise<ZakiAns
     });
     const byGroup = new Map<string, { name: string; subject: string; present: number; total: number }>();
     for (const s of sessions) {
-      if (!byGroup.has(s.groupId)) byGroup.set(s.groupId, { name: s.group.name, subject: s.group.subject.name, present: 0, total: 0 });
+      if (s.groupId && s.group && !byGroup.has(s.groupId)) byGroup.set(s.groupId, { name: s.group.name, subject: s.group.subject.name, present: 0, total: 0 });
     }
     if (byGroup.size) {
       const att = await db.attendance.findMany({
@@ -414,7 +414,7 @@ export async function answerZaki(centerId: string, key: string): Promise<ZakiAns
       key,
       title: open.length ? `${open.length} حصة مفتوحة من أيام فاتت` : "مفيش حصص معلّقة",
       body: open.length ? "اقفلها بعد مراجعة الحضور — الحسابات بتتثبت بالقفل." : "كل الحصص الفاتتة متقفلة وحساباتها ثابتة.",
-      items: open.map((s) => ({ label: `${s.group.subject.name} — ${s.group.name}`, sub: s.date })),
+      items: open.map((s) => ({ label: `${s.group?.subject.name ?? s.name ?? "حصة"} — ${s.group?.name ?? "—"}`, sub: s.date })),
       go: open.length ? { view: "schedule" } : undefined,
     };
   }

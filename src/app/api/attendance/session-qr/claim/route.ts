@@ -91,6 +91,14 @@ export const POST = handler(async (req: Request) => {
   if (session.status === "CLOSED") {
     return ok({ ok: false, reason: "CLOSED", message: "الحصة اتقفلت — الحضور بيتسجل قبل القفل بس." });
   }
+  // حصص الحضور المفتوح (بدون كشف/مجموعة): بورطة البورتال مش منطبقة — الطالب يمسح الكود
+  // بكاميرا موبايله ويسجّل من الصفحة العامة (قفل الجهاز بيتطبق هناك) — spec §1B/§5
+  if (session.studentSource === "OPEN" || !session.groupId) {
+    return ok({
+      ok: false, reason: "OPEN_MODE",
+      message: "الحصة دي حضور مفتوح — امسح كود الشاشة بكاميرا موبايلك وسجّل باسمك من الصفحة اللي بتفتح.",
+    });
+  }
 
   // الحصة لازم تكون بتاريخ النهاردة — منع إعادة استخدام الكود خارج الحصة المقصودة
   const today = new Date();
@@ -108,14 +116,14 @@ export const POST = handler(async (req: Request) => {
       user: { id: student.id, name: student.name, centerId: qr.centerId },
       action: AUDIT.UNAUTHORIZED_ATTENDANCE,
       entity: "SESSION_QR", entityId: session.id,
-      reason: `طالب مش مسجل في مجموعة الحصة (${session.group.subject.name})`,
+      reason: `طالب مش مسجل في مجموعة الحصة (${session.group?.subject.name ?? ""})`,
       after: { studentCode: student.code },
     }).catch(() => {});
     // تنبيه فوري للموظفين — محاولة حضور من بره المجموعة
     void notifyStaff(qr.centerId, {
       type: "ATTENDANCE",
       title: "محاولة حضور مرفوضة",
-      body: `${student.name} (كود ${student.code}) حاول يسجّل حضوره في ${session.group.subject.name} وهو مش مسجل في المجموعة — راجعوا الحالة.`,
+      body: `${student.name} (كود ${student.code}) حاول يسجّل حضوره في ${session.group?.subject.name ?? ""} وهو مش مسجل في المجموعة — راجعوا الحالة.`,
       link: "today",
     }).catch(() => {});
     return ok({
@@ -146,7 +154,7 @@ export const POST = handler(async (req: Request) => {
         data: {
           centerId: qr.centerId!, studentId: student.id, sessionId: session.id,
           type: "CHARGE", amount: -charge,
-          reason: `حصة ${session.group.subject.name} (QR الحصة)`,
+          reason: `حصة ${session.group?.subject.name ?? ""} (QR الحصة)`,
           createdBy: "SESSION_QR",
         },
       }).catch((e) => { console.error("[qr-charge-failed]", e); }); // الحضور نفسه اثبت — الخصم يتراجع يدويًا لو فشل
@@ -190,7 +198,7 @@ export const POST = handler(async (req: Request) => {
       action: AUDIT.QR_SCAN_SUCCESS,
       entity: "ATTENDANCE",
       entityId: result.attendance.id,
-      after: { student: student.name, session: session.group.subject.name, method: "SESSION_QR", charged: result.charged },
+      after: { student: student.name, session: session.group?.subject.name ?? "", method: "SESSION_QR", charged: result.charged },
       reason: afterActivation ? "تسجيل ذاتي عبر QR الحصة (أول مرة — بعد تفعيل الجهاز)" : "تسجيل ذاتي عبر QR الحصة المتنقل",
     });
 
@@ -198,13 +206,13 @@ export const POST = handler(async (req: Request) => {
     void notifyStudentsAttendance(
       qr.centerId, [student.id],
       "تم تسجيل حضورك ✅",
-      `حصة ${session.group.subject.name} — حضورك اتحسب بنجاح. بالتوفيق!`,
+      `حصة ${session.group?.subject.name ?? ""} — حضورك اتحسب بنجاح. بالتوفيق!`,
     ).catch(() => {});
     // إشعار فوري لكل موظفين السنتر الشغالين: حد سجّل حضوره بنفسه
     void notifyStaff(qr.centerId, {
       type: "ATTENDANCE",
       title: "حضور ذاتي — QR الحصة",
-      body: `${student.name} سجّل حضوره بنفسه في ${session.group.subject.name} (${qr.sessionLabel}).`,
+      body: `${student.name} سجّل حضوره بنفسه في ${session.group?.subject.name ?? ""} (${qr.sessionLabel}).`,
       link: "today",
       refId: session.id,
     }).catch(() => {});

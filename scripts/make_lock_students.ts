@@ -16,7 +16,8 @@ async function main() {
   if (!mainUser?.centerId) throw new Error("manager user not found");
 
   let session = await p.sessionInstance.findFirst({
-    where: { date: today, status: "OPEN", centerId: mainUser.centerId },
+    // حصة كشف بس (ROSTER) — حصص الحضور المفتوح (groupId: null) مش كشف يتسجل فيه طلاب
+    where: { date: today, status: "OPEN", centerId: mainUser.centerId, studentSource: "ROSTER" },
     orderBy: { createdAt: "desc" },
   });
   if (!session) {
@@ -63,11 +64,11 @@ async function main() {
       await p.student.update({ where: { id: student.id }, data: { status: "ACTIVE" } });
     }
     const reg = await p.studentGroup.findUnique({
-      where: { studentId_groupId: { studentId: student.id, groupId: session.groupId } },
+      where: { studentId_groupId: { studentId: student.id, groupId: session.groupId! } },
     });
     if (!reg) {
       await p.studentGroup.create({
-        data: { studentId: student.id, groupId: session.groupId, status: "ACTIVE" },
+        data: { studentId: student.id, groupId: session.groupId!, status: "ACTIVE" },
       });
     } else if (reg.status !== "ACTIVE") {
       await p.studentGroup.update({ where: { id: reg.id }, data: { status: "ACTIVE" } });

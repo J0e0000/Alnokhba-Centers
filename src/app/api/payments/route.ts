@@ -242,7 +242,7 @@ export const GET = handler(async (req: Request) => {
       where: { id: { in: sessionIds }, centerId: user.centerId },
       include: { group: { include: { subject: { select: { name: true } } } } },
     });
-    for (const s of sessions) sessionMap.set(s.id, s.group.subject.name);
+    for (const s of sessions) sessionMap.set(s.id, s.group?.subject.name ?? s.name ?? "حصة");
   }
 
   // resolve staff names (who recorded each payment — printed on receipts)

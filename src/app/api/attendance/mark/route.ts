@@ -48,6 +48,10 @@ export const POST = handler(async (req: Request) => {
     if (!session) throw new ApiError("الحصة دي مش موجودة.", 404);
     if (session.status === "CLOSED") throw new ApiError("الحصة دي مقفولة — مينفعش تعلّم حضور فيها.", 400);
     if (session.status === "CANCELLED") throw new ApiError("الحصة دي ملغاة.", 400);
+    // الحضور المفتوح (بدون كشف): مفيش مسجلين نعلّمهم — التسجيل من الـ QR بس (spec §15)
+    if (session.studentSource === "OPEN" || !session.groupId) {
+      throw new ApiError("الحصة دي حضور مفتوح — مفيش كشف مستهدف للتحضير الجماعي. الحضور بيتسجل من الـ QR بس.", 400);
+    }
 
     // المسجلين النشطين في المجموعة
     const regs = await db.studentGroup.findMany({
@@ -89,7 +93,7 @@ export const POST = handler(async (req: Request) => {
             data: {
               centerId: user.centerId, studentId: r.student.id, sessionId,
               type: "CHARGE", amount: -charge,
-              reason: `حصة ${session.group.subject.name} (تحضير جماعي)`,
+              reason: `حصة ${session.group?.subject.name ?? ""} (تحضير جماعي)`,
               createdBy: user.id,
             },
           });
@@ -123,7 +127,7 @@ export const POST = handler(async (req: Request) => {
         totalCharge,
         students: toMark.map((r) => r.student.name),
       },
-      reason: `تحضير جماعي — ${session.group.subject.name}`,
+      reason: `تحضير جماعي — ${session.group?.subject.name ?? ""}`,
     });
 
     // إشعار لكل الطلاب اللي اتسجل حضورهم النهاردة (بورتال + Web Push)
@@ -131,7 +135,7 @@ export const POST = handler(async (req: Request) => {
       user.centerId,
       toMark.map((r) => r.student.id),
       "تم تسجيل حضورك ✅",
-      `حصة ${session.group.subject.name} — حضورك اتحسب بنجاح. بالتوفيق!`,
+      `حصة ${session.group?.subject.name ?? ""} — حضورك اتحسب بنجاح. بالتوفيق!`,
     ).catch(() => {});
 
     return ok({
@@ -155,6 +159,10 @@ export const POST = handler(async (req: Request) => {
   if (!session) throw new ApiError("الحصة دي مش موجودة.", 404);
   if (session.status === "CLOSED") throw new ApiError("الحصة دي مقفولة — مينفعش تعدل فيها. المدير بس يقدر يفتحها تاني.");
   if (session.status === "CANCELLED") throw new ApiError("الحصة دي ملغاة.", 400);
+  // الحضور المفتوح مالوش مجموعة — التحضير اليدوي/التسجيل الفوري مش منطبق عليه
+  if (session.studentSource === "OPEN" || !session.groupId) {
+    throw new ApiError("الحصة دي حضور مفتوح — الحضور بيتسجل من الـ QR بس (اسم + كود)، ومن غير كشف.", 400);
+  }
 
   const student = await db.student.findFirst({
     where: { id: studentId, centerId: user.centerId },
@@ -180,7 +188,7 @@ export const POST = handler(async (req: Request) => {
       action: AUDIT.STUDENT_REGISTERED,
       entity: "STUDENT",
       entityId: student.id,
-      after: { group: session.group.name, subject: session.group.subject.name },
+      after: { group: session.group?.name ?? "", subject: session.group?.subject.name ?? "" },
     });
   }
 
@@ -215,7 +223,7 @@ export const POST = handler(async (req: Request) => {
       await tx.studentTransaction.create({
         data: {
           centerId: user.centerId, studentId, sessionId, type: "CHARGE",
-          amount: -charge, reason: `حصة ${session.group.subject.name}`, createdBy: user.id,
+          amount: -charge, reason: `حصة ${session.group?.subject.name ?? ""}`, createdBy: user.id,
         },
       });
     }
@@ -239,14 +247,14 @@ export const POST = handler(async (req: Request) => {
       action: AUDIT.ATTENDANCE_RECORDED,
       entity: "ATTENDANCE",
       entityId: result.attendance.id,
-      after: { student: student.name, session: session.group.subject.name, status, charged: charge },
+      after: { student: student.name, session: session.group?.subject.name ?? "", status, charged: charge },
     });
 
     // إشعار الطالب بحضوره (بورتال + Web Push)
     void notifyStudentsAttendance(
       user.centerId, [studentId],
       "تم تسجيل حضورك ✅",
-      `حصة ${session.group.subject.name} — حالة حضورك: ${ATT_LABEL[status] ?? status}.`,
+      `حصة ${session.group?.subject.name ?? ""} — حالة حضورك: ${ATT_LABEL[status] ?? status}.`,
     ).catch(() => {});
   }
 
@@ -295,10 +303,12 @@ export const PATCH = handler(async (req: Request) => {
     reversal = wasCharged;
   } else if (status !== "EXCUSED" && wasCharged === 0 && att.status === "EXCUSED") {
     // كان اعتذار (مجاني) واتغيّر لحاضر/متأخر → التحميل بيرجع بسعر الحصة الحالي
-    const reg = await db.studentGroup.findFirst({
-      where: { studentId: att.studentId, groupId: att.session.groupId, status: "ACTIVE" },
-      select: { priceOverride: true },
-    });
+    const reg = att.studentId && att.session.groupId
+      ? await db.studentGroup.findFirst({
+          where: { studentId: att.studentId, groupId: att.session.groupId, status: "ACTIVE" },
+          select: { priceOverride: true },
+        })
+      : null;
     const price = effectivePrice(reg?.priceOverride ?? null, null, att.session.price);
     if (price > 0) {
       newCharged = price;
@@ -308,22 +318,22 @@ export const PATCH = handler(async (req: Request) => {
 
   await db.$transaction(async (tx) => {
     await tx.attendance.update({ where: { id }, data: { status, charged: newCharged } });
-    if (reversal && reversal > 0) {
+    if (reversal && reversal > 0 && att.studentId) {
       await tx.studentTransaction.create({
         data: {
           centerId: user.centerId, studentId: att.studentId, sessionId: att.sessionId,
           type: "CHARGE", amount: reversal,
-          reason: `إلغاء تحميل حصة (${att.session.group.subject.name}) — اعتذار`,
+          reason: `إلغاء تحميل حصة (${att.session.group?.subject.name ?? ""}) — اعتذار`,
           createdBy: user.id,
         },
       });
     }
-    if (recharge && recharge > 0) {
+    if (recharge && recharge > 0 && att.studentId) {
       await tx.studentTransaction.create({
         data: {
           centerId: user.centerId, studentId: att.studentId, sessionId: att.sessionId,
           type: "CHARGE", amount: -recharge,
-          reason: `حصة ${att.session.group.subject.name} (بعد تعديل الحضور)`,
+          reason: `حصة ${att.session.group?.subject.name ?? ""} (بعد تعديل الحضور)`,
           createdBy: user.id,
         },
       });
@@ -337,15 +347,17 @@ export const PATCH = handler(async (req: Request) => {
     entityId: id,
     before: { status: att.status, charged: wasCharged },
     after: { status, charged: newCharged },
-    reason: `الطالب ${att.student.name}`,
+    reason: `الطالب ${att.student?.name ?? att.studentName ?? ""}`,
   });
 
-  // إشعار الطالب بتغيير حالة حضوره
-  void notifyStudentsAttendance(
-    user.centerId, [att.studentId],
-    "تحديث حالة الحضور",
-    `حصة ${att.session.group.subject.name} — حالة حضورك بقت: ${ATT_LABEL[status] ?? status}.`,
-  ).catch(() => {});
+  // إشعار الطالب بتغيير حالة حضوره (للطالب الحقيقي بس — الحضور المفتوح مفيش حساب)
+  if (att.studentId) {
+    void notifyStudentsAttendance(
+      user.centerId, [att.studentId],
+      "تحديث حالة الحضور",
+      `حصة ${att.session.group?.subject.name ?? ""} — حالة حضورك بقت: ${ATT_LABEL[status] ?? status}.`,
+    ).catch(() => {});
+  }
 
   return ok({ ok: true });
 });

@@ -120,8 +120,8 @@ export const GET = handler(async () => {
       .map((s) => ({ code: s.code, name: s.name, balance: balances.get(s.id) ?? 0 })),
     sessions: sessions.map((s) => ({
       id: s.id,
-      subject: s.group.subject.name,
-      groupName: s.group.name,
+      subject: s.group?.subject.name ?? s.name ?? "حصة",
+      groupName: s.group?.name ?? "—",
       startTime: s.startTime,
       endTime: s.endTime,
       room: s.room,
@@ -286,7 +286,7 @@ export const POST = handler(async () => {
     const already = todaySessions.find((s) => s.groupId === plan.group.id);
     if (already) {
       createdSessions.push({
-        id: already.id, subject: "", groupName: already.group.name,
+        id: already.id, subject: "", groupName: already.group?.name ?? already.name ?? "حصة",
         startTime: already.startTime, endTime: already.endTime, room: already.room,
       });
       continue;

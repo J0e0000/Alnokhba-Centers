@@ -128,6 +128,7 @@ export const GET = handler(async (req: Request) => {
       });
       const map = new Map<string, { label: string; extra: string; revenue: number; teacher: number; center: number; count: number; present: number }>();
       for (const s of sessions) {
+        if (!s.group) continue; // حصص الحضور المفتوح مش جزء من تقارير المجموعات/المواد
         const key = bySubject ? s.group.subject.id : s.group.id;
         const label = bySubject ? s.group.subject.name : `${s.group.subject.name} — ${s.group.grade.name} ${s.group.name}`;
         const e = map.get(key) ?? { label, extra: bySubject ? "" : s.group.grade.name, revenue: 0, teacher: 0, center: 0, count: 0, present: 0 };
@@ -162,6 +163,7 @@ export const GET = handler(async (req: Request) => {
       });
       const map = new Map<string, { label: string; revenue: number; teacher: number; center: number; count: number; present: number }>();
       for (const s of sessions) {
+        if (!s.group) continue; // الحضور المفتوح مالوش مدرس — مش جزء من تقرير المدرسين
         const t = s.group.teacher?.name ?? "بدون مدرس";
         const e = map.get(t) ?? { label: t, revenue: 0, teacher: 0, center: 0, count: 0, present: 0 };
         e.revenue += s.totalRevenue ?? 0; e.teacher += s.teacherShare ?? 0; e.center += s.centerShare ?? 0;
@@ -252,8 +254,8 @@ export const GET = handler(async (req: Request) => {
       const payAgg = await db.studentTransaction.groupBy({ by: ["sessionId"], _sum: { amount: true }, where: { centerId, type: "PAYMENT", sessionId: { not: null } } });
       const pmap = new Map(payAgg.map((p) => [p.sessionId, p._sum.amount ?? 0]));
       rows = sessions.map((s) => ({
-        date: s.date, subject: s.group.subject.name, group: `${s.group.grade.name} ${s.group.name}`,
-        teacher: s.group.teacher?.name ?? "—", present: s.presentCount ?? 0,
+        date: s.date, subject: s.group?.subject.name ?? s.name ?? "حصة", group: s.group ? `${s.group.grade.name} ${s.group.name}` : "حضور مفتوح",
+        teacher: s.group?.teacher?.name ?? "—", present: s.presentCount ?? 0,
         revenue: s.totalRevenue ?? 0, teacherShare: s.teacherShare ?? 0, centerShare: s.centerShare ?? 0,
         collected: pmap.get(s.id) ?? 0, outstanding: (s.totalRevenue ?? 0) - (pmap.get(s.id) ?? 0),
       }));
@@ -353,7 +355,7 @@ export const GET = handler(async (req: Request) => {
           where: { id: { in: sessionIds }, centerId },
           include: { group: { include: { subject: { select: { name: true } } } } },
         });
-        for (const s of sessions) sessionMap.set(s.id, s.group.subject.name);
+        for (const s of sessions) sessionMap.set(s.id, s.group?.subject.name ?? s.name ?? "حصة");
       }
       const METHOD: Record<string, string> = { CASH: "كاش", VODAFONE: "فودافون كاش", INSTAPAY: "انستاباي" };
       rows = txns.map((t) => ({

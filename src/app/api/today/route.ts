@@ -73,10 +73,11 @@ export const GET = handler(async () => {
     compact.push({
       id: s.id, scheduleId: s.scheduleId, kind: "open", status,
       startTime: s.startTime, endTime: s.endTime, room: s.room,
-      subject: s.group.subject.name, grade: s.group.grade.name, groupName: s.group.name,
-      teacher: s.group.teacher?.name ?? "—",
+      subject: s.group?.subject.name ?? s.name ?? "حصة",
+      grade: s.group?.grade.name ?? "—", groupName: s.group?.name ?? "—",
+      teacher: s.group?.teacher?.name ?? "—",
       students: s._count.attendance, presentCount: s.presentCount,
-      groups: [s.groupId],
+      groups: s.groupId ? [s.groupId] : [],
     });
   }
 

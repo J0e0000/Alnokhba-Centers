@@ -62,7 +62,8 @@ export const GET = handler(async (req: Request) => {
     return {
       id: r.id,
       outcome: r.outcome,
-      studentName: r.studentId ? nameOf.get(r.studentId) ?? null : null,
+      // اسم الطالب المحلول من الحساب — أو الاسم المكتوب (حضور مفتوح/غير مسجلين)
+      studentName: r.studentId ? nameOf.get(r.studentId) ?? null : r.studentName ?? null,
       studentCode: r.studentCode,
       riskScore: r.riskScore,
       riskFlags: flags.map(riskFlagLabel),

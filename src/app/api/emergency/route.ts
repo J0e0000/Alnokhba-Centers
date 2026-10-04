@@ -185,9 +185,9 @@ export const GET = handler(async (req: Request) => {
       weekRows.push({
         ses: `SES-${String(sesN).padStart(3, "0")}`,
         date, day: dayNameAR(dow), start: inst.startTime, end: inst.endTime,
-        label: groupLabel(g.subject.name, g.grade.name, g.name),
+        label: groupLabel(g?.subject.name ?? "", g?.grade.name ?? "", g?.name ?? ""),
         room: inst.room, price: inst.price,
-        scheduleId: inst.scheduleId, groupId: g.id,
+        scheduleId: inst.scheduleId, groupId: g?.id ?? "",
         sessionId: inst.id,
         status: inst.status === "OPEN" ? "مفتوحة 🟢" : inst.status === "CLOSED" || inst.status === "COMPLETED" ? "مقفولة ✓" : String(inst.status),
         attended: inst.attendance.length,
@@ -507,10 +507,11 @@ export const GET = handler(async (req: Request) => {
     const g = sess.group;
     const phase = sessionPhaseNow(sess.startTime, sess.endTime);
     const hdr = wsT.getRow(rowT++);
-    hdr.getCell(1).value = `${g.subject.name} — ${g.grade.name} (مجموعة ${g.name}) · ${formatTime12(sess.startTime)} — ${formatTime12(sess.endTime)} · ${g.teacher?.name ?? "—"} · ${phase === "now" ? "🟢 شغالة" : phase === "future" ? "جاية" : "خلصت"}`;
+    hdr.getCell(1).value = `${g?.subject.name ?? sess.name ?? "حصة"} — ${g?.grade.name ?? ""} (مجموعة ${g?.name ?? "—"}) · ${formatTime12(sess.startTime)} — ${formatTime12(sess.endTime)} · ${g?.teacher?.name ?? "—"} · ${phase === "now" ? "🟢 شغالة" : phase === "future" ? "جاية" : "خلصت"}`;
     hdr.getCell(1).font = { bold: true, size: 12 };
     hdr.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE8F5F0" } };
-    const attendedIds = new Set(sess.attendance.map((a) => a.student.code));
+    const attendedIds = new Set(sess.attendance.map((a) => a.student?.code ?? a.studentCode ?? ""));
+    if (!g) continue; // حصة حضور مفتوح — مش جزء من كشف المجموعات
     const regs = await db.studentGroup.findMany({
       where: { groupId: g.id, status: "ACTIVE", student: { status: { in: ["ACTIVE", "PAUSED"] } } },
       include: { student: { select: { code: true, name: true } } },

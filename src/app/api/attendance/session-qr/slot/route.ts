@@ -60,7 +60,7 @@ export const POST = handler(async (req: Request) => {
     action: AUDIT.QR_ISSUED,
     entity: "SESSION_QR",
     entityId: sessionId,
-    reason: `كود QR حضور (سلوت ${slotSeconds}ث) — ${session.group.subject.name} (ينتهي ${slot.expiresAt})`,
+    reason: `كود QR حضور (سلوت ${slotSeconds}ث) — ${session.group?.subject.name ?? session.name ?? "حصة"} (ينتهي ${slot.expiresAt})`,
     after: { tokenTail: slot.token.slice(-6), expiresAt: slot.expiresAt, slotSeconds },
   });
 
@@ -68,6 +68,8 @@ export const POST = handler(async (req: Request) => {
     token: slot.token,
     expiresAt: slot.expiresAt,
     slotSeconds: slot.slotSeconds,
-    sessionLabel: `${session.group.subject.name} — ${session.group.grade.name} ${session.group.name}`,
+    sessionLabel: session.group
+      ? `${session.group.subject.name} — ${session.group.grade.name} ${session.group.name}`
+      : `${session.name ?? "حصة"}`,
   });
 });

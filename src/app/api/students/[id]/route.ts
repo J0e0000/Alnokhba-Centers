@@ -86,7 +86,7 @@ export const GET = handler(async (_req: Request, ctx: Ctx) => {
     subjectStats,
     attendance: attendance.map((a) => ({
       id: a.id, date: a.session.date, startTime: a.session.startTime, status: a.status,
-      subject: a.session.group.subject.name, charged: a.charged,
+      subject: a.session.group?.subject.name ?? a.session.name ?? "حصة", charged: a.charged,
     })),
     transactions: txns.map((t) => ({
       id: t.id, type: t.type, amount: t.amount, method: t.method, reason: t.reason,

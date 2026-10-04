@@ -53,7 +53,7 @@ export type EmergencySnapshot = {
   schedule: { id: string; dayOfWeek: number; startTime: string; endTime: string; groupId: string; room: string | null; isActive: boolean }[];
   sessions: {
     id: string;
-    groupId: string;
+    groupId: string | null; // null = حصة حضور مفتوح (بدون كشف)
     date: string;
     startTime: string;
     endTime: string;
@@ -64,7 +64,7 @@ export type EmergencySnapshot = {
     presentCount: number | null;
     totalRevenue: number | null;
   }[];
-  attendance: { sessionId: string; studentId: string; status: string; charged: number | null }[];
+  attendance: { sessionId: string; studentId: string | null; status: string; charged: number | null }[];
   payments: {
     id: string;
     studentId: string;
