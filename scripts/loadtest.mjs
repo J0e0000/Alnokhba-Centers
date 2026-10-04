@@ -26,6 +26,11 @@ const TIERS = (getArg("--tiers", "25,50,100,200")).split(",").map(Number);
 const MULTI_SESSIONS = Number(getArg("--sessions", "10"));
 const MULTI_PER = Number(getArg("--per-session", "40"));
 const SLOT_SECONDS = Number(getArg("--slot", "60"));
+// تقسيم المولّد على عمليات متعددة — كل عملية ليها pool اتصالات خاص بيها
+// (الـ sandbox بيخنق الاتصالات المتزامنة لكل عملية)
+const SHARD = Number(getArg("--shard", "0"));
+const SHARDS = Number(getArg("--shards", "1"));
+const CLUSTER = Number(getArg("--cluster", "0")); // >0 = شغّل K عمليات واجمع النتايج
 
 const ARABIC_LETTERS = "ابتثجحخدذرزسشصضطظعغفقكلمنهوي";
 
@@ -94,7 +99,7 @@ async function virtualStudent(sessionIdx, token, code, name, out, startAt) {
   const device = randomUUID();
   const fp = randomUUID().replace(/-/g, "") + "abcd"; // 36 hex
   const t0 = Date.now();
-  let pageMs = 0, peekMs = 0;
+  let pageMs = 0, peekMs = 0, t1 = t0;
   try {
     const p0 = Date.now();
     await fetch(`${BASE}/a/${token}`, { redirect: "manual", signal: AbortSignal.timeout(TIMEOUT_MS) }).then((r) => r.arrayBuffer()).catch(() => {});
@@ -148,7 +153,59 @@ function report(title, rows, elapsedMs) {
   return { ok: ok.length, total: rows.length };
 }
 
-const jar = await login();
+// اللوجين بس للوضعيات اللي محتاجاه (الشارد بيستلم توكن جاهز — من غير لوجين)
+let jar = "";
+if (!(SHARDS > 1)) {
+  jar = await login();
+}
+
+/* ============ CLUSTER: موزّع على K عمليات (كل عملية pool اتصالات خاص بيها) ============ */
+if (CLUSTER > 0 && SHARD === 0 && (has("--single") || !has("--multi"))) {
+  const { spawn } = await import("child_process");
+  console.log(`single-session load test — CLUSTER x${CLUSTER} processes, tiers ${TIERS.join(",")}`);
+  const all = [];
+  for (const n of TIERS) {
+    const sessionId = await createSession(jar, `c${n}`);
+    const slotNow = await issueSlot(jar, sessionId);
+    const tokenFresh = slotNow;
+    const startAt = Date.now() + 2000;
+    const kids = [];
+    for (let s = 0; s < CLUSTER; s++) {
+      kids.push(new Promise((resolve) => {
+        const p = spawn(process.execPath, [new URL(import.meta.url).pathname,
+          "--base", BASE, "--shard", String(s), "--shards", String(CLUSTER),
+          "--tier", String(n), "--token", tokenFresh, "--start", String(startAt),
+          "--stagger", String(STAGGER_MS)], { stdio: ["ignore", "pipe", "inherit"] });
+        let buf = "";
+        p.stdout.on("data", (d) => { buf += d; });
+        p.on("close", () => { try { resolve(JSON.parse(buf.split("\n").filter(Boolean).pop() || "[]")); } catch { resolve([]); } });
+      }));
+    }
+    const rows = (await Promise.all(kids)).flat();
+    const elapsed = Date.now() - startAt;
+    all.push(report(`single session — ${n} concurrent students (cluster x${CLUSTER})`, rows, elapsed));
+    await closeSession(jar, sessionId);
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+  console.log(`\nSUMMARY single-session cluster: ${all.map((r) => `${r.ok}/${r.total}`).join(" → ")}`);
+  process.exit(0);
+}
+
+/* ============ شغّالة الشارد — بتطلّع JSON بس (بيستلم توكن جاهز — مفيش لوجين) ============ */
+if (SHARDS > 1) {
+  const tierN = Number(getArg("--tier", "0"));
+  const fixedToken = getArg("--token", "");
+  const fixedStart = Number(getArg("--start", "0"));
+  const out = makeCollector();
+  const jobs = [];
+  for (let i = 0; i < tierN; i++) {
+    if (i % SHARDS !== SHARD) continue;
+    jobs.push(virtualStudent(0, fixedToken, String(30000 + i), uName(i), out, fixedStart || Date.now()));
+  }
+  await Promise.all(jobs);
+  console.log(JSON.stringify(out.rows));
+  process.exit(0);
+}
 
 /* ============ الوضع 1: حصة واحدة — سلالم تزامن (حصة مستقلة لكل درجة) ============ */
 if (has("--single") || !has("--multi")) {
