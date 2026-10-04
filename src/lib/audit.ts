@@ -46,6 +46,7 @@ export const AUDIT = {
   STUDENT_REGISTERED: "تسجيل طالب في مجموعة",
   STUDENT_STATUS_CHANGED: "تغيير حالة طالب",
   ATTENDANCE_RECORDED: "تسجيل حضور",
+  ATTENDANCE_EXPORTED: "تصدير كشف حضور CSV",
   ATTENDANCE_UPDATED: "تعديل حضور",
   PAYMENT_RECORDED: "تسجيل دفعة",
   REFUND_ISSUED: "عملية استرداد",

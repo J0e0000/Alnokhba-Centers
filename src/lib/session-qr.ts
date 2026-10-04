@@ -157,7 +157,10 @@ export async function resolveSessionQr(token: string, opts?: { graceMs?: number 
     scope: "CENTERS",
     centerId: s.centerId,
     sessionId: s.id,
-    sessionLabel: `${s.group.subject.name} — ${s.group.grade.name} ${s.group.name} — ${s.date} ${s.startTime}`,
+    // حصص الحضور المفتوح مالهاش مجموعة — الاسم هو البطاقة
+    sessionLabel: s.group
+      ? `${s.group.subject.name} — ${s.group.grade.name} ${s.group.name} — ${s.date} ${s.startTime}`
+      : `${s.name ?? "حصة"} — ${s.date} ${s.startTime}`,
     expiresAt: qr.expiresAt,
   };
 }

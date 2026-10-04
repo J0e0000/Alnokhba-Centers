@@ -52,8 +52,8 @@ export const POST = handler(async (req: Request) => {
       });
       if (sess) {
         session = {
-          subject: sess.group.subject.name, teacher: sess.group.teacher?.name ?? null,
-          startTime: sess.startTime, price: sess.price, group: `${sess.group.grade.name} ${sess.group.name}`,
+          subject: sess.group?.subject.name ?? sess.name ?? "حصة", teacher: sess.group?.teacher?.name ?? null,
+          startTime: sess.startTime, price: sess.price, group: `${sess.group?.grade.name ?? ""} ${sess.group?.name ?? ""}`.trim(),
         };
       }
     }

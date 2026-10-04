@@ -54,11 +54,11 @@ export const GET = handler(async () => {
     endTime: s.endTime,
     room: s.room,
     status: s.status,
-    subject: s.group.subject.name,
-    grade: s.group.grade.name,
-    groupName: s.group.name,
-    teacher: s.group.teacher?.name ?? "—",
-    teacherId: s.group.teacherId,
+    subject: s.group?.subject.name ?? s.name ?? "حصة",
+    grade: s.group?.grade.name ?? "—",
+    groupName: s.group?.name ?? "—",
+    teacher: s.group?.teacher?.name ?? "—",
+    teacherId: s.group?.teacherId ?? null,
     price: s.price,
     presentCount: s._count.attendance,
     // وقت البداية الفعلي = لحظة فتح الحصة (مش وقت الجدول)
@@ -116,7 +116,7 @@ export const GET = handler(async () => {
   const nowRef = serverNow();
   const attention = todaySessions
     .filter((s) => s.status === "OPEN" && s.endTime < nowRef)
-    .map((s) => ({ id: s.id, subject: s.group.subject.name, groupName: s.group.name, endTime: s.endTime }));
+    .map((s) => ({ id: s.id, subject: s.group?.subject.name ?? s.name ?? "حصة", groupName: s.group?.name ?? "—", endTime: s.endTime }));
   const paymentIssues = todaySessions
     .filter((s) => {
       if (s.status === "CANCELLED") return false;
@@ -124,7 +124,7 @@ export const GET = handler(async () => {
       const paid = paidMap.get(s.id) ?? 0;
       return charged > 0 && charged - paid > 0;
     })
-    .map((s) => ({ id: s.id, subject: s.group.subject.name, groupName: s.group.name, outstanding: (chargedMap.get(s.id) ?? 0) - (paidMap.get(s.id) ?? 0) }));
+    .map((s) => ({ id: s.id, subject: s.group?.subject.name ?? s.name ?? "حصة", groupName: s.group?.name ?? "—", outstanding: (chargedMap.get(s.id) ?? 0) - (paidMap.get(s.id) ?? 0) }));
 
   const opsSummary = {
     activeSessions: todaySessions.filter((s) => s.status === "OPEN").length,

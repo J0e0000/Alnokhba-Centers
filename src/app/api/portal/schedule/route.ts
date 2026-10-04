@@ -33,11 +33,12 @@ export async function computeNextLesson(studentId: string): Promise<NextLesson |
     where: { centerId, date: today, groupId: { in: groupIds }, status: "OPEN" },
     orderBy: { startTime: "asc" },
   });
-  const nowSession = todaySessions.find((s) => s.startTime <= nowHM && s.endTime > nowHM);
-  const upcomingSession = todaySessions.find((s) => s.startTime > nowHM);
+  const withGroup = todaySessions.filter((s) => s.groupId);
+  const nowSession = withGroup.find((s) => s.startTime <= nowHM && s.endTime > nowHM);
+  const upcomingSession = withGroup.find((s) => s.startTime > nowHM);
   const pick = nowSession ?? upcomingSession;
   if (pick) {
-    const g = groupById.get(pick.groupId)!;
+    const g = groupById.get(pick.groupId!)!;
     return {
       date: today, dayName: "النهاردة", startTime: pick.startTime, endTime: pick.endTime,
       subject: g.subject.name, groupName: g.name, gradeName: g.grade.name,

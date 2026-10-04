@@ -133,7 +133,7 @@ export const POST = handler(async (req: Request) => {
                 await db.studentTransaction.create({
                   data: {
                     centerId, studentId: student.id, sessionId: session.id, type: "CHARGE",
-                    amount: -price, reason: `حصة ${session.group.subject.name} (بصمة)`,
+                    amount: -price, reason: `حصة ${session.group?.subject.name ?? ""} (بصمة)`,
                     createdBy: "FINGERPRINT",
                   },
                 }).catch(() => {});

@@ -34,7 +34,7 @@ export const GET = handler(async (req: Request) => {
         include: { group: { include: { subject: { select: { name: true } } } } },
       });
       if (sess) {
-        sessionInfo = { subject: sess.group.subject.name, date: sess.date, time: `${sess.startTime} - ${sess.endTime}`, room: sess.room };
+        sessionInfo = { subject: sess.group?.subject.name ?? sess.name ?? "حصة", date: sess.date, time: `${sess.startTime} - ${sess.endTime}`, room: sess.room };
       }
     }
 
@@ -96,7 +96,7 @@ export const GET = handler(async (req: Request) => {
       include: { group: { include: { subject: { select: { name: true } } } } },
     });
     if (sess) {
-      sessionInfo = { subject: sess.group.subject.name, date: sess.date, time: `${sess.startTime} - ${sess.endTime}`, room: sess.room };
+      sessionInfo = { subject: sess.group?.subject.name ?? sess.name ?? "حصة", date: sess.date, time: `${sess.startTime} - ${sess.endTime}`, room: sess.room };
     }
   }
 

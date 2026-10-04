@@ -157,7 +157,7 @@ export const POST = handler(async (req: Request) => {
     if (!sess) throw new ApiError("الحصة دي مش موجودة.", 404);
     if (sess.status !== "OPEN") throw new ApiError("الحصة مش مفتوحة — مينفعش يتقدم عليها طلب إلغاء.");
     payload.sessionId = sess.id;
-    payload.sessionLabel = `${sess.group.grade.name} ${sess.group.subject.name} — ${sess.date} ${sess.startTime}`;
+    payload.sessionLabel = `${sess.group?.grade.name ?? ""} ${sess.group?.subject.name ?? ""} — ${sess.date} ${sess.startTime}`;
     if (!student && body.studentId) payload.note = payload.note;
   }
 

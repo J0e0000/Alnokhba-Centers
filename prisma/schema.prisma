@@ -307,13 +307,22 @@ model SessionInstance {
   id            String    @id @default(cuid())
   centerId      String
   scheduleId    String?
-  groupId       String
+  // groupId قابل للإخفاء (null) لحصص "الحضور المفتوح" — حصة من غير كشف/مجموعة (spec: Open Attendance).
+  // حصص الكشف (ROSTER) زي ما هي — المجموعة هي الكشف، والغايب = مسجل في المجموعة ومحضرش (مُشتق، مش بيتخزن).
+  groupId       String?
+  name          String? // اسم الحصة (إجباري للحضور المفتوح — "رياضيات — الأسبوع 4")
+  // مصدر الطلاب: ROSTER (كشف/مجموعة — السلوك الحالي) | OPEN (أي حد يدخل اسمه + كوده بطول محدد)
+  studentSource String    @default("ROSTER") // ROSTER | OPEN
+  // ROSTER: طالب مش مطابق للكشف يتقبل كـ"غير مسجل" (true) أو يترفض (false) — قرار إداري على مستوى الحصة
+  allowUnregistered Boolean @default(false)
+  // OPEN: طول كود الطالب المطلوب (3..12) — ممنوع hardcode 5 (spec §2)
+  studentCodeLength Int?
   date          String // YYYY-MM-DD
   startTime     String
   endTime       String
   room          String?
-  price         Int // snapshot of group price (piastres)
-  teacherPercent Int // snapshot
+  price         Int // snapshot of group price (piastres) — 0 للحضور المفتوح (مفيش حسابات)
+  teacherPercent Int // snapshot — 0 للحضور المفتوح
   status        String    @default("OPEN") // OPEN | CLOSED | CANCELLED
   openedBy      String?
   closedBy      String?
@@ -325,7 +334,7 @@ model SessionInstance {
   centerShare   Int?
   createdAt     DateTime  @default(now())
   center        Center    @relation(fields: [centerId], references: [id])
-  group         Group     @relation(fields: [groupId], references: [id])
+  group         Group?    @relation(fields: [groupId], references: [id])
   attendance    Attendance[]
 
   @@index([centerId, date])
@@ -336,12 +345,15 @@ model Attendance {
   id         String         @id @default(cuid())
   centerId   String
   sessionId  String
-  studentId  String
+  // studentId قابل للإخفاء (null) لحصص الحضور المفتوح أو الطلاب "غير المسجلين" المقبولين —
+  // الاسم/الكود الخام بيتخزنوا في studentName/studentCode (snapshot للـ CSV) — unique(sessionId, studentId)
+  // لسه بتحمي الطلاب الحقيقيين، و NULLs مش بتتعارض (كل طالب غير مسجل صف مستقل).
+  studentId  String?
   status     String         @default("PRESENT") // PRESENT | LATE | EXCUSED
   // كيف اتسجل الحضور: MANUAL (بحث/تحديد يدوي) | QR_SCAN (مسح كارت الطالب) | SESSION_QR (QR الحصة المتنقل)
   method     String         @default("MANUAL")
   idemKey    String?  @unique // offline-sync idempotency key — duplicate retries return the same record
-  charged    Int? // actual charge in piastres (null = not charged)
+  charged    Int? // actual charge in piastres (null = not charged) — دايمًا null للحضور المفتوح/غير المسجل
   note       String?
   recordedBy String?
   // قفل الجهاز لكل حصة (device-locked attendance — spec "ONE DEVICE = ONE ATTENDANCE PER SESSION"):
@@ -353,9 +365,12 @@ model Attendance {
   userAgent  String?
   riskScore  Int            @default(0) // درجة الخطورة المحسوبة وقت القبول (0 = عادي)
   riskFlags  String? // JSON array من علامات الخطورة وقت القبول (لو حصلت)
+  // snapshot خام لاسم/كود الطالب وقت التسجيل (الحضور المفتوح + غير المسجلين + CSV) — للطلاب الحقيقيين بيتملّوا كمان
+  studentName String?
+  studentCode String?
   createdAt  DateTime       @default(now())
   session    SessionInstance @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  student    Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student    Student?        @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, studentId])
   // القاعدة الأساسية: جهاز واحد = حضور واحد ناجح لكل حصة (الـ NULLs مش بتتعارض — الحضور الموظفين/اليدوي بيفضل شغال)
@@ -1447,6 +1462,7 @@ model CheckInAttempt {
   outcome     String // ACCEPTED | ALREADY_SAME_STUDENT | ALREADY_ATTENDED | DEVICE_LOCKED | EXPIRED_TOKEN | REPLAYED_TOKEN | INVALID_TOKEN | CLOSED_SESSION | CANCELLED_SESSION | NOT_TODAY | INVALID_STUDENT | INACTIVE_STUDENT | NOT_REGISTERED | RATE_LIMITED | CAPABILITY_OFF | INVALID_REQUEST
   studentId   String? // لو الكود اتحل لطالب حقيقي
   studentCode String? // الكود المكتوب (مقصوص — للتدقيق)
+  studentName String? // الاسم المكتوب (الحضور المفتوح/غير المسجلين — للمراجعة)
   deviceId    String?
   ipAddress   String?
   userAgent   String?

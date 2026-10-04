@@ -26,36 +26,48 @@ export const GET = handler(async (_req: Request, ctx: Ctx) => {
   });
   if (!session) throw new ApiError("الحصة دي مش موجودة.", 404);
 
+  const open = session.studentSource === "OPEN"; // حضور مفتوح — مفيش كشف ولا غياب (spec §15)
   const econ = await sessionEconomics(session.id);
 
-  // Registered students not yet attended
-  const registered = await db.studentGroup.findMany({
-    where: { groupId: session.groupId, status: "ACTIVE", student: { status: "ACTIVE" } },
-    include: { student: { select: { id: true, name: true, code: true } } },
-  });
-  const attendedIds = new Set(session.attendance.map((a) => a.studentId));
-  const absent = registered.filter((r) => !attendedIds.has(r.studentId));
+  // Registered students not yet attended (للكشف بس — الغياب مُشتق من المجموعة، مش بيتخزن ولا ليه زرار)
+  let absent: { studentId: string; name: string; code: string }[] = [];
+  if (!open && session.groupId) {
+    const registered = await db.studentGroup.findMany({
+      where: { groupId: session.groupId, status: "ACTIVE", student: { status: "ACTIVE" } },
+      include: { student: { select: { id: true, name: true, code: true } } },
+    });
+    const attendedIds = new Set(session.attendance.map((a) => a.studentId).filter(Boolean) as string[]);
+    absent = registered.filter((r) => !attendedIds.has(r.studentId)).map((r) => ({
+      studentId: r.student.id, name: r.student.name, code: r.student.code,
+    }));
+  }
 
   return ok({
     session: {
       id: session.id, date: session.date, startTime: session.startTime, endTime: session.endTime,
       room: session.room, status: session.status,
-      subject: session.group.subject.name, grade: session.group.grade.name,
-      groupName: session.group.name, teacher: session.group.teacher?.name ?? "—",
+      subject: session.group?.subject.name ?? session.name ?? "حصة",
+      grade: session.group?.grade.name ?? "—",
+      groupName: session.group?.name ?? "—", teacher: session.group?.teacher?.name ?? "—",
       price: session.price, teacherPercent: session.teacherPercent,
+      studentSource: session.studentSource, studentCodeLength: session.studentCodeLength,
+      allowUnregistered: session.allowUnregistered,
       // وقت البداية الفعلي = لحظة فتح الحصة
       openedAt: session.status !== "CANCELLED" ? session.createdAt.toISOString() : null,
       closedAt: session.closedAt,
     },
     economics: econ,
     attendance: session.attendance.map((a) => ({
-      id: a.id, studentId: a.studentId, name: a.student.name, code: a.student.code,
+      id: a.id, studentId: a.studentId,
+      // الحضور المفتوح/غير المسجلين: الاسم/الكود الخام من الـ snapshot — الطلاب الحقيقيين زي ما هم
+      name: a.student?.name ?? a.studentName ?? "طالب", code: a.student?.code ?? a.studentCode ?? "—",
+      unregistered: a.studentId === null,
       status: a.status, charged: a.charged, at: a.createdAt,
       method: a.method,
       riskScore: a.riskScore,
       riskFlags: a.riskFlags ? ((): string[] => { try { return JSON.parse(a.riskFlags) as string[]; } catch { return []; } })() : [],
     })),
-    absent: absent.map((r) => ({ studentId: r.student.id, name: r.student.name, code: r.student.code })),
+    absent,
   });
 });
 
@@ -74,6 +86,7 @@ export const POST = handler(async (req: Request, ctx: Ctx) => {
     if (!session) throw new ApiError("الحصة دي مش موجودة.", 404);
     if (session.status !== "OPEN") throw new ApiError("الحصة دي مش مفتوحة أصلاً.");
 
+    const open = session.studentSource === "OPEN";
     const econ = await sessionEconomics(session.id);
 
     await db.$transaction(async (tx) => {
@@ -81,25 +94,32 @@ export const POST = handler(async (req: Request, ctx: Ctx) => {
         where: { id },
         data: {
           status: "CLOSED", closedBy: user.id, closedAt: new Date(),
-          presentCount: econ.presentCount, totalRevenue: econ.totalRevenue,
-          teacherShare: econ.teacherShare, centerShare: econ.centerShare,
+          presentCount: open
+            ? (await tx.attendance.count({ where: { sessionId: id } })) // الحضور المفتوح = عدد الصفوف المسجلة
+            : econ.presentCount,
+          totalRevenue: econ.totalRevenue,
+          teacherShare: econ.teacherShare,
+          centerShare: econ.centerShare,
         },
       });
-      if (session.group.teacherId && econ.teacherShare > 0) {
-        await tx.teacherSettlement.create({
-          data: {
-            centerId: user.centerId, teacherId: session.group.teacherId, sessionId: session.id,
-            type: "EARNED", amount: econ.teacherShare, date: session.date,
-            note: `حصة ${session.group.subject.name} ${session.date}`, createdBy: user.id,
-          },
+      // الحضور المفتوح: مفيش حسابات (سعر 0 → مفيش مستحقات/إيراد) — بنسجل القفل في التدقيق بس
+      if (!open) {
+        if (session.group?.teacherId && econ.teacherShare > 0) {
+          await tx.teacherSettlement.create({
+            data: {
+              centerId: user.centerId, teacherId: session.group.teacherId, sessionId: session.id,
+              type: "EARNED", amount: econ.teacherShare, date: session.date,
+              note: `حصة ${session.group.subject.name} ${session.date}`, createdBy: user.id,
+            },
+          });
+        }
+        await tx.centerTransaction.createMany({
+          data: [
+            { centerId: user.centerId, type: "SESSION_REVENUE", amount: econ.totalRevenue, date: session.date, note: `إيراد حصة ${session.group?.subject.name ?? ""}`, refType: "SESSION", refId: session.id, createdBy: user.id },
+            { centerId: user.centerId, type: "TEACHER_SHARE", amount: -econ.teacherShare, date: session.date, note: `نصيب المدرس ${session.group?.teacher?.name ?? ""}`, refType: "SESSION", refId: session.id, createdBy: user.id },
+          ],
         });
       }
-      await tx.centerTransaction.createMany({
-        data: [
-          { centerId: user.centerId, type: "SESSION_REVENUE", amount: econ.totalRevenue, date: session.date, note: `إيراد حصة ${session.group.subject.name}`, refType: "SESSION", refId: session.id, createdBy: user.id },
-          { centerId: user.centerId, type: "TEACHER_SHARE", amount: -econ.teacherShare, date: session.date, note: `نصيب المدرس ${session.group.teacher?.name ?? ""}`, refType: "SESSION", refId: session.id, createdBy: user.id },
-        ],
-      });
     });
 
     await logAudit({
@@ -107,10 +127,12 @@ export const POST = handler(async (req: Request, ctx: Ctx) => {
       action: AUDIT.SESSION_CLOSED,
       entity: "SESSION",
       entityId: session.id,
-      after: { ...econ },
+      after: open
+        ? { mode: "OPEN", recorded: econ.presentCount }
+        : { ...econ },
     });
 
-    return ok({ closed: true, economics: econ });
+    return ok({ closed: true, economics: econ, mode: open ? "OPEN" : "ROSTER" });
   }
 
   if (body.action === "cancel") {

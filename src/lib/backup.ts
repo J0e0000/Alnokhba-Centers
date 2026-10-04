@@ -378,8 +378,8 @@ export async function createExcelBackup(centerId: string, reason: "manual" | "sc
     { header: "نصيب السنتر (جنيه)", key: "centerShare", width: 16 },
     { header: "فتحها", key: "openedBy", width: 14 },
   ], sessions.map((s) => ({
-    date: s.date, subject: s.group.subject.name, grade: s.group.grade.name, group: s.group.name,
-    teacher: s.group.teacher?.name ?? "—", start: s.startTime, end: s.endTime,
+    date: s.date, subject: s.group?.subject.name ?? s.name ?? "حصة", grade: s.group?.grade.name ?? "—", group: s.group?.name ?? "حضور مفتوح",
+    teacher: s.group?.teacher?.name ?? "—", start: s.startTime, end: s.endTime,
     status: statusAR(s.status), present: s.presentCount ?? "", revenue: s.totalRevenue != null ? egp(s.totalRevenue) : "",
     teacherShare: s.teacherShare != null ? egp(s.teacherShare) : "", centerShare: s.centerShare != null ? egp(s.centerShare) : "",
     openedBy: s.openedBy ?? "",
@@ -395,7 +395,7 @@ export async function createExcelBackup(centerId: string, reason: "manual" | "sc
     { header: "المخصوم (جنيه)", key: "charged", width: 14 },
     { header: "سجّله", key: "by", width: 14 },
   ], attendance.map((a) => ({
-    date: a.session.date, subject: a.session.group.subject.name, code: a.student.code, student: a.student.name,
+    date: a.session.date, subject: a.session.group?.subject.name ?? a.session.name ?? "حصة", code: a.student?.code ?? a.studentCode ?? "", student: a.student?.name ?? a.studentName ?? "",
     status: a.status === "PRESENT" ? "حاضر" : a.status === "LATE" ? "متأخر" : "بعذر",
     charged: egp(a.charged), by: a.recordedBy ?? "",
   })));
@@ -1050,8 +1050,8 @@ export async function exportCenterCsv(centerId: string, table: CsvTableKey): Pro
         include: { student: { select: { name: true, code: true } }, session: { include: { group: { include: { subject: { select: { name: true } } } } } } },
       });
       const mapped = list.map((a) => ({
-        date: a.createdAt, student: a.student.name, code: a.student.code,
-        subject: a.session.group.subject.name, sessionDate: a.session.date,
+        date: a.createdAt, student: a.student?.name ?? a.studentName ?? "", code: a.student?.code ?? a.studentCode ?? "",
+        subject: a.session.group?.subject.name ?? a.session.name ?? "حصة", sessionDate: a.session.date,
         status: a.status === "PRESENT" ? "حاضر" : a.status === "LATE" ? "متأخر" : "بعذر",
         chargedEGP: money(a.charged), by: a.recordedBy ?? "",
       }));
@@ -1079,7 +1079,7 @@ export async function exportCenterCsv(centerId: string, table: CsvTableKey): Pro
         include: { group: { include: { subject: { select: { name: true } }, teacher: { select: { name: true } } } } },
       });
       const mapped = list.map((s) => ({
-        date: s.date, subject: s.group.subject.name, teacher: s.group.teacher?.name ?? "",
+        date: s.date, subject: s.group?.subject.name ?? s.name ?? "حصة", teacher: s.group?.teacher?.name ?? "",
         startTime: s.startTime, endTime: s.endTime, room: s.room ?? "", status: s.status,
         presentCount: s.presentCount ?? "", totalRevenueEGP: money(s.totalRevenue),
         teacherShareEGP: money(s.teacherShare), centerShareEGP: money(s.centerShare),

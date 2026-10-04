@@ -17,19 +17,26 @@ export const dynamic = "force-dynamic";
    (Session-Scoped Device-Locked Attendance — "جهاز واحد = حضور واحد ناجح لكل حصة")
    ------------------------------------------------------------
    طالب يمسح كود QR شاشة الحصة بكاميرا موبايله → الصفحة العامة /a/<token>
-   بتفتح من غير أي تسجيل دخول → يكتب كود الطالب → حضور في ثواني.
+   بتفتح من غير أي تسجيل دخول → يكتب اسمه + كود الطالب → حضور في ثواني.
 
-   هوية الطالب = كود الطالب (زي كارت الحضور) + الجهاز بيتقفل بعد أول نجاح.
+   وضعا الحصة (spec §1):
+   - ROSTER (كشف/مجموعة): الكود بيتطابق مع قاعدة بيانات السنتر + التسجيل في
+     مجموعة الحصة. الطالب مش موجود؟ إعداد الحصة allowUnregistered بيحدد:
+     يترفض، أو يتقبل كـ"غير مسجل" (بيتسجل باسمه المكتوب من غير خصم).
+   - OPEN (حضور مفتوح): مفيش كشف خالص — الاسم + كود بطول محدد من إعدادات
+     الحصة (3..12 — قابل للضبط، ممنوع hardcode) ويتسجل زي ما هو.
+
+   هوية الجهاز = القاعدة الأساسية: جهاز واحد = حضور واحد ناجح لكل حصة —
+   محفوظة في الداتابيز نفسها unique(sessionId, deviceId) مش في الكود.
+
    الطبقات (spec §28): توكن متغير قصير العمر + إثبات sighting موقّع + تحقق
-   الحصة/الطالب + قفل جهاز على مستوى الداتابيز unique(sessionId, deviceId)
-   + إشارات خطورة + تدقيق كامل. القاعدة النهائية في الداتابيز نفسها —
-   أي سباق (طلبان في نفس اللحظة) بيكسر unique وبيترفض.
+   الحصة + قفل جهاز على مستوى الداتابيز + إشارات خطورة + تدقيق كامل.
 
    ترتيب التحقق (spec §10) — كل خطوة قبل اللي بعدها، وكل محاولة بتتسجل
    في CheckInAttempt (نجاح أو رفض) عشان لوحة "النشاط المشبوه" والتدقيق.
 ============================================================ */
 
-type Body = { token?: string; code?: string; deviceId?: string; pv?: string };
+type Body = { token?: string; code?: string; name?: string; deviceId?: string; pv?: string };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -42,10 +49,31 @@ function todayStr(): string {
   return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
 }
 
+/** تنظيف الاسم المكتوب: مسافات متعددة → مسافة واحدة، وحذف تشكيل/تطويل للفحص الناعم */
+function cleanName(raw: string): string {
+  return raw.replace(/[\u064B-\u065F\u0670\u0640]/g, "").replace(/\s+/g, " ").trim().slice(0, 80);
+}
+
+/** اسم صالح؟ (حرفين على الأقل بعد التنظيف — حروف/مسافات/فواصل/نقاط — الفاصلة مسموحة للكشف النصي والـ CSV) */
+function validName(name: string): boolean {
+  return name.length >= 2 && /^[\p{L}\s.'\-،,]+$/u.test(name);
+}
+
+/** مقارنة ناعمة للاسم مع سجل الطالب — مش شرط تطابق تام (أسماء مختصرة/لقب) — فقط للعلم */
+function nameLooksSimilar(a: string, b: string): boolean {
+  const norm = (s: string) => cleanName(s).replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
+  const na = norm(a), nb = norm(b);
+  if (na === nb) return true;
+  // تطابق جزئي: كل كلمة من الأقصر موجودة في الأطول (اسم ثلاثي مكتوب باسمين مثلًا)
+  const [short, long] = na.length <= nb.length ? [na, nb] : [nb, na];
+  return short.split(" ").every((w) => long.includes(w));
+}
+
 export const POST = handler(async (req: Request) => {
   const body = await readJson<Body>(req);
   const token = String(body.token ?? "").trim().toLowerCase();
   const code = String(body.code ?? "").trim();
+  const rawName = cleanName(String(body.name ?? ""));
   const deviceId = String(body.deviceId ?? "").trim();
   const pv = String(body.pv ?? "").trim();
   const ip = clientIp(req);
@@ -64,13 +92,14 @@ export const POST = handler(async (req: Request) => {
   // سجل محاولة في سجل التدقيق (بعد ما نعرف الحصة) — أي رفض/قبول بيتوثق
   async function attempt(input: {
     centerId: string; sessionId: string; outcome: string;
-    studentId?: string | null; studentCode?: string | null;
+    studentId?: string | null; studentCode?: string | null; studentName?: string | null;
     riskScore?: number; riskFlags?: RiskFlag[];
   }) {
     await db.checkInAttempt.create({
       data: {
         centerId: input.centerId, sessionId: input.sessionId, outcome: input.outcome,
         studentId: input.studentId ?? null, studentCode: input.studentCode?.slice(0, 12) ?? null,
+        studentName: input.studentName ?? null,
         deviceId, ipAddress: ip, userAgent: ua,
         riskScore: input.riskScore ?? 0,
         riskFlags: input.riskFlags?.length ? JSON.stringify(input.riskFlags) : null,
@@ -98,7 +127,7 @@ export const POST = handler(async (req: Request) => {
     const verdict = pv ? verifySightingPv(pv, qr.id, deviceId, qr.expiresAt) : { ok: false as const, reason: "NO_PV" as const };
     if (!verdict.ok) {
       const outcome = qr.isActive ? "EXPIRED_TOKEN" : "REPLAYED_TOKEN";
-      await attempt({ centerId: qr.centerId, sessionId: qr.sessionId, outcome });
+      await attempt({ centerId: qr.centerId, sessionId: qr.sessionId, outcome, studentName: rawName || null });
       await logAudit({
         user: { id: "QR_UNKNOWN", name: "محاولة حضور عام مرفوضة", centerId: qr.centerId },
         action: outcome === "EXPIRED_TOKEN" ? AUDIT.QR_SCAN_EXPIRED : AUDIT.QR_SCAN_REPLAY,
@@ -141,50 +170,102 @@ export const POST = handler(async (req: Request) => {
     return ok({ ok: false, reason: "NOT_TODAY", message: "الكود ده لحصة تانية مش حصة النهاردة." });
   }
 
-  // ===== 6) الطالب (موجود في السنتر + نشط) =====
-  const student = await db.student.findFirst({ where: { centerId: qr.centerId, code } });
-  if (!student) {
-    await attempt({ centerId: qr.centerId, sessionId: session.id, outcome: "INVALID_STUDENT", studentCode: code });
-    return ok({ ok: false, reason: "INVALID_STUDENT", message: "الكود ده مش معروف — اتأكد من كودك أو كلّم الاستقبال." });
-  }
-  if (student.status !== "ACTIVE") {
-    await attempt({ centerId: qr.centerId, sessionId: session.id, outcome: "INACTIVE_STUDENT", studentId: student.id, studentCode: code });
-    return ok({ ok: false, reason: "INACTIVE_STUDENT", message: "حالة الطالب دي مش نشطة — كلّم الاستقبال." });
+  const isOpen = session.studentSource === "OPEN";
+  // قيمة ثابتة للحالة النهائية — بيتحدد في وضع الحصة
+  let matchedStudentId: string | null = null;
+  let matchedStudent: { id: string; name: string; code: string } | null = null;
+  let charge: number | null = null; // null = من غير خصم (مفتوح/غير مسجل)
+  let sessionLabel = isOpen
+    ? `${session.name ?? "حصة"} — ${session.date} ${session.startTime}`
+    : `${session.group?.subject.name ?? session.name ?? "حصة"} — ${session.date} ${session.startTime}`;
+  let mismatchNote: string | null = null;
+
+  // ===== 6) وضع الحضور المفتوح (spec §1B): اسم + كود بطول الحصة — من غير أي كشف =====
+  if (isOpen) {
+    if (!validName(rawName)) {
+      await attempt({ centerId: qr.centerId, sessionId: session.id, outcome: "INVALID_NAME", studentCode: code });
+      return ok({ ok: false, reason: "INVALID_NAME", message: "اكتب اسمك الكامل (حرفين على الأقل) وسجّل تاني." });
+    }
+    // طول الكود من إعدادات الحصة (قابل للضبط 3..12 — spec §2 ممنوع hardcode)
+    const expectedLen = Math.max(3, Math.min(12, session.studentCodeLength ?? 5));
+    if (code.length !== expectedLen) {
+      await attempt({ centerId: qr.centerId, sessionId: session.id, outcome: "INVALID_CODE_LENGTH", studentCode: code, studentName: rawName });
+      return ok({ ok: false, reason: "INVALID_CODE_LENGTH", message: `الكود لازم يكون ${expectedLen} أرقام بالظبط — اتأكد واكتبه تاني.` });
+    }
+    sessionLabel = `${session.name ?? "حصة"} — ${session.date} ${session.startTime}`;
+  } else {
+    // ===== 7) وضع الكشف (ROSTER): الكود هو المعرف الأساسي — الاسم فحص ناعم (spec §21) =====
+    const student = await db.student.findFirst({ where: { centerId: qr.centerId, code } });
+    if (!student) {
+      // مش معروف في السنتر — إعداد الحصة بيحدد: رفض أو قبول كـ"غير مسجل" (spec §22)
+      if (session.allowUnregistered) {
+        if (!validName(rawName)) {
+          await attempt({ centerId: qr.centerId, sessionId: session.id, outcome: "INVALID_NAME", studentCode: code });
+          return ok({ ok: false, reason: "INVALID_NAME", message: "اكتب اسمك الكامل (حرفين على الأقل) وسجّل تاني." });
+        }
+        sessionLabel = `${session.group?.subject.name ?? session.name ?? "حصة"} — ${session.date} ${session.startTime}`;
+      } else {
+        await attempt({ centerId: qr.centerId, sessionId: session.id, outcome: "INVALID_STUDENT", studentCode: code, studentName: rawName || null });
+        return ok({ ok: false, reason: "INVALID_STUDENT", message: "الكود ده مش معروف — اتأكد من كودك أو كلّم الاستقبال." });
+      }
+    } else if (student.status !== "ACTIVE") {
+      await attempt({ centerId: qr.centerId, sessionId: session.id, outcome: "INACTIVE_STUDENT", studentId: student.id, studentCode: code, studentName: rawName || null });
+      return ok({ ok: false, reason: "INACTIVE_STUDENT", message: "حالة الطالب دي مش نشطة — كلّم الاستقبال." });
+    } else {
+      matchedStudent = { id: student.id, name: student.name, code: student.code };
+      matchedStudentId = student.id;
+      sessionLabel = `${session.group?.subject.name ?? session.name ?? "حصة"} — ${session.date} ${session.startTime}`;
+      // الاسم المكتوب بيتقارن ناعمًا بسجل الطالب — اختلاف = ملاحظة للمراجعة (مش رفض — الأسماء بتتكتب اختصار)
+      if (rawName && !nameLooksSimilar(rawName, student.name)) {
+        mismatchNote = `الاسم المكتوب «${rawName}» مختلف عن السجل «${student.name}»`;
+      }
+    }
   }
 
-  // ===== 7) التسجيل في مجموعة الحصة (زي باقي طرق الحضور بالظبط) =====
-  const reg = await db.studentGroup.findFirst({
-    where: { groupId: session.groupId, studentId: student.id, status: "ACTIVE" },
-  });
-  if (!reg) {
-    await attempt({ centerId: qr.centerId, sessionId: session.id, outcome: "NOT_REGISTERED", studentId: student.id, studentCode: code });
-    await logAudit({
-      user: { id: student.id, name: student.name, centerId: qr.centerId },
-      action: AUDIT.UNAUTHORIZED_ATTENDANCE, entity: "PUBLIC_CHECKIN", entityId: session.id,
-      reason: `طالب مش مسجل في مجموعة الحصة (${session.group.subject.name})`,
-      after: { studentCode: student.code, ip },
-    }).catch(() => {});
-    void notifyStaff(qr.centerId, {
-      type: "ATTENDANCE", title: "محاولة حضور مرفوضة",
-      body: `${student.name} (كود ${student.code}) حاول يسجّل حضوره في ${session.group.subject.name} من كود الحصة العام وهو مش مسجل في المجموعة.`,
-      link: "today",
-    }).catch(() => {});
-    return ok({ ok: false, reason: "NOT_REGISTERED", message: "انت مش مسجل في مجموعة الحصة دي — كلّم الاستقبال يسجلّك الأول." });
+  // ===== 7ب) التسجيل في مجموعة الحصة (زي باقي طرق الحضور — للكشف بس) =====
+  let reg: { priceOverride: number | null } | null = null;
+  if (!isOpen && matchedStudent) {
+    const found = await db.studentGroup.findFirst({
+      where: { groupId: session.groupId!, studentId: matchedStudent.id, status: "ACTIVE" },
+      select: { priceOverride: true },
+    });
+    if (!found && !session.allowUnregistered) {
+      await attempt({ centerId: qr.centerId, sessionId: session.id, outcome: "NOT_REGISTERED", studentId: matchedStudent.id, studentCode: code, studentName: rawName || null });
+      await logAudit({
+        user: { id: matchedStudent.id, name: matchedStudent.name, centerId: qr.centerId },
+        action: AUDIT.UNAUTHORIZED_ATTENDANCE, entity: "PUBLIC_CHECKIN", entityId: session.id,
+        reason: `طالب مش مسجل في مجموعة الحصة (${session.group?.subject.name ?? ""})`,
+        after: { studentCode: matchedStudent.code, ip },
+      }).catch(() => {});
+      void notifyStaff(qr.centerId, {
+        type: "ATTENDANCE", title: "محاولة حضور مرفوضة",
+        body: `${matchedStudent.name} (كود ${matchedStudent.code}) حاول يسجّل حضوره في ${session.group?.subject.name} من كود الحصة العام وهو مش مسجل في المجموعة.`,
+        link: "today",
+      }).catch(() => {});
+      return ok({ ok: false, reason: "NOT_REGISTERED", message: "انت مش مسجل في مجموعة الحصة دي — كلّم الاستقبال يسجلّك الأول." });
+    }
+    if (found) {
+      reg = found;
+      charge = effectivePrice(found.priceOverride, null, session.price); // PRESENT عادي
+    }
+    // مش مسجل ومقبول بإعداد allowUnregistered → charge يفضل null (من غير خصم — مش من الكشف)
   }
 
   // ===== 8) فحوص سريعة ودّية قبل الإدخال (القاعدة النهائية في الداتابيز) =====
-  const byStudent = await db.attendance.findUnique({
-    where: { sessionId_studentId: { sessionId: session.id, studentId: student.id } },
-  });
-  if (byStudent) {
-    // نفس الطالب متسجل — إعادة محاولة/ريفرش/نفس الطالب من جهاز تاني = رد آمن idempotent
-    await attempt({ centerId: qr.centerId, sessionId: session.id, outcome: "ALREADY_SAME_STUDENT", studentId: student.id, studentCode: code });
-    return ok({
-      ok: true, alreadyAttended: true,
-      studentName: student.name, studentCode: student.code,
-      sessionLabel: `${session.group.subject.name} — ${session.date} ${session.startTime}`,
-      status: byStudent.status,
+  if (matchedStudentId) {
+    const byStudent = await db.attendance.findUnique({
+      where: { sessionId_studentId: { sessionId: session.id, studentId: matchedStudentId } },
     });
+    if (byStudent) {
+      // نفس الطالب متسجل — إعادة محاولة/ريفرش/نفس الطالب من جهاز تاني = رد آمن idempotent
+      await attempt({ centerId: qr.centerId, sessionId: session.id, outcome: "ALREADY_SAME_STUDENT", studentId: matchedStudentId, studentCode: code, studentName: rawName || null });
+      return ok({
+        ok: true, alreadyAttended: true,
+        studentName: matchedStudent!.name, studentCode: matchedStudent!.code,
+        sessionLabel,
+        status: byStudent.status,
+      });
+    }
   }
   const byDevice = await db.attendance.findUnique({
     where: { sessionId_deviceId: { sessionId: session.id, deviceId } },
@@ -193,18 +274,18 @@ export const POST = handler(async (req: Request) => {
     // ⛔ القاعدة الأساسية: الجهاز ده سجّل حضور لطالب تاني في نفس الحصة
     await attempt({
       centerId: qr.centerId, sessionId: session.id, outcome: "DEVICE_LOCKED",
-      studentId: student.id, studentCode: code,
+      studentId: matchedStudentId, studentCode: code, studentName: rawName || null,
       riskScore: 80, riskFlags: ["DEVICE_REUSED", "MULTIPLE_STUDENTS_SAME_DEVICE"],
     });
     await logAudit({
-      user: { id: student.id, name: student.name, centerId: qr.centerId },
+      user: { id: matchedStudentId ?? "UNKNOWN", name: rawName || "طالب من غير حساب", centerId: qr.centerId },
       action: AUDIT.DEVICE_ALREADY_USED, entity: "PUBLIC_CHECKIN", entityId: session.id,
       reason: "جهاز واحد حاول يسجّل طالبين في نفس الحصة — القاعدة: جهاز = حضور واحد لكل حصة",
-      after: { studentCode: student.code, ip, deviceTail: deviceId.slice(-6) },
+      after: { studentCode: code.slice(0, 12), ip, deviceTail: deviceId.slice(-6) },
     }).catch(() => {});
     void notifyStaff(qr.centerId, {
       type: "ATTENDANCE", title: "⚠️ جهاز حاول يسجّل طالبين",
-      body: `في ${session.group.subject.name}: جهاز اتسجل بيه حضور قبل كده حاول يسجّل ${student.name} (كود ${student.code}) — اترفض تلقائيًا.`,
+      body: `في ${sessionLabel}: جهاز اتسجل بيه حضور قبل كده حاول يسجّل ${rawName || `كود ${code}`} — اترفض تلقائيًا.`,
       link: "today", refId: session.id,
     }).catch(() => {});
     return ok({
@@ -217,16 +298,21 @@ export const POST = handler(async (req: Request) => {
   const risk = await assessCheckInRisk({ sessionId: session.id, deviceId, ipAddress: ip });
   if (risk.score >= STAFF_NOTIFY_SCORE) {
     await logAudit({
-      user: { id: student.id, name: student.name, centerId: qr.centerId },
+      user: { id: matchedStudentId ?? "UNKNOWN", name: rawName || "طالب", centerId: qr.centerId },
       action: AUDIT.SUSPICIOUS_ACTIVITY, entity: "PUBLIC_CHECKIN", entityId: session.id,
       reason: riskSummary(risk), after: { riskScore: risk.score, ip, deviceTail: deviceId.slice(-6) },
     }).catch(() => {});
   }
 
   // ===== 10) الإدخال الذري — unique(sessionId, deviceId) هو الحَكم النهائي (spec §8/§11) =====
-  const price = effectivePrice(reg.priceOverride, null, session.price);
-  const charge = price; // PRESENT
-  const sessionLabel = `${session.group.subject.name} — ${session.date} ${session.startTime}`;
+  const displayName = matchedStudent?.name ?? rawName; // الحقيقي من السجل — وإلا الاسم المكتوب
+  const displayCode = matchedStudent?.code ?? code;
+  const noteBits: string[] = [];
+  if (grace) noteBits.push("حضور عام — QR الحصة (نافذة سماح)");
+  else noteBits.push(isOpen ? "حضور مفتوح — QR الحصة" : "حضور عام — QR الحصة (قفل جهاز)");
+  if (isOpen) noteBits.push("حضور مفتوح (من غير كشف)");
+  if (!isOpen && matchedStudent && !reg) noteBits.push("غير مسجل في المجموعة — اتقبل بإعدادات الحصة");
+  if (mismatchNote) noteBits.push(mismatchNote);
 
   let attendanceId: string;
   let already = false;
@@ -234,9 +320,10 @@ export const POST = handler(async (req: Request) => {
   try {
     const attendance = await db.attendance.create({
       data: {
-        centerId: qr.centerId, sessionId: session.id, studentId: student.id,
+        centerId: qr.centerId, sessionId: session.id, studentId: matchedStudentId,
+        studentName: displayName, studentCode: displayCode.slice(0, 12),
         status: "PRESENT", charged: charge, method: "SESSION_QR",
-        note: grace ? "حضور عام — QR الحصة (نافذة سماح)" : "حضور عام — QR الحصة (قفل جهاز)",
+        note: noteBits.join(" · "),
         deviceId, ipAddress: ip, userAgent: ua,
         riskScore: risk.score,
         riskFlags: risk.flags.length ? JSON.stringify(risk.flags) : null,
@@ -251,24 +338,26 @@ export const POST = handler(async (req: Request) => {
     if (/unique constraint|P2002/i.test(msg)) {
       if (/deviceId/i.test(`${target} ${msg}`)) {
         const dev = await db.attendance.findUnique({ where: { sessionId_deviceId: { sessionId: session.id, deviceId } } });
-        if (dev && dev.studentId === student.id) {
+        if (dev && dev.studentId && dev.studentId === matchedStudentId) {
           already = true; attendanceId = dev.id; attendanceStatus = dev.status; // نفس الطالب كسب قبله
         } else {
           await attempt({
             centerId: qr.centerId, sessionId: session.id, outcome: "DEVICE_LOCKED",
-            studentId: student.id, studentCode: code,
+            studentId: matchedStudentId, studentCode: code, studentName: rawName || null,
             riskScore: 80, riskFlags: ["DEVICE_REUSED", "MULTIPLE_STUDENTS_SAME_DEVICE"],
           });
           await logAudit({
-            user: { id: student.id, name: student.name, centerId: qr.centerId },
+            user: { id: matchedStudentId ?? "UNKNOWN", name: rawName || "طالب", centerId: qr.centerId },
             action: AUDIT.DEVICE_ALREADY_USED, entity: "PUBLIC_CHECKIN", entityId: session.id,
             reason: "سباق متزامن — قاعدة الداتابيز رفضت الجهاز",
-            after: { studentCode: student.code, ip },
+            after: { studentCode: code.slice(0, 12), ip },
           }).catch(() => {});
           return ok({ ok: false, reason: "DEVICE_LOCKED", message: "الجهاز ده اتسجل بيه حضور في الحصة دي بالفعل — كل طالب بيسجّل من موبايله بنفسه." });
         }
       } else {
-        const st = await db.attendance.findUnique({ where: { sessionId_studentId: { sessionId: session.id, studentId: student.id } } });
+        const st = matchedStudentId
+          ? await db.attendance.findUnique({ where: { sessionId_studentId: { sessionId: session.id, studentId: matchedStudentId } } })
+          : null;
         if (st) { already = true; attendanceId = st.id; attendanceStatus = st.status; }
         else throw e;
       }
@@ -277,14 +366,14 @@ export const POST = handler(async (req: Request) => {
     }
   }
 
-  // ===== 11) التوثيق والإشعارات (نفس نمط claim — الحضور اثبت، الخصم لو فشل يتراجع يدويًا) =====
+  // ===== 11) التوثيق والإشعارات (الخصم لو فشل يتراجع يدويًا — زي claim بالظبط) =====
   if (!already) {
-    if (charge > 0) {
+    if (charge && charge > 0 && matchedStudentId) {
       await db.studentTransaction.create({
         data: {
-          centerId: qr.centerId, studentId: student.id, sessionId: session.id,
+          centerId: qr.centerId, studentId: matchedStudentId, sessionId: session.id,
           type: "CHARGE", amount: -charge,
-          reason: `حصة ${session.group.subject.name} (QR الحصة — حضور عام)`,
+          reason: `حصة ${session.group?.subject.name ?? ""} (QR الحصة — حضور عام)`,
           createdBy: "PUBLIC_QR",
         },
       }).catch((err) => { console.error("[public-qr-charge-failed]", err); });
@@ -294,40 +383,44 @@ export const POST = handler(async (req: Request) => {
     }).catch(() => {});
     await recordAttendanceEvent({
       centerId: qr.centerId, personType: "STUDENT", method: "DYNAMIC_QR", status: "PRESENT",
-      studentId: student.id, displayName: student.name, role: "STUDENT",
+      studentId: matchedStudentId ?? undefined, displayName, role: "STUDENT",
       sessionId: session.id,
-      metadata: { public: true, grace, deviceTail: deviceId.slice(-6), risk: risk.flags, sessionLabel },
+      metadata: { public: true, grace, deviceTail: deviceId.slice(-6), risk: risk.flags, sessionLabel, mode: isOpen ? "OPEN" : matchedStudent ? "ROSTER" : "UNREGISTERED" },
     });
     await logAudit({
-      user: { id: student.id, name: student.name, centerId: qr.centerId },
+      user: { id: matchedStudentId ?? "PUBLIC_QR", name: displayName, centerId: qr.centerId },
       action: AUDIT.QR_SCAN_SUCCESS, entity: "ATTENDANCE", entityId: attendanceId,
-      after: { student: student.name, session: session.group.subject.name, method: "PUBLIC_QR", charged: charge, risk: risk.flags },
-      reason: grace ? "حضور عام (نافذة سماح — شاف الكود وهو حي)" : "حضور عام — قفل جهاز",
+      after: { student: displayName, session: sessionLabel, method: "PUBLIC_QR", charged: charge, risk: risk.flags },
+      reason: grace ? "حضور عام (نافذة سماح — شاف الكود وهو حي)" : isOpen ? "حضور مفتوح — قفل جهاز" : "حضور عام — قفل جهاز",
     });
-    void notifyStudentsAttendance(
-      qr.centerId, [student.id],
-      "تم تسجيل حضورك ✅",
-      `حصة ${session.group.subject.name} — حضورك اتحسب بنجاح. بالتوفيق!`,
-    ).catch(() => {});
-    void notifyStaff(qr.centerId, {
-      type: "ATTENDANCE", title: "حضور ذاتي — QR الحصة",
-      body: `${student.name} سجّل حضوره بنفسه في ${session.group.subject.name} (${sessionLabel}).`,
-      link: "today", refId: session.id,
-    }).catch(() => {});
+    if (matchedStudentId) {
+      // إشعار الطالب بس للطلاب الحقيقيين (الحضور المفتوح مفيش حساب يتبعت له)
+      void notifyStudentsAttendance(
+        qr.centerId, [matchedStudentId],
+        "تم تسجيل حضورك ✅",
+        `حصة ${sessionLabel} — حضورك اتحسب بنجاح. بالتوفيق!`,
+      ).catch(() => {});
+      void notifyStaff(qr.centerId, {
+        type: "ATTENDANCE", title: "حضور ذاتي — QR الحصة",
+        body: `${displayName} سجّل حضوره بنفسه في ${sessionLabel}.`,
+        link: "today", refId: session.id,
+      }).catch(() => {});
+    }
+    // الحضور المفتوح: مفيش إشعارات لكل طالب (فصل كامل = سبام) — العداد الحي على شاشة الحصة كفاية
   }
 
   // ===== 12) سجل المحاولة (للوحة النشاط المشبوه) =====
   await attempt({
     centerId: qr.centerId, sessionId: session.id,
     outcome: already ? "ALREADY_ATTENDED" : "ACCEPTED",
-    studentId: student.id, studentCode: code,
+    studentId: matchedStudentId, studentCode: code, studentName: rawName || null,
     riskScore: risk.score, riskFlags: risk.flags,
   });
 
   // الرد العام مفيهوش بيانات مالية ولا أرصدة (خصوصية — صفحة من غير تسجيل دخول)
   return ok({
     ok: true, alreadyAttended: already,
-    studentName: student.name, studentCode: student.code,
+    studentName: displayName, studentCode: displayCode,
     sessionLabel, status: attendanceStatus,
   });
 });

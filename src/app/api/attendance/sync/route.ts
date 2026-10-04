@@ -28,8 +28,10 @@ export const POST = handler(async (req: Request) => {
   // 1) نفس المفتاح اتبعت قبل كده؟ رجّع النتيجة القديمة من غير تكرار
   const byKey = await db.attendance.findUnique({ where: { idemKey } });
   if (byKey && byKey.centerId === user.centerId) {
-    const st = await db.student.findUnique({ where: { id: byKey.studentId }, select: { name: true } });
-    return ok({ studentName: st?.name ?? "طالب", alreadyAttended: true });
+    const st = byKey.studentId
+      ? await db.student.findUnique({ where: { id: byKey.studentId }, select: { name: true } })
+      : null;
+    return ok({ studentName: st?.name ?? byKey.studentName ?? "طالب", alreadyAttended: true });
   }
 
   const q = cleanRaw(String(body.query ?? ""));
@@ -88,7 +90,7 @@ export const POST = handler(async (req: Request) => {
       await tx.studentTransaction.create({
         data: {
           centerId: user.centerId, studentId: student.id, sessionId, type: "CHARGE",
-          amount: -price, reason: `حصة ${session.group.subject.name} (مزامنة أوفلاين)`, createdBy: user.id,
+          amount: -price, reason: `حصة ${session.group?.subject.name ?? ""} (مزامنة أوفلاين)`, createdBy: user.id,
         },
       });
     }
@@ -112,14 +114,14 @@ export const POST = handler(async (req: Request) => {
       action: AUDIT.ATTENDANCE_RECORDED,
       entity: "ATTENDANCE",
       entityId: idemKey,
-      after: { student: student.name, session: session.group.subject.name, syncedOffline: true },
+      after: { student: student.name, session: session.group?.subject.name ?? "", syncedOffline: true },
     });
 
     // إشعار الطالب — الحضور اتسجل بعد مزامنة الأوفلاين
     void notifyStudentsAttendance(
       user.centerId, [student.id],
       "تم تسجيل حضورك ✅",
-      `حصة ${session.group.subject.name} — حضورك اتحسب بنجاح. بالتوفيق!`,
+      `حصة ${session.group?.subject.name ?? ""} — حضورك اتحسب بنجاح. بالتوفيق!`,
     ).catch(() => {});
   }
 

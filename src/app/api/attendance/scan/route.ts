@@ -91,10 +91,18 @@ export const POST = handler(async (req: Request) => {
           hint: "اختار حصة تانية من فوق، أو افتح حصة جديدة من الجدول.",
         });
       }
+      // حصص الحضور المفتوح مالهاش كارت/كشف — المسح الموظف بيطبق على الكشف بس
+      if (sess.studentSource === "OPEN" || !sess.groupId) {
+        return ok({
+          status: "RED",
+          message: "الحصة دي حضور مفتوح — الحضور بيتسجل من الـ QR بس (الطالب يمسح الكود بكاميرا موبايله).",
+          hint: "اختار حصة تانية من فوق، أو خلّي الطلاب يسجلوا من كود الحصة.",
+        });
+      }
       session = {
         id: sess.id, startTime: sess.startTime, endTime: sess.endTime, status: sess.status, date: sess.date,
-        subject: sess.group.subject.name, groupName: sess.group.name, grade: sess.group.grade.name,
-        teacher: sess.group.teacher?.name ?? null, groupId: sess.groupId, price: sess.price, room: sess.room,
+        subject: sess.group?.subject.name ?? sess.name ?? "حصة", groupName: sess.group?.name ?? "—", grade: sess.group?.grade.name ?? "—",
+        teacher: sess.group?.teacher?.name ?? null, groupId: sess.groupId, price: sess.price, room: sess.room,
       };
       const reg = student.registrations.find((r) => r.groupId === sess.groupId);
       registration = reg ? { groupId: reg.groupId, priceOverride: reg.priceOverride, subject: reg.group.subject.name } : null;

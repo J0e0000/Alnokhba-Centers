@@ -258,7 +258,9 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
 
       {/* عرض ملء الشاشة — للتابلت/البروجيكتور عند باب القاعة
           بيتعمله Portal لـ body عشان يهرب من أنسستور فيه transform
-          (nk-anim-view) بيخلي fixed يتحسب جوه الكونتينر بدل الشاشة كلها */}
+          (nk-anim-view) بيخلي fixed يتحسب جوه الكونتينر بدل الشاشة كلها
+          — وضع مينيمال: مفيش عدّاد ولا تفاصيل تقنية (spec §7) — الكود
+          بيتدوّر في الخلفية بهدوء والعدّاد موجود في الوضع العادي بس */}
       {full && createPortal(
         <div className="fixed inset-0 z-[90] bg-white dark:bg-[#0b1220] grid place-items-center p-6" onClick={() => setFull(false)}>
           <button
@@ -268,27 +270,17 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
           >
             <X className="w-5 h-5" />
           </button>
-          <div className="flex flex-col items-center gap-5 max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
-            <div className="w-full max-w-md aspect-square bg-white rounded-3xl p-4 shadow-xl border border-border overflow-hidden">
+          <div className="flex flex-col items-center gap-6 max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+            {/* الكود أكبر قدر ممكن ومتوسّط — بيتدوّر أوتوماتيك في الخلفية من غير أي مؤشر */}
+            <div className="w-full max-w-[min(80vh,36rem)] aspect-square bg-white rounded-3xl p-4 shadow-xl border border-border overflow-hidden">
               {payload ? <QrCanvas payload={payload} /> : <Loader2 className="w-10 h-10 animate-spin text-slate-400" />}
             </div>
-            <div className="text-center space-y-2">
-              <p className="text-xl font-black">امسح الكود وسجّل حضورك</p>
-              <p className={cn("text-sm font-bold flex items-center justify-center gap-1.5 nk-brand-text")}>
-                <ScanLine className="w-4 h-4" />
-                بكاميرا موبايلك — اكتب كود الطالب وسجّل حضورك في ثواني
+            <div className="text-center space-y-1.5">
+              <p className="text-2xl font-black">امسح الكود وسجّل حضورك</p>
+              <p className="text-sm font-bold text-muted-foreground flex items-center justify-center gap-1.5">
+                <Camera className="w-4 h-4" />
+                وجّه كاميرا الموبايل على الكود — الصفحة بتفتح على طول
               </p>
-              <div className="flex items-center justify-center gap-3">
-                <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-black nk-num",
-                  low ? "bg-amber-500 text-white" : "bg-emerald-600 text-white")}>
-                  <Timer className="w-4 h-4" /> كود جديد بعد {Math.max(secondsLeft, slotLeft)}ث
-                </span>
-              </div>
-              <div className="h-2 w-64 max-w-full mx-auto rounded-full bg-border overflow-hidden">
-                <div className={cn("h-full rounded-full transition-[width] duration-300 ease-linear", low ? "bg-amber-500" : "nk-brand-bg")}
-                  style={{ width: `${progress * 100}%` }} />
-              </div>
-              <p className="text-[11px] font-bold text-muted-foreground">الكود بيتغير كل 10 ثواني — الصورة أو السكرين شوت بيموت مع الكود الجاي</p>
             </div>
           </div>
         </div>,
