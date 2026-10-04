@@ -1,0 +1,53 @@
+# Database Scaling & Expansion — خطة توسعة قاعدة البيانات
+
+> الوضع الحالي: **SQLite** (ملف `db/custom.db`) للتطوير المحلي + **PostgreSQL مُدار** (Vercel + pooled connection) للإنتاج. الجداول الأكبر نموًا: `Attendance` + `CheckInAttempt` (صف لكل محاولة)، و`AuditLog` (صف لكل عملية).
+
+## أرقام القياس الموجودة فعليًا (measurements, not guesses)
+
+| البيئة | النتيجة |
+|--------|---------|
+| محليًا: production build + SQLite، حصة واحدة | 100% نجاح حتى **700 مسح متزامن** · p95 ≤ 2ث حتى **~300** · سقف الكتابة ~65-72 تسجيل/ثانية |
+| محليًا: 10 و 20 حصة متزامنة | نفس السقف الكلي (~60/ث) — مفيش تنافس بين الحصص، التوسع خطي |
+| الإنتاج: Vercel + Postgres | **صفر 429 وصفر 5xx** في كل موجات الحمل — كل الطلبات اللي وصلت السيرفر اتسجلت |
+
+السقف المحلي هو **SQLite نفسها** (كاتب واحد في نفس اللحظة) — نفس السكريبت على Postgres بيتخطى الحاجز ده تلقائيًا.
+
+## المرحلة 1 — مجانية وفورية (الحالة الحالية تكفي حتى ~500 طالب نشط)
+
+1. **Firmware على الـ indexes الموجودة**: `Attendance(sessionId, deviceId/Fingerprint/attendanceCode/studentId)` موجودة — كل الاستعلامات الساخنة (فحوص القفل + العدادات) بتصطدم بفهارس فريدة بالفعل.
+2. **Cleanup دوري لـ CheckInAttempt**: جدول المحاولات أكبر جدول هيكبر (كل محاولة بتتسجل). أرشفة/حذف كل 30 يوم:
+   ```sql
+   DELETE FROM "CheckInAttempt" WHERE "createdAt" < now() - interval '30 days';
+   ```
+   (cron بسيط أو Vercel Cron — endpoint مؤقت manager-only).
+3. **Connection discipline**: `db.$executeRawUnsafe` لكل statement واحد (بدون transactions طويلة فوق الـ pooler) — القاعدة اللي بنمشي عليها من Task O.
+
+## المرحلة 2 — لما الفصول تكبر (500-5,000 طالب نشط)
+
+1. **Connection pooling صريح**: استخدم PgBouncer (transaction mode) أو Neon/Supabase pooler مباشرة من Prisma — `?pgbouncer=true&connection_limit=10` في `DATABASE_URL`. الحضور العام هو read-heavy (peek) + write قصير (check-in) — يتصرف كويس جدًا مع transaction pooling.
+2. **فصل القراءة عن الكتابة (read replicas)**: شاشات العرض/العدادات/الـ CSV تقرأ من replica، والتسجيلات على primary. Neon وSupabase الاتنين بيدّوا replica بضغطة.
+3. **تحويل جدول المحاولات لأرشفة زمنية**: `CheckInAttempt` بالشهر (partitioning بإضافة عمود شهر أو جداول `_attempts_2026_01`) — الاستعلامات الساخنة 10 دقايق بس (نافذة محرك المخاطر).
+4. **Vercel Cron للأرشفة والتنظيف** بدل شيلات يدوية.
+
+## المرحلة 3 — توسع مؤسسي (كل حاجة تحتاج قرارات تشغيلية)
+
+1. **Postgres مُخصص (dedicated compute)** بدل pooler مشترك: 2-4 vCPU يكفي لآلاف التسجيلات/الدقيقة (الحاجة الوحيدة المكلفة هي الـ INSERT نفسه — وفهرسنا فريد وضيق).
+2. **Queue للعمليات الثقيلة غير الحساسة للزمن**: الإشعارات (`notifyStaff/notifyStudents`) والـ CSV export والـ backup — تتنقل لـ queue (Upstash QStash / Vercel Queues) بدل ما تتنفذ جوه طلب التسجيل. دلوقتي هي fire-and-forget `catch(() => {})` — كفاية، لكن الـ queue بيدي ضمانات.
+3. **Redis للعدادات الحية** (عداد «اتسجل N» على الشاشة) + rate limits موزّعة (دلوقتي in-memory لكل instance — على Vercel كل instance ليه عداده، يعني الحد الفعلي = الحد × عدد الـ instances: كتير في السماح، مش مشكلة عملية).
+4. **Multi-center sharding بطبيعي**: كل استعلام أصلاً محصور بـ `centerId` — لو المركزين اتفرقوا في داتابيزات منفصلة، التغيير config بس (مفيش إعادة هندسة).
+
+## قواعد ثابتة مهما كبرنا
+
+- **كل تغيير في `schema.prisma` لازم يتولّد منه `schema.postgres.prisma`** (`python3 scripts/build_postgres_schema.py`) — دي اللي سبّبت عطل Task O.
+- **الـ DDL فوق الـ pooler**: statement واحد autocommit لكل مرة (endpoint مؤقت أو pg مباشر) — ممنوع migration طويلة في transaction واحد.
+- **مفيش DELETE للحضور** — الحصص بتتلغي/بتتقفل، والصفوف بتفضل (سجل مالي وتدقيقي).
+- **الأمان النهائي في الداتابيز**: قيود UNIQUE هي الحَكم — أي منطق جديد لازم يفضل نفس النمط (فحص ودّي + P2002 disambiguation).
+
+## امتى نتحرك؟
+
+| الإشارة | الإجراء |
+|---------|---------|
+| p95 على الإنتاج > 2ث في مواسم التسجيل | مرحلة 2.1 (pooling tuning) |
+| حجم `CheckInAttempt` > ~1M صف | مرحلة 1.2 + 2.3 |
+| أكثر من مركز/سنتر نشط كبير | مرحلة 2.2 (replica) |
+| إشعارات/export بتبطّأ التسجيلات | مرحلة 3.2 (queue) |
