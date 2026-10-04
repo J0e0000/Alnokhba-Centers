@@ -57,7 +57,7 @@ D4="aaaaaaaa-4444-4444-8444-aaaaaaaaaaa4"
 D9="aaaaaaaa-9999-4999-8999-aaaaaaaaaaa9"
 
 issue_slot() { curl -s -b $JAR/mgr.jar -X POST "$BASE/api/attendance/session-qr/slot" \
-  -H "Content-Type: application/json" -d "{\"sessionId\":\"$1\",\"slotSeconds\":10}" 2>/dev/null; }
+  -H "Content-Type: application/json" -d "{\"sessionId\":\"$1\",\"slotSeconds\":60}" 2>/dev/null; }
 peek() { curl -s "$BASE/api/attendance/public/peek?token=$1&deviceId=$2" 2>/dev/null; }
 checkin() { # token device name code [pv]
   PV="$5"; [ -n "$PV" ] || PV="x"
@@ -94,8 +94,14 @@ check "wrong length (4 digits) rejected" "INVALID_CODE_LENGTH" "$(jget "$R3" rea
 R4=$(checkin "$T1" "$D2" "سمير حسن" "432109")
 check "wrong length (6 digits) rejected" "INVALID_CODE_LENGTH" "$(jget "$R4" reason)"
 
-R5=$(checkin "$T1" "$D2" "سمير حسن قنديل" "43210")
-check "2nd device different student OK" "True" "$(jget "$R5" ok)"
+R5=$(checkin "$T1" "$D2" "سمير حسن قنديل" "43213")
+# كود مختلف للطالب التاني — قفل الكود الجديد بيمنع تكرار نفس الكود من جهازين (مضاد النيابة)
+check "2nd device different student (different code) OK" "True" "$(jget "$R5" ok)"
+
+# 🆕 قفل الكود: نفس الكود من جهاز تاني → CODE_ALREADY_USED (كان مسموح قبل طبقة مكافحة الغش)
+# (D4 لسه ماعندوش صف في OS1 — عشان نعزل قفل الكود عن قفل الجهاز)
+R5B=$(checkin "$T1" "$D4" "سمير حسن قنديل" "43210")
+check "same code from 2nd device → CODE_ALREADY_USED (anti-proxy)" "CODE_ALREADY_USED" "$(jget "$R5B" reason)"
 
 R6=$(checkin "$T1" "$D3" "نور الهدى محمد, درجة" "43211")
 check "name with comma accepted (CSV-safe later)" "True" "$(jget "$R6" ok)"
@@ -148,7 +154,7 @@ checknotcontains "CSV has NO deviceId" "aaaaaaaa-1" "$EX"
 checknotcontains "CSV has NO token" "$T1" "$EX"
 checknotcontains "CSV has NO risk/device columns" "DEVICE" "$EX"
 
-CNT=$(echo "$EX" | grep -c "43210\|43211")
+CNT=$(echo "$EX" | grep -c "43210\|43211\|43213")
 check "CSV row count = 3 successful records" "3" "$CNT"
 
 # غير مصرح ليه؟
@@ -226,3 +232,6 @@ echo -e "$RESULTS"
 echo "========================================"
 echo "PASS: $PASS | FAIL: $FAIL"
 [ $FAIL -eq 0 ] && echo "🎉 ALL CHECKS GREEN" || echo "⚠️ SOME CHECKS FAILED"
+
+# ── تنظيف حصص الاختبار (عشان e2e_qr_slot يلاقي حصة الكشف بتاعة الـ fixture أول واحدة) ──
+(cd /home/z/my-project && bun scripts/cleanup_mode_tests.ts 2>/dev/null | tail -1) > /dev/null

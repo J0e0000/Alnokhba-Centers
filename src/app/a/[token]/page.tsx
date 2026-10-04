@@ -2,9 +2,10 @@
 
 import { use, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2, AlertTriangle, XCircle, Loader2, QrCode, Clock3, ShieldCheck, RefreshCw } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, Loader2, QrCode, Clock3, ShieldCheck, RefreshCw, KeyRound } from "lucide-react";
 import { AlNokhbaMark } from "@/components/nokhba/shared";
 import { getOrCreateAttendanceDeviceId } from "@/lib/device-id";
+import { computeDeviceFingerprint } from "@/lib/device-fingerprint";
 
 /* ============================================================
    /a/<token> — صفحة الحضور العامة بقفل الجهاز (من غير أي تسجيل دخول)
@@ -33,7 +34,7 @@ type CheckResult = {
 
 type Peek = {
   valid?: boolean; reason?: string; sessionLabel?: string; pv?: string | null;
-  studentSource?: string; expectedCodeLength?: number | null;
+  studentSource?: string; expectedCodeLength?: number | null; requireRoomPin?: boolean;
 };
 
 const STATUS_LABEL: Record<string, string> = { PRESENT: "حاضر", LATE: "متأخر", EXCUSED: "بعذر" };
@@ -55,13 +56,23 @@ export default function PublicCheckinPage({ params }: { params: Promise<{ token:
   // وضع الحضور (spec §1): OPEN = اسم + كود بطول محدد من إعدادات الحصة · ROSTER = كود الطالب (+ اسم فحص ناعم)
   const [isOpenMode, setIsOpenMode] = useState(false);
   const [codeLen, setCodeLen] = useState<number | null>(null);
+  const [needPin, setNeedPin] = useState(false);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
+  const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<CheckResult | null>(null);
   const [netError, setNetError] = useState<string | null>(null);
   const pvRef = useRef<string | null>(null);
   const busyRef = useRef(false);
+  const fpRef = useRef<string>(""); // بصمة المتصفح — بتتحسب مرة واحدة لكل تحميل صفحة
+
+  // 0) بصمة المتصفح — بتشتغل فورًا موازية مع الـ peek (مش بتأخّر الصفحة)
+  useEffect(() => {
+    let alive = true;
+    computeDeviceFingerprint().then((fp) => { if (alive) fpRef.current = fp; });
+    return () => { alive = false; };
+  }, []);
 
   // 1) peek — الحصة إيه؟ الكود حي؟ (وبصمة sighting لو حي)
   useEffect(() => {
@@ -87,6 +98,7 @@ export default function PublicCheckinPage({ params }: { params: Promise<{ token:
           setSessionLabel(d.sessionLabel ?? "");
           setIsOpenMode(d.studentSource === "OPEN");
           setCodeLen(d.expectedCodeLength ?? null);
+          setNeedPin(d.requireRoomPin === true);
           setPhase("ready");
         } else {
           setInvalidReason(d.reason ?? "INVALID");
@@ -103,6 +115,7 @@ export default function PublicCheckinPage({ params }: { params: Promise<{ token:
   async function checkIn() {
     if (busyRef.current) return; // double-tap guard (UX بس — السيرفر هو الحاكم)
     if (name.trim().length < 2 || code.trim().length < 3) return;
+    if (needPin && pin.trim().length !== 4) return;
     busyRef.current = true;
     setBusy(true);
     setNetError(null);
@@ -115,7 +128,12 @@ export default function PublicCheckinPage({ params }: { params: Promise<{ token:
       const res = await fetch("/api/attendance/public/check-in", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, code: code.trim(), name: name.trim(), deviceId, pv: pv ?? undefined }),
+        body: JSON.stringify({
+          token, code: code.trim(), name: name.trim(), deviceId,
+          pv: pv ?? undefined,
+          fp: fpRef.current || undefined,
+          pin: needPin ? pin.trim() : undefined,
+        }),
       });
       const data = (await res.json().catch(() => ({}))) as CheckResult;
       if (!res.ok) {
@@ -174,15 +192,18 @@ export default function PublicCheckinPage({ params }: { params: Promise<{ token:
         {/* ============================= نموذج التسجيل (اسم + كود الطالب) ============================= */}
         {phase === "ready" && !result && (
           <form
-            onSubmit={(e) => { e.preventDefault(); if (name.trim().length >= 2 && code.trim().length >= 3) void checkIn(); }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (name.trim().length >= 2 && code.trim().length >= 3 && (!needPin || pin.trim().length === 4)) void checkIn();
+            }}
             className="space-y-4"
           >
             <div className="rounded-2xl border border-sky-200 bg-sky-50 dark:bg-sky-500/10 dark:border-sky-500/30 p-3.5 flex gap-2.5">
               <ShieldCheck className="w-5 h-5 text-sky-600 shrink-0" />
               <p className="text-xs font-bold text-sky-800 dark:text-sky-300 leading-relaxed">
                 {isOpenMode
-                  ? <>مش محتاج تسجيل دخول — اكتب اسمك وكودك وسجّل. كل جهاز (موبايل) بيسجّل حضور <b>مرة واحدة</b> في الحصة.</>
-                  : <>مش محتاج تسجيل دخول — اكتب اسمك وكود الطالب وسجّل. كل جهاز (موبايل) بيسجّل حضور <b>مرة واحدة</b> في الحصة.</>}
+                  ? <>مش محتاج تسجيل دخول — اكتب اسمك وكودك وسجّل. كل جهاز بيسجّل حضور <b>مرة واحدة</b> في الحصة — حتى لو اتسحت بيانات المتصفح أو اتفتح من نافذة خاصة.</>
+                  : <>مش محتاج تسجيل دخول — اكتب اسمك وكود الطالب وسجّل. كل جهاز بيسجّل حضور <b>مرة واحدة</b> في الحصة — حتى لو اتسحت بيانات المتصفح أو اتفتح من نافذة خاصة.</>}
               </p>
             </div>
             <div>
@@ -212,6 +233,27 @@ export default function PublicCheckinPage({ params }: { params: Promise<{ token:
                 className="w-full h-14 rounded-2xl border-2 border-input bg-card text-center text-2xl font-black tracking-[0.4em] nk-num"
               />
             </div>
+            {needPin && (
+              <div>
+                <label htmlFor="nk-checkin-pin" className="text-xs font-bold block mb-1">
+                  كود القاعة <span className="text-muted-foreground">— 4 أرقام من شاشة الحصة جنب الـ QR</span>
+                </label>
+                <input
+                  id="nk-checkin-pin"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="––––"
+                  dir="ltr"
+                  className="w-full h-14 rounded-2xl border-2 border-input bg-card text-center text-2xl font-black tracking-[0.5em] nk-num"
+                />
+                <p className="text-[10.5px] font-bold text-muted-foreground mt-1 flex items-center gap-1">
+                  <KeyRound className="w-3 h-3" />
+                  ده حماية من مشاركة الكود — الكود ده بس اللي ظاهر على شاشة قاعتك دلوقتي
+                </p>
+              </div>
+            )}
             {netError && (
               <div className="rounded-2xl border border-rose-200 bg-rose-50 dark:bg-rose-500/10 dark:border-rose-500/30 p-3.5 flex items-center gap-2.5">
                 <XCircle className="w-4.5 h-4.5 text-rose-600 shrink-0" />
@@ -220,7 +262,7 @@ export default function PublicCheckinPage({ params }: { params: Promise<{ token:
             )}
             <button
               type="submit"
-              disabled={name.trim().length < 2 || code.trim().length < 3 || busy}
+              disabled={name.trim().length < 2 || code.trim().length < 3 || (needPin && pin.trim().length !== 4) || busy}
               className="w-full h-12 rounded-2xl nk-brand-bg text-white font-extrabold disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {busy ? <><Loader2 className="w-5 h-5 animate-spin" /> جاري تسجيل الحضور…</> : <CheckCircle2 className="w-5 h-5" />}

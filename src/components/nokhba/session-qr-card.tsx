@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import QRCode from "qrcode";
-import { QrCode, Loader2, RotateCw, Maximize2, X, Timer, Camera, ScanLine } from "lucide-react";
+import { QrCode, Loader2, RotateCw, Maximize2, X, Timer, Camera, ScanLine, KeyRound } from "lucide-react";
 import { api } from "./lib";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +23,7 @@ const PREFETCH_BEFORE_MS = 1500; // نجيب الكود الجاي قبل نها
 const FETCH_GAP_MS = 2500; // منع النداءات المتلاحية
 const FETCH_BACKOFF_MS = 8000; // تراجع بعد فشل (مفيش Hammering على 429)
 
-type SlotRes = { token: string; expiresAt: string; slotSeconds: number; sessionLabel?: string };
+type SlotRes = { token: string; expiresAt: string; slotSeconds: number; sessionLabel?: string; requireRoomPin?: boolean; roomPin?: string | null };
 
 /* ---------------- كانفس الكود الثابت (يُرسم على مقاس العرض الفعلي — صفر تشويش) ----------------
    السرّ للقراءة السريعة بالكاميرا: البت ماب بيتولد بنفس مقاس العرض × كثافة الشاشة،
@@ -90,6 +90,9 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
   const [error, setError] = useState<string | null>(null);
   const [full, setFull] = useState(false);
   const [now, setNow] = useState(0); // بعد الماونت بس — مفيش hydration mismatch
+  // كود القاعة المتغيّر (مضاد مشاركة الـ QR) — بيجي مع كل سلوت فبيفضل محدّث
+  const [roomPin, setRoomPin] = useState<string | null>(null);
+  const [pinRequired, setPinRequired] = useState(false);
 
   const fetchingRef = useRef(false);
   const mountedRef = useRef(true);
@@ -137,6 +140,8 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
     slotEndRef.current = Date.now() + ms;
     setSlotEnd(slotEndRef.current);
     setSlotLeft(Math.ceil(ms / 1000));
+    setPinRequired(next.requireRoomPin === true);
+    setRoomPin(next.requireRoomPin ? (next.roomPin ?? null) : null);
   }, [fetchSlot]);
 
   // الجلب الأولي — مرة واحدة
@@ -232,6 +237,15 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
           <div className="flex items-center gap-3.5">
             {qrBox("w-40 h-40 md:w-48 md:h-48 shrink-0")}
             <div className="min-w-0 space-y-1.5 text-xs font-bold text-muted-foreground">
+              {pinRequired && roomPin && (
+                <div className="rounded-xl border-2 border-amber-300 dark:border-amber-500/50 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 mb-1.5">
+                  <p className="text-[10.5px] font-black text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                    <KeyRound className="w-3 h-3" /> كود القاعة — الطالب يكتبه مع اسمه وكوده
+                  </p>
+                  <p className="text-3xl font-black text-amber-800 dark:text-amber-200 nk-num tracking-[0.3em] leading-tight" dir="ltr">{roomPin}</p>
+                  <p className="text-[9.5px] font-bold text-amber-600/80 dark:text-amber-300/70">بيتبدّل أوتوماتيك — مينفعش يتتصوّر ويتبعت لحد بره القاعة</p>
+                </div>
+              )}
               <p className="flex items-center gap-1.5 text-foreground/80">
                 <Camera className="w-3.5 h-3.5 nk-brand-text shrink-0" />
                 <span>الكود ثابت 10 ثواني وسليم — يتقري بأي كاميرا موبايل، وبيتغير أوتوماتيك والقديم بيموت فورًا.</span>
@@ -275,6 +289,15 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
             <div className="w-full max-w-[min(80vh,36rem)] aspect-square bg-white rounded-3xl p-4 shadow-xl border border-border overflow-hidden">
               {payload ? <QrCanvas payload={payload} /> : <Loader2 className="w-10 h-10 animate-spin text-slate-400" />}
             </div>
+            {/* كود القاعة في العرض بحجم الشاشة — واضح من آخر صف في القاعة */}
+            {pinRequired && roomPin && (
+              <div className="rounded-2xl border-2 border-amber-300 dark:border-amber-500/50 bg-amber-50 dark:bg-amber-500/10 px-8 py-3 text-center">
+                <p className="text-xs font-black text-amber-700 dark:text-amber-300 flex items-center justify-center gap-1.5">
+                  <KeyRound className="w-4 h-4" /> كود القاعة — اكتبه في صفحة الحضور
+                </p>
+                <p className="text-6xl font-black text-amber-800 dark:text-amber-200 nk-num tracking-[0.35em] leading-tight" dir="ltr">{roomPin}</p>
+              </div>
+            )}
             <div className="text-center space-y-1.5">
               <p className="text-2xl font-black">امسح الكود وسجّل حضورك</p>
               <p className="text-sm font-bold text-muted-foreground flex items-center justify-center gap-1.5">

@@ -28,7 +28,8 @@ function clientIp(req: Request): string {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const GET = handler(async (req: Request) => {
-  rateLimit(`peek:${clientIp(req)}`, 90, 60_000);
+  // مقياس قاعة: فصل كامل بيمسح الكود في نفس الدقيقة من نفس الواي فاي (600/دقيقة)
+  rateLimit(`peek:${clientIp(req)}`, 600, 60_000);
 
   const url = new URL(req.url);
   const token = (url.searchParams.get("token") ?? "").trim().toLowerCase();
@@ -68,5 +69,7 @@ export const GET = handler(async (req: Request) => {
     expectedCodeLength: session.studentSource === "OPEN"
       ? Math.max(3, Math.min(12, session.studentCodeLength ?? 5))
       : null,
+    // كود القاعة المتغيّر (مضاد مشاركة الـ QR): الصفحة بتظهر خانة كتابته لما الحصة تطلبه
+    requireRoomPin: session.requireRoomPin === true,
   });
 });

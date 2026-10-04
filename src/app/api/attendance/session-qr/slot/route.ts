@@ -5,6 +5,7 @@ import { issueSessionQrSlot, QR_SLOT_SECONDS } from "@/lib/session-qr";
 import { getCenterCapabilities, capabilityNumber } from "@/lib/center-capabilities";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { requireCapability } from "@/lib/center-capabilities";
+import { currentRoomPin } from "@/lib/room-pin";
 
 export const dynamic = "force-dynamic";
 
@@ -71,5 +72,9 @@ export const POST = handler(async (req: Request) => {
     sessionLabel: session.group
       ? `${session.group.subject.name} — ${session.group.grade.name} ${session.group.name}`
       : `${session.name ?? "حصة"}`,
+    // كود القاعة المتغيّر — يظهر جنب الـ QR لما الحصة بتطلبه (بيتبدّل كل دقيقتين،
+    // والشاشة بتجيب الكود الحالي مع كل سلوت فالعرض بيفضل محدّث أوتوماتيك)
+    requireRoomPin: session.requireRoomPin === true,
+    roomPin: session.requireRoomPin ? currentRoomPin(session.id).pin : null,
   });
 });

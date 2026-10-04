@@ -177,13 +177,21 @@ type OpenBody = {
   name?: string; // اسم الحصة (إجباري للحضور المفتوح)
   studentCodeLength?: number; // للحضور المفتوح: طول كود الطالب المطلوب
   allowUnregistered?: boolean; // للكشف: قبول غير المسجلين بدل رفضهم
+  requireRoomPin?: boolean; // مضاد الغش: كود قاعة متغيّر 4 أرقام جنب الـ QR (مضاد مشاركة الكود عن بُعد)
 };
+
+/** الـ IP العام لجهاز اللي بيفتح الحصة — بيتبتّعل كمرجع لشبكة القاعة (flag للمخاطر — مش رفض) */
+function clientIp(req: Request): string {
+  return (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim().slice(0, 40) || "unknown";
+}
 
 /** POST /api/sessions — open/materialize a session from a schedule slot, ad-hoc group, or Open Attendance */
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
   const body = await readJson<OpenBody>(req);
   const date = body.date || todayStr();
+  const roomPinEnabled = body.requireRoomPin === true;
+  const anchorIp = clientIp(req);
 
   // ============ الحضور المفتوح (spec §1B) — حصة من غير مجموعة/كشف ============
   if (body.studentSource === "OPEN") {
@@ -205,6 +213,7 @@ export const POST = handler(async (req: Request) => {
         startTime: body.startTime, endTime: body.endTime, room,
         price: 0, teacherPercent: 0, // مفيش حسابات للحضور المفتوح — تسجيل حضور بس
         studentSource: "OPEN", studentCodeLength: codeLen,
+        requireRoomPin: roomPinEnabled, anchorIp,
         status: "OPEN", openedBy: user.id,
       },
     });
@@ -213,7 +222,7 @@ export const POST = handler(async (req: Request) => {
       action: AUDIT.SESSION_OPENED,
       entity: "SESSION",
       entityId: session.id,
-      after: { name, date, startTime: body.startTime, studentSource: "OPEN", studentCodeLength: codeLen },
+      after: { name, date, startTime: body.startTime, studentSource: "OPEN", studentCodeLength: codeLen, requireRoomPin: roomPinEnabled },
     });
     return ok({ session: { id: session.id }, teacherAutoAttendance: null }, { status: 201 });
   }
@@ -281,6 +290,7 @@ export const POST = handler(async (req: Request) => {
       price: group.sessionPrice, teacherPercent: group.teacherPercent,
       studentSource: "ROSTER",
       allowUnregistered: body.allowUnregistered === true,
+      requireRoomPin: roomPinEnabled, anchorIp,
       status: "OPEN", openedBy: user.id,
     },
   });
@@ -290,7 +300,7 @@ export const POST = handler(async (req: Request) => {
     action: AUDIT.SESSION_OPENED,
     entity: "SESSION",
     entityId: session.id,
-    after: { group: group.name, date, startTime, allowUnregistered: body.allowUnregistered === true },
+    after: { group: group.name, date, startTime, allowUnregistered: body.allowUnregistered === true, requireRoomPin: roomPinEnabled },
   });
 
   // حضور المدرس التلقائي — بدء الحصة = تسجيل المدرس حاضر (قدرة المركز بتتحكم)

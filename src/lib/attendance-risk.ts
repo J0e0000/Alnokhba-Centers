@@ -30,6 +30,11 @@ export const RISK_FLAGS = {
   INVALID_QR_ATTEMPTS: "محاولات بكود QR غير صالح",
   EXPIRED_QR_ATTEMPTS: "محاولات بكود QR منتهي",
   REPEATED_ATTENDANCE_ATTEMPTS: "محاولات حضور متكررة من نفس الجهاز",
+  // ===== مضادات الغش (طبقة 2) =====
+  STUDENT_CODE_REUSED: "كود طالب اتسجل بيه حضور من جهاز تاني في نفس الحصة (محاولة نيابة)",
+  DIFFERENT_NETWORK: "التسجيل من شبكة مختلفة عن شبكة القاعة المرجعية",
+  MISSING_FINGERPRINT: "تسجيل من غير بصمة متصفح (متصفح قديم/محجوب) — قفل البصمة مش شغال عليه",
+  FINGERPRINT_REUSED: "نفس بصمة المتصفح اتسجل بيه حضور قبل كده في الحصة (إنكوجنتو/مسح بيانات؟)",
 } as const;
 
 export type RiskFlag = keyof typeof RISK_FLAGS;
@@ -44,6 +49,10 @@ const WEIGHTS: Record<RiskFlag, number> = {
   INVALID_QR_ATTEMPTS: 15,
   EXPIRED_QR_ATTEMPTS: 10,
   REPEATED_ATTENDANCE_ATTEMPTS: 20,
+  STUDENT_CODE_REUSED: 40,
+  DIFFERENT_NETWORK: 15,
+  MISSING_FINGERPRINT: 5,
+  FINGERPRINT_REUSED: 45,
 };
 
 /** تقييم مخاطر قبل قبول حضور عام — بيقرأ محاولات الحصة الأخيرة بس (نافذة زمنية) */
@@ -51,8 +60,10 @@ export async function assessCheckInRisk(opts: {
   sessionId: string;
   deviceId?: string | null;
   ipAddress?: string | null;
+  /** أعلام إضافية محسوبة بره (شبكة مختلفة/بصمة ناقصة…) — بتتراكم مع أعلام السلوك */
+  extraFlags?: RiskFlag[];
 }): Promise<RiskAssessment> {
-  const flags = new Set<RiskFlag>();
+  const flags = new Set<RiskFlag>(opts.extraFlags ?? []);
   const since = new Date(Date.now() - RISK_WINDOW_MS);
 
   const [byDevice, byIp] = await Promise.all([

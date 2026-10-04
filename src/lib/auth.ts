@@ -354,6 +354,9 @@ export function canRegisterStudents(user: SessionUser): boolean {
 const buckets = new Map<string, { count: number; reset: number }>();
 
 export function rateLimit(key: string, max = 10, windowMs = 60_000): void {
+  // مفتاح اختبار الحمل (load-test hook): بيتمكّن من حدود المحاولات محليًا بس
+  // عشان نقيس السعة الحقيقية من غير ما نحسب الـ 429s — مش بيشتغل في الإنتاج إلا لو متعمّد
+  if (process.env.NK_RATELIMIT_OFF === "1") return;
   const now = Date.now();
   const b = buckets.get(key);
   if (!b || b.reset < now) {
