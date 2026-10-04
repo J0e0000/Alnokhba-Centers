@@ -3,6 +3,7 @@ import { ok, handler, readJson } from "@/lib/api";
 import { ApiError, rateLimit } from "@/lib/auth";
 import { hasCapability } from "@/lib/center-capabilities";
 import { verifySightingPv } from "@/lib/checkin-pv";
+import { verifyRoomPin } from "@/lib/room-pin";
 import { assessCheckInRisk, STAFF_NOTIFY_SCORE, riskSummary, type RiskFlag } from "@/lib/attendance-risk";
 import { recordAttendanceEvent } from "@/lib/attendance-core";
 import { logAudit, AUDIT } from "@/lib/audit";
@@ -36,9 +37,10 @@ export const dynamic = "force-dynamic";
    في CheckInAttempt (نجاح أو رفض) عشان لوحة "النشاط المشبوه" والتدقيق.
 ============================================================ */
 
-type Body = { token?: string; code?: string; name?: string; deviceId?: string; pv?: string };
+type Body = { token?: string; code?: string; name?: string; deviceId?: string; pv?: string; fp?: string; pin?: string };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const FP_RE = /^[0-9a-f]{32,64}$/;
 
 function clientIp(req: Request): string {
   return (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim().slice(0, 40) || "unknown";
@@ -76,6 +78,12 @@ export const POST = handler(async (req: Request) => {
   const rawName = cleanName(String(body.name ?? ""));
   const deviceId = String(body.deviceId ?? "").trim();
   const pv = String(body.pv ?? "").trim();
+  // بصمة المتصفح (تطبيقية — ثابتة لكل المتصفح الفيزيائي حتى بعد مسح البيانات/إنكوجنتو)
+  // قيمة ناقصة/بايطة → بنعتبرها "مفيش بصمة" (توافق رجعي) وبنعلّم MISSING_FINGERPRINT
+  const fpRaw = String(body.fp ?? "").trim().toLowerCase();
+  const fp = FP_RE.test(fpRaw) ? fpRaw : "";
+  // كود القاعة المتغيّر (مضاد مشاركة الـ QR — بيتحقق من السيرفر بس لما الحصة تطلبه)
+  const pin = String(body.pin ?? "").trim();
   const ip = clientIp(req);
   const ua = (req.headers.get("user-agent") ?? "").slice(0, 240);
   const tokenTail = token.slice(-8);
@@ -86,8 +94,11 @@ export const POST = handler(async (req: Request) => {
   if (!UUID_RE.test(deviceId)) throw new ApiError("معرّف الجهاز ناقص — حدّث الصفحة وجرب تاني.", 400);
 
   // ===== 2) حدود محاولات (نحّاس خارجي — مش بيتسجل في المحاولات) =====
-  rateLimit(`pub-checkin:${token.slice(-10)}:${ip}`, 12, 60_000);
-  rateLimit(`pub-checkin-ip:${ip}`, 40, 60_000);
+  // مقاييس قاعة دراسية: كل الطلبة على نفس الواي فاي (نفس الـ IP) ونفس كود الحصة —
+  // 600/دقيقة لكل IP = 10 طالب/ثانية من نفس الشبكة (فصل 200 طالب يمسحوا في دقيقتين)
+  // ولسه بتخنق البوتات اللي بتعمل مئات المحاولات في الثانية
+  rateLimit(`pub-checkin:${token.slice(-10)}:${ip}`, 600, 60_000);
+  rateLimit(`pub-checkin-ip:${ip}`, 600, 60_000);
 
   // سجل محاولة في سجل التدقيق (بعد ما نعرف الحصة) — أي رفض/قبول بيتوثق
   async function attempt(input: {
@@ -100,7 +111,7 @@ export const POST = handler(async (req: Request) => {
         centerId: input.centerId, sessionId: input.sessionId, outcome: input.outcome,
         studentId: input.studentId ?? null, studentCode: input.studentCode?.slice(0, 12) ?? null,
         studentName: input.studentName ?? null,
-        deviceId, ipAddress: ip, userAgent: ua,
+        deviceId, deviceFingerprint: fp || null, ipAddress: ip, userAgent: ua,
         riskScore: input.riskScore ?? 0,
         riskFlags: input.riskFlags?.length ? JSON.stringify(input.riskFlags) : null,
         tokenTail,
@@ -168,6 +179,17 @@ export const POST = handler(async (req: Request) => {
   if (session.date !== todayStr()) {
     await attempt({ centerId: qr.centerId, sessionId: session.id, outcome: "NOT_TODAY" });
     return ok({ ok: false, reason: "NOT_TODAY", message: "الكود ده لحصة تانية مش حصة النهاردة." });
+  }
+
+  // ===== 5ب) كود القاعة المتغيّر (Room PIN — مضاد مشاركة الـ QR عن بُعد) =====
+  // شاشة الحصة بتعرض 4 أرقام جنب الـ QR بتتبدّل كل دقيقتين — التسجيل من غيره مرفوض.
+  // الصاحب اللي بره القاعة محتاج الكود الحالي بنفس اللحظة — يعني موصل حي جوه القاعة.
+  if (session.requireRoomPin && !verifyRoomPin(session.id, pin)) {
+    await attempt({ centerId: qr.centerId, sessionId: session.id, outcome: "WRONG_ROOM_PIN", studentCode: code, studentName: rawName || null, riskScore: 20 });
+    return ok({
+      ok: false, reason: "WRONG_ROOM_PIN",
+      message: "اكتب كود القاعة (4 أرقام) الظاهر على شاشة الحصة جنب كود QR — ولو اتغيّر وانت بيكتب، اكتب الجديد وسجّل تاني.",
+    });
   }
 
   const isOpen = session.studentSource === "OPEN";
@@ -252,6 +274,12 @@ export const POST = handler(async (req: Request) => {
   }
 
   // ===== 8) فحوص سريعة ودّية قبل الإدخال (القاعدة النهائية في الداتابيز) =====
+  // الاسم/الكود المعروضين: الحقيقي من السجل للطلاب الحقيقيين — وإلا الاسم/الكود المكتوبين
+  const displayName = matchedStudent?.name ?? rawName;
+  const displayCode = matchedStudent?.code ?? code;
+  // هوية الكود للمفتوح/غير المسجل: كود الطالب بيتسجل مرة واحدة لكل حصة مهما كان الجهاز
+  const openIdentityCode = isOpen || !matchedStudentId ? code : null;
+
   if (matchedStudentId) {
     const byStudent = await db.attendance.findUnique({
       where: { sessionId_studentId: { sessionId: session.id, studentId: matchedStudentId } },
@@ -267,10 +295,21 @@ export const POST = handler(async (req: Request) => {
       });
     }
   }
+
+  // --- قفل الجهاز (معرّف المتصفح nk_did) ---
   const byDevice = await db.attendance.findUnique({
     where: { sessionId_deviceId: { sessionId: session.id, deviceId } },
   });
   if (byDevice) {
+    if (byDevice.studentCode === displayCode) {
+      // نفس الجهاز نفس الكود — ريفرش/إعادة إرسال (idempotent ودّي — مش غش)
+      await attempt({ centerId: qr.centerId, sessionId: session.id, outcome: "ALREADY_ATTENDED", studentId: matchedStudentId, studentCode: code, studentName: rawName || null });
+      return ok({
+        ok: true, alreadyAttended: true,
+        studentName: byDevice.studentName ?? displayName, studentCode: byDevice.studentCode ?? displayCode,
+        sessionLabel, status: byDevice.status,
+      });
+    }
     // ⛔ القاعدة الأساسية: الجهاز ده سجّل حضور لطالب تاني في نفس الحصة
     await attempt({
       centerId: qr.centerId, sessionId: session.id, outcome: "DEVICE_LOCKED",
@@ -294,8 +333,84 @@ export const POST = handler(async (req: Request) => {
     });
   }
 
+  // --- قفل البصمة (مضاد الإنكوجنتو/مسح بيانات الموقع): نفس المتصفح الفيزيائي = حضور واحد ---
+  // الهوية العشوائية (nk_did) بتتولد من جديد بعد مسح بيانات الموقع أو في نافذة خاصة —
+  // البصمة (canvas/audio/WebGL/خطوط/هاردوير) ثابتة — فاللي مسح بياناته وجرّب تاني بيتقفل هنا.
+  if (fp) {
+    const byFp = await db.attendance.findUnique({
+      where: { sessionId_deviceFingerprint: { sessionId: session.id, deviceFingerprint: fp } },
+    });
+    if (byFp) {
+      if (byFp.studentCode === displayCode) {
+        // نفس الشخص — مسح بيانات المتصفح/ريفرش عميق (الاسم/الكود زي ما اتسجلوا الأول)
+        await attempt({ centerId: qr.centerId, sessionId: session.id, outcome: "ALREADY_ATTENDED", studentId: matchedStudentId, studentCode: code, studentName: rawName || null });
+        return ok({
+          ok: true, alreadyAttended: true,
+          studentName: byFp.studentName ?? displayName, studentCode: byFp.studentCode ?? displayCode,
+          sessionLabel, status: byFp.status,
+        });
+      }
+      await attempt({
+        centerId: qr.centerId, sessionId: session.id, outcome: "DEVICE_LOCKED",
+        studentId: matchedStudentId, studentCode: code, studentName: rawName || null,
+        riskScore: 90, riskFlags: ["FINGERPRINT_REUSED", "MULTIPLE_STUDENTS_SAME_DEVICE"],
+      });
+      await logAudit({
+        user: { id: matchedStudentId ?? "UNKNOWN", name: rawName || "طالب من غير حساب", centerId: qr.centerId },
+        action: AUDIT.DEVICE_ALREADY_USED, entity: "PUBLIC_CHECKIN", entityId: session.id,
+        reason: "نفس بصمة المتصفح اتسجل بيه حضور قبل كده في الحصة (إنكوجنتو/مسح بيانات الموقع؟) — اترفض",
+        after: { studentCode: code.slice(0, 12), ip, deviceTail: deviceId.slice(-6), fpTail: fp.slice(-8) },
+      }).catch(() => {});
+      void notifyStaff(qr.centerId, {
+        type: "ATTENDANCE", title: "⚠️ محاولة تسجيل من متصفح متسجل قبل كده",
+        body: `في ${sessionLabel}: متصفح نفس البصمة اتسجل بيه حضور قبل كده حاول يسجّل ${rawName || `كود ${code}`} — اترفض تلقائيًا.`,
+        link: "today", refId: session.id,
+      }).catch(() => {});
+      return ok({
+        ok: false, reason: "DEVICE_LOCKED",
+        message: "الجهاز ده اتسجل بيه حضور في الحصة دي بالفعل — كل طالب بيسجّل من موبايله بنفسه.",
+      });
+    }
+  }
+
+  // --- قفل الكود (مضاد النيابة): كود طالب غايب مينفعش يتسجل من موبايل حد تاني ---
+  if (openIdentityCode) {
+    const byCode = await db.attendance.findUnique({
+      where: { sessionId_attendanceCode: { sessionId: session.id, attendanceCode: openIdentityCode } },
+    });
+    if (byCode) {
+      await attempt({
+        centerId: qr.centerId, sessionId: session.id, outcome: "CODE_ALREADY_USED",
+        studentId: matchedStudentId, studentCode: code, studentName: rawName || null,
+        riskScore: 70, riskFlags: ["STUDENT_CODE_REUSED"],
+      });
+      await logAudit({
+        user: { id: matchedStudentId ?? "UNKNOWN", name: rawName || "طالب من غير حساب", centerId: qr.centerId },
+        action: AUDIT.DEVICE_ALREADY_USED, entity: "PUBLIC_CHECKIN", entityId: session.id,
+        reason: `كود الطالب ${code.slice(0, 12)} اتسجل بيه حضور من جهاز تاني — محاولة تسجيل نيابة ات رفضت`,
+        after: { ip, deviceTail: deviceId.slice(-6) },
+      }).catch(() => {});
+      void notifyStaff(qr.centerId, {
+        type: "ATTENDANCE", title: "⚠️ كود طالب اتسجل مرتين من جهازين",
+        body: `في ${sessionLabel}: كود ${code.slice(0, 12)} اتسجل بيه حضور قبل كده من جهاز تاني، وحاول ${rawName || "حد تاني"} يسجّل بيه — اترفض. (لو الطالب نفسه، سجّله يدويًا من شاشة الحصة)`,
+        link: "today", refId: session.id,
+      }).catch(() => {});
+      return ok({
+        ok: false, reason: "CODE_ALREADY_USED",
+        message: "الكود ده اتسجل بيه حضور في الحصة دي من قبل — كل طالب بيسجّل من موبايله بنفسه. لو ده كودك وحصل لبس، كلّم المدرس/الاستقبال وهيسجلّك من شاشة الحصة.",
+      });
+    }
+  }
+
   // ===== 9) إشارات الخطورة (علم للمراجعة — مش رفض؛ IP مش هوية — spec §14) =====
-  const risk = await assessCheckInRisk({ sessionId: session.id, deviceId, ipAddress: ip });
+  // أعلام مضادات الغش: بصمة ناقصة (متصفح قديم) + التسجيل من شبكة مختلفة عن شبكة القاعة المرجعية
+  // (المعلم معمول لحظة فتح الحصة — نفس الواي فاي/NAT بيعدّي عادي، الشبكة التانية بتتعلم للمراجعة)
+  const extraRiskFlags: RiskFlag[] = [];
+  if (!fp) extraRiskFlags.push("MISSING_FINGERPRINT");
+  if (session.anchorIp && session.anchorIp !== "unknown" && ip !== "unknown" && ip !== session.anchorIp) {
+    extraRiskFlags.push("DIFFERENT_NETWORK");
+  }
+  const risk = await assessCheckInRisk({ sessionId: session.id, deviceId, ipAddress: ip, extraFlags: extraRiskFlags });
   if (risk.score >= STAFF_NOTIFY_SCORE) {
     await logAudit({
       user: { id: matchedStudentId ?? "UNKNOWN", name: rawName || "طالب", centerId: qr.centerId },
@@ -304,13 +419,14 @@ export const POST = handler(async (req: Request) => {
     }).catch(() => {});
   }
 
-  // ===== 10) الإدخال الذري — unique(sessionId, deviceId) هو الحَكم النهائي (spec §8/§11) =====
-  const displayName = matchedStudent?.name ?? rawName; // الحقيقي من السجل — وإلا الاسم المكتوب
-  const displayCode = matchedStudent?.code ?? code;
+  // ===== 10) الإدخال الذري — القواعد النهائية محفوظة في الداتابيز نفسها (spec §8/§11):
+  // unique(sessionId, deviceId) + unique(sessionId, deviceFingerprint) + unique(sessionId, attendanceCode)
+  // + unique(sessionId, studentId) — أي سباق متزامن الداتابيز هيحكم فيه النهائي =====
   const noteBits: string[] = [];
   if (grace) noteBits.push("حضور عام — QR الحصة (نافذة سماح)");
   else noteBits.push(isOpen ? "حضور مفتوح — QR الحصة" : "حضور عام — QR الحصة (قفل جهاز)");
   if (isOpen) noteBits.push("حضور مفتوح (من غير كشف)");
+  if (fp) noteBits.push("قفل بصمة");
   if (!isOpen && matchedStudent && !reg) noteBits.push("غير مسجل في المجموعة — اتقبل بإعدادات الحصة");
   if (mismatchNote) noteBits.push(mismatchNote);
 
@@ -324,7 +440,8 @@ export const POST = handler(async (req: Request) => {
         studentName: displayName, studentCode: displayCode.slice(0, 12),
         status: "PRESENT", charged: charge, method: "SESSION_QR",
         note: noteBits.join(" · "),
-        deviceId, ipAddress: ip, userAgent: ua,
+        deviceId, deviceFingerprint: fp || null, attendanceCode: openIdentityCode,
+        ipAddress: ip, userAgent: ua,
         riskScore: risk.score,
         riskFlags: risk.flags.length ? JSON.stringify(risk.flags) : null,
       },
@@ -332,11 +449,27 @@ export const POST = handler(async (req: Request) => {
     attendanceId = attendance.id;
     attendanceStatus = attendance.status;
   } catch (e) {
-    // سباق؟ الداتابيز حَكمت — حدّد مين الـ unique اللي اتكسر
+    // سباق؟ الداتابيز حَكمت — حدّد مين الـ unique اللي اتكسر (الترتيب: بصمة → جهاز → كود → طالب)
     const msg = e instanceof Error ? e.message : String(e);
     const target = String((e as { meta?: { target?: unknown } }).meta?.target ?? "");
+    const violated = `${target} ${msg}`;
     if (/unique constraint|P2002/i.test(msg)) {
-      if (/deviceId/i.test(`${target} ${msg}`)) {
+      if (/deviceFingerprint/i.test(violated)) {
+        // سباق على نفس البصمة — نفس الشخص كسب قبله ولا حد تاني بأخذ هوية المتصفح؟
+        const row = fp
+          ? await db.attendance.findUnique({ where: { sessionId_deviceFingerprint: { sessionId: session.id, deviceFingerprint: fp } } })
+          : null;
+        if (row && row.studentCode === displayCode) {
+          already = true; attendanceId = row.id; attendanceStatus = row.status; // نفس الشخص كسب قبله
+        } else {
+          await attempt({
+            centerId: qr.centerId, sessionId: session.id, outcome: "DEVICE_LOCKED",
+            studentId: matchedStudentId, studentCode: code, studentName: rawName || null,
+            riskScore: 90, riskFlags: ["FINGERPRINT_REUSED", "MULTIPLE_STUDENTS_SAME_DEVICE"],
+          });
+          return ok({ ok: false, reason: "DEVICE_LOCKED", message: "الجهاز ده اتسجل بيه حضور في الحصة دي بالفعل — كل طالب بيسجّل من موبايله بنفسه." });
+        }
+      } else if (/deviceId/i.test(violated)) {
         const dev = await db.attendance.findUnique({ where: { sessionId_deviceId: { sessionId: session.id, deviceId } } });
         if (dev && dev.studentId && dev.studentId === matchedStudentId) {
           already = true; attendanceId = dev.id; attendanceStatus = dev.status; // نفس الطالب كسب قبله
@@ -354,6 +487,14 @@ export const POST = handler(async (req: Request) => {
           }).catch(() => {});
           return ok({ ok: false, reason: "DEVICE_LOCKED", message: "الجهاز ده اتسجل بيه حضور في الحصة دي بالفعل — كل طالب بيسجّل من موبايله بنفسه." });
         }
+      } else if (/attendanceCode/i.test(violated)) {
+        // سباق: نفس الكود من جهازين — الأول كسب، والتاني رفض (مضاد النيابة)
+        await attempt({
+          centerId: qr.centerId, sessionId: session.id, outcome: "CODE_ALREADY_USED",
+          studentId: matchedStudentId, studentCode: code, studentName: rawName || null,
+          riskScore: 70, riskFlags: ["STUDENT_CODE_REUSED"],
+        });
+        return ok({ ok: false, reason: "CODE_ALREADY_USED", message: "الكود ده اتسجل بيه حضور في الحصة دي من قبل — كل طالب بيسجّل من موبايله بنفسه. لو ده كودك وحصل لبس، كلّم المدرس/الاستقبال." });
       } else {
         const st = matchedStudentId
           ? await db.attendance.findUnique({ where: { sessionId_studentId: { sessionId: session.id, studentId: matchedStudentId } } })

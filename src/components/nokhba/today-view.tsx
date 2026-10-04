@@ -409,6 +409,8 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: {
   const [groupId, setGroupId] = useState("");
   const [allowUnreg, setAllowUnreg] = useState(false);
   const [codeLen, setCodeLen] = useState("5");
+  // مضاد الغش: كود قاعة متغيّر جنب الـ QR (مفعّل افتراضيًا — طلب المستخدم ضد مشاركة الكود)
+  const [roomPin, setRoomPin] = useState(true);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [busy, setBusy] = useState(false);
@@ -423,6 +425,7 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: {
       setName("");
       setAllowUnreg(false);
       setCodeLen("5");
+      setRoomPin(true); // مضاد الغش مفعّل افتراضيًا — المدرس يقدر يقفله
     }
   }, [open]);
 
@@ -444,8 +447,8 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: {
     setBusy(true);
     try {
       const body = source === "OPEN"
-        ? { studentSource: "OPEN", name: name.trim(), studentCodeLength: codeLenNum, startTime, endTime }
-        : { studentSource: "ROSTER", groupId, startTime, endTime, allowUnregistered: allowUnreg };
+        ? { studentSource: "OPEN", name: name.trim(), studentCodeLength: codeLenNum, startTime, endTime, requireRoomPin: roomPin }
+        : { studentSource: "ROSTER", groupId, startTime, endTime, allowUnregistered: allowUnreg, requireRoomPin: roomPin };
       const res = await api<{ session: { id: string } }>("/api/sessions", { method: "POST", body });
       toast.success(source === "OPEN" ? "الحصة المفتوحة فتحت 🟢 — اعرض الكود وخلي الطلاب يسجلوا" : "الحصة فتحت 🟢 — جاهزة للمسح");
       onCreated(res.session.id);
@@ -563,6 +566,23 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: {
               </p>
             </div>
           )}
+
+          {/* مضاد الغش — مفعّل افتراضيًا (مضاد مشاركة الـ QR عن بُعد): كود قاعة متغيّر جنب الـ QR */}
+          <label className="flex items-start gap-2.5 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50/70 dark:bg-amber-500/10 px-3.5 py-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={roomPin}
+              onChange={(e) => setRoomPin(e.target.checked)}
+              className="w-4 h-4 mt-0.5 accent-amber-600"
+            />
+            <span className="text-xs font-bold leading-snug">
+              🔒 كود مكافحة الغش (موصى به)
+              <span className="block text-[10.5px] font-semibold text-muted-foreground">
+                4 أرقام بتظهر جنب الـ QR وبتتبدّل كل دقيقتين — الطالب يكتبها مع اسمه وكوده،
+                فصورة الكود المتبعتة لحد بره القاعة مبتنفّعش
+              </span>
+            </span>
+          </label>
 
           {/* وقت الحصة — افتراضي منطقي وقابل للتعديل */}
           <div className="grid grid-cols-2 gap-2">

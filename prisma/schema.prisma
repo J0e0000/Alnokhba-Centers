@@ -317,6 +317,15 @@ model SessionInstance {
   allowUnregistered Boolean @default(false)
   // OPEN: طول كود الطالب المطلوب (3..12) — ممنوع hardcode 5 (spec §2)
   studentCodeLength Int?
+  // ===== مضادات الغش (anti-cheat layer) =====
+  // كود القاعة المتغيّر (Room PIN): 4 أرقام مشتقة HMAC من معرف الحصة + نافذة زمنية 120ث —
+  // بتتعرض بخط كبير على شاشة الحصة جنب الـ QR، والطالب يكتبها مع اسمه وكوده.
+  // السكرين شوت المتبعت لحد بره القاعة لازم يكون مصور الكود PIN بنفس اللحظة،
+  // والاتنين بيغيّروا بسرعة — فالمشاركة عن بُعد محتاجة «موصل حي» جوه القاعة كل شوية.
+  requireRoomPin Boolean @default(false)
+  // شبكة القاعة المرجعية: الـ IP العام لجهاز اللي فتح الحصة — التسجيلات الواردة من شبكة
+  // مختلفة بتتعلّم للمراجعة (flag مش رفض — الواي فاي المشترك/NAT مش هوية، spec §18)
+  anchorIp String?
   date          String // YYYY-MM-DD
   startTime     String
   endTime       String
@@ -368,6 +377,15 @@ model Attendance {
   // snapshot خام لاسم/كود الطالب وقت التسجيل (الحضور المفتوح + غير المسجلين + CSV) — للطلاب الحقيقيين بيتملّوا كمان
   studentName String?
   studentCode String?
+  // بصمة المتصفح عالية الإنتروبيا (canvas + audio + WebGL + خطوط + هاردوير + شاشة) —
+  // بتقفل ثغرة الإنكوجنتو/مسح بيانات الموقع: نفس المتصفح الفيزيائي بيطلع نفس البصمة
+  // حتى بعد مسح الكوكي/LocalStorage أو فتح نافذة خاصة. مش إثبات هوية مطلق —
+  // جهازان من نفس الموديل والنسخة ممكن يتشابهوا (نادرة، والمراجعة اليدوية بتغطيها).
+  deviceFingerprint String?
+  // هوية الكود للحضور المفتوح/غير المسجلين: كود الطالب بيتقبل مرة واحدة لكل حصة
+  // مهما كان الجهاز — بيقفل الغش «هسجّل كود صاحبي الغايب من موبايلي».
+  // للطلاب الحقيقيين (ليهم studentId) الحماية جاية من unique(sessionId, studentId) — فبنسيبهم null.
+  attendanceCode String?
   createdAt  DateTime       @default(now())
   session    SessionInstance @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   student    Student?        @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -375,8 +393,13 @@ model Attendance {
   @@unique([sessionId, studentId])
   // القاعدة الأساسية: جهاز واحد = حضور واحد ناجح لكل حصة (الـ NULLs مش بتتعارض — الحضور الموظفين/اليدوي بيفضل شغال)
   @@unique([sessionId, deviceId])
+  // قفل البصمة: نفس المتصفح الفيزيائي حتى بعد مسح كل بيانات الموقع/إنكوجنتو = حضور واحد لكل حصة
+  @@unique([sessionId, deviceFingerprint])
+  // قفل الكود: كود الطالب (المفتوح/غير المسجل) بيتسجل مرة واحدة لكل حصة مهما كان الجهاز
+  @@unique([sessionId, attendanceCode])
   @@index([centerId, studentId])
   @@index([deviceId])
+  @@index([deviceFingerprint])
 }
 
 // ============================= FINANCIAL LEDGER =============================
@@ -1464,6 +1487,7 @@ model CheckInAttempt {
   studentCode String? // الكود المكتوب (مقصوص — للتدقيق)
   studentName String? // الاسم المكتوب (الحضور المفتوح/غير المسجلين — للمراجعة)
   deviceId    String?
+  deviceFingerprint String? // بصمة المتصفح (للتدقيق — مين حاول يستخدم نفس المتصفح بهوية جديدة)
   ipAddress   String?
   userAgent   String?
   riskScore   Int      @default(0)
