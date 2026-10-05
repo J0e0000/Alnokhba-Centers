@@ -71,6 +71,25 @@ function nameLooksSimilar(a: string, b: string): boolean {
   return short.split(" ").every((w) => long.includes(w));
 }
 
+/* ============================================================
+   توسعة قاعدة البيانات (Task R): عدّاد استخدام التوكن = نقطة ازدحام كتابة —
+   كل طالب ناجح بيعمل UPDATE على **نفس صف التوكن** → كل التسجيلات المتزامنة
+   بتتصطدم على نفس الصف (row lock على Postgres / قفل ملف SQLite).
+   العدّاد ده telemetry مكتوب ومش مقروء في أي مكان — فبنحدّثه مرة كل 30 ثانية
+   لكل توكن بدل كل طالب: نفس المعلومة النهائية، صفر ازدحام.
+============================================================ */
+const tokenTouchAt = new Map<string, number>();
+function shouldTouchToken(qrId: string): boolean {
+  const now = Date.now();
+  if (tokenTouchAt.size > 500) {
+    for (const [k, v] of tokenTouchAt) if (now - v > 120_000) tokenTouchAt.delete(k);
+  }
+  const last = tokenTouchAt.get(qrId) ?? 0;
+  if (now - last < 30_000) return false;
+  tokenTouchAt.set(qrId, now);
+  return true;
+}
+
 export const POST = handler(async (req: Request) => {
   const body = await readJson<Body>(req);
   const token = String(body.token ?? "").trim().toLowerCase();
@@ -280,10 +299,44 @@ export const POST = handler(async (req: Request) => {
   // هوية الكود للمفتوح/غير المسجل: كود الطالب بيتسجل مرة واحدة لكل حصة مهما كان الجهاز
   const openIdentityCode = isOpen || !matchedStudentId ? code : null;
 
+  // ===== 8ب) إشارات الخطورة (علم للمراجعة — مش رفض؛ IP مش هوية — spec §14) =====
+  // أعلام مضادات الغش: بصمة ناقصة (متصفح قديم) + التسجيل من شبكة مختلفة عن شبكة القاعة المرجعية
+  // (المعلم معمول لحظة فتح الحصة — نفس الواي فاي/NAT بيعدّي عادي، الشبكة التانية بتتعلم للمراجعة)
+  // (اتنقلت فوق قراءة الأقفال — Task R: المخاطر بتتشغل بالتوازي معاها)
+  const extraRiskFlags: RiskFlag[] = [];
+  if (!fp) extraRiskFlags.push("MISSING_FINGERPRINT");
+  if (session.anchorIp && session.anchorIp !== "unknown" && ip !== "unknown" && ip !== session.anchorIp) {
+    extraRiskFlags.push("DIFFERENT_NETWORK");
+  }
+
+  // --- توسعة قاعدة البيانات (Task R): استعلام واحد بدل 4 استعلامات متتالية للأقفال،
+  //     مع تقييم المخاطر بالتوازي (مستقل عنها تمامًا) — نص رحلات الداتابيز المتسلسلة.
+  //     القواعد نفسها وترتيب الأولوية نفسه بالظبط (طالب → جهاز → بصمة → كود) — صفر تغيير سلوك ---
+  const [lockRows, risk] = await Promise.all([
+    db.attendance.findMany({
+      where: {
+        sessionId: session.id,
+        OR: [
+          ...(matchedStudentId ? [{ studentId: matchedStudentId }] : []),
+          { deviceId },
+          ...(fp ? [{ deviceFingerprint: fp }] : []),
+          ...(openIdentityCode ? [{ attendanceCode: openIdentityCode }] : []),
+        ],
+      },
+      select: { id: true, studentId: true, studentCode: true, studentName: true, status: true, deviceId: true, deviceFingerprint: true, attendanceCode: true },
+    }),
+    assessCheckInRisk({ sessionId: session.id, deviceId, ipAddress: ip, extraFlags: extraRiskFlags }),
+  ]);
+  if (risk.score >= STAFF_NOTIFY_SCORE) {
+    await logAudit({
+      user: { id: matchedStudentId ?? "UNKNOWN", name: rawName || "طالب", centerId: qr.centerId },
+      action: AUDIT.SUSPICIOUS_ACTIVITY, entity: "PUBLIC_CHECKIN", entityId: session.id,
+      reason: riskSummary(risk), after: { riskScore: risk.score, ip, deviceTail: deviceId.slice(-6) },
+    }).catch(() => {});
+  }
+
   if (matchedStudentId) {
-    const byStudent = await db.attendance.findUnique({
-      where: { sessionId_studentId: { sessionId: session.id, studentId: matchedStudentId } },
-    });
+    const byStudent = lockRows.find((r) => r.studentId === matchedStudentId);
     if (byStudent) {
       // نفس الطالب متسجل — إعادة محاولة/ريفرش/نفس الطالب من جهاز تاني = رد آمن idempotent
       await attempt({ centerId: qr.centerId, sessionId: session.id, outcome: "ALREADY_SAME_STUDENT", studentId: matchedStudentId, studentCode: code, studentName: rawName || null });
@@ -296,10 +349,8 @@ export const POST = handler(async (req: Request) => {
     }
   }
 
-  // --- قفل الجهاز (معرّف المتصفح nk_did) ---
-  const byDevice = await db.attendance.findUnique({
-    where: { sessionId_deviceId: { sessionId: session.id, deviceId } },
-  });
+  // --- قفل الجهاز (معرّف المتصفح nk_did) --- من نفس دفعة القراءة الموحدة
+  const byDevice = lockRows.find((r) => r.deviceId === deviceId);
   if (byDevice) {
     if (byDevice.studentCode === displayCode) {
       // نفس الجهاز نفس الكود — ريفرش/إعادة إرسال (idempotent ودّي — مش غش)
@@ -337,9 +388,7 @@ export const POST = handler(async (req: Request) => {
   // الهوية العشوائية (nk_did) بتتولد من جديد بعد مسح بيانات الموقع أو في نافذة خاصة —
   // البصمة (canvas/audio/WebGL/خطوط/هاردوير) ثابتة — فاللي مسح بياناته وجرّب تاني بيتقفل هنا.
   if (fp) {
-    const byFp = await db.attendance.findUnique({
-      where: { sessionId_deviceFingerprint: { sessionId: session.id, deviceFingerprint: fp } },
-    });
+    const byFp = lockRows.find((r) => r.deviceFingerprint === fp);
     if (byFp) {
       if (byFp.studentCode === displayCode) {
         // نفس الشخص — مسح بيانات المتصفح/ريفرش عميق (الاسم/الكود زي ما اتسجلوا الأول)
@@ -375,9 +424,7 @@ export const POST = handler(async (req: Request) => {
 
   // --- قفل الكود (مضاد النيابة): كود طالب غايب مينفعش يتسجل من موبايل حد تاني ---
   if (openIdentityCode) {
-    const byCode = await db.attendance.findUnique({
-      where: { sessionId_attendanceCode: { sessionId: session.id, attendanceCode: openIdentityCode } },
-    });
+    const byCode = lockRows.find((r) => r.attendanceCode === openIdentityCode);
     if (byCode) {
       await attempt({
         centerId: qr.centerId, sessionId: session.id, outcome: "CODE_ALREADY_USED",
@@ -402,22 +449,7 @@ export const POST = handler(async (req: Request) => {
     }
   }
 
-  // ===== 9) إشارات الخطورة (علم للمراجعة — مش رفض؛ IP مش هوية — spec §14) =====
-  // أعلام مضادات الغش: بصمة ناقصة (متصفح قديم) + التسجيل من شبكة مختلفة عن شبكة القاعة المرجعية
-  // (المعلم معمول لحظة فتح الحصة — نفس الواي فاي/NAT بيعدّي عادي، الشبكة التانية بتتعلم للمراجعة)
-  const extraRiskFlags: RiskFlag[] = [];
-  if (!fp) extraRiskFlags.push("MISSING_FINGERPRINT");
-  if (session.anchorIp && session.anchorIp !== "unknown" && ip !== "unknown" && ip !== session.anchorIp) {
-    extraRiskFlags.push("DIFFERENT_NETWORK");
-  }
-  const risk = await assessCheckInRisk({ sessionId: session.id, deviceId, ipAddress: ip, extraFlags: extraRiskFlags });
-  if (risk.score >= STAFF_NOTIFY_SCORE) {
-    await logAudit({
-      user: { id: matchedStudentId ?? "UNKNOWN", name: rawName || "طالب", centerId: qr.centerId },
-      action: AUDIT.SUSPICIOUS_ACTIVITY, entity: "PUBLIC_CHECKIN", entityId: session.id,
-      reason: riskSummary(risk), after: { riskScore: risk.score, ip, deviceTail: deviceId.slice(-6) },
-    }).catch(() => {});
-  }
+  // (إشارات الخطورة والمخاطر اتنقلوا قبل الأقفال — Task R: قراءة موحدة بالتوازي)
 
   // ===== 10) الإدخال الذري — القواعد النهائية محفوظة في الداتابيز نفسها (spec §8/§11):
   // unique(sessionId, deviceId) + unique(sessionId, deviceFingerprint) + unique(sessionId, attendanceCode)
@@ -508,32 +540,40 @@ export const POST = handler(async (req: Request) => {
   }
 
   // ===== 11) التوثيق والإشعارات (الخصم لو فشل يتراجع يدويًا — زي claim بالظبط) =====
+  // توسعة قاعدة البيانات (Task R): الكتابات المستقلة كلها بتتشغل **بالتوازي** في دفعة واحدة
+  // (كانت متسلسلة await ورا بعض — مفيش أي منطق بيعتمد على ترتيبها، والقيد الحاكم اتحقق:
+  // الحضور اتسجل) — القسم ده كان بياخد 4-5 رحلات متتالية للداتابيز، دلوقتي أطول واحدة بس.
+  const tailTasks: Promise<unknown>[] = [];
   if (!already) {
     if (charge && charge > 0 && matchedStudentId) {
-      await db.studentTransaction.create({
+      tailTasks.push(db.studentTransaction.create({
         data: {
           centerId: qr.centerId, studentId: matchedStudentId, sessionId: session.id,
           type: "CHARGE", amount: -charge,
           reason: `حصة ${session.group?.subject.name ?? ""} (QR الحصة — حضور عام)`,
           createdBy: "PUBLIC_QR",
         },
-      }).catch((err) => { console.error("[public-qr-charge-failed]", err); });
+      }).catch((err) => { console.error("[public-qr-charge-failed]", err); }));
     }
-    await db.sessionQRToken.update({
-      where: { id: qr.id }, data: { useCount: { increment: 1 }, lastUsedAt: new Date() },
-    }).catch(() => {});
-    await recordAttendanceEvent({
+    // عدّاد التوكن = telemetry مش مقروءة في أي حتة — تحديث مقيّد (مرة/30ث لكل توكن)
+    // بدل تحديث من كل طالب على **نفس الصف** (نقطة ازدحام كتابة بتسلسل التسجيلات المتزامنة)
+    if (shouldTouchToken(qr.id)) {
+      tailTasks.push(db.sessionQRToken.update({
+        where: { id: qr.id }, data: { useCount: { increment: 1 }, lastUsedAt: new Date() },
+      }).catch(() => {}));
+    }
+    tailTasks.push(recordAttendanceEvent({
       centerId: qr.centerId, personType: "STUDENT", method: "DYNAMIC_QR", status: "PRESENT",
       studentId: matchedStudentId ?? undefined, displayName, role: "STUDENT",
       sessionId: session.id,
       metadata: { public: true, grace, deviceTail: deviceId.slice(-6), risk: risk.flags, sessionLabel, mode: isOpen ? "OPEN" : matchedStudent ? "ROSTER" : "UNREGISTERED" },
-    });
-    await logAudit({
+    }));
+    tailTasks.push(logAudit({
       user: { id: matchedStudentId ?? "PUBLIC_QR", name: displayName, centerId: qr.centerId },
       action: AUDIT.QR_SCAN_SUCCESS, entity: "ATTENDANCE", entityId: attendanceId,
       after: { student: displayName, session: sessionLabel, method: "PUBLIC_QR", charged: charge, risk: risk.flags },
       reason: grace ? "حضور عام (نافذة سماح — شاف الكود وهو حي)" : isOpen ? "حضور مفتوح — قفل جهاز" : "حضور عام — قفل جهاز",
-    });
+    }).catch(() => {}));
     if (matchedStudentId) {
       // إشعار الطالب بس للطلاب الحقيقيين (الحضور المفتوح مفيش حساب يتبعت له)
       void notifyStudentsAttendance(
@@ -550,13 +590,14 @@ export const POST = handler(async (req: Request) => {
     // الحضور المفتوح: مفيش إشعارات لكل طالب (فصل كامل = سبام) — العداد الحي على شاشة الحصة كفاية
   }
 
-  // ===== 12) سجل المحاولة (للوحة النشاط المشبوه) =====
-  await attempt({
+  // ===== 12) سجل المحاولة (للوحة النشاط المشبوه) — مستقل → في نفس الدفعة المتوازية =====
+  tailTasks.push(attempt({
     centerId: qr.centerId, sessionId: session.id,
     outcome: already ? "ALREADY_ATTENDED" : "ACCEPTED",
     studentId: matchedStudentId, studentCode: code, studentName: rawName || null,
     riskScore: risk.score, riskFlags: risk.flags,
-  });
+  }));
+  await Promise.all(tailTasks);
 
   // الرد العام مفيهوش بيانات مالية ولا أرصدة (خصوصية — صفحة من غير تسجيل دخول)
   return ok({

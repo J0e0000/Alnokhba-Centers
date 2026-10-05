@@ -17,11 +17,25 @@ import {
    - أول قراءة لمركز بتزرع الصفوف الافتراضية (كل الميزات القديمة ON،
      البصمة OFF) → صفر تراجع لأي سلوك موجود.
    - requireCapability() بترمي 403 برسالة عربية واضحة لما القدرة مقفولة.
-   - قراءة موحدة بمصفوفة واحدة (findMany واحدة لكل نداء).
+   - قراءة موحدة بمصفوفة واحدة لكل نداء.
+   - توسعة (Task R): كاش 30 ثانية لكل سنتر — القدرات بتتقري في كل نداء
+     check-in/peek/scan ديناميكي وبتتغير مرة في شهر تقريبًا (شاشة المدير)،
+     وأي تعديل من شاشة الإعدادات بيلغي الكاش فورًا (invalidateCenterCapabilities).
 ============================================================ */
+
+const CAPS_TTL_MS = 30_000;
+const capsCache = new Map<string, { at: number; map: CapabilityMap }>();
+
+/** إلغاء الكاش — بيتنادي من أي route بيعدّل قدرات سنتر */
+export function invalidateCenterCapabilities(centerId?: string): void {
+  if (centerId) capsCache.delete(centerId);
+  else capsCache.clear();
+}
 
 /** يقرأ قدرات المركز ويزرع الافتراضي الناقص (idempotent) */
 export async function getCenterCapabilities(centerId: string): Promise<CapabilityMap> {
+  const hit = capsCache.get(centerId);
+  if (hit && Date.now() - hit.at < CAPS_TTL_MS) return hit.map;
   const rows = await db.centerCapability.findMany({ where: { centerId } });
   const map = defaultCapabilityMap();
   for (const row of rows) {
@@ -47,6 +61,7 @@ export async function getCenterCapabilities(centerId: string): Promise<Capabilit
       })),
     }).catch(() => {}); // سباق بين نداءين → unique بيفشل ونداء تاني غطّاه
   }
+  capsCache.set(centerId, { at: Date.now(), map });
   return map;
 }
 

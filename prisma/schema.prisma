@@ -1497,6 +1497,8 @@ model CheckInAttempt {
   center      Center   @relation(fields: [centerId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, createdAt])
+  @@index([sessionId, deviceId])
+  @@index([sessionId, ipAddress])
   @@index([deviceId])
   @@index([ipAddress, createdAt])
   @@index([centerId, createdAt])
