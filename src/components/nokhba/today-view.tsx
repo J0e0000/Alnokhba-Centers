@@ -379,9 +379,11 @@ function StatusChip({ children, tone }: { children: React.ReactNode; tone: "gree
 
 /* ============================================================
    شيت حصة جديدة (spec §3): اسم + مصدر طلاب + إعداد واحد لكل مصدر + ابدأ.
-   - قاعدة بيانات/كشف: اختار المجموعة (الكشف) — الغايب بيتحسب تلقائيًا بعد القفل
+   الاختيار الوحيد المطلوب من المدرس (طلب المستخدم حرفيًا):
+   - من قاعدة البيانات: بيتحقق من وجود الطالب في النظام قبل التسجيل (كشف/مجموعة)
+   - بدون قاعدة بيانات: الاسم والكود بيتسجلوا زي ما الطالب يكتبهم — من غير أي تحقق
    - حضور مفتوح: طول كود الطالب (افتراضي 5 — قابل للضبط، مش hardcode)
-   — الإعداد الأدنى الممكن؛ مفيش صفحة إعدادات كاملة
+   — الإعداد الأدنى الممكن؛ اسم الحصة المفتوحة بيتعبّي لوحده (فتح بضغطة)
 ============================================================ */
 
 type GroupOption = { id: string; name: string; subject: string; grade: string; students: number };
@@ -476,23 +478,27 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: {
               )}
             >
               <Users className="w-5 h-5 mb-1.5" />
-              <span className="block font-extrabold text-sm">قاعدة بيانات</span>
+              <span className="block font-extrabold text-sm">من قاعدة البيانات</span>
               <span className={cn("block text-[10.5px] font-bold leading-snug", source === "ROSTER" ? "opacity-90" : "text-muted-foreground")}>
-                كشف مجموعة — الغايب بيتحسب تلقائيًا
+                بيتحقق من وجود الطالب في النظام — والغايب بيتحسب تلقائيًا
               </span>
             </button>
             <button
               type="button"
-              onClick={() => setSource("OPEN")}
+              onClick={() => {
+                setSource("OPEN");
+                // اسم افتراضي جاهز — المدرس يقدر يفتح الحصة بضغطة واحدة من غير كتابة (طلب المستخدم)
+                setName((n) => n || `حضور مفتوح — ${timeNowRounded()}`);
+              }}
               className={cn(
                 "rounded-2xl border-2 p-3 text-start transition active:scale-[0.98]",
                 source === "OPEN" ? "nk-brand-bg text-white border-transparent shadow" : "border-border bg-card hover:bg-muted/50",
               )}
             >
               <Globe2 className="w-5 h-5 mb-1.5" />
-              <span className="block font-extrabold text-sm">حضور مفتوح</span>
+              <span className="block font-extrabold text-sm">بدون قاعدة بيانات</span>
               <span className={cn("block text-[10.5px] font-bold leading-snug", source === "OPEN" ? "opacity-90" : "text-muted-foreground")}>
-                من غير كشف — أي حد يسجل باسمه
+                يسجّل الاسم والكود زي ما الطالب يكتبهم — من غير تحقق
               </span>
             </button>
           </div>

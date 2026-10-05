@@ -26,6 +26,27 @@ if (!process.env.DATABASE_URL) {
   }
 }
 
+// ============================================================
+// توسعة قاعدة البيانات (Task R) — ضبط الاتصال حسب نوع الداتابيز:
+// - Postgres مُدار: connection_limit افتراضي آمن لكل lambda (بيمنع استنزاف
+//   اتصالات الداتابيز لما موجة طلبة تمسح في نفس الثانية) + pool_timeout.
+//   يتعاد الضبط بمتغير البيئة NK_DB_CONNECTION_LIMIT من غير deploy جديد.
+// - SQLite (تطوير/اختبار): journal_mode=WAL — القراءات مش بتحجب الكاتب
+//   والعكس (الوضع دايم على مستوى ملف الداتابيز — تنفيذ واحد كفاية).
+// ============================================================
+if (process.env.DATABASE_URL.startsWith('postgres')) {
+  try {
+    const u = new URL(process.env.DATABASE_URL)
+    if (!u.searchParams.has('connection_limit')) {
+      u.searchParams.set('connection_limit', process.env.NK_DB_CONNECTION_LIMIT ?? '10')
+    }
+    if (!u.searchParams.has('pool_timeout')) u.searchParams.set('pool_timeout', '15')
+    process.env.DATABASE_URL = u.toString()
+  } catch {
+    // URL غير قياسي — سيبه زي ما هو
+  }
+}
+
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
@@ -35,6 +56,12 @@ export const db =
   new PrismaClient({
     log: ['error'],
   })
+
+// SQLite WAL (توسعة Task R) — mode دايم على مستوى الملف؛ تنفيذ أول تشغيل كفاية
+// (فشل صامت لو الملف مقفول من عملية تانية — المرة الجاية هيتم)
+if (process.env.DATABASE_URL.startsWith('file:')) {
+  db.$queryRawUnsafe('PRAGMA journal_mode=WAL;').catch(() => {})
+}
 
 // Cache on EVERY environment (incl. production): Next.js bundles this module
 // into each route's serverless bundle — without globalThis caching, every

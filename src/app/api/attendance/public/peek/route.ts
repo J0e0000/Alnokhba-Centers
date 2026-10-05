@@ -27,6 +27,23 @@ function clientIp(req: Request): string {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/* ============================================================
+   توسعة قاعدة البيانات (Task R): ميكرو-كاش 3 ثواني للقراءات.
+   موجة فصل كامل بيمسح الكود في نفس الثواني = كل طالب بيعمل peek
+   لنفس التوكن — والبيانات دي (الحصة/القدرة/الوضع) مش بتتغير أسرع من كده.
+   pv بيتولّد **لكل طلب** (موقّع بـ qrId+deviceId+iat — HMAC بدون تخزين).
+   التحقق النهائي والأحكام كلها في /check-in — الكاش هنا تسريع قراءة بس.
+============================================================ */
+const PEEK_TTL_MS = 3_000;
+const peekCache = new Map<string, { at: number; payload: Record<string, unknown> }>();
+function peekCachePut(token: string, payload: Record<string, unknown>): void {
+  if (peekCache.size > 400) {
+    const cutoff = Date.now() - 30_000;
+    for (const [k, v] of peekCache) if (v.at < cutoff) peekCache.delete(k);
+  }
+  peekCache.set(token, { at: Date.now(), payload });
+}
+
 export const GET = handler(async (req: Request) => {
   // مقياس قاعة: فصل كامل بيمسح الكود في نفس الدقيقة من نفس الواي فاي (600/دقيقة)
   rateLimit(`peek:${clientIp(req)}`, 600, 60_000);
@@ -35,35 +52,56 @@ export const GET = handler(async (req: Request) => {
   const token = (url.searchParams.get("token") ?? "").trim().toLowerCase();
   const deviceId = (url.searchParams.get("deviceId") ?? "").trim();
 
+  // إصابة الكاش: نفس بيانات القراءة + pv جديد بتوقيت دلوقتي
+  const cached = peekCache.get(token);
+  if (cached && Date.now() - cached.at < PEEK_TTL_MS) {
+    const c = cached.payload;
+    if (c.valid === true && typeof c.qrId === "string") {
+      const pv = UUID_RE.test(deviceId) ? issueSightingPv(c.qrId, deviceId).pv : null;
+      const { qrId: _qrId, ...rest } = c; // qrId داخلي — مش بيتسرب في الرد
+      return ok({ ...rest, pv });
+    }
+    return ok(c);
+  }
+
   let qr;
   try {
     qr = await resolveSessionQr(token); // INVALID | INACTIVE (متدوّر) | EXPIRED
   } catch (e) {
     const code = e instanceof Error && "code" in e ? String((e as { code?: string }).code) : "INVALID";
-    return ok({ valid: false, reason: code === "EXPIRED" ? "EXPIRED" : code === "INACTIVE" ? "REPLAYED" : "INVALID" });
+    const invalid = { valid: false, reason: code === "EXPIRED" ? "EXPIRED" : code === "INACTIVE" ? "REPLAYED" : "INVALID" };
+    peekCachePut(token, invalid);
+    return ok(invalid);
   }
   if (qr.scope !== "CENTERS" || !qr.centerId) {
-    return ok({ valid: false, reason: "INVALID" });
+    const invalid = { valid: false, reason: "INVALID" };
+    peekCachePut(token, invalid);
+    return ok(invalid);
   }
 
   // قدرة المركز: حضور QR الحصة = dynamic_qr
   if (!(await hasCapability(qr.centerId, "dynamic_qr"))) {
-    return ok({ valid: false, reason: "CAPABILITY_OFF" });
+    const off = { valid: false, reason: "CAPABILITY_OFF" };
+    peekCachePut(token, off);
+    return ok(off);
   }
 
   const session = await db.sessionInstance.findUnique({ where: { id: qr.sessionId } });
-  if (!session) return ok({ valid: false, reason: "INVALID" });
-  if (session.status === "CLOSED") return ok({ valid: false, reason: "CLOSED" });
-  if (session.status === "CANCELLED") return ok({ valid: false, reason: "CANCELLED" });
+  if (!session) {
+    const invalid = { valid: false, reason: "INVALID" };
+    peekCachePut(token, invalid);
+    return ok(invalid);
+  }
+  if (session.status === "CLOSED" || session.status === "CANCELLED") {
+    const dead = { valid: false, reason: session.status === "CLOSED" ? "CLOSED" : "CANCELLED" };
+    peekCachePut(token, dead);
+    return ok(dead);
+  }
 
-  // إثبات sighting — بيتولّد بس لما الكود حي دلوقتي ومربوط بمعرّف الجهاز
-  const pv = UUID_RE.test(deviceId) ? issueSightingPv(qr.qrId, deviceId).pv : null;
-
-  return ok({
-    valid: true,
+  const payload = {
+    valid: true as const,
     sessionLabel: qr.sessionLabel,
     status: session.status,
-    pv,
     // وضع الحضور (spec §1): OPEN = مطلوب اسم + كود بطول محدد · ROSTER = كود الطالب (والاسم فحص ناعم)
     studentSource: session.studentSource,
     expectedCodeLength: session.studentSource === "OPEN"
@@ -71,5 +109,12 @@ export const GET = handler(async (req: Request) => {
       : null,
     // كود القاعة المتغيّر (مضاد مشاركة الـ QR): الصفحة بتظهر خانة كتابته لما الحصة تطلبه
     requireRoomPin: session.requireRoomPin === true,
-  });
+    qrId: qr.qrId, // داخلي — بيتشال من الرد تحت
+  };
+  peekCachePut(token, payload);
+  const { qrId: _qrId, ...rest } = payload;
+
+  // إثبات sighting — بيتولّد بس لما الكود حي دلوقتي ومربوط بمعرّف الجهاز
+  const pv = UUID_RE.test(deviceId) ? issueSightingPv(qr.qrId, deviceId).pv : null;
+  return ok({ ...rest, pv });
 });

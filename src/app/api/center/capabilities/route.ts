@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
 import { requireCenterUser, requireManager, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
-import { getCenterCapabilities, capabilityNumber } from "@/lib/center-capabilities";
+import { getCenterCapabilities, invalidateCenterCapabilities, capabilityNumber } from "@/lib/center-capabilities";
 import { CAPABILITY_CATALOG, defaultCapabilityConfig, isCapabilityKey } from "@/lib/capabilities";
 
 export const dynamic = "force-dynamic";
@@ -72,6 +72,9 @@ export const PATCH = handler(async (req: Request) => {
     });
     after[key] = { enabled, config };
   }
+
+  // الكاش بيتقري في كل نداء حضور — أي تعديل من المدير بيلغيه فورًا (توسعة Task R)
+  invalidateCenterCapabilities(user.centerId);
 
   await logAudit({
     user,

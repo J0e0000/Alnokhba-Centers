@@ -45,3 +45,7 @@ generated/
 .vercel
 .env*
 .z-vercel-token
+
+# SQLite WAL side files (local dev — merged via wal_checkpoint before commit)
+db/custom.db-wal
+db/custom.db-shm
