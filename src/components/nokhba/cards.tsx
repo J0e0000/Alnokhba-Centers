@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Printer, Loader2 } from "lucide-react";
 import { api, type CenterInfo } from "./lib";
-import { usePrint, PrintableCards } from "./print";
+import { usePrint, PrintableCards, brandInk, brandOnLight } from "./print";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -16,10 +16,11 @@ type CardData = {
 export function StudentCard({ card, center, index }: { card: CardData; center: CenterInfo | null; index: number }) {
   const primary = center?.primaryColor ?? "#0E9F6E";
   const secondary = center?.secondaryColor ?? "#0F766E";
+  const headerInk = brandInk(primary, secondary);
   return (
-    <div className="nk-print-card relative shrink-0" style={{ width: "85.6mm", height: "53.98mm", borderRadius: "4.5mm", overflow: "hidden", border: "1px solid #e2e8eb", background: "#fff", boxShadow: "0 2px 10px rgba(0,0,0,.08)" }}>
+    <div className="nk-print-card relative shrink-0" style={{ width: "85.6mm", height: "53.98mm", borderRadius: "4.5mm", overflow: "hidden", border: "1px solid #e2e8eb", background: "#fff", boxShadow: "0 2px 10px rgba(0,0,0,.08)", color: "#1b2635" }}>
       {/* brand header */}
-      <div style={{ height: "13mm", background: `linear-gradient(120deg, ${primary}, ${secondary})`, display: "flex", alignItems: "center", gap: "2.5mm", padding: "0 4mm", color: "#fff" }}>
+      <div style={{ height: "13mm", background: `linear-gradient(120deg, ${primary}, ${secondary})`, display: "flex", alignItems: "center", gap: "2.5mm", padding: "0 4mm", color: headerInk }}>
         {center?.logo ? (
           <img src={center.logo} alt="" style={{ height: "8.5mm", width: "8.5mm", borderRadius: "2mm", objectFit: "cover", background: "#fff", border: "0.4mm solid rgba(255,255,255,.7)" }} />
         ) : (
@@ -41,8 +42,8 @@ export function StudentCard({ card, center, index }: { card: CardData; center: C
             {card.grade}{card.group ? ` · مجموعة ${card.group}` : ""}
           </div>
           <div style={{ marginTop: "2mm", display: "inline-flex", alignItems: "center", gap: "1.5mm", background: `color-mix(in srgb, ${primary} 12%, #fff)`, borderRadius: "2mm", padding: "1mm 2.5mm" }}>
-            <span style={{ fontSize: "2.4mm", fontWeight: 800, color: secondary }}>كود الطالب</span>
-            <span style={{ fontSize: "4.6mm", fontWeight: 900, letterSpacing: "1.2mm", color: primary, fontVariantNumeric: "tabular-nums" }}>{card.code}</span>
+            <span style={{ fontSize: "2.4mm", fontWeight: 800, color: brandOnLight(secondary) }}>كود الطالب</span>
+            <span style={{ fontSize: "4.6mm", fontWeight: 900, letterSpacing: "1.2mm", color: brandOnLight(primary), fontVariantNumeric: "tabular-nums" }}>{card.code}</span>
           </div>
         </div>
         <img src={card.qrDataUrl} alt="QR" style={{ width: "26mm", height: "26mm", borderRadius: "2mm", border: "0.3mm solid #e2e8eb", padding: "0.6mm" }} />
