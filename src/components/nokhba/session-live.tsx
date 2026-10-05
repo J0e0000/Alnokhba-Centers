@@ -85,11 +85,14 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
  * نفس مكان العمل للكل: المدير والاستقبال (الدور بيحدد الأزرار المتاحة).
  * الحفظ ≠ القفل: الحضور بيتسجل لحظيًا، والقفل قرار صريح.
  */
-export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
+export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab, qrFullscreen }: {
   user: SessionUser; sessionId: string; onBack: () => void; onGoScan: () => void;
+  initialTab?: TabId; qrFullscreen?: boolean;
 }) {
   const [data, setData] = useState<SessionDetail | null>(null);
-  const [tab, setTab] = useState<TabId>("overview");
+  const [tab, setTab] = useState<TabId>(initialTab ?? "overview");
+  // فتح الكود بحجم الشاشة فورًا (workflow: الحصة المفتوحة = الكود هو الشغل)
+  const [autoFullQr, setAutoFullQr] = useState<boolean>(qrFullscreen === true);
   const [closeOpen, setCloseOpen] = useState(false);
   const [reopenOpen, setReopenOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -427,7 +430,8 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
           {/* إجراءات سريعة */}
           {!readOnly && (
             <div className="grid grid-cols-2 gap-2.5">
-              <button onClick={() => setTab("attendance")} className="nk-brand-grad text-white font-extrabold rounded-2xl px-4 py-4 shadow flex items-center justify-center gap-2 active:scale-[0.99]">
+              {/* الحصة المفتوحة: زرار واحد = الكود بحجم الشاشة على طول — بلا خطوات (workflow أسرع) */}
+              <button onClick={() => { if (isOpenMode) setAutoFullQr(true); setTab("attendance"); }} className="nk-brand-grad text-white font-extrabold rounded-2xl px-4 py-4 shadow flex items-center justify-center gap-2 active:scale-[0.99]">
                 {isOpenMode ? <><QrCode className="w-5 h-5" /> اعرض كود الحضور</> : <><ScanLine className="w-5 h-5" /> ابدأ تسجيل الحضور</>}
               </button>
               <button onClick={() => setTab("review")} className="border-2 border-border bg-card text-foreground font-extrabold rounded-2xl px-4 py-4 flex items-center justify-center gap-2 active:scale-[0.99] transition hover:bg-muted/50">
@@ -532,7 +536,7 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan }: {
               {!isOpenMode && (caps.static_qr.enabled || caps.name_attendance.enabled) && (
                 <ScanView user={user} embedded sessionOverride={sessionId} clearSessionOverride={() => {}} />
               )}
-              {caps.dynamic_qr.enabled && <SessionQrCard sessionId={sessionId} />}
+              {caps.dynamic_qr.enabled && <SessionQrCard sessionId={sessionId} autoFullscreen={autoFullQr} onFullscreenHandled={() => setAutoFullQr(false)} />}
               <AttendanceTable data={data} printAttendance={printAttendance} showPrint />
               <SuspiciousCard attempts={attempts} />
               {!isOpenMode && data.absent.length > 0 && caps.name_attendance.enabled && (

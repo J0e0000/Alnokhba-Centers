@@ -44,6 +44,8 @@ export function App() {
   const [view, setView] = useState<ViewId>("home");
   const [studentId, setStudentId] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  // لانش الحصة: تاب البداية + هل نفتح الـ QR بحجم الشاشة فورًا (workflow أسهل للحضور المفتوح)
+  const [sessionLaunch, setSessionLaunch] = useState<{ tab?: "overview" | "attendance" | "operations" | "review"; qrFullscreen?: boolean } | null>(null);
   const [sessionOverride, setSessionOverride] = useState<string | null>(null);
   const [addNewStudent, setAddNewStudent] = useState(false);
   const [adminView, setAdminView] = useState<AdminViewId>("centers");
@@ -163,7 +165,12 @@ export function App() {
   }
 
   const openStudent = (id: string) => { setStudentId(id); };
-  const openSession = (id: string) => { setSessionId(id); };
+  // opts.tab: فتح الحصة على تاب معيّن مباشرة (مثلاً الحضور للـ QR) + عرض الكود بحجم الشاشة
+  type SessionLaunchOpts = { tab?: "overview" | "attendance" | "operations" | "review"; qrFullscreen?: boolean };
+  const openSession = (id: string, opts?: SessionLaunchOpts) => {
+    setSessionLaunch(opts ?? null);
+    setSessionId(id);
+  };
   const goScanForSession = (id: string) => { setSessionId(null); setSessionOverride(id); setView("scan"); };
 
   // Focus Mode: الحصة بتتشال من الشل العام خالص — مساحة تركيز مستقلة
@@ -171,15 +178,21 @@ export function App() {
   if (sessionId) {
     return (
       <CapsProvider value={caps}>
-        <FocusShell user={user} onExit={() => { setSessionId(null); }}>
-          <SessionLiveView
-            key={sessionId}
-            user={user}
-            sessionId={sessionId}
-            onBack={() => setSessionId(null)}
-            onGoScan={() => goScanForSession(sessionId)}
-          />
-        </FocusShell>
+        {/* PrintProvider هنا كمان — شاشة الحصة (Focus Mode) كانت بره البروفايدر
+            فكل زرار طباعة جواها كان بيتنادي كدالة فاضية (مش شغالة) */}
+        <PrintProvider>
+          <FocusShell user={user} onExit={() => { setSessionId(null); }}>
+            <SessionLiveView
+              key={sessionId}
+              user={user}
+              sessionId={sessionId}
+              initialTab={sessionLaunch?.tab}
+              qrFullscreen={sessionLaunch?.qrFullscreen}
+              onBack={() => { setSessionLaunch(null); setSessionId(null); }}
+              onGoScan={() => goScanForSession(sessionId)}
+            />
+          </FocusShell>
+        </PrintProvider>
       </CapsProvider>
     );
   }

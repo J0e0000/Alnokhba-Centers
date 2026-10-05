@@ -199,6 +199,8 @@ print(any('SAME_IP' in f or 'نفس الشبكة' in f for f in fl))")"
 # ══════════ 13) قدرة المركز dynamic_qr OFF → رفض server-side (مش إخفاء UI) ══════════
 curl -s -b $JAR/mgr.jar -X PATCH "$BASE/api/center/capabilities" -H "Content-Type: application/json" \
   -d '{"capabilities":[{"key":"dynamic_qr","enabled":false}]}' > /dev/null
+# الإبطال الفوري للكاش بعد تبديل القدرات بقى تلقائي (clearPeekCache في PATCH)
+
 PB=$(peek "$T10" "$D1")
 check "dynamic_qr OFF → peek CAPABILITY_OFF" "CAPABILITY_OFF" "$(jget "$PB" reason)"
 R=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/api/attendance/public/check-in" -H "Content-Type: application/json" \

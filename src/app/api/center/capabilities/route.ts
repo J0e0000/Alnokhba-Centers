@@ -3,6 +3,7 @@ import { ok, handler, readJson } from "@/lib/api";
 import { requireCenterUser, requireManager, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { getCenterCapabilities, invalidateCenterCapabilities, capabilityNumber } from "@/lib/center-capabilities";
+import { clearPeekCache } from "@/lib/peek-cache";
 import { CAPABILITY_CATALOG, defaultCapabilityConfig, isCapabilityKey } from "@/lib/capabilities";
 
 export const dynamic = "force-dynamic";
@@ -75,6 +76,8 @@ export const PATCH = handler(async (req: Request) => {
 
   // الكاش بيتقري في كل نداء حضور — أي تعديل من المدير بيلغيه فورًا (توسعة Task R)
   invalidateCenterCapabilities(user.centerId);
+  // كاش الـ peek كمان — عشان تبديل dynamic_qr يبان للطلاب فورًا (من غير نافذة 3ث قديمة)
+  clearPeekCache();
 
   await logAudit({
     user,

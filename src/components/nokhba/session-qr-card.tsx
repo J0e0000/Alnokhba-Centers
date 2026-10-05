@@ -81,7 +81,9 @@ function QrCanvas({ payload, className }: { payload: string; className?: string 
 
 /* ---------------- الكارت الرئيسي ---------------- */
 
-export function SessionQrCard({ sessionId, compact }: { sessionId: string; compact?: boolean }) {
+export function SessionQrCard({ sessionId, compact, autoFullscreen, onFullscreenHandled }: {
+  sessionId: string; compact?: boolean; autoFullscreen?: boolean; onFullscreenHandled?: () => void;
+}) {
   const [token, setToken] = useState("");
   const [slotEnd, setSlotEnd] = useState<number | null>(null);
   const [slotMs, setSlotMs] = useState(DEFAULT_SLOT_MS);
@@ -150,6 +152,14 @@ export function SessionQrCard({ sessionId, compact }: { sessionId: string; compa
     void swapToNext();
     return () => { mountedRef.current = false; };
   }, [swapToNext]);
+
+  // فتح بحجم الشاشة فورًا عند اللانش (حصة مفتوحة — workflow بضغطة)
+  useEffect(() => {
+    if (autoFullscreen) {
+      setFull(true);
+      onFullscreenHandled?.();
+    }
+  }, [autoFullscreen, onFullscreenHandled]);
 
   // نبض العدّاد + التجهيز المسبق + التبديل في نهاية السلوت
   useEffect(() => {
