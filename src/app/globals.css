@@ -652,6 +652,14 @@
   body.nk-printing > *:not(#nk-print-root) { display: none !important; }
   body.nk-printing #nk-print-root { display: block !important; }
 
+  /* ورقة بيضاء + حبر كحلي غامق دائمًا.
+     من غير القاعدة دي: النصوص اللي مالهاش لون صريح بتورّث لون الوضع الداكن (أبيض مائل)
+     وبتطبع أبيض على أبيض — التقارير والكروت وكشوف الحضور بتبقى مقروءةوش. */
+  #nk-print-root, .nk-print-doc {
+    background: #fff !important;
+    color: #1b2635 !important;
+  }
+
   /* الألوان والخلفيات لازم تتطبع فعلًا (التدرجات/الهيدر الملون/زيبرا الجدول) */
   #nk-print-root, #nk-print-root * {
     -webkit-print-color-adjust: exact !important;

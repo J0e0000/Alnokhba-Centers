@@ -28,6 +28,29 @@ export function usePrint() {
   return useContext(PrintCtx);
 }
 
+/* ---------- تباين نصوص البراند (نص دايمًا مقروء فوق أي لون سنتر) ----------
+   السنتر ممكن يختار ألوان فاتحة (أصفر/ليموني) — الأبيض فوقيها بيبقى مش باين.
+   بنحسب إضاءة اللون ونختار الحبر المناسب: أبيض فوق الغامق، كحلي فوق الفاتح. */
+function hexLum(hex: string): number {
+  const h = (hex || "").replace("#", "");
+  const v = h.length === 3 ? h.split("").map((c) => c + c).join("") : h.padEnd(6, "0").slice(0, 6);
+  const n = parseInt(v, 16);
+  if (Number.isNaN(n)) return 0;
+  const f = (c: number) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  return 0.2126 * f(((n >> 16) & 255) / 255) + 0.7152 * f(((n >> 8) & 255) / 255) + 0.0722 * f((n & 255) / 255);
+}
+
+/** حبر النص فوق تدرج البراند — أبيض أو كحلي غامق حسب إضاءة اللونين */
+export function brandInk(...bgs: string[]): string {
+  const avg = bgs.reduce((s, c) => s + hexLum(c), 0) / Math.max(1, bgs.length);
+  return avg > 0.45 ? "#1b2635" : "#ffffff";
+}
+
+/** لون نص براند فوق خلفية فاتحة (tint 12%) — لو اللون فاتح نستبدله بالكحلي */
+export function brandOnLight(c: string): string {
+  return hexLum(c) > 0.45 ? "#1b2635" : c;
+}
+
 /** نسخ كل تنسيقات الصفحة (style tags + stylesheets) — لنافذة الطباعة الاحتياطية */
 async function collectPageCss(): Promise<string> {
   const parts: string[] = [];
@@ -51,12 +74,15 @@ async function openPrintWindow(node: HTMLElement, title: string): Promise<boolea
   const css = await collectPageCss();
   const safeTitle = title.replace(/[<>&"]/g, "");
   const body = node.innerHTML;
+  // إيصال ثيرمال → مقاس ورق 80mm بدل A4 عشان الـ PDF ينزّل مضبوط على الورق
+  const isThermal = !!node.querySelector(".nk-rc-thermal");
+  const pageSize = isThermal ? "@page{size:80mm auto;margin:4mm}" : "@page{size:A4;margin:10mm}";
   w.document.open();
   w.document.write(
     `<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>${safeTitle}</title>` +
     `<base href="${window.location.origin}/">` +
     `<style>${css}</style>` +
-    `<style>@page{size:A4;margin:10mm}html,body{background:#fff}#nk-print-root{display:block !important}</style></head>` +
+    `<style>${pageSize}html,body{background:#fff}#nk-print-root{display:block !important}</style></head>` +
     `<body class="nk-printing"><div id="nk-print-root" dir="rtl">${body}</div>` +
     `<script>window.addEventListener('load',function(){setTimeout(function(){window.print()},200)});` +
     `window.addEventListener('afterprint',function(){setTimeout(function(){window.close()},400)});<\/script>` +
@@ -83,6 +109,14 @@ export function PrintProvider({ children }: { children: ReactNode }) {
     // فallback لمتصفحات من غير :has() — class على body
     document.body.classList.add("nk-printing");
 
+    // إيصال ثيرمال → حقن @page بمقاس ورق 80mm (بيتشال مع تنظيف الطباعة)
+    const pageStyle = document.createElement("style");
+    pageStyle.id = "nk-page-size";
+    pageStyle.textContent = "@page { size: 80mm auto; margin: 4mm; }";
+    const injectThermalPage = (root: HTMLElement | null) => {
+      if (root?.querySelector(".nk-rc-thermal")) document.head.appendChild(pageStyle);
+    };
+
     let sawBeforePrint = false;
     const onBeforePrint = () => { sawBeforePrint = true; };
     const cleanup = () => {
@@ -90,6 +124,7 @@ export function PrintProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       window.removeEventListener("afterprint", cleanup);
       window.removeEventListener("beforeprint", onBeforePrint);
+      pageStyle.remove();
       document.body.classList.remove("nk-printing");
       document.title = prevTitle.current;
       setReq(null);
@@ -100,6 +135,8 @@ export function PrintProvider({ children }: { children: ReactNode }) {
     // استنى الرسم + الصور (كروت QR بتكون data-URL فبتحمّل فوراً) قبل فتح الحوار
     const run = async () => {
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
+      const root0 = document.getElementById("nk-print-root");
+      injectThermalPage(root0);
       const imgs = Array.from(document.querySelectorAll<HTMLImageElement>("#nk-print-root img"));
       if (imgs.length) {
         await Promise.all(
@@ -155,7 +192,7 @@ export function PrintProvider({ children }: { children: ReactNode }) {
       {children}
       {req &&
         createPortal(
-          <div id="nk-print-root" dir="rtl">
+          <div id="nk-print-root" className="nk-print-doc" dir="rtl">
             {req.node}
           </div>,
           document.body,
@@ -186,9 +223,10 @@ export function PrintableCards({ cards, center }: { cards: CardData[]; center: C
 function CardForPrint({ card, center, index }: { card: CardData; center: CenterInfo | null; index: number }) {
   const primary = center?.primaryColor ?? "#0E9F6E";
   const secondary = center?.secondaryColor ?? "#0F766E";
+  const headerInk = brandInk(primary, secondary);
   return (
-    <div className="nk-print-card" style={{ width: "85.6mm", height: "53.98mm", borderRadius: "3mm", overflow: "hidden", border: "0.4mm dashed #b9c6cc", background: "#fff", position: "relative" }}>
-      <div style={{ height: "13mm", background: `linear-gradient(120deg, ${primary}, ${secondary})`, display: "flex", alignItems: "center", gap: "2.5mm", padding: "0 4mm", color: "#fff" }}>
+    <div className="nk-print-card" style={{ width: "85.6mm", height: "53.98mm", borderRadius: "3mm", overflow: "hidden", border: "0.4mm dashed #b9c6cc", background: "#fff", position: "relative", color: "#1b2635" }}>
+      <div style={{ height: "13mm", background: `linear-gradient(120deg, ${primary}, ${secondary})`, display: "flex", alignItems: "center", gap: "2.5mm", padding: "0 4mm", color: headerInk }}>
         {center?.logo ? (
           <img src={center.logo} alt="" style={{ height: "8.5mm", width: "8.5mm", borderRadius: "2mm", objectFit: "cover", background: "#fff", border: "0.4mm solid rgba(255,255,255,.7)" }} />
         ) : (
@@ -209,8 +247,8 @@ function CardForPrint({ card, center, index }: { card: CardData; center: CenterI
             {card.grade}{card.group ? ` · مجموعة ${card.group}` : ""}
           </div>
           <div style={{ marginTop: "2mm", display: "inline-flex", alignItems: "center", gap: "1.5mm", background: `color-mix(in srgb, ${primary} 12%, #fff)`, borderRadius: "2mm", padding: "1mm 2.5mm" }}>
-            <span style={{ fontSize: "2.4mm", fontWeight: 800, color: secondary }}>كود الطالب</span>
-            <span style={{ fontSize: "4.6mm", fontWeight: 900, letterSpacing: "1.2mm", color: primary, fontVariantNumeric: "tabular-nums" }}>{card.code}</span>
+            <span style={{ fontSize: "2.4mm", fontWeight: 800, color: brandOnLight(secondary) }}>كود الطالب</span>
+            <span style={{ fontSize: "4.6mm", fontWeight: 900, letterSpacing: "1.2mm", color: brandOnLight(primary), fontVariantNumeric: "tabular-nums" }}>{card.code}</span>
           </div>
         </div>
         <img src={card.qrDataUrl} alt="QR" style={{ width: "26mm", height: "26mm", borderRadius: "2mm", border: "0.3mm solid #e2e8eb", padding: "0.6mm" }} />
@@ -297,7 +335,7 @@ export function PrintableReceiptA4({ data, center }: { data: ReceiptData; center
   return (
     <div className="nk-print-receipt nk-rc-a4">
       {/* header */}
-      <div className="nk-rc-header" style={{ background: `linear-gradient(120deg, ${primary}, ${secondary})` }}>
+      <div className="nk-rc-header" style={{ background: `linear-gradient(120deg, ${primary}, ${secondary})`, color: brandInk(primary, secondary) }}>
         {data.center.logo ? (
           <img src={data.center.logo} alt="" className="nk-rc-logo" />
         ) : (
@@ -466,7 +504,7 @@ export function PrintableReport({ data, center }: { data: PrintableReportData; c
           {data.statCards.map((c, i) => (
             <div key={i} className="nk-pr-stat">
               <div className="nk-pr-stat-label">{c.label}</div>
-              <div className="nk-pr-stat-value" style={i === 0 ? { color: primary } : undefined}>
+              <div className="nk-pr-stat-value" style={i === 0 ? { color: brandOnLight(primary) } : undefined}>
                 {c.kind === "money" ? fmt(c.value) : String(c.value)}
                 {c.kind === "money" ? " ج" : ""}
               </div>
