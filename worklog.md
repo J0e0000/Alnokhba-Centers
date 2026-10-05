@@ -161,3 +161,25 @@ Work Log:
 
 Stage Summary:
 - أزرار الطباعة شغالت فعلًا: كان فيه بروفايدر ناقص جوه شاشة الحصة (كل الأزرار كانت بتنادي دالة فاضية) — اتصلّح، والمحرك بقى مقاوم لـ Safari/iframe مقفول مع نافذة طباعة احتياطية. الـ workflow بقى أسهل وأذكى: «حضور مفتوح ⚡» من الهيدر بضغطتين، «مفتوح» جنب «ابدأ» في كل حصة مجدولة (تفتح حضور مفتوح من غير داتابيز فورًا)، وأي حصة مفتوحة بتفتح الكود بحجم الشاشة على طول. المسح من غير داتابيز (اسم + كود + كود القاعة) متأكد شغال بالكامل من غير تسجيل دخول.
+
+---
+Task ID: brand-logos
+Agent: Super Z (main)
+Task: خد من الصورة (AlNokhba Management Brand System.png) كل اللوجوهات وحطها مكان أي حتة محتاجة لوجو فالموقع
+
+Work Log:
+- فحصت الموقع بالكامل: حددت 10+ نقطة استخدام للوجو (AlNokhbaMark في 16 مكان، شاشات الموظفين، الطباعة: إيصالات/تقارير/كروت طلاب، favicon/PWA icons، og.jpg، JSON-LD)
+- اكتشفت إن /logo-full.png متستدعي في shared.tsx لكن الملف نفسه مش موجود (صورة مكسورة) — اتصلّح
+- استخرجت الأصول من البراند شيت (1536×1024) بـ flood-fill background removal عشان أحافظ على الـ N الأبيض جوه المربع الكحلي (v1 بـ global keying كان بيمسحه)
+- النسخ البيضاء اتولدت من الـ lockup الملوّن النظيف (الـ pill في الشيت فيه تدرج إضاءة خلى الـ keying مباشر وسخ)
+- الأصول الجديدة في public/: logo.png (أيقونة كحلي 256)، logo-full.png (lockup أفقي)، logo-mark.png (الرمز)، logo-mark-white.png (رمز أبيض)، logo-white.png (lockup أبيض)، logo-vertical.png
+- استبدلت favicon.png/icon-192/icon-512/icon-maskable-512/apple-touch-icon بالأيقونة الجديدة + أعيد توليد og.jpg (تدرج كحلي + lockup أبيض)
+- layout.tsx: favicon size 48→64 (مطابقة الملف الفعلي)
+- staff-screen: الرمز الأبيض بدل الأيقونة الكحلية على الخلفية الداكنة #0b1220
+- sw.js: cache bump v8→v9 (الـ shell precache كان هيفضل على اللوجو القديم)
+- Build نجح + لقطات تحقق: landing/login/staff-screen كلها بتعرض البراند الجديد صح
+- Commit: brand-logos (القديم اتعمل له backup في backups/logo-old.png)
+
+Stage Summary:
+- كل نقطة لوجو في الموقع دلوقتي على البراند الرسمي AlNokhba Management (navy #0B1B4F / blue #2563EB / teal #10B981)
+- سكربت الاستخراج محفوظ في scripts/extract_brand.py — قابل لإعادة التشغيل لو البراند شيت اتحدث
