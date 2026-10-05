@@ -2,7 +2,7 @@
 // يعمل كـ classic script عادي — بيتشارك المتغيرات العامة مع الجزء الثاني.
 
 export const APP_JS_1 = `
-// ================= ALNOKHBA MANAGMENT — EMERGENCY MODE =================
+// ================= ALNOKHBA MANAGEMENT — EMERGENCY MODE =================
 "use strict";
 
 var TAGS = { license: "nk-license-raw", snapshot: "nk-snapshot-raw", meta: "nk-meta" };
@@ -203,7 +203,7 @@ async function verifyBoot(meta) {
   try {
     var key = await crypto.subtle.importKey("spki", b64ToBuf(meta.publicKey), { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
     var sigOk = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, b64ToBuf(meta.signature), encUtf8(ST.licenseRaw));
-    if (!sigOk) return { ok: false, reason: "توقيع الرخصة مش صحيح — الملف اتعدّل أو مش موقّع من سيرفر Alnokhba Managment." };
+    if (!sigOk) return { ok: false, reason: "توقيع الرخصة مش صحيح — الملف اتعدّل أو مش موقّع من سيرفر AlNokhba Management." };
     var digest = await sha256Hex(textOf(TAGS.snapshot));
     if (digest !== ST.license.snapshotDigest) return { ok: false, reason: "بيانات اللقطة مش مطابقة للبصمة الموقّعة — الملف اتعدّل بعد التوليد." };
     return { ok: true };
@@ -299,8 +299,8 @@ function phoneTail(s) { return normDigits(s).replace(/[^0-9]/g, ""); }
 function renderShell() {
   document.body.innerHTML =
     '<div class="nk-top"><div class="nk-top-in">' +
-      '<img class="nk-logo" id="nk-logo-img" alt="Alnokhba Managment">' +
-      '<div class="nk-top-txt"><b>' + esc(ST.license.centerName) + '</b><span>ALNOKHBA MANAGMENT — وضع الطوارئ</span></div>' +
+      '<img class="nk-logo" id="nk-logo-img" alt="AlNokhba Management">' +
+      '<div class="nk-top-txt"><b>' + esc(ST.license.centerName) + '</b><span>ALNOKHBA MANAGEMENT — وضع الطوارئ</span></div>' +
       '<div class="nk-days" id="nk-days"></div>' +
       '<span class="nk-emg-badge"><span class="nk-dot"></span>طوارئ</span>' +
     '</div></div>' +
@@ -504,7 +504,7 @@ function openScanner() {
       '<div class="nk-scan-bar"></div>' +
       '<video id="nk-scan-video" playsinline muted></video>' +
       '<div class="nk-scan-ui">' +
-        '<span style="width:34px;height:34px;border-radius:10px;background:rgba(213,161,52,.25);display:grid;place-items:center">' + icon("camera", 18) + "</span>" +
+        '<span style="width:34px;height:34px;border-radius:10px;background:rgba(16,185,129,.25);display:grid;place-items:center">' + icon("camera", 18) + "</span>" +
         '<span class="nk-scan-title">وجّه الكاميرا على كارت الطالب…</span>' +
         '<button class="nk-btn sm" id="nk-scan-close" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25)">' + icon("x", 14) + " إقفال</button>" +
       "</div>" +

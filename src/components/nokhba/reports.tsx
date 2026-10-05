@@ -125,7 +125,7 @@ export function ReportsView({ user }: { user: SessionUser }) {
             <button
               onClick={() => data && print(
                 <PrintableReport data={data} center={user.center} />,
-                `${data.title} — ${user.center?.name ?? "Alnokhba Managment"}`,
+                `${data.title} — ${user.center?.name ?? "AlNokhba Management"}`,
               )}
               className="nk-brand-bg text-white font-extrabold rounded-xl px-3.5 py-2.5 shadow flex items-center gap-1.5 text-sm">
               <Printer className="w-4 h-4" /> طباعة / PDF

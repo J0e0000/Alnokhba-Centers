@@ -223,7 +223,7 @@ export function AlNokhbaMark({ size = 36, showText = true, light = false, full =
       </span>
       {showText && (
         <span className="leading-tight">
-          <span className={cn("block font-extrabold text-[15px]", light ? "text-white" : "text-[var(--navy)]")}>Alnokhba Managment</span>
+          <span className={cn("block font-extrabold text-[15px]", light ? "text-white" : "text-[var(--navy)]")}>AlNokhba Management</span>
           <span className={cn("block text-[10px] font-bold tracking-normal", light ? "text-white/70" : "text-[var(--gold-deep)]")}>إدارة السنترات التعليمية</span>
         </span>
       )}

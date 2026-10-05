@@ -6,14 +6,14 @@ import type { Metadata } from "next";
    canonical/OG بتستدعي pageMetadata() بدل ما تكتب JSON يدوي.
    ─────────────────────────────────────────────────────────────
    القواعد:
-   - اسم الموقع الرسمي: Alnokhba Managment (هوية المنصة الموحدة).
+   - اسم الموقع الرسمي: AlNokhba Management (هوية المنصة الموحدة — بالترجمة الرسمية من البراند شيت).
    - الدومين الكانوني من NEXT_PUBLIC_SITE_URL، والافتراضي دومين
      الإنتاج الفعلي على Vercel.
    - ممنوع اختراع صفحات/منتجات غير موجودة — الموقع العام الوحيد
      حاليًا هو صفحة الهبوط «/».
 ============================================================ */
 
-export const SITE_NAME = "Alnokhba Managment";
+export const SITE_NAME = "AlNokhba Management";
 
 /** الوصف الرسمي للمنصة — مطابق لمحتوى صفحة الهبوط فعليًا */
 export const SITE_DESCRIPTION =

@@ -52,7 +52,7 @@ export function LoginScreen({ onLogin }: { onLogin: (user: SessionUser) => void 
         <div className="flex flex-col items-center gap-3 mb-6 text-center">
           <AlNokhbaMark size={56} />
           <div>
-            <h1 className="text-2xl font-extrabold mt-1 nk-brand-text">Alnokhba Managment</h1>
+            <h1 className="text-2xl font-extrabold mt-1 nk-brand-text">AlNokhba Management</h1>
             <span className="block nk-portal-divider mx-auto mt-2" aria-hidden />
             <p className="text-sm text-muted-foreground mt-1.5">
               نظام تشغيل السنترات — حضور وحسابات من غير وجع دماغ
@@ -119,7 +119,7 @@ export function LoginScreen({ onLogin }: { onLogin: (user: SessionUser) => void 
 
         <p className="text-center text-[11px] text-muted-foreground mt-5 flex items-center justify-center gap-1.5">
           <Smartphone className="w-3.5 h-3.5" />
-          Alnokhba Managment — منصة إدارة السنترات التعليمية
+          AlNokhba Management — منصة إدارة السنترات التعليمية
         </p>
 
         <div className="mt-3 grid gap-2 mx-auto w-fit">
@@ -168,7 +168,7 @@ function SignupDialog({ open, onClose }: { open: boolean; onClose: () => void })
         method: "POST",
         body: { action: "signup", ...form },
       });
-      toast.success(res.message || "تم استلام طلبك — إدارة Alnokhba Managment هتراجعه.", { duration: 7000 });
+      toast.success(res.message || "تم استلام طلبك — إدارة AlNokhba Management هتراجعه.", { duration: 7000 });
       setDone(true);
     } catch {
       // toast already shown
@@ -187,7 +187,7 @@ function SignupDialog({ open, onClose }: { open: boolean; onClose: () => void })
             <UserPlus className="w-5 h-5 nk-brand-text" /> تسجيل حساب جديد
           </DialogTitle>
           <DialogDescription>
-            سجّل بياناتك — إدارة Alnokhba Managment هتوصّلها فورًا، وبتعيينك لسنترك هتقدر تسجل دخول عادي.
+            سجّل بياناتك — إدارة AlNokhba Management هتوصّلها فورًا، وبتعيينك لسنترك هتقدر تسجل دخول عادي.
           </DialogDescription>
         </DialogHeader>
 
@@ -196,7 +196,7 @@ function SignupDialog({ open, onClose }: { open: boolean; onClose: () => void })
             <span className="w-14 h-14 rounded-full bg-emerald-50 border-2 border-emerald-200 text-emerald-600 grid place-items-center mx-auto">
               <ShieldCheck className="w-7 h-7" />
             </span>
-            <p className="text-sm font-extrabold">طلبك وصل لإدارة Alnokhba Managment ✦</p>
+            <p className="text-sm font-extrabold">طلبك وصل لإدارة AlNokhba Management ✦</p>
             <p className="text-xs text-muted-foreground font-semibold leading-relaxed">
               هيتم مراجعة طلبك وتعيينك لسنتر. بمجرد الموافقة هتقدر تسجل دخول بنفس
               اسم المستخدم وكلمة السر اللي اخترتهم — وهيوصلك إشعار فور اتخاذ القرار.

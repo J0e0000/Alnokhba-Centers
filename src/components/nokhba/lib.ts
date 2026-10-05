@@ -197,8 +197,8 @@ function _contrast(a: [number, number, number], b: [number, number, number]): nu
 }
 const WHITE_RGB: [number, number, number] = [255, 255, 255];
 const BLACK_RGB: [number, number, number] = [0, 0, 0];
-const APP_BG: [number, number, number] = _h2r("#f5f7fa");
-const DARK_CARD: [number, number, number] = _h2r("#131c2b");
+const APP_BG: [number, number, number] = _h2r("#f5f8fd");
+const DARK_CARD: [number, number, number] = _h2r("#101a31");
 
 /** أغمق نسخة من اللون تفضل ≥ target تباين مع كل الخلفيات الفاتحة (نص + خلفية صلبة بنص أبيض) */
 export function darkenForAA(hex: string, target = 5): string {
@@ -230,10 +230,10 @@ export function lightenForDarkAA(hex: string, target = 4.65): string {
 export function applyCenterBranding(center: CenterInfo | null) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  // الافتراضي = هوية النخبة الرسمية (كحلي اللوجو + ذهبي مدخله)
-  const primary = center?.primaryColor || "#143159";
-  const secondary = center?.secondaryColor || "#1D4477";
-  const accent = center?.accentColor || "#D5A134";
+  // الافتراضي = هوية AlNokhba Management الرسمية (كحلي + أزرق + تركواز من البراند شيت)
+  const primary = center?.primaryColor || "#0B1B4F";
+  const secondary = center?.secondaryColor || "#2563EB";
+  const accent = center?.accentColor || "#10B981";
   root.style.setProperty("--primary", primary);
   root.style.setProperty("--ring", secondary);
   root.style.setProperty("--sidebar-primary", primary);
@@ -253,11 +253,11 @@ export function applyCenterBranding(center: CenterInfo | null) {
 
 /** text color that stays readable on the brand color */
 export function readableOn(hex: string | null | undefined): string {
-  const h = (hex ?? "#143159").replace("#", "");
+  const h = (hex ?? "#0B1B4F").replace("#", "");
   if (h.length !== 6) return "#ffffff";
   const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
   const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return lum > 0.62 ? "#101F35" : "#ffffff";
+  return lum > 0.62 ? "#0B1B4F" : "#ffffff";
 }
 
 // ============================= Misc =============================

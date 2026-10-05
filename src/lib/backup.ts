@@ -222,7 +222,7 @@ export async function createExcelBackup(centerId: string, reason: "manual" | "sc
 
   const ExcelJS = await import("exceljs");
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Alnokhba Managment";
+  wb.creator = "AlNokhba Management";
   wb.created = now;
 
   const sheetsMeta: { name: string; rows: number }[] = [];
@@ -253,7 +253,7 @@ export async function createExcelBackup(centerId: string, reason: "manual" | "sc
     { header: "البند", key: "k", width: 28 },
     { header: "القيمة", key: "v", width: 46 },
   ], [
-    { k: "النظام", v: "Alnokhba Managment — إدارة السنترات التعليمية" },
+    { k: "النظام", v: "AlNokhba Management — إدارة السنترات التعليمية" },
     { k: "السنتر", v: center.name },
     { k: "تاريخ النسخة", v: dt(now) },
     { k: "اليوم التشغيلي", v: todayStr() },

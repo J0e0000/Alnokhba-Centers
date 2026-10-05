@@ -235,7 +235,7 @@ function CardForPrint({ card, center, index }: { card: CardData; center: CenterI
         )}
         <div style={{ lineHeight: 1.15 }}>
           <div style={{ fontSize: "3.6mm", fontWeight: 800 }}>{center?.name ?? "السنتر"}</div>
-          <div style={{ fontSize: "2.2mm", fontWeight: 700, opacity: 0.85 }}>{center?.slogan ?? "Alnokhba Managment"}</div>
+          <div style={{ fontSize: "2.2mm", fontWeight: 700, opacity: 0.85 }}>{center?.slogan ?? "AlNokhba Management"}</div>
         </div>
         <div style={{ marginInlineStart: "auto", fontSize: "2.2mm", fontWeight: 800, letterSpacing: "0.4mm", opacity: 0.85 }}>ALNOKHBA</div>
       </div>
@@ -489,7 +489,7 @@ export function PrintableReport({ data, center }: { data: PrintableReportData; c
           )}
           <div>
             <div className="nk-pr-center">{center?.name ?? data.centerName}</div>
-            <div className="nk-pr-sub">{center?.slogan ?? "Alnokhba Managment"}</div>
+            <div className="nk-pr-sub">{center?.slogan ?? "AlNokhba Management"}</div>
           </div>
         </div>
         <div className="nk-pr-meta">
@@ -562,7 +562,7 @@ export function PrintableReport({ data, center }: { data: PrintableReportData; c
 
       {/* تذييل */}
       <div className="nk-pr-footer">
-        <span>اتولد بواسطة Alnokhba Managment</span>
+        <span>اتولد بواسطة AlNokhba Management</span>
         <span className="nk-num" dir="ltr">{stamp}</span>
       </div>
     </div>
@@ -600,7 +600,7 @@ export function PrintableDaySchedule({ dayLabel, dateStr, halls, center }: {
           )}
           <div>
             <div className="nk-pr-center">{center?.name ?? "السنتر"}</div>
-            <div className="nk-pr-sub">{center?.slogan ?? "Alnokhba Managment"}</div>
+            <div className="nk-pr-sub">{center?.slogan ?? "AlNokhba Management"}</div>
           </div>
         </div>
         <div className="nk-pr-meta">
@@ -779,7 +779,7 @@ export function PrintableAttendanceSheet({ data, center }: { data: AttendanceShe
       </div>
 
       <div className="nk-pr-footer">
-        <span>اتولد بواسطة Alnokhba Managment</span>
+        <span>اتولد بواسطة AlNokhba Management</span>
         <span className="nk-num" dir="ltr">{stamp}</span>
       </div>
     </div>

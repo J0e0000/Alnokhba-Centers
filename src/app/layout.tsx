@@ -60,7 +60,7 @@ export const viewport: Viewport = {
   maximumScale: 5, // اسمح بالزوم لعين متعبة — بس مش أكثر من 5x
   // ضروري للآيفون: بدونه env(safe-area-inset-*) بترجع صفر والناف السفلي بيقع تحت الـ home indicator
   viewportFit: "cover",
-  themeColor: "#143159",
+  themeColor: "#0B1B4F",
 };
 
 /* سكربت ما قبل الترطيب — يطبق الوضع المحفوظ قبل أول رسم (يمنع الوميض).

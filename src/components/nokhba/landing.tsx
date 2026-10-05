@@ -7,16 +7,18 @@ import {
   Calculator, WifiOff, FileSpreadsheet, MessageCircle, ArrowLeft,
   ShieldCheck, Zap, Sparkles, Building2, Users, CalendarDays, ClipboardCheck,
   RefreshCw, Clock, TrendingUp, Lock, FileKey, ScrollText, ArrowDown,
-  Menu, X, MonitorSmartphone, Landmark,
+  Menu, X, MonitorSmartphone, Landmark, Database, Cog, BrainCircuit,
+  MousePointerClick, BookOpen, Puzzle, CheckCircle2,
 } from "lucide-react";
 import { api, type SessionUser } from "./lib";
 import { AlNokhbaMark } from "./shared";
 
 /* ============================================================
-   صفحة الهبوط (Landing) — البوابة العامة لمنصة Alnokhba Managment.
-   هوية اللوجو الرسمي: كحلي #143159 + ذهبي D5A134 + Cairo.
-   أقسام: Navbar · Hero بموك-أب حقيقي · ١١ ميزة · ٤ خطوات ·
-   وضع الطوارئ · الأمان · سير العمل (٣ أدوار) · CTA · فوتر.
+   صفحة الهبوط (Landing) — البوابة العامة لمنظومة AlNokhba Management.
+   الهوية الرسمية من البراند شيت: Navy #0B1B4F · Blue #2563EB · Teal #10B981.
+   الفلسفة: DATA → OPERATIONS → INTELLIGENCE → ACTION
+   الأقسام: Navbar · Hero بموك-أب حقيقي · المشكلة · الحل · فلسفة التشغيل ·
+   القدرات · المنظومة (Edu/Centers/QB) · وضع الطوارئ · الأمان · الأدوار · CTA · فوتر.
 ============================================================ */
 
 const FEATURES = [
@@ -33,11 +35,42 @@ const FEATURES = [
   { icon: <WifiOff className="w-5 h-5" />, title: "وضع الطوارئ", body: "النت قطع؟ نزّل حزمة أوفلاين لمدة 7 أيام — وشغّل السنتر عادي." },
 ];
 
-const STEPS = [
-  { n: "١", title: "جهّز سنترك", body: "المراحل والمواد والمدرسين والمجموعات والقاعات — في دقايق.", icon: <Building2 className="w-5 h-5" /> },
-  { n: "٢", title: "سجّل طلابك", body: "كل طالب بياخد كود 5 أرقام وكارت QR — واتسجل في مجموعاته.", icon: <Users className="w-5 h-5" /> },
-  { n: "٣", title: "امسح وشغّل", body: "مسح الكارت = حضور + خصم + رصيد لحظي · الدفع بإيصال · الخزنة بتتقفل بالعدّ.", icon: <QrCode className="w-5 h-5" /> },
-  { n: "٤", title: "خليك محمي", body: "لو النت قطع — حزمة الطوارئ الأوفلاين بتشغّل الأساسيات لمدة 7 أيام.", icon: <ShieldCheck className="w-5 h-5" /> },
+/* فلسفة التشغيل — DATA → OPERATIONS → INTELLIGENCE → ACTION */
+const FLOW = [
+  {
+    n: "١", tag: "DATA", title: "البيانات", icon: <Database className="w-5 h-5" />,
+    body: "الطلاب والمدرسين والحصص والقاعات والحسابات — مصدر حقيقة واحد لكل منظومة السنتر، محدّث لحظة بلحظة.",
+  },
+  {
+    n: "٢", tag: "OPERATIONS", title: "العمليات", icon: <Cog className="w-5 h-5" />,
+    body: "شغل اليوم كله في شاشة: حضور بالـ QR، دفعات بإيصالات، اشتراكات، مستحقات — من غير خطوات مكررة.",
+  },
+  {
+    n: "٣", tag: "INTELLIGENCE", title: "الذكاء", icon: <BrainCircuit className="w-5 h-5" />,
+    body: "النظام بيرصد ويلخّص: إيه اللي محتاج انتباه، إيه اللي اتغير، وفين المشكلة بالتحديد — مش مجرد أرقام.",
+  },
+  {
+    n: "٤", tag: "ACTION", title: "الإجراء", icon: <MousePointerClick className="w-5 h-5" />,
+    body: "كل رقم وراه زرار: افتح الحصة، راجع، اطبع، كلّم — القرار بيتحول لخطوة واحدة في ثواني.",
+  },
+];
+
+const PROBLEMS = [
+  {
+    icon: <FileSpreadsheet className="w-5 h-5" />,
+    title: "بيانات مبعثرة",
+    body: "الحضور في كشوف ورق، الفلوس في دفاتر، والطلاب في ملفات متفرقة — وكل مصدر بيقول حكاية مختلفة.",
+  },
+  {
+    icon: <BellRing className="w-5 h-5" />,
+    title: "قرارات من غير صورة كاملة",
+    body: "المشكلة بتتعرف بعد ما تحصل — مفيش نظام بيقبّض على الحاجة اللي محتاجة انتباه في وقتها.",
+  },
+  {
+    icon: <Clock className="w-5 h-5" />,
+    title: "وقت بيتحرق في التنقل",
+    body: "مهمة ممكن تخلص بضغطة، بتاخد عشر خطوات تنقل بين شاشات وقوائم واختيارات مكررة.",
+  },
 ];
 
 const SECURITY = [
@@ -60,7 +93,7 @@ const ROLES = [
     icon: <Briefcase className="w-5 h-5" />,
     title: "المدرس",
     body: "بورتاله بجوايزه: جدوله الأسبوعي، حصصه النهاردة، طلاب مجموعاته، ومستحقاته — من غير أرقام تواصل حد.",
-    tone: "gold" as const,
+    tone: "accent" as const,
   },
   {
     icon: <GraduationCap className="w-5 h-5" />,
@@ -70,9 +103,38 @@ const ROLES = [
   },
 ];
 
+/* منظومة النخبة — طبقة الإدارة بتربط المنتجات */
+const ECOSYSTEM = [
+  {
+    icon: <GraduationCap className="w-6 h-6" />,
+    name: "AlNokhba Edu",
+    desc: "منصة التعليم: كويزات وواجبات وتفاعل يومي بين المدرس والطالب — والأداء بيرجع للإدارة كتقارير.",
+    tone: "brand" as const,
+  },
+  {
+    icon: <Building2 className="w-6 h-6" />,
+    name: "AlNokhba Centers",
+    desc: "التشغيل اليومي للسنتر: حضور، حسابات بالقرش، حصص وقاعات، اشتراكات، ووضع طوارئ أوفلاين.",
+    tone: "current" as const,
+  },
+  {
+    icon: <BookOpen className="w-6 h-6" />,
+    name: "AlNokhba QB",
+    desc: "بنك أسئلة منظم: امتحانات جاهزة وطباعة احترافية — وسؤال واحد بيتعيد استخدامه في كل حتة.",
+    tone: "teal" as const,
+  },
+  {
+    icon: <Puzzle className="w-6 h-6" />,
+    name: "منتجات قادمة",
+    desc: "طبقة الإدارة بتتوسع مع كل منتج جديد في المنظومة — نفس البيانات، نفس الحساب، نفس التجربة.",
+    tone: "future" as const,
+  },
+];
+
 const NAV_LINKS = [
-  { href: "#features", label: "المميزات" },
   { href: "#how", label: "إزاي بيشتغل" },
+  { href: "#features", label: "القدرات" },
+  { href: "#ecosystem", label: "المنظومة" },
   { href: "#emergency", label: "وضع الطوارئ" },
   { href: "#security", label: "الأمان" },
   { href: "#contact", label: "تواصل" },
@@ -90,18 +152,18 @@ export function LandingPage() {
 
   return (
     <main className="light-locked min-h-screen bg-background relative overflow-hidden nk-safe-top">
-      {/* خلفية العلامة — كحلي اللوجو + لمسات ذهبية */}
+      {/* خلفية العلامة — كحلي البراند + لمسات أزرق وتركواز */}
       <div aria-hidden className="pointer-events-none absolute -top-32 -start-32 w-[30rem] h-[30rem] rounded-full opacity-[0.13] nk-brand-bg blur-3xl" />
-      <div aria-hidden className="pointer-events-none absolute top-[30%] -end-40 w-[34rem] h-[34rem] rounded-full opacity-[0.08] nk-gold-bg blur-3xl" />
-      <div aria-hidden className="pointer-events-none absolute -bottom-48 -start-24 w-[36rem] h-[36rem] rounded-full opacity-[0.10] nk-brand-bg blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute top-[30%] -end-40 w-[34rem] h-[34rem] rounded-full opacity-[0.10] bg-[#2563eb] blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute -bottom-48 -start-24 w-[36rem] h-[36rem] rounded-full opacity-[0.09] bg-[#10b981] blur-3xl" />
 
       {/* ================= NAVBAR ================= */}
       <header className="sticky top-0 z-40 border-b border-border/70 bg-white/85 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-2.5 group" aria-label="Alnokhba Managment — الرئيسية">
-            <AlNokhbaMark size={40} />
+          <Link href="/" className="flex items-center gap-2.5 group" aria-label="AlNokhba Management — الرئيسية">
+            <AlNokhbaMark size={40} showText={false} />
             <span className="hidden sm:block leading-tight">
-              <span className="block font-extrabold text-sm nk-brand-text">Alnokhba Managment</span>
+              <span className="block font-extrabold text-sm nk-brand-text">AlNokhba Management</span>
               <span className="block text-[10px] font-bold text-[color:var(--c-accent-strong,var(--gold-deep))] tracking-normal">إدارة السنترات التعليمية</span>
             </span>
           </Link>
@@ -162,28 +224,31 @@ export function LandingPage() {
             <div className="text-center lg:text-start">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white/80 px-3.5 py-1.5 text-xs font-bold text-muted-foreground mb-5">
                 <Sparkles className="w-3.5 h-3.5 nk-brand-text" />
-                نظام تشغيل السنترات التعليمية — Alnokhba Managment
+                Management Operating System — مش مجرد لوحة تحكم
               </span>
               <h1 className="text-3xl md:text-5xl font-extrabold leading-[1.25] tracking-tight">
-                شغّل سنترك
-                <span className="nk-brand-text"> أعقل</span>
-                <span className="block mt-2 text-xl md:text-3xl font-bold text-muted-foreground">
-                  حضور وحسابات واشتراكات — في مكان واحد
+                طبقة إدارة واحدة
+                <span className="nk-brand-text"> تشغّل منظومة النخبة كلها</span>
+                <span className="block mt-2 text-xl md:text-2xl font-bold text-muted-foreground">
+                  بيانات → عمليات → ذكاء → إجراء
                 </span>
               </h1>
               <span className="block nk-portal-divider mx-auto lg:mx-0 mt-5" aria-hidden />
               <p className="text-muted-foreground mt-4 text-sm md:text-base leading-relaxed max-w-xl mx-auto lg:mx-0">
-                Alnokhba Managment بيجمع الطلاب والمدرسين والحصص والحضور والدفعات والاشتراكات
-                وعمليات السنتر كلها في نظام واحد بسيط — من غير وجع دماغ، وبحسابات دقيقة بالقرش.
+                AlNokhba Management بيجمع سنترك في بيئة تشغيل واحدة موجّهة:
+                بتقولك <b className="text-foreground">إيه اللي حاصل النهاردة</b>،
+                و<b className="text-foreground">إيه اللي محتاج انتباه</b>،
+                و<b className="text-foreground">إيه الخطوة الجاية</b> — حضور وحسابات واشتراكات
+                وتحليلات، بحسابات دقيقة بالقرش.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 mt-7">
-                <Link href={session ? "/app" : "/login"} className="nk-btn-gold h-12 rounded-xl px-7 font-extrabold text-base flex items-center gap-2 w-full sm:w-auto justify-center">
+                <Link href={session ? "/app" : "/login"} className="nk-btn-brand h-12 rounded-xl px-7 font-extrabold text-base flex items-center gap-2 w-full sm:w-auto justify-center">
                   <Zap className="w-5 h-5" />
                   {session ? "ادخل على نظامك" : "ابدأ دلوقتي — مجاني للتجربة"}
                 </Link>
                 <a href="#how" className="h-12 rounded-xl px-6 font-bold text-sm flex items-center gap-2 border border-border bg-card hover:border-[color:var(--c-primary)]/50 hover:shadow-sm transition w-full sm:w-auto justify-center">
                   <MonitorSmartphone className="w-4.5 h-4.5 nk-brand-text" />
-                  شوف إزاي بيشتغل
+                  شوف فلسفة التشغيل
                 </a>
               </div>
 
@@ -276,11 +341,89 @@ export function LandingPage() {
           <div className="grid sm:grid-cols-3 gap-3 md:gap-4 mt-12 text-start">
             <PortalCard href="/login" icon={<Building2 className="w-5.5 h-5.5" />} tone="brand" title="دخول السنتر" sub="للمدير والاستقبال — النظام الكامل" />
             <PortalCard href="/portal" icon={<GraduationCap className="w-5.5 h-5.5" />} tone="ok" title="بورتال الطالب" sub="بالموبايل والكود — رصيدك وجدولك" />
-            <PortalCard href="/teacher" icon={<Briefcase className="w-5.5 h-5.5" />} tone="gold" title="بورتال المدرس" sub="بالموبايل والكود — جدولك ومستحقاتك" />
+            <PortalCard href="/teacher" icon={<Briefcase className="w-5.5 h-5.5" />} tone="accent" title="بورتال المدرس" sub="بالموبايل والكود — جدولك ومستحقاتك" />
           </div>
         </section>
 
-        {/* ================= المميزات ================= */}
+        {/* ================= THE PROBLEM ================= */}
+        <section id="problem" className="py-12 md:py-16 border-t border-border/70 scroll-mt-20">
+          <div className="text-center mb-9">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 px-3.5 py-1.5 text-xs font-extrabold mb-4">المشكلة</span>
+            <h2 className="text-2xl md:text-3xl font-extrabold nk-brand-text">التشغيل مش صعب… التشتت هو اللي صعب</h2>
+            <p className="text-sm text-muted-foreground mt-2 max-w-xl mx-auto">إدارة السنتر بتفضل بتجري ورا البيانات بدل ما البيانات تيجي ليها</p>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-3 md:gap-4">
+            {PROBLEMS.map((p) => (
+              <div key={p.title} className="rounded-2xl nk-card p-5 flex flex-col gap-3">
+                <span className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 grid place-items-center shrink-0">
+                  {p.icon}
+                </span>
+                <h3 className="font-extrabold text-base">{p.title}</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">{p.body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ================= THE SOLUTION ================= */}
+        <section id="solution" className="py-12 md:py-16 border-t border-border/70 scroll-mt-20">
+          <div className="rounded-3xl nk-portal-card-dark p-7 md:p-10 relative overflow-hidden">
+            <div aria-hidden className="pointer-events-none absolute -top-24 -end-24 w-72 h-72 rounded-full opacity-25 bg-[#2563eb] blur-3xl" />
+            <div className="relative max-w-3xl">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 border border-white/25 px-3.5 py-1.5 text-xs font-bold text-white mb-4">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                الحل
+              </span>
+              <h2 className="text-2xl md:text-4xl font-extrabold text-white leading-snug">
+                طبقة إدارة واحدة — <span className="text-[color:var(--c-accent,var(--gold))]">بتفهم البيانات وتوصّلك للإجراء</span>
+              </h2>
+              <p className="text-white/80 text-sm md:text-base mt-3 leading-relaxed">
+                البيانات بتتسجل <b className="text-white">مرة واحدة</b> وبتتستخدم في كل حتة:
+                الطالب اللي اتسجل بيمسح كارتو، ورصيدو بيتحسب، واشتراكو بيتجدد، ونتيجته بتنور في التقارير —
+                من غير إدخال مكرر ولا دفاتر. والنظام مش بيستنى تسأله — بيوصلك بالسياق الجاهز:
+                الحصة الجاية باسمها ومدرسها وقاعتها، والتنبيهات اللي محتاجة قرار.
+              </p>
+              <div className="mt-6 inline-flex flex-wrap items-center gap-2 rounded-2xl bg-white/10 border border-white/20 px-4 py-3 text-xs font-extrabold text-white">
+                <span>اكتب مرة</span>
+                <ArrowLeft className="w-3.5 h-3.5 text-[color:var(--c-accent,var(--gold))]" />
+                <span>استخدم في كل حتة</span>
+                <span className="opacity-60">—</span>
+                <span className="font-bold text-white/85">ENTER ONCE → REUSE EVERYWHERE</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ================= HOW IT WORKS — DATA → OPERATIONS → INTELLIGENCE → ACTION ================= */}
+        <section id="how" className="py-12 md:py-16 border-t border-border/70 scroll-mt-20">
+          <div className="text-center mb-9">
+            <h2 className="text-2xl md:text-3xl font-extrabold nk-brand-text">فلسفة التشغيل في ٤ مراحل</h2>
+            <p className="text-sm text-muted-foreground mt-2 max-w-xl mx-auto">مش وحدات مترصّبة في قايمة — مسار واحد بيوصّل من البيانات للإجراء</p>
+          </div>
+          <div className="grid md:grid-cols-4 gap-3 md:gap-4">
+            {FLOW.map((s, i) => (
+              <div key={s.tag} className="relative">
+                <div className="rounded-2xl nk-card p-5 h-full flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="w-10 h-10 rounded-xl nk-brand-grad text-white grid place-items-center shadow-sm shrink-0">{s.icon}</span>
+                    <span className="text-[10px] font-extrabold tracking-[0.14em] text-muted-foreground/80 bg-muted rounded-full px-2.5 py-1">{s.tag}</span>
+                  </div>
+                  <h3 className="font-extrabold text-base flex items-baseline gap-2">
+                    <span className="nk-brand-text">{s.n}</span> {s.title}
+                  </h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{s.body}</p>
+                </div>
+                {i < FLOW.length - 1 && (
+                  <span aria-hidden className="hidden md:block absolute top-1/2 -start-2.5 -translate-x-full w-5 h-5 grid place-items-center text-[color:var(--c-primary)]">
+                    <ArrowLeft className="w-4 h-4" />
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ================= PRODUCT CAPABILITIES ================= */}
         <section id="features" className="py-12 md:py-16 border-t border-border/70 scroll-mt-20">
           <div className="text-center mb-9">
             <h2 className="text-2xl md:text-3xl font-extrabold nk-brand-text">كل اللي السنتر محتاجه — في مكان واحد</h2>
@@ -299,28 +442,52 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* ================= إزاي بيشتغل ================= */}
-        <section id="how" className="py-12 md:py-16 border-t border-border/70 scroll-mt-20">
+        {/* ================= ECOSYSTEM ================= */}
+        <section id="ecosystem" className="py-12 md:py-16 border-t border-border/70 scroll-mt-20">
           <div className="text-center mb-9">
-            <h2 className="text-2xl md:text-3xl font-extrabold nk-brand-text">٤ خطوات وتبقى شغّال</h2>
-            <p className="text-sm text-muted-foreground mt-2">نفس ترتيب الشغل اليومي بتاعك — من غير تدريب معقد</p>
+            <h2 className="text-2xl md:text-3xl font-extrabold nk-brand-text">منظومة النخبة — وطبقة الإدارة اللي بتربطها</h2>
+            <p className="text-sm text-muted-foreground mt-2 max-w-xl mx-auto">منتج واحد لكل غرض… وطبقة إدارة واحدة بتحوّلهم لمنظومة مترابطة</p>
           </div>
-          <div className="grid md:grid-cols-4 gap-3 md:gap-4">
-            {STEPS.map((s, i) => (
-              <div key={s.n} className="relative">
-                <div className="rounded-2xl nk-card p-5 h-full">
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="w-10 h-10 rounded-xl nk-brand-grad text-white grid place-items-center shadow-sm shrink-0">{s.icon}</span>
-                    <span className="text-[3.2rem] font-extrabold nk-brand-bg-soft-text select-none leading-none">{s.n}</span>
-                  </div>
-                  <h3 className="font-extrabold text-sm mb-1.5">{s.title}</h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{s.body}</p>
-                </div>
-                {i < STEPS.length - 1 && (
-                  <span aria-hidden className="hidden md:block absolute top-1/2 -start-2.5 -translate-x-full w-5 h-5 grid place-items-center text-[color:var(--gold-deep)]">
-                    <ArrowLeft className="w-4 h-4" />
-                  </span>
+
+          {/* الطبقة العليا */}
+          <div className="flex justify-center mb-5">
+            <div className="rounded-2xl nk-portal-card-dark px-6 py-4 text-center shadow-lg w-full max-w-md">
+              <p className="text-[10px] font-extrabold tracking-[0.2em] text-white/70 mb-1">MANAGEMENT LAYER</p>
+              <p className="font-extrabold text-lg text-white">AlNokhba Management</p>
+              <p className="text-[11px] font-bold text-white/75 mt-0.5">البيانات · العمليات · الذكاء · الإجراء</p>
+            </div>
+          </div>
+          <div className="flex justify-center mb-5" aria-hidden>
+            <ArrowDown className="w-5 h-5 text-[color:var(--c-primary)]" />
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+            {ECOSYSTEM.map((e) => (
+              <div
+                key={e.name}
+                className={
+                  "rounded-2xl p-5 flex flex-col gap-2.5 border-2 relative " +
+                  (e.tone === "current"
+                    ? "nk-card border-[color:var(--c-primary)]/50 shadow-md"
+                      : "nk-card border-transparent")
+                }
+              >
+                {e.tone === "current" && (
+                  <span className="absolute top-3 end-3 rounded-full nk-brand-bg text-white text-[9.5px] font-extrabold px-2.5 py-1">أنت هنا</span>
                 )}
+                <span
+                  className={
+                    "w-11 h-11 rounded-xl grid place-items-center shrink-0 " +
+                    (e.tone === "brand" ? "nk-brand-grad text-white shadow-sm"
+                      : e.tone === "teal" ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                        : e.tone === "current" ? "nk-brand-bg-soft nk-brand-text border border-[color:var(--c-primary)]/20"
+                          : "bg-muted border border-border text-muted-foreground")
+                  }
+                >
+                  {e.icon}
+                </span>
+                <h3 className="font-extrabold text-sm" dir="ltr">{e.name}</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">{e.desc}</p>
               </div>
             ))}
           </div>
@@ -329,7 +496,7 @@ export function LandingPage() {
         {/* ================= وضع الطوارئ ================= */}
         <section id="emergency" className="py-12 md:py-16 border-t border-border/70 scroll-mt-20">
           <div className="rounded-3xl nk-portal-card-dark p-7 md:p-10 relative overflow-hidden">
-            <div aria-hidden className="pointer-events-none absolute -top-24 -end-24 w-72 h-72 rounded-full opacity-20 nk-gold-bg blur-3xl" />
+            <div aria-hidden className="pointer-events-none absolute -top-24 -end-24 w-72 h-72 rounded-full opacity-20 bg-[#10b981] blur-3xl" />
             <div className="relative max-w-2xl">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 border border-white/25 px-3.5 py-1.5 text-xs font-bold text-white mb-4">
                 <WifiOff className="w-3.5 h-3.5" />
@@ -415,8 +582,8 @@ export function LandingPage() {
                   className={
                     "w-11 h-11 rounded-xl grid place-items-center shrink-0 " +
                     (r.tone === "brand" ? "nk-brand-grad text-white shadow-sm"
-                      : r.tone === "gold" ? "bg-amber-50 border border-amber-200 text-amber-700"
-                        : "bg-emerald-50 border border-emerald-200 text-emerald-700")
+                      : r.tone === "accent" ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                        : "bg-sky-50 border border-sky-200 text-sky-700")
                   }
                 >
                   {r.icon}
@@ -430,9 +597,9 @@ export function LandingPage() {
             <div className="inline-flex items-center gap-3 rounded-full border border-border bg-card px-5 py-3 text-xs font-extrabold text-muted-foreground shadow-sm">
               <Building2 className="w-4 h-4 nk-brand-text" /> المدير
               <ArrowDown className="w-3.5 h-3.5 rotate-[-90deg] text-[color:var(--gold-deep)]" />
-              <ClipboardCheck className="w-4 h-4 text-emerald-600" /> الاستقبال
+              <ClipboardCheck className="w-4 h-4 text-sky-600" /> الاستقبال
               <ArrowDown className="w-3.5 h-3.5 rotate-[90deg] text-[color:var(--gold-deep)]" />
-              <Briefcase className="w-4 h-4 text-amber-600" /> المدرس
+              <Briefcase className="w-4 h-4 text-emerald-600" /> المدرس
               <span className="text-[color:var(--c-primary)]">— نفس مصدر الحقيقة</span>
             </div>
           </div>
@@ -441,14 +608,14 @@ export function LandingPage() {
         {/* ================= CTA نهائي ================= */}
         <section id="contact" className="py-12 md:py-16 border-t border-border/70 scroll-mt-20">
           <div className="rounded-3xl nk-portal-card-dark p-7 md:p-10 text-center relative overflow-hidden">
-            <div aria-hidden className="pointer-events-none absolute -bottom-24 -start-24 w-72 h-72 rounded-full opacity-[0.15] nk-gold-bg blur-3xl" />
+            <div aria-hidden className="pointer-events-none absolute -bottom-24 -start-24 w-72 h-72 rounded-full opacity-[0.15] bg-[#2563eb] blur-3xl" />
             <h2 className="text-2xl md:text-4xl font-extrabold text-white relative">جاهز تشغّل سنترك صح؟</h2>
             <p className="text-white/80 text-sm md:text-base mt-3 max-w-lg mx-auto relative leading-relaxed">
               سجّل دخولك كمدير — وأول مرة هتلاقي جولة تعليمية بتشرحلك كل شاشة خطوة بخطوة،
               وزرار مساعدة في أي حتة مش مفهومة.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-7 relative">
-              <Link href={session ? "/app" : "/login"} className="nk-btn-gold h-12 rounded-xl px-7 font-extrabold text-base flex items-center gap-2 w-full sm:w-auto justify-center">
+              <Link href={session ? "/app" : "/login"} className="nk-btn-brand h-12 rounded-xl px-7 font-extrabold text-base flex items-center gap-2 w-full sm:w-auto justify-center">
                 <LogIn className="w-5 h-5" />
                 {session ? "استكمال النظام" : "يلا نبدأ — دخول السنتر"}
               </Link>
@@ -472,7 +639,7 @@ export function LandingPage() {
             <div className="flex flex-col gap-3">
               <AlNokhbaMark size={40} />
               <p className="text-xs text-muted-foreground leading-relaxed max-w-xs font-bold">
-                Alnokhba Managment — نظام تشغيل السنترات التعليمية: حضور بالـ QR، حسابات بالقروش،
+                AlNokhba Management — طبقة الإدارة لمنظومة النخبة: حضور بالـ QR، حسابات بالقروش،
                 اشتراكات، مستحقات مدرسين، ووضع طوارئ أوفلاين.
               </p>
             </div>
@@ -491,7 +658,7 @@ export function LandingPage() {
             </div>
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-7 pt-5 border-t border-border/60 text-[11px] font-bold text-muted-foreground">
-            <span>© <span className="nk-num" dir="ltr">2026</span> Alnokhba Managment</span>
+            <span>© <span className="nk-num" dir="ltr">2026</span> AlNokhba Management</span>
             <span className="flex items-center gap-1.5"><Calculator className="w-3.5 h-3.5" /> مبني لعمليات السنترات في مصر — بالعربي وبالمصري</span>
           </div>
         </footer>
@@ -511,7 +678,7 @@ function CheckMini() {
   );
 }
 
-function PortalCard({ href, icon, title, sub, tone }: { href: string; icon: React.ReactNode; title: string; sub: string; tone: "brand" | "ok" | "gold" }) {
+function PortalCard({ href, icon, title, sub, tone }: { href: string; icon: React.ReactNode; title: string; sub: string; tone: "brand" | "ok" | "accent" }) {
   return (
     <Link
       href={href}
@@ -523,7 +690,7 @@ function PortalCard({ href, icon, title, sub, tone }: { href: string; icon: Reac
             "w-11 h-11 rounded-xl grid place-items-center " +
             (tone === "brand" ? "nk-brand-grad text-white shadow-sm"
               : tone === "ok" ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
-                : "bg-amber-50 border border-amber-200 text-amber-700")
+                : "bg-sky-50 border border-sky-200 text-sky-700")
           }
         >
           {icon}

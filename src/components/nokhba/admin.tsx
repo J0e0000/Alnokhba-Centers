@@ -295,7 +295,7 @@ export function AdminSubscriptionsView({ data, reload }: { data: AdminData | nul
 
   return (
     <div className="space-y-4">
-      <PageHeader title="الاشتراكات" subtitle="تسعير شرائح Alnokhba Managment — 600 ج أساسي (أول 100 طالب) + شرائح تنازلية، والفوترة على كل الطلاب المسجلين غير الأرشيف" />
+      <PageHeader title="الاشتراكات" subtitle="تسعير شرائح AlNokhba Management — 600 ج أساسي (أول 100 طالب) + شرائح تنازلية، والفوترة على كل الطلاب المسجلين غير الأرشيف" />
 
       {/* قواعد التسعير الثابتة */}
       <div className="nk-card rounded-2xl p-4">

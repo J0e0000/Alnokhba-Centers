@@ -292,7 +292,7 @@ export function CenterShell({
               <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-1 nk-portal-mark" aria-hidden />
             </span>
             <div className="flex-1 min-w-0">
-              <h2 className="font-extrabold text-sm nk-brand-text">Alnokhba Managment بقت أسهل</h2>
+              <h2 className="font-extrabold text-sm nk-brand-text">AlNokhba Management بقت أسهل</h2>
               <ul className="text-[11px] font-bold text-muted-foreground mt-1.5 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 leading-relaxed">
                 <li>• 7 تابات واضحة: كل حاجة ليها مكان</li>
                 <li>• الرئيسية بتقولك الحصة الجاية وتفتحها بضغطة</li>
@@ -322,7 +322,7 @@ export function CenterShell({
             <div className="min-w-0 leading-tight">
               <h1 className="font-extrabold text-[15px] md:text-base truncate nk-brand-text">{center.name}</h1>
               <p className="text-[10px] md:text-[11px] text-muted-foreground font-bold tracking-wide">
-                {role === "MANAGER" ? "بورتال المدير" : role === "TEACHER" ? "بورتال المدرس" : "شاشة الاستقبال"} · Alnokhba Managment
+                {role === "MANAGER" ? "بورتال المدير" : role === "TEACHER" ? "بورتال المدرس" : "شاشة الاستقبال"} · AlNokhba Management
               </p>
             </div>
           </div>
@@ -415,7 +415,7 @@ export function CenterShell({
           <div className="mt-4 rounded-2xl border border-dashed border-border p-4 text-center nk-brand-bg-soft">
             <AlNokhbaMark size={30} showText={false} />
             <p className="text-[10px] text-muted-foreground font-bold mt-2 leading-relaxed">
-              القوى التقنية لمنصة Alnokhba Managment
+              القوى التقنية لمنصة AlNokhba Management
             </p>
           </div>
         </aside>
@@ -575,7 +575,7 @@ export function AdminShell({
           <div className="flex items-center gap-3">
             <AlNokhbaMark size={40} />
             <div className="leading-tight hidden sm:block">
-              <h1 className="font-extrabold text-[15px] md:text-base">Alnokhba Managment — إدارة السنترات</h1>
+              <h1 className="font-extrabold text-[15px] md:text-base">AlNokhba Management — إدارة السنترات</h1>
               <p className="text-[10px] md:text-[11px] text-muted-foreground font-bold">Admin Portal</p>
             </div>
           </div>
