@@ -1,22 +1,22 @@
-// CSS نظام الطوارئ الأوفلاين — نفس هوية النظام الأساسي (كحلي 143159 / ذهبي D5A134)
+// CSS نظام الطوارئ الأوفلاين — نفس هوية النظام الأساسي (Navy 0B1B4F / Blue 2563EB / Teal 10B981 من البراند شيت)
 // بلا أي مورد خارجي: الخطوط مدمجة base64 واللوجو مدمج data-URL.
 
 export const APP_CSS = `
 :root{
-  --navy:#143159; --navy-2:#1D4477; --navy-soft:#EDF1F7; --navy-50:#F5F7FA;
-  --gold:#D5A134; --gold-deep:#A8761F; --gold-soft:#FBF3E0;
-  --bg:#F5F7FA; --card:#FFFFFF; --border:#E3E9F0; --text:#1B2635; --muted:#64748B;
+  --navy:#0B1B4F; --navy-2:#1D4ED8; --navy-soft:#EDF1F7; --navy-50:#F5F8FD;
+  --gold:#10B981; --gold-deep:#0F766E; --gold-soft:#ECFDF5;
+  --bg:#F5F8FD; --card:#FFFFFF; --border:#E2E9F4; --text:#101A30; --muted:#64748B;
   --ok:#16A34A; --ok-soft:#EAF7EF; --warn:#EA580C; --warn-soft:#FEF2EC;
   --bad:#DC2626; --bad-soft:#FDECEC; --amber:#B45309; --amber-soft:#FFF8E8;
   --r:16px; --r-sm:12px;
-  --shadow:0 10px 24px -14px rgba(20,49,89,.22);
-  --shadow-sm:0 4px 14px -8px rgba(20,49,89,.18);
+  --shadow:0 10px 24px -14px rgba(11,27,79,.22);
+  --shadow-sm:0 4px 14px -8px rgba(11,27,79,.18);
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
 html,body{margin:0;padding:0;}
 body{background:var(--bg); color:var(--text); font-family:'Cairo','Segoe UI',Tahoma,Arial,sans-serif; font-size:15px; line-height:1.6;}
 button{font-family:inherit;}
-::selection{background:rgba(20,49,89,.18);}
+::selection{background:rgba(11,27,79,.18);}
 .mono{font-variant-numeric:tabular-nums; direction:ltr; unicode-bidi:embed;}
 .hidden{display:none !important;}
 .dim{opacity:.55;}
@@ -28,14 +28,14 @@ button{font-family:inherit;}
 .nk-top-txt{min-width:0;flex:1;}
 .nk-top-txt b{display:block;font-size:15px;font-weight:800;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .nk-top-txt span{display:block;font-size:11px;font-weight:700;color:var(--gold-deep);letter-spacing:.4px;}
-.nk-emg-badge{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;font-size:11px;font-weight:800;padding:6px 12px;border-radius:999px;box-shadow:inset 0 -2px 0 rgba(213,161,52,.55);white-space:nowrap;}
+.nk-emg-badge{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;font-size:11px;font-weight:800;padding:6px 12px;border-radius:999px;box-shadow:inset 0 -2px 0 rgba(16,185,129,.55);white-space:nowrap;}
 .nk-dot{width:7px;height:7px;border-radius:50%;background:var(--gold);animation:nkpulse 1.8s infinite;}
 @keyframes nkpulse{0%,100%{opacity:.5}50%{opacity:1}}
 .nk-days{font-size:11px;font-weight:800;color:var(--muted);text-align:center;line-height:1.3;white-space:nowrap;}
 .nk-days b{display:block;color:var(--navy);font-size:15px;}
 
 /* ===== شريط التحذير ===== */
-.nk-warn{background:linear-gradient(90deg,#FFF8E8,#FBF3E0);border-block:1px solid #EEDFB8;color:var(--amber);}
+.nk-warn{background:linear-gradient(90deg,#FFF8E8,#ECFDF5);border-block:1px solid #EEDFB8;color:var(--amber);}
 .nk-warn-in{max-width:1080px;margin:0 auto;padding:8px 16px;display:flex;gap:8px;align-items:flex-start;font-size:12px;font-weight:700;}
 .nk-warn svg{width:15px;height:15px;flex-shrink:0;margin-top:3px;color:var(--gold-deep);}
 
@@ -74,9 +74,9 @@ button{font-family:inherit;}
 .nk-btn:active{transform:scale(.985);}
 .nk-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;}
 .nk-btn svg{width:18px;height:18px;}
-.nk-btn.primary{background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;border-color:transparent;box-shadow:inset 0 -3px 0 rgba(213,161,52,.45),var(--shadow);border:1px solid transparent;}
+.nk-btn.primary{background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;border-color:transparent;box-shadow:inset 0 -3px 0 rgba(16,185,129,.45),var(--shadow);border:1px solid transparent;}
 .nk-btn.primary:hover{filter:brightness(1.07);}
-.nk-btn.gold{background:linear-gradient(135deg,var(--gold),#C08F27);color:#fff;border-color:transparent;box-shadow:inset 0 -3px 0 rgba(20,49,89,.4),var(--shadow);}
+.nk-btn.gold{background:linear-gradient(135deg,var(--gold),#C08F27);color:#fff;border-color:transparent;box-shadow:inset 0 -3px 0 rgba(11,27,79,.4),var(--shadow);}
 .nk-btn.ghost-ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 35%,#fff);background:var(--ok-soft);}
 .nk-btn.danger{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 35%,#fff);background:var(--bad-soft);}
 .nk-btn.sm{min-height:36px;padding:6px 12px;font-size:12px;border-radius:10px;}
@@ -86,7 +86,7 @@ button{font-family:inherit;}
 /* ===== البحث ===== */
 .nk-search{display:flex;gap:8px;align-items:center;}
 .nk-input{width:100%;border:1.5px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;font-family:inherit;font-size:16px;font-weight:700;color:var(--text);background:#fff;min-height:48px;outline:none;transition:border .15s, box-shadow .15s;}
-.nk-input:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(20,49,89,.12);}
+.nk-input:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(11,27,79,.12);}
 .nk-input::placeholder{color:#9CA8B5;font-weight:600;}
 textarea.nk-input{min-height:70px;resize:vertical;}
 .nk-chip{display:inline-flex;align-items:center;gap:4px;background:var(--navy-soft);color:var(--navy);border:1px solid color-mix(in srgb,var(--navy) 18%,#fff);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:800;cursor:pointer;}
@@ -108,7 +108,7 @@ textarea.nk-input{min-height:70px;resize:vertical;}
 /* ===== المودال ===== */
 .nk-modal-bg{position:fixed;inset:0;background:rgba(20,32,53,.45);backdrop-filter:blur(3px);z-index:60;display:flex;align-items:flex-end;justify-content:center;animation:nkfade .18s ease;}
 @keyframes nkfade{from{opacity:0}to{opacity:1}}
-.nk-modal{background:#fff;width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;box-shadow:0 -12px 48px rgba(20,49,89,.35);animation:nkslide .22s cubic-bezier(.2,.8,.2,1);padding:0;}
+.nk-modal{background:#fff;width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;box-shadow:0 -12px 48px rgba(11,27,79,.35);animation:nkslide .22s cubic-bezier(.2,.8,.2,1);padding:0;}
 @keyframes nkslide{from{transform:translateY(36px);opacity:.4}to{transform:none;opacity:1}}
 @media(min-width:640px){
   .nk-modal-bg{align-items:center;padding:24px;}
@@ -184,7 +184,7 @@ table.nk-tb{width:100%;border-collapse:collapse;min-width:560px;font-size:13px;}
 .nk-export-card .ic{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;flex-shrink:0;}
 .nk-flow{display:flex;flex-direction:column;gap:0;align-items:center;margin:14px 0;}
 .nk-flow .step{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border);border-radius:999px;padding:8px 18px;font-size:13px;font-weight:800;box-shadow:var(--shadow-sm);z-index:1;}
-.nk-flow .step .n{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;display:grid;place-items:center;font-size:12px;box-shadow:inset 0 -2px 0 rgba(213,161,52,.5);}
+.nk-flow .step .n{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;display:grid;place-items:center;font-size:12px;box-shadow:inset 0 -2px 0 rgba(16,185,129,.5);}
 .nk-flow .arrow{width:2.5px;height:22px;background:linear-gradient(var(--gold),var(--navy));border-radius:2px;}
 
 /* ===== تاب سفلي للموبايل ===== */
@@ -210,7 +210,7 @@ table.nk-tb{width:100%;border-collapse:collapse;min-width:560px;font-size:13px;}
 .nk-toast-in.err{background:var(--bad);} .nk-toast-in.ok{background:var(--ok);}
 .nk-scan{position:fixed;inset:0;background:#0B1526;z-index:80;display:flex;flex-direction:column;}
 .nk-scan video{flex:1;object-fit:cover;width:100%;}
-.nk-scan-bar{position:absolute;inset-inline:15%;top:34%;height:3px;background:var(--gold);border-radius:3px;box-shadow:0 0 18px rgba(213,161,52,.9);animation:nkscan 2.2s ease-in-out infinite;}
+.nk-scan-bar{position:absolute;inset-inline:15%;top:34%;height:3px;background:var(--gold);border-radius:3px;box-shadow:0 0 18px rgba(16,185,129,.9);animation:nkscan 2.2s ease-in-out infinite;}
 @keyframes nkscan{0%,100%{top:30%}50%{top:62%}}
 .nk-scan-ui{padding:14px;display:flex;gap:10px;background:rgba(11,21,38,.85);backdrop-filter:blur(6px);color:#fff;align-items:center;}
 .nk-scan-title{flex:1;font-weight:800;font-size:14px;}

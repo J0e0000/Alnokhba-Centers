@@ -65,10 +65,10 @@ export function buildEmergencyHtml(opts: {
 
   // هوية السنتر: لو عنده ألوان مخصصة (زي سنتر الأمل) بتغطلم على الكحلي الافتراضي
   const isHex = (c: string) => /^#[0-9a-fA-F]{6}$/.test(c);
-  const primary = isHex(opts.centerPrimary) ? opts.centerPrimary : "#143159";
-  const secondary = isHex(opts.centerSecondary) ? opts.centerSecondary : "#1D4477";
+  const primary = isHex(opts.centerPrimary) ? opts.centerPrimary : "#0B1B4F";
+  const secondary = isHex(opts.centerSecondary) ? opts.centerSecondary : "#1D4ED8";
   const brandOverride = `
-:root{ --navy:${primary}; --navy-2:${secondary}; --navy-soft:color-mix(in srgb,${primary} 9%,#ffffff); --navy-50:#F5F7FA; }
+:root{ --navy:${primary}; --navy-2:${secondary}; --navy-soft:color-mix(in srgb,${primary} 9%,#ffffff); --navy-50:#F5F8FD; }
 .nk-brand-grad{ background:linear-gradient(135deg,${primary},${secondary}); }
 `;
 
@@ -80,7 +80,7 @@ export function buildEmergencyHtml(opts: {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#143159">
+<meta name="theme-color" content="#0B1B4F">
 <title>${title}</title>
 <link rel="icon" href="${logo}">
 <style>
@@ -92,8 +92,8 @@ ${brandOverride}
 <body>
 <div class="nk-boot" id="nk-boot">
   <div class="nk-boot-card">
-    <img class="nk-boot-logo" src="${logo}" alt="Alnokhba Managment">
-    <h2 style="margin:0;color:var(--navy);font-size:19px">ALNOKHBA MANAGMENT</h2>
+    <img class="nk-boot-logo" src="${logo}" alt="AlNokhba Management">
+    <h2 style="margin:0;color:var(--navy);font-size:19px">ALNOKHBA MANAGEMENT</h2>
     <p style="margin:2px 0 0;font-weight:800;color:var(--gold-deep);font-size:12px">وضع الطوارئ — ${license.centerName}</p>
     <div class="nk-spin"></div>
     <p class="nk-hint">جاري التحقق من رخصة الطوارئ الموقّعة…</p>

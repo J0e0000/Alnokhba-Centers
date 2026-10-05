@@ -118,7 +118,7 @@ export const POST = handler(async (req: Request) => {
 
     return ok({
       ok: true,
-      message: "تم استلام طلبك — إدارة Alnokhba Managment هتراجعه وتعينك لسنتر. هتقدر تسجل دخول فور الموافقة.",
+      message: "تم استلام طلبك — إدارة AlNokhba Management هتراجعه وتعينك لسنتر. هتقدر تسجل دخول فور الموافقة.",
     }, { status: 201 });
   }
 
@@ -142,14 +142,14 @@ export const POST = handler(async (req: Request) => {
     throw new ApiError("اسم المستخدم أو كلمة السر غلط.", 401);
   }
   if (user.role === "PENDING") {
-    throw new ApiError("طلب انضمامك مستني موافقة إدارة Alnokhba Managment — هتقدر تدخل فور الموافقة والتعيين لسنتر.", 403);
+    throw new ApiError("طلب انضمامك مستني موافقة إدارة AlNokhba Management — هتقدر تدخل فور الموافقة والتعيين لسنتر.", 403);
   }
   if (user.role === "REJECTED") {
-    throw new ApiError("طلب الانضمام ده اترفض من الإدارة — لو ده غلطة كلم إدارة Alnokhba Managment.", 403);
+    throw new ApiError("طلب الانضمام ده اترفض من الإدارة — لو ده غلطة كلم إدارة AlNokhba Management.", 403);
   }
   if (!user.isActive) throw new ApiError("الحساب ده موقوف — كلم المدير.", 403);
   if (user.center && user.center.status !== "ACTIVE") {
-    throw new ApiError("اشتراك السنتر متوقف حالياً — كلم إدارة Alnokhba Managment.", 403);
+    throw new ApiError("اشتراك السنتر متوقف حالياً — كلم إدارة AlNokhba Management.", 403);
   }
 
   await createSession(user.id);

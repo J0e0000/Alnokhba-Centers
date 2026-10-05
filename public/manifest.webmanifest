@@ -1,6 +1,6 @@
 {
-  "name": "Alnokhba Managment — إدارة السنترات",
-  "short_name": "Alnokhba",
+  "name": "AlNokhba Management — إدارة السنترات",
+  "short_name": "AlNokhba",
   "description": "منصة إدارة السنترات التعليمية: حضور بالـ QR، حسابات، دفعات، اشتراكات، ووضع طوارئ",
   "lang": "ar",
   "dir": "rtl",
@@ -9,7 +9,7 @@
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#FFFFFF",
-  "theme_color": "#143159",
+  "theme_color": "#0B1B4F",
   "icons": [
     {
       "src": "/icon-192.png",

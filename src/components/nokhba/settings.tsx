@@ -316,9 +316,9 @@ function BrandingTab({ user, onBrandingChanged }: { user: SessionUser; onBrandin
         <div className="nk-card rounded-2xl p-4 flex items-start gap-3">
           <ShieldCheck className="w-8 h-8 nk-brand-text shrink-0" />
           <div>
-            <p className="font-bold text-sm">هوية Alnokhba Managment محفوظة</p>
+            <p className="font-bold text-sm">هوية AlNokhba Management محفوظة</p>
             <p className="text-xs text-muted-foreground font-semibold mt-0.5 leading-relaxed">
-              Alnokhba Managment بتظهر كهوية تقنية للمنصة، وهوية السنتر هي اللي بتظهر لعملاءك في كل التعاملات اليومية.
+              AlNokhba Management بتظهر كهوية تقنية للمنصة، وهوية السنتر هي اللي بتظهر لعملاءك في كل التعاملات اليومية.
             </p>
           </div>
         </div>

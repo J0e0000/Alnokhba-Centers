@@ -7,9 +7,9 @@ import { pageMetadata, organizationJsonLd, websiteJsonLd, softwareApplicationJso
 
 export const metadata = pageMetadata({
   description:
-    "Alnokhba Managment بيجمع الطلاب والمدرسين والحصص والحضور والدفعات والاشتراكات في نظام واحد بسيط: حضور بالـ QR في ثواني، إيصالات ومحفظة، اشتراكات، مستحقات مدرسين، وبورتال للطالب والمدرس — مع وضع طوارئ أوفلاين.",
+    "AlNokhba Management بيجمع الطلاب والمدرسين والحصص والحضور والدفعات والاشتراكات في نظام واحد بسيط: حضور بالـ QR في ثواني، إيصالات ومحفظة، اشتراكات، مستحقات مدرسين، وبورتال للطالب والمدرس — مع وضع طوارئ أوفلاين.",
   path: "/",
-  ogImageAlt: "Alnokhba Managment — لوحة تشغيل السنتر التعليمي",
+  ogImageAlt: "AlNokhba Management — لوحة تشغيل السنتر التعليمي",
 });
 
 export default function Home() {

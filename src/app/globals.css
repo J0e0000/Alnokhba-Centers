@@ -94,126 +94,129 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* ===== AlNokhba brand theme — مستخرج من اللوجو الرسمي =====
-   المصدر: الشعار الرسمي (مبنى #143159 + مدخل ذهبي #D5A134).
-   الأزرق الكحلي هو هوية الواجهة الأساسية، والذهبي لمسة الإبراز.
+/* ===== AlNokhba Management brand theme — مستخرج من البراند شيت الرسمي =====
+   المصدر: AlNokhba Management Brand System (palette الرسمية):
+   Navy #0B1B4F · Blue #2563EB · Teal #10B981 · Light Blue #E6F0FF.
+   الكحلي هو هوية الواجهة الأساسية، الأزرق درجة الحركة، والتركواز لمسة الإبراز.
    Center branding overrides --primary / --c-primary at runtime. */
 :root {
   --radius: 1rem;
-  --background: #f5f7fa;
-  --foreground: #1b2635;
+  --background: #f5f8fd;
+  --foreground: #101a30;
   --card: #ffffff;
-  --card-foreground: #1b2635;
+  --card-foreground: #101a30;
   --popover: #ffffff;
-  --popover-foreground: #1b2635;
-  --primary: #143159;
+  --popover-foreground: #101a30;
+  --primary: #0b1b4f;
   --primary-foreground: #ffffff;
-  --secondary: #edf1f7;
-  --secondary-foreground: #1d4477;
-  --muted: #eef1f6;
-  --muted-foreground: #4f5e73;
-  --accent: #e9eef6;
-  --accent-foreground: #1d4477;
+  --secondary: #eaf1fc;
+  --secondary-foreground: #1d4ed8;
+  --muted: #eef2f9;
+  --muted-foreground: #4e5e76;
+  --accent: #e6f0ff;
+  --accent-foreground: #1d4ed8;
   --destructive: #dc2626;
-  --border: #e3e9f0;
-  --input: #d6dee9;
-  --ring: #1d4477;
+  --border: #e2e9f4;
+  --input: #d5dfeb;
+  --ring: #2563eb;
   --success: #16a34a;
   --warning: #a8761f;
-  --chart-1: #143159;
-  --chart-2: #d5a134;
-  --chart-3: #3a5e96;
-  --chart-4: #6e88b3;
-  --chart-5: #8f6b1e;
+  --chart-1: #0b1b4f;
+  --chart-2: #2563eb;
+  --chart-3: #10b981;
+  --chart-4: #6e9bf7;
+  --chart-5: #0f766e;
   --sidebar: #ffffff;
-  --sidebar-foreground: #1b2635;
-  --sidebar-primary: #143159;
+  --sidebar-foreground: #101a30;
+  --sidebar-primary: #0b1b4f;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #edf1f7;
-  --sidebar-accent-foreground: #1d4477;
-  --sidebar-border: #e3e9f0;
-  --sidebar-ring: #1d4477;
+  --sidebar-accent: #eaf1fc;
+  --sidebar-accent-foreground: #1d4ed8;
+  --sidebar-border: #e2e9f4;
+  --sidebar-ring: #2563eb;
 
-  /* AlNokhba brand scale — ألوان اللوجو الرسمي بالظل الدقيق */
-  --navy: #143159;        /* كحلي اللوجو — الأساس */
-  --navy-deep: #0c2038;   /* أغمق — hover/تدرج */
-  --navy-light: #1d4477;  /* أفتح — نهاية التدرج */
-  --navy-mid: #3a5e96;    /* متوسط */
-  --navy-soft: #6e88b3;   /* فاتح هادي */
-  --navy-100: #e7edf6;    /* خلفية كحلي شفيفة */
-  --navy-50: #f3f6fb;
-  --gold: #d5a134;        /* ذهبي مدخل اللوجو — الإبراز */
-  --gold-deep: #8f6b1e;
-  --gold-light: #e3bc5c;
-  --gold-100: #faf0d8;
-  --gold-50: #fdf9ee;
+  /* AlNokhba Management brand scale — ألوان البراند شيت الرسمي بالظل الدقيق */
+  --navy: #0b1b4f;        /* كحلي البراند — الأساس */
+  --navy-deep: #061233;   /* أغمق — hover/تدرج */
+  --navy-light: #1d4ed8;  /* الأزرق الرسمي الغامق — نهاية التدرج الآمنة AA */
+  --navy-mid: #3b6af0;    /* أزرق حي — درجات الدارك والدعوات */
+  --navy-soft: #93a8d4;   /* أزرق فاتح هادي */
+  --navy-100: #e6f0ff;    /* Light Blue الرسمية — خلفيات براند */
+  --navy-50: #f3f8ff;
+  /* أسماء gold-* قديمة من الهوية السابقة — متسابه كأسماء للتوافق
+     والقيم اتحولت للتركواز الرسمي #10B981 (accent البراند الجديد) */
+  --gold: #10b981;        /* Teal الرسمي — الإبراز */
+  --gold-deep: #0f766e;
+  --gold-light: #34d399;
+  --gold-100: #d1fae5;
+  --gold-50: #ecfdf5;
 
   /* Center branding vars (overridden at runtime per tenant)
      -strong = نسخة غامقة كفاية للنص/الخلفيات مع أبيض (≥5:1)
      -lift   = نسخة فاتحة كفاية للنص على الأسطح الغامقة في الدارك (≥4.6:1)
-     تتحسب ديناميكيًا في applyCenterBranding لكل سنتر — دي الافتراضيات (كحلي النخبة) */
-  --c-primary: #143159;
-  --c-secondary: #1d4477;
-  --c-accent: #d5a134;
-  --c-primary-strong: #143159;
-  --c-secondary-strong: #1d4477;
-  --c-accent-strong: #846420;
-  --c-primary-lift: #7b8ca2;
+     تتحسب ديناميكيًا في applyCenterBranding لكل سنتر — دي الافتراضيات (هوية AlNokhba Management) */
+  --c-primary: #0b1b4f;
+  --c-secondary: #2563eb;
+  --c-accent: #10b981;
+  --c-primary-strong: #0b1b4f;
+  --c-secondary-strong: #1d4ed8;
+  --c-accent-strong: #0f766e;
+  --c-primary-lift: #93a8d4;
 }
 
 /* ===== قفل الوضع الفاتح — البوابات اللي مش بتتشغل بالدارك أبدًا =====
    بورتال الطالب / بورتال المدرس / صفحة الهبوط / شاشة الدخول / بورتال الأدمن
    بتعيد تعريف متغيرات الوضع الفاتح جوه أي سياق — لو html عليه .dark */
 .light-locked {
-  --background: #f5f7fa;
-  --foreground: #1b2635;
+  --background: #f5f8fd;
+  --foreground: #101a30;
   --card: #ffffff;
-  --card-foreground: #1b2635;
+  --card-foreground: #101a30;
   --popover: #ffffff;
-  --popover-foreground: #1b2635;
-  --primary: #143159;
+  --popover-foreground: #101a30;
+  --primary: #0b1b4f;
   --primary-foreground: #ffffff;
-  --secondary: #edf1f7;
-  --secondary-foreground: #1d4477;
-  --muted: #eef1f6;
-  --muted-foreground: #4f5e73;
-  --accent: #e9eef6;
-  --accent-foreground: #1d4477;
+  --secondary: #eaf1fc;
+  --secondary-foreground: #1d4ed8;
+  --muted: #eef2f9;
+  --muted-foreground: #4e5e76;
+  --accent: #e6f0ff;
+  --accent-foreground: #1d4ed8;
   --destructive: #dc2626;
-  --border: #e3e9f0;
-  --input: #d6dee9;
-  --ring: #1d4477;
+  --border: #e2e9f4;
+  --input: #d5dfeb;
+  --ring: #2563eb;
   --success: #16a34a;
   --warning: #a8761f;
   color-scheme: light;
 }
 
 .dark {
-  --background: #0d1420;
-  --foreground: #e6ebf2;
-  --card: #131c2b;
-  --card-foreground: #e6ebf2;
-  --popover: #131c2b;
-  --popover-foreground: #e6ebf2;
-  --primary: #3a5e96;
+  --background: #0a1122;
+  --foreground: #e7edf8;
+  --card: #101a31;
+  --card-foreground: #e7edf8;
+  --popover: #101a31;
+  --popover-foreground: #e7edf8;
+  --primary: #3b6af0;
   --primary-foreground: #ffffff;
-  --secondary: #1c2941;
-  --secondary-foreground: #e6ebf2;
-  --muted: #182337;
-  --muted-foreground: #93a3bd;
-  --accent: #1b2c4a;
-  --accent-foreground: #a9c1e8;
+  --secondary: #16244a;
+  --secondary-foreground: #e7edf8;
+  --muted: #14203a;
+  --muted-foreground: #9aaad0;
+  --accent: #182a55;
+  --accent-foreground: #a9c4f5;
   --destructive: #ef4444;
-  --border: #243352;
-  --input: #2a3a5c;
-  --ring: #3a5e96;
+  --border: #20305a;
+  --input: #2a3e6e;
+  --ring: #3b6af0;
   --success: #22c55e;
   --warning: #eab308;
   color-scheme: dark;
 }
 
-/* ===== الدارك: مساعدات النخبة اللي مخلوطة مع أبيض هاردكود =====
-   نفس الهوية (كحلي/ذهبي) بس متظبطة على خلفية غامقة — تباين AA */
+/* ===== الدارك: مساعدات البراند اللي مخلوطة مع أبيض هاردكود =====
+   نفس الهوية (كحلي/تركواز) بس متظبطة على خلفية غامقة — تباين AA */
 .dark .nk-card {
   background: var(--card);
   border-color: var(--border);
@@ -225,7 +228,7 @@
   box-shadow: 0 8px 28px -14px rgba(0, 0, 0, 0.6);
 }
 .dark .nk-glass-bar {
-  background: color-mix(in srgb, #0d1420 82%, transparent);
+  background: color-mix(in srgb, #0a1122 82%, transparent);
   border-bottom-color: color-mix(in srgb, var(--border) 70%, transparent);
 }
 .dark .nk-brand-bg-soft { background: color-mix(in srgb, var(--c-primary) 26%, var(--card)); }
@@ -387,8 +390,8 @@
 .light-locked .nk-gold { color: var(--c-accent); }
 .light-locked .nk-gold-bg-soft { background: color-mix(in srgb, var(--c-accent) 14%, #ffffff); }
 .light-locked .nk-gold-border { border-color: color-mix(in srgb, var(--c-accent) 38%, #ffffff); }
-.light-locked .nk-subject-text { color: color-mix(in srgb, var(--subject-color, #143159) 72%, #10131a); }
-.light-locked .nk-chip-subject { color: color-mix(in srgb, var(--subject-color, #143159) 72%, #10131a); background: color-mix(in srgb, var(--subject-color, #143159) 10%, transparent); }
+.light-locked .nk-subject-text { color: color-mix(in srgb, var(--subject-color, #0b1b4f) 72%, #10131a); }
+.light-locked .nk-chip-subject { color: color-mix(in srgb, var(--subject-color, #0b1b4f) 72%, #10131a); background: color-mix(in srgb, var(--subject-color, #0b1b4f) 10%, transparent); }
 
 @layer base {
   * {
@@ -527,11 +530,11 @@
   .nk-btn-brand:hover { filter: brightness(1.08); }
 }
 
-/* زرار ذهبي — للدعوة الأساسية (CTA) على خلفية كحلي */
+/* زرار الإبراز (accent) — للدعوة الأساسية (CTA) على خلفية كحلي */
 .nk-btn-gold {
   position: relative;
   background: linear-gradient(135deg, color-mix(in srgb, var(--c-accent) 88%, #ffffff), var(--c-accent));
-  color: #1d2b4f;
+  color: #0b1b4f;
   box-shadow:
     0 10px 22px -12px color-mix(in srgb, var(--c-accent) 75%, transparent),
     inset 0 -3px 0 0 color-mix(in srgb, var(--c-primary) 30%, transparent);
@@ -562,15 +565,25 @@
   letter-spacing: 0;
 }
 
+/* ===== Badges — حالة مختصرة (اللاندنج/الموك أب/الكروت) =====
+   كانت موجودة بس في CSS حزمة الطوارئ — اتضافت هنا عشان كل الواجهات تستخدم نفس اللغة */
+.nk-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 999px; }
+.nk-badge.g { background: #ecfdf5; color: #047857; }
+.nk-badge.o { background: #fff7ed; color: #c2410c; }
+.nk-badge.n { background: var(--navy-100); color: var(--c-primary-strong); }
+.nk-badge.r { background: #fef2f2; color: #b91c1c; }
+.nk-badge.a { background: #fffbeb; color: #b45309; }
+.nk-badge.m { background: #eef2f6; color: #4e5e76; }
+
 /* ===== ألوان المواد (أكاديميا) — نص/شيب لون المادة مع ضمانة تباين في الوضعين =====
    --subject-color بيتظبط inline من التطبيق — والـ color-mix بيتظبط لون النص تلقائيًا:
    فاتح: بنغمّق اللون ناحية الحبر عشان ≥4.5 على الخلفيات الفاتحة
    داكن: بنفتحه ناحية الأبيض عشان ≥4.5 على الأسطح الغامقة */
-.nk-subject-text { color: color-mix(in srgb, var(--subject-color, #143159) 72%, #10131a); }
+.nk-subject-text { color: color-mix(in srgb, var(--subject-color, #0b1b4f) 72%, #10131a); }
 .dark .nk-subject-text { color: color-mix(in srgb, var(--subject-color, #7b8ca2) 60%, #ffffff); }
 .nk-chip-subject {
-  color: color-mix(in srgb, var(--subject-color, #143159) 72%, #10131a);
-  background: color-mix(in srgb, var(--subject-color, #143159) 10%, transparent);
+  color: color-mix(in srgb, var(--subject-color, #0b1b4f) 72%, #10131a);
+  background: color-mix(in srgb, var(--subject-color, #0b1b4f) 10%, transparent);
 }
 .dark .nk-chip-subject {
   color: color-mix(in srgb, var(--subject-color, #7b8ca2) 60%, #ffffff);
@@ -604,8 +617,8 @@
 /* ===== Scrollbars — رمادي بارد من عائلة الكحلي ===== */
 .nk-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
 .nk-scroll::-webkit-scrollbar-track { background: transparent; }
-.nk-scroll::-webkit-scrollbar-thumb { background: #c3cdd9; border-radius: 999px; }
-.nk-scroll::-webkit-scrollbar-thumb:hover { background: #8fa0b5; }
+.nk-scroll::-webkit-scrollbar-thumb { background: #c3cfe2; border-radius: 999px; }
+.nk-scroll::-webkit-scrollbar-thumb:hover { background: #8fa3c8; }
 
 /* ===== Status colors (scan flow) ===== */
 .nk-green {
@@ -657,7 +670,7 @@
      وبتطبع أبيض على أبيض — التقارير والكروت وكشوف الحضور بتبقى مقروءةوش. */
   #nk-print-root, .nk-print-doc {
     background: #fff !important;
-    color: #1b2635 !important;
+    color: #101a30 !important;
   }
 
   /* الألوان والخلفيات لازم تتطبع فعلًا (التدرجات/الهيدر الملون/زيبرا الجدول) */
