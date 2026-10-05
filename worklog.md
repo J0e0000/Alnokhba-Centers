@@ -183,3 +183,21 @@ Work Log:
 Stage Summary:
 - كل نقطة لوجو في الموقع دلوقتي على البراند الرسمي AlNokhba Management (navy #0B1B4F / blue #2563EB / teal #10B981)
 - سكربت الاستخراج محفوظ في scripts/extract_brand.py — قابل لإعادة التشغيل لو البراند شيت اتحدث
+
+---
+Task ID: print-pdf-readability
+Agent: Super Z (main)
+Task: make sure the text in the PDFs is visible and not the same colors as the background + fit perfectly in downloading and look professional
+
+Work Log:
+- بنيت print-lab (صفحة مؤقتة اتحذفت) تعرض كل مستندات الطباعة الستة ببيانات واقعية + وضع داكن/فاتح + براند فاتح (أسوأ حالة)
+- Playwright: emulateMedia(print) + page.pdf() + pdftoppm → أكدت الباج بصرياً
+- الباج المؤكد: في الدارك مود النصوص من غير لون صريح (جداول التقارير، أسماء الكروت، كشوف الحضور) بتورّث foreground الفاتح → أبيض على أبيض
+- باج تاني: سنتر بألوان فاتحة (أصفر) → النص الأبيض على الهيدر مش باين + شريحة الكود ضعيفة التباين
+- الإصلاحات: (1) #nk-print-root/.nk-print-doc يفرض ورقة بيضاء + حبر #1b2635 في @media print (2) brandInk/brandOnLight يختاروا الحبر حسب إضاءة لون البراند (3) كروت الشاشة كمان حبر صريح (4) الإيصال الثيرمال يحقن @page 80mm auto (والنافذة الاحتياطية برضه) عشان الـ PDF ينزل بمقاس الورق
+- التحقق بعد الإصلاح: داكن/فاتح × براند افتراضي/فاتح — كل النصوص مقروءة، السالب أحمر، المجاميع ظاهرة
+- حذفت print-lab + build نجح + Commit 416f93a
+
+Stage Summary:
+- كل مستندات الطباعة (إيصالات A4/ثيرمال، تقارير، كشوف حضور، جداول اليوم، كروت طلاب) نصوصها مضمونة التباين في الوضع الداكن والفاتح وأي ألوان سنتر
+- سكربت التدقيق محفوظ: scripts/print_audit.js
