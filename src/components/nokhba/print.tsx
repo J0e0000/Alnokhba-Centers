@@ -3,16 +3,21 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { toast } from "sonner";
 import { fmt, formatDateAR, todayStr } from "./lib";
 import type { CenterInfo } from "./lib";
 
 /* ============================================================
-   طباعة مركزية قوية:
+   طباعة مركزية قوية (محرك مقاوم لكل المتصفحات):
    - المحتوى المطلوب طباعته بيتحط في #nk-print-root (portal على body)
    - في وضع الطباعة كل أبناء body بتتقفل ما عدا الجذر ده
-     (display:none مش visibility → مفيش صفحات فاضية ولا قص من الـ dialogs)
+     (classList على body + :has — شغال حتى في متصفحات من غير :has)
    - print-color-adjust:exact → الألوان والخلفيات بتتطبع فعلاً
    - بنستنى الصور (QR) تحمّل قبل ما نفتح حوار الطباعة
+   - Safari/iOS: window.print() مش بيقفّل الجافاسكريبت — فممنوع أي
+     مؤقّت يقفل الجذر أثناء الحوار (كان بيطبع صفحات فاضية)
+   - لو المتصفح منع window.print() تمامًا (iframe مقيّد/ويب فيو):
+     نكتشفها خلال 700ms ونفتح نافذة طباعة مستقلة بنفس التنسيق
 ============================================================ */
 
 type PrintRequest = { node: ReactNode; title?: string };
@@ -21,6 +26,44 @@ const PrintCtx = createContext<(node: ReactNode, title?: string) => void>(() => 
 
 export function usePrint() {
   return useContext(PrintCtx);
+}
+
+/** نسخ كل تنسيقات الصفحة (style tags + stylesheets) — لنافذة الطباعة الاحتياطية */
+async function collectPageCss(): Promise<string> {
+  const parts: string[] = [];
+  document.querySelectorAll("head style").forEach((s) => parts.push(s.textContent ?? ""));
+  const links = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'));
+  await Promise.all(
+    links.map(async (l) => {
+      try {
+        const res = await fetch(l.href, { cache: "force-cache" });
+        if (res.ok) parts.push(await res.text());
+      } catch { /* تجاهل — التنسيق الأساسي جاي من الـ style tags */ }
+    }),
+  );
+  return parts.join("\n");
+}
+
+/** نافذة طباعة مستقلة — الطريق الاحتياطي لما window.print() يتمنع في الـ iframe المقيّد */
+async function openPrintWindow(node: HTMLElement, title: string): Promise<boolean> {
+  const w = window.open("", "_blank");
+  if (!w) return false;
+  const css = await collectPageCss();
+  const safeTitle = title.replace(/[<>&"]/g, "");
+  const body = node.innerHTML;
+  w.document.open();
+  w.document.write(
+    `<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>${safeTitle}</title>` +
+    `<base href="${window.location.origin}/">` +
+    `<style>${css}</style>` +
+    `<style>@page{size:A4;margin:10mm}html,body{background:#fff}#nk-print-root{display:block !important}</style></head>` +
+    `<body class="nk-printing"><div id="nk-print-root" dir="rtl">${body}</div>` +
+    `<script>window.addEventListener('load',function(){setTimeout(function(){window.print()},200)});` +
+    `window.addEventListener('afterprint',function(){setTimeout(function(){window.close()},400)});<\/script>` +
+    `</body></html>`,
+  );
+  w.document.close();
+  return true;
 }
 
 export function PrintProvider({ children }: { children: ReactNode }) {
@@ -37,14 +80,21 @@ export function PrintProvider({ children }: { children: ReactNode }) {
     const prev = document.title;
     if (req.title) document.title = req.title;
     prevTitle.current = prev;
+    // فallback لمتصفحات من غير :has() — class على body
+    document.body.classList.add("nk-printing");
 
+    let sawBeforePrint = false;
+    const onBeforePrint = () => { sawBeforePrint = true; };
     const cleanup = () => {
       if (cancelled) return;
       cancelled = true;
       window.removeEventListener("afterprint", cleanup);
+      window.removeEventListener("beforeprint", onBeforePrint);
+      document.body.classList.remove("nk-printing");
       document.title = prevTitle.current;
       setReq(null);
     };
+    window.addEventListener("beforeprint", onBeforePrint);
     window.addEventListener("afterprint", cleanup);
 
     // استنى الرسم + الصور (كروت QR بتكون data-URL فبتحمّل فوراً) قبل فتح الحوار
@@ -65,14 +115,37 @@ export function PrintProvider({ children }: { children: ReactNode }) {
         );
       }
       if (cancelled) return;
-      window.print();
-      // سقف أمان لو afterprint مأجلتش في المتصفح
-      setTimeout(cleanup, 1500);
+      try { window.print(); } catch { /* بعض الويب فيو بترمي — التعامل تحت */ }
+
+      // لو المتصفح منع/تجاهل الطباعة (iframe مقيّد — مفيش beforeprint):
+      // نجرب نافذة طباعة مستقلة، ولو اتمنعت نشرح للمستخدم.
+      // ملاحظة: ما نقفلش الجذر هنا — في Safari الحوار مش بيقفّل JS
+      // والقفل بيحصل مع afterprint أو أول ما طلب طباعة جديد يجي.
+      setTimeout(async () => {
+        if (cancelled || sawBeforePrint) return;
+        const root = document.getElementById("nk-print-root");
+        if (!root) return;
+        try {
+          const ok = await openPrintWindow(root, req.title ?? "طباعة");
+          if (!ok && !cancelled) {
+            toast.error("المتصفح منع حوار الطباعة هنا", {
+              description: "افتح النظام في تاب مستقل (مش جوه تطبيق تاني) وجرّب الطباعة تاني.",
+              duration: 8000,
+            });
+          }
+        } catch { /* تجاهل */ }
+      }, 700);
     };
     run();
 
+    // سقف أمان واسع لو afterprint مأجلتش خالص — مفيش سباق Safari (60ث آمنة)
+    const safety = setTimeout(cleanup, 60_000);
+
     return () => {
+      clearTimeout(safety);
       window.removeEventListener("afterprint", cleanup);
+      window.removeEventListener("beforeprint", onBeforePrint);
+      document.body.classList.remove("nk-printing");
       document.title = prev;
     };
   }, [req]);

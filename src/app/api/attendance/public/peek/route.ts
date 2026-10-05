@@ -4,6 +4,7 @@ import { rateLimit } from "@/lib/auth";
 import { resolveSessionQr } from "@/lib/session-qr";
 import { hasCapability } from "@/lib/center-capabilities";
 import { issueSightingPv } from "@/lib/checkin-pv";
+import { peekCacheGet, peekCachePut } from "@/lib/peek-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -28,21 +29,11 @@ function clientIp(req: Request): string {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /* ============================================================
-   توسعة قاعدة البيانات (Task R): ميكرو-كاش 3 ثواني للقراءات.
-   موجة فصل كامل بيمسح الكود في نفس الثواني = كل طالب بيعمل peek
-   لنفس التوكن — والبيانات دي (الحصة/القدرة/الوضع) مش بتتغير أسرع من كده.
+   توسعة قاعدة البيانات (Task R): ميكرو-كاش 3 ثواني للقراءات —
+   معقلته في src/lib/peek-cache.ts مع إبطال مركزي لما القدرات تتغيّر.
    pv بيتولّد **لكل طلب** (موقّع بـ qrId+deviceId+iat — HMAC بدون تخزين).
    التحقق النهائي والأحكام كلها في /check-in — الكاش هنا تسريع قراءة بس.
 ============================================================ */
-const PEEK_TTL_MS = 3_000;
-const peekCache = new Map<string, { at: number; payload: Record<string, unknown> }>();
-function peekCachePut(token: string, payload: Record<string, unknown>): void {
-  if (peekCache.size > 400) {
-    const cutoff = Date.now() - 30_000;
-    for (const [k, v] of peekCache) if (v.at < cutoff) peekCache.delete(k);
-  }
-  peekCache.set(token, { at: Date.now(), payload });
-}
 
 export const GET = handler(async (req: Request) => {
   // مقياس قاعة: فصل كامل بيمسح الكود في نفس الدقيقة من نفس الواي فاي (600/دقيقة)
@@ -53,9 +44,9 @@ export const GET = handler(async (req: Request) => {
   const deviceId = (url.searchParams.get("deviceId") ?? "").trim();
 
   // إصابة الكاش: نفس بيانات القراءة + pv جديد بتوقيت دلوقتي
-  const cached = peekCache.get(token);
-  if (cached && Date.now() - cached.at < PEEK_TTL_MS) {
-    const c = cached.payload;
+  const cached = peekCacheGet(token);
+  if (cached) {
+    const c = cached;
     if (c.valid === true && typeof c.qrId === "string") {
       const pv = UUID_RE.test(deviceId) ? issueSightingPv(c.qrId, deviceId).pv : null;
       const { qrId: _qrId, ...rest } = c; // qrId داخلي — مش بيتسرب في الرد

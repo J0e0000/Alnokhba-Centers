@@ -138,3 +138,26 @@ Work Log:
 
 Stage Summary:
 - توسعة الداتابيز اتنفذت فعليًا مش على الورق: السقف المحلي نزل من ~73 لـ ~82 تسجيل/ثانية، والزمن الاستجابة عند 200-500 طالب متزامن قل نص تقريبًا (p95 1324→500ms عند 200)، وأول مرة نعدّي 1000 طالب متزامن في حصة واحدة بنسبة نجاح 100% وصفر أخطاء — قبل وبعد على نفس الجهاز ونفس المنهجية. اختيار «من قاعدة البيانات / بدون قاعدة بيانات» عند فتح الحصة شغال بالصياغة الحرفية اللي طلبها المستخدم، والحصة المفتوحة بتتفتح بضغطة واحدة. القيود الأمنية زي ما هي (116 فحص regression أخضر) والإنتاج متحقق 10/10 بعد الـ deploy.
+
+---
+Task ID: S (print buttons fix + easier/s smarter workflow + no-DB scan confirmed)
+Agent: main (Super Z)
+Task: user reported «زراير الطباعة مش شغالة» + asked for easier & smarter workflow (think first, then implement) + still couldn't do a no-database scan (scan + write name + code outside DB).
+
+Work Log:
+- PRINT ROOT CAUSE (two real bugs found by reproduction):
+  1) SessionLiveView (Focus Mode) was rendered OUTSIDE PrintProvider in app.tsx → usePrint() returned the no-op default context → EVERY print button inside a live session (كشف الحضور etc.) silently did nothing. Fixed: wrapped FocusShell branch with PrintProvider.
+  2) Engine fragility: 1500ms teardown timer removed the print root while Safari/iOS print dialog was still open (window.print() is non-blocking there → blank prints); print CSS relied on :has() only; sandboxed iframes silently ignore window.print().
+- PRINT ENGINE HARDENING (print.tsx): beforeprint detection → if print() ignored within 700ms, fallback opens an independent self-printing window (collects all page CSS + <base href> + auto print + auto close); no teardown race anymore (cleanup on afterprint + 60s safety only); body.nk-printing class + globals.css rules as no-:has() fallback; toast guidance if even the fallback popup is blocked.
+- SMARTER WORKFLOW (think-first): the no-DB choice was invisible in the schedule-driven daily flow — sessions opened from schedule ("ابدأ"/auto-open) were always ROSTER. Implemented:
+  a) «حضور مفتوح ⚡» hero quick-action on Today header → dialog opens PRESELECTED on بدون قاعدة بيانات with name auto-filled → 2 taps to a running open session.
+  b) Planned-session cards now have TWO actions: «ابدأ» (roster w/ كشف) + «مفتوح» (one-tap OPEN session named after the slot, PIN on, code 5) — lands directly on fullscreen QR.
+  c) After creating any OPEN session (dialog or planned), app lands directly on attendance tab with QR auto-fullscreen (openSession now accepts {tab, qrFullscreen}; SessionQrCard supports autoFullscreen; overview CTA for OPEN jumps fullscreen).
+  d) Live OPEN session cards on Today got a «الكود» action (fullscreen QR from the list).
+- PEEK CACHE INVALIDATION: peek micro-cache (3s, Task R) cached CAPABILITY_OFF results → after manager re-enables dynamic_qr students could see CAPABILITY_OFF up to 3s, and e2e_devices_lock check 13 flapped. Extracted cache to src/lib/peek-cache.ts + clearPeekCache() wired into PATCH /api/center/capabilities (instant visibility for caps toggles); removed test sleep hack.
+- BROWSER E2E (headless): open-mode student check-in verified twice (name+code+PIN → «تم تسجيل حضرك بنجاح»); quick-action flow → fullscreen QR w/ room PIN in 2 taps; planned «مفتوح» one-tap → fullscreen QR; print normal path (root mounted+populated at print(), cleanup on afterprint), blocked path (window.open fallback produced 278KB styled self-printing doc), day-schedule print lifecycle — all verified. Stale dev server serving broken mixed chunks (client-side exception) was the likely reason the user's preview attempts failed — killed and re-daemonized cleanly.
+- TESTS: e2e_device_lock 33/33 · e2e_attendance_modes 45/45 · e2e_anticheat 23/23 · e2e_qr_slot 15/15 = 116 green · tsc src clean · eslint clean · next build OK. Test sessions cancelled after verification (no pollution of today list).
+- NO schema changes, NO architectural changes (spec iron rule respected) — UI wiring + print engine + cache invalidation only.
+
+Stage Summary:
+- أزرار الطباعة شغالت فعلًا: كان فيه بروفايدر ناقص جوه شاشة الحصة (كل الأزرار كانت بتنادي دالة فاضية) — اتصلّح، والمحرك بقى مقاوم لـ Safari/iframe مقفول مع نافذة طباعة احتياطية. الـ workflow بقى أسهل وأذكى: «حضور مفتوح ⚡» من الهيدر بضغطتين، «مفتوح» جنب «ابدأ» في كل حصة مجدولة (تفتح حضور مفتوح من غير داتابيز فورًا)، وأي حصة مفتوحة بتفتح الكود بحجم الشاشة على طول. المسح من غير داتابيز (اسم + كود + كود القاعة) متأكد شغال بالكامل من غير تسجيل دخول.

@@ -645,9 +645,12 @@
 
   html, body { background: #fff !important; }
 
-  /* لو فيه محتوى طباعة جاهز → اقفل الواجهة كلها واعرض الجذر بس */
+  /* لو فيه محتوى طباعة جاهز → اقفل الواجهة كلها واعرض الجذر بس
+     (قاعدتين: :has للمتصفحات الحديثة + classList على body كفallback شامل) */
   body:has(> #nk-print-root) > *:not(#nk-print-root) { display: none !important; }
   body:has(> #nk-print-root) #nk-print-root { display: block !important; }
+  body.nk-printing > *:not(#nk-print-root) { display: none !important; }
+  body.nk-printing #nk-print-root { display: block !important; }
 
   /* الألوان والخلفيات لازم تتطبع فعلًا (التدرجات/الهيدر الملون/زيبرا الجدول) */
   #nk-print-root, #nk-print-root * {

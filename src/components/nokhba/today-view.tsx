@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CalendarClock, LockOpen, Loader2, Zap, PlayCircle, Ban, DoorClosed,
-  Printer, ClipboardCheck, ScanLine, LogIn, CheckCircle2, Plus, Users, Globe2,
+  Printer, ClipboardCheck, ScanLine, LogIn, CheckCircle2, Plus, Users, Globe2, QrCode,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -51,7 +51,7 @@ type Slot = {
 export function TodayView({ user, setView, openSession, goScanForSession }: {
   user: SessionUser;
   setView: (v: ViewId) => void;
-  openSession: (id: string) => void;
+  openSession: (id: string, opts?: { tab?: "overview" | "attendance" | "operations" | "review"; qrFullscreen?: boolean }) => void;
   goScanForSession: (id: string) => void;
 }) {
   const [data, setData] = useState<SessionsData | null>(null);
@@ -59,6 +59,7 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
   const [opening, setOpening] = useState<string | null>(null);
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
+  const [newSource, setNewSource] = useState<"ROSTER" | "OPEN">("ROSTER");
   const caps = useCaps();
   const printSheet = usePrint();
 
@@ -94,6 +95,22 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
       }
       window.dispatchEvent(new CustomEvent("nk-sessions-changed"));
       openSession(res.session.id);
+    } catch { /* toast */ } finally { setOpening(null); }
+  }
+
+  // حضور مفتوح فوري من حصة مجدولة — ضغطة واحدة: نفس الاسم/الوقت/القاعة من غير كشف ولا داتابيز
+  async function openPlannedOpenMode(p: PlannedSession) {
+    setOpening(p.scheduleId);
+    try {
+      const res = await api<{ session: { id: string } }>("/api/sessions", { method: "POST", body: {
+        studentSource: "OPEN",
+        name: `${p.subject} — ${p.grade} ${p.groupName}`.trim(),
+        startTime: p.startTime, endTime: p.endTime,
+        requireRoomPin: true,
+      } });
+      toast.success("حضور مفتوح فتح 🟢 — الكود ظهر للطلاب (من غير كشف)");
+      window.dispatchEvent(new CustomEvent("nk-sessions-changed"));
+      openSession(res.session.id, { tab: "attendance", qrFullscreen: true });
     } catch { /* toast */ } finally { setOpening(null); }
   }
 
@@ -141,8 +158,16 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
         subtitle={`${data.date} — ${data.sessions.length + data.suggestions.length} حصة`}
         action={
           <div className="flex items-center gap-2">
+            {/* الحضور المفتوح — أسرع طريق لبدء تسجيل من غير داتابيز (اختيار المستخدم الحرفي) */}
             <button
-              onClick={() => setNewOpen(true)}
+              onClick={() => { setNewSource("OPEN"); setNewOpen(true); }}
+              className="rounded-xl border-2 border-[color-mix(in_srgb,var(--c-primary)_45%,white)] bg-[color-mix(in_srgb,var(--c-primary)_10%,white)] nk-brand-text px-3.5 py-2.5 font-extrabold text-xs flex items-center gap-1.5 active:scale-[0.98] transition"
+            >
+              <Globe2 className="w-4 h-4" />
+              حضور مفتوح ⚡
+            </button>
+            <button
+              onClick={() => { setNewSource("ROSTER"); setNewOpen(true); }}
               className="nk-brand-bg text-white rounded-xl px-3.5 py-2.5 font-extrabold text-xs flex items-center gap-1.5 shadow active:scale-[0.98] transition"
             >
               <Plus className="w-4 h-4" />
@@ -237,6 +262,10 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
                   {isOpen && (
                     <div className="shrink-0 flex items-center gap-2">
                       <ActionPill icon={<PlayCircle className="w-4 h-4" />} label="متابعة" onClick={() => openSession(s.id)} tooltip="فتح شاشة الحصة الحية" />
+                      {/* الحصة المفتوحة: زرار الكود — الشاشة الكبيرة من مكان واحد (workflow) */}
+                      {s.studentSource === "OPEN" && (
+                        <ActionSquare icon={<QrCode className="w-5 h-5" />} label="الكود" variant="primary" size="sm" onClick={() => openSession(s.id, { tab: "attendance", qrFullscreen: true })} tooltip="عرض كود الحضور بحجم الشاشة" />
+                      )}
                       {scanScreenAvailable && (
                         <ActionSquare icon={<Zap className="w-5 h-5" />} label="امسح" variant="primary" size="sm" onClick={() => goScanForSession(s.id)} tooltip="مسح حضور الحصة دي" />
                       )}
@@ -266,15 +295,26 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
                     <span className="nk-num">{fmt(p.price)} ج · {p.students} طالب</span>
                   </p>
                 </div>
-                <ActionSquare
-                  icon={opening === p.scheduleId ? <Loader2 className="w-5 h-5 animate-spin" /> : <LockOpen className="w-5 h-5" />}
-                  label="ابدأ"
-                  variant="primary"
-                  size="sm"
-                  disabled={opening === p.scheduleId}
-                  onClick={() => openPlanned(p.scheduleId)}
-                  tooltip="فتح الحصة — حضور المدرس بيتسجل تلقائيًا"
-                />
+                {/* إجراءان واضحان: ابدأ بالكشف (من قاعدة البيانات) أو مفتوح (من غير داتابيز) — الاختيار الحرفي للمستخدم */}
+                <div className="shrink-0 flex items-center gap-2">
+                  <ActionSquare
+                    icon={opening === p.scheduleId ? <Loader2 className="w-5 h-5 animate-spin" /> : <LockOpen className="w-5 h-5" />}
+                    label="ابدأ"
+                    variant="primary"
+                    size="sm"
+                    disabled={opening === p.scheduleId}
+                    onClick={() => openPlanned(p.scheduleId)}
+                    tooltip="فتح الحصة بالكشف — حضور المدرس بيتسجل تلقائيًا"
+                  />
+                  <ActionSquare
+                    icon={opening === p.scheduleId ? <Loader2 className="w-5 h-5 animate-spin" /> : <Globe2 className="w-5 h-5" />}
+                    label="مفتوح"
+                    size="sm"
+                    disabled={opening === p.scheduleId}
+                    onClick={() => openPlannedOpenMode(p)}
+                    tooltip="فتح حضور مفتوح من غير قاعدة بيانات — الطلاب يمسحوا ويسجلوا اسمهم وكودهم"
+                  />
+                </div>
               </div>
             ))}
           </div>
@@ -296,7 +336,13 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
       <NewSessionDialog
         open={newOpen}
         onOpenChange={setNewOpen}
-        onCreated={(id) => { setNewOpen(false); window.dispatchEvent(new CustomEvent("nk-sessions-changed")); openSession(id); }}
+        initialSource={newSource}
+        onCreated={(id) => {
+          setNewOpen(false);
+          window.dispatchEvent(new CustomEvent("nk-sessions-changed"));
+          // الحصة المفتوحة: الكود هو الشغل — افتح تاب الحضور بحجم الشاشة على طول
+          openSession(id, newSource === "OPEN" ? { tab: "attendance", qrFullscreen: true } : undefined);
+        }}
       />
 
       {/* ===== شيت حضور الموظف — امسح كود شاشة المركز ===== */}
@@ -400,10 +446,11 @@ function timePlus90(start: string): string {
   return `${String(Math.floor(t / 60) % 24).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
 }
 
-export function NewSessionDialog({ open, onOpenChange, onCreated }: {
+export function NewSessionDialog({ open, onOpenChange, onCreated, initialSource }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onCreated: (sessionId: string) => void;
+  initialSource?: "ROSTER" | "OPEN";
 }) {
   const [source, setSource] = useState<"ROSTER" | "OPEN">("ROSTER");
   const [name, setName] = useState("");
@@ -420,16 +467,18 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: {
   // وقت افتراضي منطقي: من دلوقتي → بعد ساعة ونص (مربوطة بفتح الشيت مش بالمونت)
   useEffect(() => {
     if (open) {
+      const src = initialSource ?? "ROSTER";
       const s = timeNowRounded();
       setStartTime(s);
       setEndTime(timePlus90(s));
-      setSource("ROSTER");
-      setName("");
+      setSource(src);
+      // الحضور المفتوح: اسم جاهز من البداية — فتح بضغطة بلا كتابة
+      setName(src === "OPEN" ? `حضور مفتوح — ${s}` : "");
       setAllowUnreg(false);
       setCodeLen("5");
       setRoomPin(true); // مضاد الغش مفعّل افتراضيًا — المدرس يقدر يقفله
     }
-  }, [open]);
+  }, [open, initialSource]);
 
   // المجموعات النشطة (الكشف المتاح) — بتتجيب أول ما الشيت يتفتح
   useEffect(() => {
