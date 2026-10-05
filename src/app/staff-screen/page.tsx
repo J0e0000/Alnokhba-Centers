@@ -104,7 +104,7 @@ export default function StaffScreenPage() {
       {/* الهيدر */}
       <div className="absolute top-6 inset-x-0 flex items-center justify-between px-8">
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="" className="w-10 h-10 object-contain opacity-90" />
+          <img src="/logo-mark-white.png" alt="" className="w-10 h-10 object-contain opacity-95" />
           <div>
             <p className="font-extrabold text-lg leading-tight">{slot?.centerName ?? "حضور الموظفين"}</p>
             <p className="text-[11px] font-bold text-white/60">امسح الكود بموبايلك — حضورك بيتسجل فورًا</p>
