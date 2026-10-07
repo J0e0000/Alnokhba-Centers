@@ -215,7 +215,7 @@ export function AlNokhbaMark({ size = 36, showText = true, light = false, full =
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={full ? "/logo-full.png" : "/logo.png"}
+          src={full ? "/logo-full.png?v=2" : "/logo.png?v=2"}
           alt=""
           className="w-full h-full object-contain p-[8%]"
           draggable={false}

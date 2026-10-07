@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AlNokhbaMark } from "./shared";
 import { api, applyCenterBranding, type SessionUser } from "./lib";
-import { CenterShell, AdminShell, type ViewId, type AdminViewId } from "./shell";
+import { CenterShell, AdminShell, NAV_LABELS, type ViewId, type AdminViewId } from "./shell";
 import { TabsDashboardView } from "./tabs-dashboard";
 import { TodayView } from "./today-view";
 import { OperationsView } from "./operations";
@@ -41,7 +41,16 @@ import type { AdminData } from "./admin";
 
 export function App() {
   const [user, setUser] = useState<SessionUser | null | undefined>(undefined);
-  const [view, setView] = useState<ViewId>("home");
+  const [view, _setView] = useState<ViewId>("home");
+  // مزامنة الشاشة مع الـ hash — الريفرش أو الـ undo (اللي بيعمل reload) ما يرميكش على الرئيسية
+  // وتضيع مكانك في وسط شغل (مدفوعات/ملف طالب/مراجعة حصة)
+  const setView = useCallback((v: ViewId) => {
+    _setView(v);
+    try {
+      const url = v === "home" ? window.location.pathname + window.location.search : `#${v}`;
+      history.replaceState(null, "", url);
+    } catch { /* ignore */ }
+  }, []);
   const [studentId, setStudentId] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   // لانش الحصة: تاب البداية + هل نفتح الـ QR بحجم الشاشة فورًا (workflow أسهل للحضور المفتوح)
@@ -55,6 +64,16 @@ export function App() {
     api<{ user: SessionUser | null }>("/api/auth", { silent: true })
       .then((d) => setUser(d.user))
       .catch(() => setUser(null));
+  }, []);
+
+  // استرجاع الشاشة من الـ hash عند الإقلاع (المفاتيح من NAV_LABELS — نفس union بالظبط)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const h = window.location.hash.replace("#", "");
+      const known = Object.keys(NAV_LABELS) as ViewId[];
+      if (h && (known as string[]).includes(h)) _setView(h as ViewId);
+    }, 0);
+    return () => clearTimeout(t);
   }, []);
 
   // قدرات المركز — الواجهات بتتكيف بيها (والسيرفر بيفرضها على الـ API)

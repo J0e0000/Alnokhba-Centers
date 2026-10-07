@@ -7,7 +7,7 @@ import {
   ShieldCheck, Eye, Upload, Variable, Smartphone, SlidersHorizontal, ScanLine,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { api, applyCenterBranding, darkenForAA, type SessionUser } from "./lib";
+import { api, applyCenterBranding, darkenForAA, BRAND_DEFAULTS, type SessionUser } from "./lib";
 import { PageHeader, Chip, Loading, SectionCard, EmptyState } from "./shared";
 import { AttendanceTab } from "./settings-attendance";
 import { Field, inputCls } from "./students";
@@ -131,7 +131,7 @@ function readableOn(bg: string | null | undefined): string {
 
 const TABS = [
   { id: "branding", label: "هوية السنتر", icon: <Palette className="w-4 h-4" /> },
-  { id: "attendance", label: "الحضور والpresence", icon: <ScanLine className="w-4 h-4" /> },
+  { id: "attendance", label: "الحضور", icon: <ScanLine className="w-4 h-4" /> },
   { id: "whatsapp", label: "قوالب واتساب", icon: <MessageCircle className="w-4 h-4" /> },
   { id: "staff", label: "الموظفين", icon: <Users className="w-4 h-4" /> },
   { id: "prefs", label: "تفضيلاتي", icon: <SlidersHorizontal className="w-4 h-4" /> },
@@ -334,10 +334,10 @@ function ColorField({ label, value, onChange, optional }: {
     <div className="space-y-1.5">
       <label className="text-xs font-bold block">{label}</label>
       <div className="flex rounded-xl border-2 border-input overflow-hidden bg-card h-11">
-        <input type="color" value={value || "#0E9F6E"} onChange={(e) => onChange(e.target.value.toUpperCase())}
+        <input type="color" value={value || BRAND_DEFAULTS.primary} onChange={(e) => onChange(e.target.value.toUpperCase())}
           className="w-11 h-full border-e-2 border-input cursor-pointer bg-transparent" aria-label={label} />
         <input dir="ltr" value={value} onChange={(e) => onChange(e.target.value.toUpperCase())}
-          className="flex-1 px-2 text-xs font-bold nk-num text-center" placeholder={optional ? "اختياري" : "#0E9F6E"} />
+          className="flex-1 px-2 text-xs font-bold nk-num text-center" placeholder={optional ? "اختياري" : BRAND_DEFAULTS.primary} />
       </div>
     </div>
   );
@@ -381,7 +381,7 @@ function WhatsAppTab() {
       </button>
 
       {loading ? <Loading /> : templates.length === 0 ? (
-        <div className="nk-card rounded-2-xl"><EmptyState title="مفيش قوالب" hint="اعمل أول قالب — مثلاً تأكيد حضور." /></div>
+        <div className="nk-card rounded-2xl"><EmptyState title="مفيش قوالب" hint="اعمل أول قالب — مثلاً تأكيد حضور." /></div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {templates.map((t) => (

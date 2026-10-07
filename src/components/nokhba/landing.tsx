@@ -658,7 +658,7 @@ export function LandingPage() {
             </div>
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-7 pt-5 border-t border-border/60 text-[11px] font-bold text-muted-foreground">
-            <span>© <span className="nk-num" dir="ltr">2026</span> AlNokhba Management</span>
+            <span>© <span className="nk-num" dir="ltr">{new Date().getFullYear()}</span> AlNokhba Management</span>
             <span className="flex items-center gap-1.5"><Calculator className="w-3.5 h-3.5" /> مبني لعمليات السنترات في مصر — بالعربي وبالمصري</span>
           </div>
         </footer>

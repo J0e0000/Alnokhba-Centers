@@ -39,10 +39,12 @@ export function AcademiaApp({ initialUser, term, today, unread: initialUnread }:
   const [notifOpen, setNotifOpen] = useState(false);
 
   // support deep-links like /academia?view=exams (deferred — no sync setState in effect)
+  // + تحقق إن القيمة معروفة — قيمة غريبة كانت بتسيب الصفحة فاضية من غير أي رسالة
   useEffect(() => {
     const t = setTimeout(() => {
       const v = new URLSearchParams(window.location.search).get("view");
-      if (v) setView(v as ViewKey);
+      const known: ViewKey[] = ["home", "groups", "students", "exams", "requests", "reports", "insights", "settings", "audit", "teachers", "portal"];
+      if (v && (known as string[]).includes(v)) setView(v as ViewKey);
     }, 0);
     return () => clearTimeout(t);
   }, []);
@@ -107,6 +109,30 @@ export function AcademiaApp({ initialUser, term, today, unread: initialUnread }:
           </button>
         </div>
       </header>
+
+      {/* ---------- desktop nav — كانت المجموعات/الطلاب/الامتحانات/الطلبات/التقارير
+          مش متاحة على الديسكتوب خالص (البوتوم ناف md:hidden) ---------- */}
+      <div className="hidden md:block border-b bg-background/95 backdrop-blur">
+        <div className="max-w-5xl mx-auto px-4 flex items-center gap-1 overflow-x-auto no-scrollbar" role="tablist" aria-label="التنقل الرئيسي">
+          {[...NAV, ...MORE].filter((n) => n.show).map((n) => (
+            <button
+              key={n.key}
+              role="tab"
+              aria-selected={view === n.key}
+              aria-current={view === n.key ? "page" : undefined}
+              onClick={() => setView(n.key)}
+              className={cn(
+                "shrink-0 px-3.5 py-2.5 text-xs font-extrabold border-b-2 transition flex items-center gap-1.5",
+                view === n.key
+                  ? "nk-brand-text border-[var(--c-primary)]"
+                  : "text-muted-foreground border-transparent hover:text-foreground",
+              )}
+            >
+              {n.icon} {n.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* ---------- content ---------- */}
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-5 pb-24">

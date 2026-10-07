@@ -34,8 +34,10 @@ export function CommandPalette({ user, setView, onOpenStudent }: {
   const listRef = useRef<HTMLDivElement>(null);
 
   const navIds: ViewId[] = user.role === "MANAGER"
-    ? ["home", "scan", "payments", "students", "approvals", "schedule", "groups", "books", "messages", "accounting", "reports", "settings"]
-    : ["home", "scan", "payments", "students", "schedule", "books", "messages"];
+    ? ["home", "today", "scan", "approvals", "schedule", "groups", "exams", "quizzes", "assignments", "students", "payments", "messages", "books", "operations", "accounting", "emergency", "reports", "settings"]
+    : user.role === "TEACHER"
+      ? ["home", "schedule", "quizzes", "exams", "assignments"]
+      : ["home", "today", "scan", "students", "payments", "books", "messages", "schedule"];
 
   // فتح/قفل بـ Ctrl+K أو ⌘K
   useEffect(() => {
@@ -91,8 +93,9 @@ export function CommandPalette({ user, setView, onOpenStudent }: {
     action: () => { onOpenStudent(s.id); setOpen(false); },
   }));
 
+  const byLabel = navItems.filter((n) => n.label.includes(q.trim()));
   const filteredNav = q.trim()
-    ? navItems.filter((n) => n.label.includes(q.trim()) || q.trim().length <= 1)
+    ? (byLabel.length ? byLabel : q.trim().length <= 1 ? navItems : [])
     : navItems.slice(0, 6);
 
   const items = [...studentItems, ...filteredNav];
@@ -148,14 +151,14 @@ export function CommandPalette({ user, setView, onOpenStudent }: {
               {studentItems.length > 0 && (
                 <p className="px-4 pt-3 pb-1 text-[10px] font-extrabold text-muted-foreground tracking-wide">طلاب</p>
               )}
-              {items.map((it, i) => (
+              {studentItems.map((it, i) => (
                 <button
                   key={it.id}
                   data-idx={i}
                   onClick={it.action}
                   onMouseEnter={() => setHi(i)}
                   className={cn(
-                    "w-full px-4 py-3 flex items-center gap-3 text-start border-b last:border-0 transition",
+                    "w-full px-4 py-3 flex items-center gap-3 text-start border-b transition",
                     i === hi ? "bg-[color-mix(in_srgb,var(--c-primary)_8%,white)]" : "bg-card"
                   )}
                 >
@@ -163,7 +166,7 @@ export function CommandPalette({ user, setView, onOpenStudent }: {
                     "w-9 h-9 rounded-xl grid place-items-center font-extrabold text-sm shrink-0",
                     it.kind === "student" ? "nk-brand-bg-soft nk-brand-text" : "bg-muted text-muted-foreground"
                   )}>
-                    {it.kind === "student" ? it.label.trim()[0] : it.label.trim()[0]}
+                    {it.label.trim()[0]}
                   </span>
                   <span className="flex-1 min-w-0">
                     <span className="block font-extrabold text-sm truncate">{it.label}</span>
@@ -172,9 +175,36 @@ export function CommandPalette({ user, setView, onOpenStudent }: {
                   {i === hi && <CornerDownLeft className="w-4 h-4 text-muted-foreground shrink-0" />}
                 </button>
               ))}
-              {filteredNav.length > 0 && studentItems.length > 0 && (
+              {filteredNav.length > 0 && (
                 <p className="px-4 pt-3 pb-1 text-[10px] font-extrabold text-muted-foreground tracking-wide">صفحات</p>
               )}
+              {filteredNav.map((it, j) => {
+                const i = studentItems.length + j;
+                return (
+                  <button
+                    key={it.id}
+                    data-idx={i}
+                    onClick={it.action}
+                    onMouseEnter={() => setHi(i)}
+                    className={cn(
+                      "w-full px-4 py-3 flex items-center gap-3 text-start border-b last:border-0 transition",
+                      i === hi ? "bg-[color-mix(in_srgb,var(--c-primary)_8%,white)]" : "bg-card"
+                    )}
+                  >
+                    <span className={cn(
+                      "w-9 h-9 rounded-xl grid place-items-center font-extrabold text-sm shrink-0",
+                      it.kind === "student" ? "nk-brand-bg-soft nk-brand-text" : "bg-muted text-muted-foreground"
+                    )}>
+                      {it.label.trim()[0]}
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block font-extrabold text-sm truncate">{it.label}</span>
+                      {it.sub && <span className="block text-[11px] text-muted-foreground font-semibold truncate">{it.sub}</span>}
+                    </span>
+                    {i === hi && <CornerDownLeft className="w-4 h-4 text-muted-foreground shrink-0" />}
+                  </button>
+                );
+              })}
             </>
           )}
         </div>

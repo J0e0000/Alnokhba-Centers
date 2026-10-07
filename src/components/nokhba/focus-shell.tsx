@@ -74,7 +74,7 @@ export function FocusShell({ user, children, onExit }: {
             <span className="w-8 h-8 rounded-lg bg-card border border-border grid place-items-center shrink-0 overflow-hidden" aria-hidden>
               {user.center?.logo
                 ? <img src={user.center.logo} alt="" className="w-full h-full object-cover" />
-                : <img src="/logo.png" alt="" className="w-full h-full object-contain p-[6%]" />}
+                : <img src="/logo.png?v=2" alt="" className="w-full h-full object-contain p-[6%]" />}
             </span>
             <span className="hidden sm:flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 text-[11px] font-extrabold text-emerald-700 dark:text-emerald-300 shrink-0">
               <CheckCircle2 className="w-3.5 h-3.5" />

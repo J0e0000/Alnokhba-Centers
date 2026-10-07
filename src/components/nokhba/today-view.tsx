@@ -60,11 +60,16 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
   const [newSource, setNewSource] = useState<"ROSTER" | "OPEN">("ROSTER");
+  const [pendingApprovals, setPendingApprovals] = useState(0);
   const caps = useCaps();
   const printSheet = usePrint();
 
   const load = useCallback(() => {
     api<SessionsData>("/api/sessions").then(setData).catch(() => {});
+    // طلبات محتاجة موافقة — الكارت مبيظهرش خالص لو مفيش حاجة مستنية (كان بيظهر فاضي دايمًا)
+    api<{ pendingCount: number }>("/api/approvals", { silent: true })
+      .then((d) => setPendingApprovals(d.pendingCount ?? 0))
+      .catch(() => {});
     // مواعيد الجدول الأسبوعي للنهاردة — لطباعة جدول القاعات
     api<{ days: { dayOfWeek: number; slots: Slot[] }[] }>("/api/schedule")
       .then((d) => {
@@ -321,14 +326,17 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
         )}
       </SectionCard>
 
-      {/* موافقات محتاجة — للمدير */}
-      {isManager && (
+      {/* موافقات محتاجة — للمدير — بس لما يبقى فيه حاجة مستنية فعلًا */}
+      {isManager && pendingApprovals > 0 && (
         <button
           onClick={() => setView("approvals")}
           className="w-full nk-card rounded-2xl p-4 flex items-center gap-3 hover:shadow-md transition active:scale-[0.99]"
         >
           <span className="rounded-xl p-2.5 nk-brand-bg-soft nk-brand-text"><ClipboardCheck className="w-5 h-5" /></span>
           <span className="flex-1 text-start font-extrabold text-sm">طلبات محتاجة موافقة</span>
+          <span className="min-w-6 h-6 px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-black grid place-items-center nk-num">
+            {pendingApprovals > 9 ? "9+" : pendingApprovals}
+          </span>
         </button>
       )}
 

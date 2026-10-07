@@ -227,13 +227,22 @@ export function lightenForDarkAA(hex: string, target = 4.65): string {
   } catch { return hex; }
 }
 
-export function applyCenterBranding(center: CenterInfo | null) {
+/** الهوية الرسمية الافتراضية — مصدر واحد للحقيقة (شاشة + طباعة + بورتال + أكاديميا).
+ *  قبل كده كان فيه هويتين: الشاشة كحلي والطباعة أخضر — أي سنتر من غير ألوان كان بيشوف الاتنين مختلفين. */
+export const BRAND_DEFAULTS = { primary: "#0B1B4F", secondary: "#2563EB", accent: "#10B981" } as const;
+
+/** الشكل الأدنى اللي محرك الهوية بيقراه — البورتالات بتوصل نسخة مصغّرة من CenterInfo */
+export type BrandableCenter = {
+  primaryColor?: string | null; secondaryColor?: string | null; accentColor?: string | null;
+};
+
+export function applyCenterBranding(center: BrandableCenter | null) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
   // الافتراضي = هوية AlNokhba Management الرسمية (كحلي + أزرق + تركواز من البراند شيت)
-  const primary = center?.primaryColor || "#0B1B4F";
-  const secondary = center?.secondaryColor || "#2563EB";
-  const accent = center?.accentColor || "#10B981";
+  const primary = center?.primaryColor || BRAND_DEFAULTS.primary;
+  const secondary = center?.secondaryColor || BRAND_DEFAULTS.secondary;
+  const accent = center?.accentColor || BRAND_DEFAULTS.accent;
   root.style.setProperty("--primary", primary);
   root.style.setProperty("--ring", secondary);
   root.style.setProperty("--sidebar-primary", primary);

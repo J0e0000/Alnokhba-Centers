@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { fmt, formatDateAR, todayStr } from "./lib";
+import { fmt, formatDateAR, todayStr, BRAND_DEFAULTS } from "./lib";
 import type { CenterInfo } from "./lib";
 
 /* ============================================================
@@ -221,8 +221,8 @@ export function PrintableCards({ cards, center }: { cards: CardData[]; center: C
 
 /** نسخة الطباعة من الكارت — نفس تصميم الشاشة لكن بدون ظلال وبتدرجات قابلة للطباعة */
 function CardForPrint({ card, center, index }: { card: CardData; center: CenterInfo | null; index: number }) {
-  const primary = center?.primaryColor ?? "#0E9F6E";
-  const secondary = center?.secondaryColor ?? "#0F766E";
+  const primary = center?.primaryColor ?? BRAND_DEFAULTS.primary;
+  const secondary = center?.secondaryColor ?? BRAND_DEFAULTS.secondary;
   const headerInk = brandInk(primary, secondary);
   return (
     <div className="nk-print-card" style={{ width: "85.6mm", height: "53.98mm", borderRadius: "3mm", overflow: "hidden", border: "0.4mm dashed #b9c6cc", background: "#fff", position: "relative", color: "#1b2635" }}>
@@ -231,7 +231,7 @@ function CardForPrint({ card, center, index }: { card: CardData; center: CenterI
           <img src={center.logo} alt="" style={{ height: "8.5mm", width: "8.5mm", borderRadius: "2mm", objectFit: "cover", background: "#fff", border: "0.4mm solid rgba(255,255,255,.7)" }} />
         ) : (
           /* لوجو النظام الأساسي على الكارت المطبوع */
-          <img src="/logo.png" alt="" style={{ height: "8.5mm", width: "8.5mm", borderRadius: "2mm", objectFit: "contain", background: "#fff", border: "0.4mm solid rgba(255,255,255,.7)", padding: "0.4mm" }} />
+          <img src="/logo.png?v=2" alt="" style={{ height: "8.5mm", width: "8.5mm", borderRadius: "2mm", objectFit: "contain", background: "#fff", border: "0.4mm solid rgba(255,255,255,.7)", padding: "0.4mm" }} />
         )}
         <div style={{ lineHeight: 1.15 }}>
           <div style={{ fontSize: "3.6mm", fontWeight: 800 }}>{center?.name ?? "السنتر"}</div>
@@ -325,8 +325,8 @@ function RcRow({ label, value, strong }: { label: string; value: string; strong?
 
 /** A4 receipt — نصف ورقة، هيدر براند + تفاصيل + توقيع */
 export function PrintableReceiptA4({ data, center }: { data: ReceiptData; center: CenterInfo | null }) {
-  const primary = center?.primaryColor ?? "#0E9F6E";
-  const secondary = center?.secondaryColor ?? "#0F766E";
+  const primary = center?.primaryColor ?? BRAND_DEFAULTS.primary;
+  const secondary = center?.secondaryColor ?? BRAND_DEFAULTS.secondary;
   const r = data.receipt;
   const s = data.student;
   const t = rcType(r.type);
@@ -340,7 +340,7 @@ export function PrintableReceiptA4({ data, center }: { data: ReceiptData; center
           <img src={data.center.logo} alt="" className="nk-rc-logo" />
         ) : (
           /* لوجو النظام الأساسي على الإيصال */
-          <img src="/logo.png" alt="" className="nk-rc-logo" style={{ objectFit: "contain", background: "#fff" }} />
+          <img src="/logo.png?v=2" alt="" className="nk-rc-logo" style={{ objectFit: "contain", background: "#fff" }} />
         )}
         <div className="nk-rc-brand">
           <div className="nk-rc-center-name">{data.center.name}</div>
@@ -471,8 +471,8 @@ export type PrintableReportData = {
 };
 
 export function PrintableReport({ data, center }: { data: PrintableReportData; center: CenterInfo | null }) {
-  const primary = center?.primaryColor ?? "#0E9F6E";
-  const secondary = center?.secondaryColor ?? "#0F766E";
+  const primary = center?.primaryColor ?? BRAND_DEFAULTS.primary;
+  const secondary = center?.secondaryColor ?? BRAND_DEFAULTS.secondary;
   const now = new Date();
   const stamp = `${formatDateAR(todayStr(now))} · ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
@@ -485,7 +485,7 @@ export function PrintableReport({ data, center }: { data: PrintableReportData; c
             <img src={center.logo} alt="" className="nk-pr-logo" />
           ) : (
             /* لوجو النظام الأساسي على التقارير المطبوعة */
-            <img src="/logo.png" alt="" className="nk-pr-logo" style={{ objectFit: "contain", background: "#fff" }} />
+            <img src="/logo.png?v=2" alt="" className="nk-pr-logo" style={{ objectFit: "contain", background: "#fff" }} />
           )}
           <div>
             <div className="nk-pr-center">{center?.name ?? data.centerName}</div>
@@ -581,8 +581,8 @@ export function PrintableDaySchedule({ dayLabel, dateStr, halls, center }: {
   halls: DayScheduleHall[];
   center: CenterInfo | null;
 }) {
-  const primary = center?.primaryColor ?? "#0E9F6E";
-  const secondary = center?.secondaryColor ?? "#0F766E";
+  const primary = center?.primaryColor ?? BRAND_DEFAULTS.primary;
+  const secondary = center?.secondaryColor ?? BRAND_DEFAULTS.secondary;
   const totalSlots = halls.reduce((n, h) => n + h.slots.length, 0);
   const now = new Date();
   const stamp = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
@@ -596,7 +596,7 @@ export function PrintableDaySchedule({ dayLabel, dateStr, halls, center }: {
             <img src={center.logo} alt="" className="nk-pr-logo" />
           ) : (
             /* لوجو النظام الأساسي على التقارير المطبوعة */
-            <img src="/logo.png" alt="" className="nk-pr-logo" style={{ objectFit: "contain", background: "#fff" }} />
+            <img src="/logo.png?v=2" alt="" className="nk-pr-logo" style={{ objectFit: "contain", background: "#fff" }} />
           )}
           <div>
             <div className="nk-pr-center">{center?.name ?? "السنتر"}</div>
@@ -678,8 +678,8 @@ export type AttendanceSheetData = {
 };
 
 export function PrintableAttendanceSheet({ data, center }: { data: AttendanceSheetData; center: CenterInfo | null }) {
-  const primary = center?.primaryColor ?? "#0E9F6E";
-  const secondary = center?.secondaryColor ?? "#0F766E";
+  const primary = center?.primaryColor ?? BRAND_DEFAULTS.primary;
+  const secondary = center?.secondaryColor ?? BRAND_DEFAULTS.secondary;
   const s = data.session;
   const now = new Date();
   const stamp = `${formatDateAR(todayStr(now))} · ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;

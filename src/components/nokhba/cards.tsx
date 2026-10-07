@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Printer, Loader2 } from "lucide-react";
-import { api, type CenterInfo } from "./lib";
+import { api, BRAND_DEFAULTS, type CenterInfo } from "./lib";
 import { usePrint, PrintableCards, brandInk, brandOnLight } from "./print";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -14,8 +14,8 @@ type CardData = {
 
 /** Printable bank-card-sized student card with center branding (85.6 × 53.98 mm) */
 export function StudentCard({ card, center, index }: { card: CardData; center: CenterInfo | null; index: number }) {
-  const primary = center?.primaryColor ?? "#0E9F6E";
-  const secondary = center?.secondaryColor ?? "#0F766E";
+  const primary = center?.primaryColor ?? BRAND_DEFAULTS.primary;
+  const secondary = center?.secondaryColor ?? BRAND_DEFAULTS.secondary;
   const headerInk = brandInk(primary, secondary);
   return (
     <div className="nk-print-card relative shrink-0" style={{ width: "85.6mm", height: "53.98mm", borderRadius: "4.5mm", overflow: "hidden", border: "1px solid #e2e8eb", background: "#fff", boxShadow: "0 2px 10px rgba(0,0,0,.08)", color: "#1b2635" }}>
@@ -25,7 +25,7 @@ export function StudentCard({ card, center, index }: { card: CardData; center: C
           <img src={center.logo} alt="" style={{ height: "8.5mm", width: "8.5mm", borderRadius: "2mm", objectFit: "cover", background: "#fff", border: "0.4mm solid rgba(255,255,255,.7)" }} />
         ) : (
           /* لوجو النظام الأساسي على كارت الطالب */
-          <img src="/logo.png" alt="" style={{ height: "8.5mm", width: "8.5mm", borderRadius: "2mm", objectFit: "contain", background: "#fff", border: "0.4mm solid rgba(255,255,255,.7)", padding: "0.4mm" }} />
+          <img src="/logo.png?v=2" alt="" style={{ height: "8.5mm", width: "8.5mm", borderRadius: "2mm", objectFit: "contain", background: "#fff", border: "0.4mm solid rgba(255,255,255,.7)", padding: "0.4mm" }} />
         )}
         <div style={{ lineHeight: 1.15 }}>
           <div style={{ fontSize: "3.6mm", fontWeight: 800 }}>{center?.name ?? "السنتر"}</div>

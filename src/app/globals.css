@@ -449,9 +449,26 @@
   -webkit-backdrop-filter: blur(20px) saturate(1.3);
 }
 
+/* زرار محايد قياسي — التعريف كان ناقص وشويه شاشات كانت بتستدعيه فطلع بدون ستايل.
+   لازم يتعرّف قبل كلاسات البراند عشان لو اتدمج مع nk-brand-bg يكسب البراند بالترتيب */
+.nk-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border-radius: 0.75rem; padding: 0.5rem 0.875rem;
+  font-weight: 800; font-size: 13px; line-height: 1.4;
+  border: 2px solid var(--border); background: var(--card); color: var(--card-foreground);
+  transition: filter 0.15s ease, transform 0.15s ease, background-color 0.15s ease;
+  cursor: pointer;
+}
+.nk-btn:active { transform: scale(0.99); }
+.nk-btn.sm { padding: 0.3rem 0.6rem; font-size: 12px; border-radius: 0.6rem; }
+.nk-btn:disabled { opacity: 0.6; cursor: default; }
+
 /* ===== Brand helpers — هوية النخبة (أزرق اللوجو للهوية، ذهبيه للإبراز) =====
    النص البراندي والخلفيات الصلبة بتستخدم -strong (متضمنة تباين ≥5:1 مع الأبيض)
    عشان أي سنتر يغيّر هويته ل color فاتح (زي الأخضر) يفضل مقروء — WCAG AA */
+@utility nk-brand-text {
+  color: var(--c-primary-strong);
+}
 .nk-brand-bg { background: var(--c-primary-strong); }
 .nk-brand-bg-soft { background: color-mix(in srgb, var(--c-primary) 9%, #ffffff); }
 .nk-brand-bg-soft-text { color: var(--c-primary-strong); }
@@ -574,6 +591,13 @@
 .nk-badge.r { background: #fef2f2; color: #b91c1c; }
 .nk-badge.a { background: #fffbeb; color: #b45309; }
 .nk-badge.m { background: #eef2f6; color: #4e5e76; }
+/* داكن: شيلات فاتحة على كروت داكنة كانت بتطلع مبهرة — بدائل داكنة بنفس الدلالة */
+.dark .nk-badge.g { background: color-mix(in srgb, #10b981 18%, transparent); color: #6ee7b7; }
+.dark .nk-badge.o { background: color-mix(in srgb, #f97316 18%, transparent); color: #fdba74; }
+.dark .nk-badge.n { background: color-mix(in srgb, var(--c-primary) 24%, transparent); color: #b7ccff; }
+.dark .nk-badge.r { background: color-mix(in srgb, #f43f5e 18%, transparent); color: #fda4af; }
+.dark .nk-badge.a { background: color-mix(in srgb, #f59e0b 18%, transparent); color: #fcd34d; }
+.dark .nk-badge.m { background: color-mix(in srgb, #64748b 24%, transparent); color: #cbd5e1; }
 
 /* ===== ألوان المواد (أكاديميا) — نص/شيب لون المادة مع ضمانة تباين في الوضعين =====
    --subject-color بيتظبط inline من التطبيق — والـ color-mix بيتظبط لون النص تلقائيًا:
