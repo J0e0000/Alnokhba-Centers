@@ -67,7 +67,7 @@ async function main() {
   });
 
   // ---------------- SUBJECTS + CURRICULUM ----------------
-  const math = await db.acaSubject.create({ data: { name: "الرياضيات", code: "MATH", color: "#0E9F6E" } });
+  const math = await db.acaSubject.create({ data: { name: "الرياضيات", code: "MATH", color: "#2563EB" } });
   const physics = await db.acaSubject.create({ data: { name: "الفيزياء", code: "PHY", color: "#B45309" } });
   const chemistry = await db.acaSubject.create({ data: { name: "الكيمياء", code: "CHEM", color: "#6D28D9" } });
   const arabic = await db.acaSubject.create({ data: { name: "اللغة العربية", code: "AR", color: "#B91C1C" } });

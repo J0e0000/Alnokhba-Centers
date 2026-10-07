@@ -19,9 +19,9 @@ model Center {
   name           String
   slug           String   @unique
   logo           String? // data URL
-  primaryColor   String   @default("#0E9F6E")
-  secondaryColor String   @default("#0F766E")
-  accentColor    String?
+  primaryColor   String   @default("#0B1B4F") // كحلي اللوجو — هوية AlNokhba
+  secondaryColor String   @default("#2563EB") // أزرق اللوجو
+  accentColor    String?  // لو فاضي بيفضل تركواز اللوجو #10B981 من applyCenterBranding
   phone          String?
   whatsapp       String?
   address        String?
@@ -1023,7 +1023,7 @@ model AcaSubject {
   id        String   @id @default(cuid())
   name      String // "الرياضيات"
   code      String? // "MATH"
-  color     String   @default("#0E9F6E")
+  color     String   @default("#2563EB")
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 

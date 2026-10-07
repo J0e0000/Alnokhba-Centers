@@ -2,6 +2,7 @@
 
 import { toast } from "sonner";
 import { normalizeDigits, formatEGP, formatTime12, formatDateAR, dayNameAR, todayStr } from "@/lib/normalize";
+import { BRAND_DEFAULTS, normalizeCenterBranding, type BrandableCenter } from "@/lib/branding";
 
 export { normalizeDigits, formatEGP, formatTime12, formatDateAR, dayNameAR, todayStr };
 
@@ -227,22 +228,21 @@ export function lightenForDarkAA(hex: string, target = 4.65): string {
   } catch { return hex; }
 }
 
-/** الهوية الرسمية الافتراضية — مصدر واحد للحقيقة (شاشة + طباعة + بورتال + أكاديميا).
- *  قبل كده كان فيه هويتين: الشاشة كحلي والطباعة أخضر — أي سنتر من غير ألوان كان بيشوف الاتنين مختلفين. */
-export const BRAND_DEFAULTS = { primary: "#0B1B4F", secondary: "#2563EB", accent: "#10B981" } as const;
-
-/** الشكل الأدنى اللي محرك الهوية بيقراه — البورتالات بتوصل نسخة مصغّرة من CenterInfo */
-export type BrandableCenter = {
-  primaryColor?: string | null; secondaryColor?: string | null; accentColor?: string | null;
-};
+/** الهوية الرسمية الافتراضية وموحّد الألوان عايشين في src/lib/branding.ts — وحدة محايدة
+ *  (من غير "use client") عشان الـ APIs والطباعة توحّد ألوانها مع اللوجو هي كمان.
+ *  هنا إعادة تصدير عشان كل الكلاينت القديم بيكمل يسيبورت من "./lib". */
+export { BRAND_DEFAULTS, normalizeCenterBranding } from "@/lib/branding";
+export type { BrandableCenter } from "@/lib/branding";
 
 export function applyCenterBranding(center: BrandableCenter | null) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
+  // القيم القديمة من الداتابيز بترجع لهوية اللوجو قبل التطبيق
+  const c = normalizeCenterBranding(center);
   // الافتراضي = هوية AlNokhba Management الرسمية (كحلي + أزرق + تركواز من البراند شيت)
-  const primary = center?.primaryColor || BRAND_DEFAULTS.primary;
-  const secondary = center?.secondaryColor || BRAND_DEFAULTS.secondary;
-  const accent = center?.accentColor || BRAND_DEFAULTS.accent;
+  const primary = c?.primaryColor || BRAND_DEFAULTS.primary;
+  const secondary = c?.secondaryColor || BRAND_DEFAULTS.secondary;
+  const accent = c?.accentColor || BRAND_DEFAULTS.accent;
   root.style.setProperty("--primary", primary);
   root.style.setProperty("--ring", secondary);
   root.style.setProperty("--sidebar-primary", primary);
