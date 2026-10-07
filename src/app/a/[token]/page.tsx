@@ -152,7 +152,7 @@ export default function PublicCheckinPage({ params }: { params: Promise<{ token:
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f7fa] dark:bg-[#0b1220] flex items-center justify-center p-4" dir="rtl">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4" dir="rtl">
       <motion.div
         initial={{ opacity: 0, y: 14, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}

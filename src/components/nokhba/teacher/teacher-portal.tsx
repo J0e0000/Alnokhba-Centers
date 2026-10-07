@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { normalizeDigits, formatTime12, formatDateAR } from "@/lib/normalize";
+import { applyCenterBranding } from "../lib";
 import { AlNokhbaMark } from "../shared";
 import { Tour } from "../tour";
 import { HelpButton } from "../help";
@@ -21,12 +22,21 @@ async function tapi<T = Record<string, unknown>>(
   path: string,
   opts: { method?: string; body?: unknown; silent?: boolean } = {},
 ): Promise<T> {
-  const res = await fetch(path, {
-    method: opts.method ?? "GET",
-    headers: opts.body ? { "Content-Type": "application/json" } : undefined,
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-    cache: "no-store",
-  });
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      method: opts.method ?? "GET",
+      headers: opts.body ? { "Content-Type": "application/json" } : undefined,
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+      cache: "no-store",
+    });
+  } catch {
+    // الشبكة وقعت (نت مقطوع/سيرفر بيحمّل) — دي غلطة مؤقتة، مش خروج — بنوسمها status=0
+    const err = new Error("مفيش اتصال بالسيرفر دلوقتي — جرب تاني.") as Error & { status?: number };
+    err.status = 0;
+    if (!opts.silent) toast.error(err.message);
+    throw err;
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const msg = (data as { error?: string }).error ?? "حصلت مشكلة مؤقتة — جرب مرة تانية.";
@@ -112,7 +122,7 @@ function fmtEgp(piastres: number): string {
 // ============================= App =============================
 
 export function TeacherPortalApp() {
-  const [boot, setBoot] = useState<"loading" | "login" | "app">("loading");
+  const [boot, setBoot] = useState<"loading" | "login" | "app" | "offline">("loading");
   const [home, setHome] = useState<HomeData | null>(null);
   const [tab, setTab] = useState<TabId>("home");
   const [refreshing, setRefreshing] = useState(false);
@@ -134,14 +144,16 @@ export function TeacherPortalApp() {
       const d = await tapi<HomeData>("/api/teacher-portal", { silent: true });
       setHome(d);
       setBoot(d.teacher ? "app" : "login");
+      if (d.teacher) applyCenterBranding(d.teacher.center ?? null); // هوية السنتر — كانت ناقصة خالص في بورتال المدرس
       // أول دخول للمدرس ده → افتح الجولة بعد ما الشاشة تهدى
       if (d.teacher) {
         try {
           if (!localStorage.getItem(`nk-tour-teacher-${d.teacher.id}`)) setTimeout(() => setTourOpen(true), 800);
         } catch { /* ignore */ }
       }
-    } catch {
-      setBoot("login");
+    } catch (e) {
+      // انقطاع نت لحظي ≠ تسجيل خروج — نعرض شاشة أوفلاين بدل شاشة الدخول
+      setBoot((e as Error & { status?: number })?.status === 0 ? "offline" : "login");
     }
   }, []);
 
@@ -153,6 +165,27 @@ export function TeacherPortalApp() {
         <div className="flex flex-col items-center gap-4">
           <AlNokhbaMark size={52} />
           <span className="w-7 h-7 rounded-full border-[3px] border-[var(--c-primary)] border-t-transparent animate-spin" />
+        </div>
+      </main>
+    );
+  }
+
+  if (boot === "offline") {
+    return (
+      <main className="light-locked min-h-screen grid place-items-center bg-background p-6">
+        <div className="nk-card rounded-3xl p-8 max-w-sm w-full text-center space-y-4">
+          <AlNokhbaMark size={44} />
+          <h1 className="text-lg font-extrabold nk-brand-text">النت واقع مؤقتًا</h1>
+          <p className="text-sm text-muted-foreground font-semibold leading-relaxed">
+            مش قدرنا نوصل للسيرفر دلوقتي — بياناتك محفوظة ولسه مسجّل داخل.
+            اتصلك رجع؟ دوس «جرب تاني».
+          </p>
+          <button
+            onClick={() => { if (typeof window !== "undefined") window.location.reload(); }}
+            className="nk-btn-brand w-full h-12 rounded-xl font-extrabold flex items-center justify-center gap-2"
+          >
+            <RefreshCw className="w-5 h-5" /> جرب تاني
+          </button>
         </div>
       </main>
     );
@@ -187,7 +220,7 @@ export function TeacherPortalApp() {
             ) : (
               <span className="w-9 h-9 rounded-xl bg-card border border-border grid place-items-center shrink-0 overflow-hidden" aria-hidden>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="" className="w-full h-full object-contain p-[6%]" draggable={false} />
+                <img src="/logo.png?v=2" alt="" className="w-full h-full object-contain p-[6%]" draggable={false} />
               </span>
             )}
             <div className="min-w-0 leading-tight">

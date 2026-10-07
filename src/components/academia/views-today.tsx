@@ -10,6 +10,7 @@ import { Loader2, PlayCircle, MapPin, Users2, RefreshCw, AlertTriangle, FileChec
 import { Button } from "@/components/ui/button";
 import { acaApi, ApiErr, fmt12, fmtDate, type AcaUserClient, type SessionListItem } from "./client";
 import { cn } from "@/lib/utils";
+import { BRAND_DEFAULTS } from "@/components/nokhba/lib";
 
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED: "لسه", STARTED: "شغالة", IN_PROGRESS: "شغالة", COMPLETED: "خلصت", CANCELLED: "ملغية",
@@ -121,7 +122,7 @@ export function TodayView({ user, today, onOpenGroups }: { user: AcaUserClient; 
 }
 
 function SessionCard({ s, onOpen }: { s: SessionListItem; onOpen: () => void }) {
-  const color = s.color || "#0E9F6E";
+  const color = s.color || BRAND_DEFAULTS.primary;
   return (
     <button
       onClick={onOpen}

@@ -55,7 +55,7 @@ export function pageMetadata(opts: {
   const description = opts.description ?? SITE_DESCRIPTION;
   const path = opts.path ?? "/";
   const canonical = `${SITE_URL}${path === "/" ? "" : path}`;
-  const ogImage = { url: "/og.jpg", width: 1200, height: 630, alt: opts.ogImageAlt ?? `${SITE_NAME} — منصة إدارة السنترات التعليمية` };
+  const ogImage = { url: "/og.jpg?v=2", width: 1200, height: 630, alt: opts.ogImageAlt ?? `${SITE_NAME} — منصة إدارة السنترات التعليمية` };
 
   return {
     title: { absolute: title }, // absolute — يمنع تطبيق template الـ layout مرتين
@@ -77,7 +77,7 @@ export function pageMetadata(opts: {
       card: "summary_large_image",
       title,
       description,
-      images: ["/og.jpg"],
+      images: ["/og.jpg?v=2"],
     },
   };
 }
@@ -107,7 +107,7 @@ export function organizationJsonLd() {
     url: `${SITE_URL}/`,
     logo: {
       "@type": "ImageObject",
-      url: `${SITE_URL}/logo.png`,
+      url: `${SITE_URL}/logo.png?v=2`,
       width: 320,
       height: 320,
     },

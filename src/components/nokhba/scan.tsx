@@ -656,11 +656,6 @@ export function ScanView({ user, sessionOverride, clearSessionOverride, embedded
             )}
           </div>
 
-          {!activeSession && (
-            <p className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-              اختار حصة أول عشان نسجل الحضور صح.
-            </p>
-          )}
           {activeSession?.status === "CLOSED" && (
             <p className="text-xs font-bold text-muted-foreground bg-muted border border-border rounded-xl px-3 py-2 flex items-center gap-1.5">
               <DoorClosed className="w-4 h-4" /> الحصة دي مقفولة — تقدر تشوف تفاصيلها بس.

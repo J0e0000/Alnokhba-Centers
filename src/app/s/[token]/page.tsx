@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle2, AlertTriangle, XCircle, Loader2, QrCode, Clock3, ShieldCheck, Smartphone } from "lucide-react";
+import { AlNokhbaMark } from "@/components/nokhba/shared";
 
 /* صفحة تسجيل الحضور الذاتي — الطالب يمسح كود QR الحصة المتنقل بيفتح الرابط ده.
    عامة (من غير تسجيل دخول موظفين) — الهوية بجهاز موثوق (جلسة بورتال):
@@ -93,7 +94,7 @@ export default function SessionQrClaimPage({ params }: { params: Promise<{ token
   useEffect(() => { claim(); /* mount-once */ }, [token]);
 
   return (
-    <div className="min-h-screen bg-[#f5f7fa] dark:bg-[#0b1220] flex items-center justify-center p-4" dir="rtl">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4" dir="rtl">
       <motion.div
         initial={{ opacity: 0, y: 14, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -103,10 +104,12 @@ export default function SessionQrClaimPage({ params }: { params: Promise<{ token
           <div className="w-12 h-12 rounded-2xl nk-brand-bg grid place-items-center shrink-0">
             <QrCode className="w-6 h-6 text-white" />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="text-lg font-black leading-tight">تسجيل الحضور</h1>
             <p className="text-xs text-muted-foreground font-bold">QR الحصة المتنقل — من غير تسجيل دخول</p>
           </div>
+          {/* هوية البراند — كانت ناقصة على السطح ده (a و c فيها العلامة و s لأ) */}
+          <AlNokhbaMark size={32} showText={false} />
         </div>
 
         {busy && !result && !activating && (

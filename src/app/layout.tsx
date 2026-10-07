@@ -20,10 +20,10 @@ export const metadata: Metadata = {
   applicationName: SITE_NAME,
   icons: {
     icon: [
-      { url: "/favicon.png", sizes: "64x64", type: "image/png" },
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/favicon.png?v=2", sizes: "64x64", type: "image/png" },
+      { url: "/icon-192.png?v=2", sizes: "192x192", type: "image/png" },
     ],
-    apple: "/apple-touch-icon.png",
+    apple: "/apple-touch-icon.png?v=2",
   },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
@@ -38,13 +38,13 @@ export const metadata: Metadata = {
     url: `${SITE_URL}/`,
     title: `${SITE_NAME} — منصة إدارة السنترات التعليمية`,
     description: SITE_DESCRIPTION,
-    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: `${SITE_NAME} — منصة إدارة السنترات التعليمية` }],
+    images: [{ url: "/og.jpg?v=2", width: 1200, height: 630, alt: `${SITE_NAME} — منصة إدارة السنترات التعليمية` }],
   },
   twitter: {
     card: "summary_large_image",
     title: `${SITE_NAME} — منصة إدارة السنترات التعليمية`,
     description: SITE_DESCRIPTION,
-    images: ["/og.jpg"],
+    images: ["/og.jpg?v=2"],
   },
   robots: {
     index: true,

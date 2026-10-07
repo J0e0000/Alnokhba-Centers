@@ -217,7 +217,7 @@ export function EmergencyView({ user }: { user: SessionUser }) {
             onClick={() => recInputRef.current?.click()}
             className={cn(
               "w-full rounded-2xl border-2 border-dashed p-5 text-center transition",
-              recFile ? "border-[color:var(--c-primary)] bg-[color-mix(in_srgb,var(--c-primary)_6%,white)]" : "border-border bg-card hover:border-[color:mix(in_srgb,var(--c-primary)_40%,white)]",
+              recFile ? "border-[color:var(--c-primary)] bg-[color-mix(in_srgb,var(--c-primary)_6%,white)]" : "border-border bg-card hover:border-[color-mix(in_srgb,var(--c-primary)_40%,white)]",
             )}
           >
             <FileJson className={cn("w-8 h-8 mx-auto mb-2", recFile ? "nk-brand-text" : "text-muted-foreground")} />
@@ -246,7 +246,7 @@ export function EmergencyView({ user }: { user: SessionUser }) {
               <button
                 onClick={() => recoveryAction("recovery-preview")}
                 disabled={recBusy !== null}
-                className="flex-1 border-2 border-[color:mix(in_srgb,var(--c-primary)_35%,white)] bg-card nk-brand-text font-extrabold rounded-xl px-4 py-3.5 flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-60"
+                className="flex-1 border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,white)] bg-card nk-brand-text font-extrabold rounded-xl px-4 py-3.5 flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-60"
               >
                 {recBusy === "preview" ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
                 فحص الملف (معاينة + تعارضات)
@@ -267,7 +267,7 @@ export function EmergencyView({ user }: { user: SessionUser }) {
             <div className="rounded-2xl border border-border bg-muted/40 p-4 space-y-3">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <p className="font-extrabold text-sm">{recPreview.message}</p>
-                <span className="text-[11px] font-bold text-muted-foreground mono" dir="ltr">{recPreview.packageId}</span>
+                <span className="text-[11px] font-bold text-muted-foreground font-mono" dir="ltr">{recPreview.packageId}</span>
               </div>
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center">
                 <MiniStat label="المعاملات" value={recPreview.totalTxns} />
@@ -403,7 +403,7 @@ export function EmergencyView({ user }: { user: SessionUser }) {
             onClick={() => inputRef.current?.click()}
             className={cn(
               "w-full rounded-2xl border-2 border-dashed p-4 text-center transition",
-              file ? "border-[color:var(--c-primary)] bg-[color-mix(in_srgb,var(--c-primary)_6%,white)]" : "border-border bg-card hover:border-[color:mix(in_srgb,var(--c-primary)_40%,white)]",
+              file ? "border-[color:var(--c-primary)] bg-[color-mix(in_srgb,var(--c-primary)_6%,white)]" : "border-border bg-card hover:border-[color-mix(in_srgb,var(--c-primary)_40%,white)]",
             )}
           >
             <Upload className={cn("w-6 h-6 mx-auto mb-1.5", file ? "nk-brand-text" : "text-muted-foreground")} />
@@ -430,7 +430,7 @@ export function EmergencyView({ user }: { user: SessionUser }) {
               <button
                 onClick={() => analyze("preview")}
                 disabled={busy !== null}
-                className="flex-1 border-2 border-[color:mix(in_srgb,var(--c-primary)_35%,white)] bg-card nk-brand-text font-extrabold rounded-xl px-4 py-3 flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-60"
+                className="flex-1 border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,white)] bg-card nk-brand-text font-extrabold rounded-xl px-4 py-3 flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-60"
               >
                 {busy === "preview" ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
                 فحص الأول (معاينة)

@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { normalizeDigits, formatTime12, dayNameAR, formatDateAR } from "@/lib/normalize";
 import { defaultCapabilityMap, type CapabilityMap } from "@/lib/capabilities";
+import { applyCenterBranding } from "../lib";
 import { AlNokhbaMark } from "../shared";
 import { Tour } from "../tour";
 import { HelpButton } from "../help";
@@ -293,15 +294,16 @@ export function PortalApp() {
         setHome(d);
         setUnread(d.unread);
         setBoot("app");
-        applyBrand(d.student.center);
+        applyCenterBranding(d.student.center);
         // أول دخول للطالب ده؟ → افتح الجولة التعليمية بعد ما الشاشة تهدى
         try {
           if (!localStorage.getItem(`nk-tour-portal-${d.student.id}`)) {
             setTimeout(() => setTourOpen(true), 800);
           }
         } catch { /* ignore */ }
-      } catch {
-        if (alive) setBoot("login");
+      } catch (e) {
+        // انقطاع نت لحظي ≠ تسجيل خروج — شاشة الأوفلاين (اللي كانت معمولة ومش بتوصل أبدًا) بقت بتشتغل دلوقتي
+        if (alive) setBoot((e as Error & { status?: number })?.status === 0 ? "offline" : "login");
       }
     })();
     return () => { alive = false; };
@@ -400,7 +402,7 @@ export function PortalApp() {
               /* لوجو النظام الأساسي */
               <span className="w-9 h-9 rounded-xl bg-card border border-border grid place-items-center shrink-0 overflow-hidden" aria-hidden>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="" className="w-full h-full object-contain p-[6%]" draggable={false} />
+                <img src="/logo.png?v=2" alt="" className="w-full h-full object-contain p-[6%]" draggable={false} />
               </span>
             )}
             <div className="min-w-0 leading-tight">
@@ -1099,17 +1101,6 @@ function timeAgo(date: string): string {
   if (diff < 3600) return `من ${unitAR(Math.floor(diff / 60), "دقيقة", "دقيقتين", "دقايق")}`;
   if (diff < 86400) return `من ${unitAR(Math.floor(diff / 3600), "ساعة", "ساعتين", "ساعات")}`;
   return formatDateAR(date.slice(0, 10));
-}
-
-function applyBrand(center: CenterInfo) {
-  if (typeof document === "undefined") return;
-  const root = document.documentElement;
-  const primary = center?.primaryColor || "#0E9F6E";
-  const secondary = center?.secondaryColor || "#0F766E";
-  root.style.setProperty("--c-primary", primary);
-  root.style.setProperty("--c-secondary", secondary);
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", primary);
 }
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {

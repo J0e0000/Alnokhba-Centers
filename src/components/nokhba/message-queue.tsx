@@ -112,9 +112,9 @@ const STATUS_STYLE: Record<QueueItem["status"], string> = {
   QUEUED: "bg-muted text-muted-foreground",
   SENDING: "bg-amber-100 text-amber-800",
   SENT: "bg-emerald-100 text-emerald-800",
-  FAILED: "bg-red-100 text-red-700",
-  SKIPPED: "bg-slate-100 text-slate-600",
-  CANCELLED: "bg-red-50 text-red-400",
+  FAILED: "bg-rose-100 text-rose-700",
+  SKIPPED: "bg-muted text-muted-foreground",
+  CANCELLED: "bg-rose-50 text-rose-500",
 };
 
 const HANDOFF_BREAK = 100; // استراحة أمان بعد 100 تسليم
@@ -255,7 +255,7 @@ export function MessageQueueView({ user, embedded }: { user: SessionUser; embedd
                 )}
                 {(stats?.queued ?? 0) + (stats?.sending ?? 0) > 0 && (
                   <button onClick={() => { if (confirm("هتلغي كل الرسايل اللي لسه متبعتتش في الطابور — متأكد؟")) act("stop"); }} disabled={busy}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold bg-red-50 text-red-600 rounded-lg px-3 py-2 hover:bg-red-100 disabled:opacity-50">
+                    className="inline-flex items-center gap-1.5 text-xs font-bold bg-rose-50 text-rose-600 rounded-lg px-3 py-2 hover:bg-rose-100 disabled:opacity-50">
                     <StopCircle className="w-3.5 h-3.5" /> إيقاف الطابور
                   </button>
                 )}
@@ -270,7 +270,7 @@ export function MessageQueueView({ user, embedded }: { user: SessionUser; embedd
                     ["انتظار", stats.queued, "text-muted-foreground"],
                     ["فتح واتساب", stats.sending, "text-amber-600"],
                     ["مرسلة", stats.sent, "text-emerald-600"],
-                    ["فاشلة", stats.failed, "text-red-600"],
+                    ["فاشلة", stats.failed, "text-rose-600"],
                     ["متخطاة", stats.skipped, "text-slate-500"],
                   ] as const).map(([label, value, cls]) => (
                     <div key={label} className="rounded-xl border border-border bg-card/70 p-2.5 text-center">
@@ -338,7 +338,7 @@ export function MessageQueueView({ user, embedded }: { user: SessionUser; embedd
                   <SkipForward className="w-4 h-4" /> تخطي
                 </button>
                 <button onClick={() => act("fail", data.current!.id, "تعليم يدوي: مفيش رد/رقم غلط")} disabled={busy}
-                  className="inline-flex items-center gap-1.5 text-sm font-bold text-red-600 border border-red-200 rounded-xl px-3.5 py-2.5 hover:bg-red-50 disabled:opacity-60">
+                  className="inline-flex items-center gap-1.5 text-sm font-bold text-rose-600 border border-rose-200 rounded-xl px-3.5 py-2.5 hover:bg-rose-50 disabled:opacity-60">
                   <XCircle className="w-4 h-4" /> الرقم ده فشل
                 </button>
               </div>
@@ -389,7 +389,7 @@ function QueueRow({ item, busy, act }: {
           </span>
         </div>
         <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{item.messageText.split("\n")[0]}</p>
-        {item.lastError && <p className="text-[11px] text-red-600 mt-0.5">{item.lastError}</p>}
+        {item.lastError && <p className="text-[11px] text-rose-600 mt-0.5">{item.lastError}</p>}
       </div>
       <div className="flex items-center gap-1 shrink-0">
         {item.status === "SENDING" && (
@@ -401,7 +401,7 @@ function QueueRow({ item, busy, act }: {
             </button>
             <button title="الرقم غلط / مفيش رد" disabled={busy}
               onClick={() => act("fail", item.id, "أكدها الموظف: فشل التسليم")}
-              className="inline-flex items-center gap-1 text-[11px] font-extrabold bg-red-50 text-red-600 rounded-lg px-2.5 py-1.5 hover:bg-red-100 disabled:opacity-50">
+              className="inline-flex items-center gap-1 text-[11px] font-extrabold bg-rose-50 text-rose-600 rounded-lg px-2.5 py-1.5 hover:bg-rose-100 disabled:opacity-50">
               <XCircle className="w-3.5 h-3.5" /> فشل
             </button>
           </>

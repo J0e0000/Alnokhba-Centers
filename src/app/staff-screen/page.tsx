@@ -57,7 +57,7 @@ export default function StaffScreenPage() {
       setSlot(s);
       setPhase("live");
       const url = `${window.location.origin}${s.checkinPath}`;
-      setQrData(await QRCode.toDataURL(url, { width: 720, margin: 2, errorCorrectionLevel: "M", color: { dark: "#0b1220", light: "#ffffff" } }));
+      setQrData(await QRCode.toDataURL(url, { width: 720, margin: 2, errorCorrectionLevel: "M", color: { dark: "#0B1B4F", light: "#ffffff" } }));
       // جدولة الكود الجاي قبل انتهاء الحالي بشوية — مفيش فراغ على الشاشة
       const waitMs = Math.max(2500, new Date(s.expiresAt).getTime() - Date.now() - 1200);
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -100,11 +100,11 @@ export default function StaffScreenPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0b1220] text-white flex flex-col items-center justify-center p-6 select-none" dir="rtl">
+    <div className="min-h-screen bg-[var(--navy)] text-white flex flex-col items-center justify-center p-6 select-none" dir="rtl">
       {/* الهيدر */}
       <div className="absolute top-6 inset-x-0 flex items-center justify-between px-8">
         <div className="flex items-center gap-3">
-          <img src="/logo-mark-white.png" alt="" className="w-10 h-10 object-contain opacity-95" />
+          <img src="/logo-mark-white.png?v=2" alt="" className="w-10 h-10 object-contain opacity-95" />
           <div>
             <p className="font-extrabold text-lg leading-tight">{slot?.centerName ?? "حضور الموظفين"}</p>
             <p className="text-[11px] font-bold text-white/60">امسح الكود بموبايلك — حضورك بيتسجل فورًا</p>
@@ -129,7 +129,7 @@ export default function StaffScreenPage() {
             dir="ltr"
             className="w-full h-12 rounded-2xl bg-white/10 border border-white/20 px-4 text-center text-sm font-bold text-white placeholder:text-white/40 outline-none focus:border-white/50"
           />
-          <button onClick={pair} className="w-full h-12 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-white font-extrabold shadow-lg transition active:scale-95">
+          <button onClick={pair} className="w-full h-12 rounded-2xl nk-btn-brand font-extrabold transition active:scale-95">
             فعّل الشاشة
           </button>
           {errorMsg && <p className="text-xs font-bold text-rose-300">{errorMsg}</p>}
@@ -140,7 +140,7 @@ export default function StaffScreenPage() {
       {/* ===== شغالة ===== */}
       {(phase === "live" || phase === "boot") && (
         <div className="flex flex-col items-center gap-5 mt-10">
-          <div className="relative bg-white rounded-[2rem] p-6 shadow-[0_0_80px_rgba(16,185,129,0.25)]">
+          <div className="relative bg-white rounded-[2rem] p-6 shadow-[0_0_80px_rgba(37,99,235,0.30)]">
             {qrData ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={qrData} alt="كود حضور الموظفين" className="w-[46vmin] h-[46vmin] max-w-[420px] max-h-[420px] object-contain" />
@@ -155,7 +155,7 @@ export default function StaffScreenPage() {
             الكود بيتجدد كل {slot?.slotSeconds ?? 10} ثواني — امسح أحدث كود
           </div>
           {slot && (
-            <CountdownBar expiresAt={slot.expiresAt} />
+            <CountdownBar expiresAt={slot.expiresAt} slotSeconds={slot.slotSeconds} />
           )}
         </div>
       )}
@@ -171,20 +171,21 @@ export default function StaffScreenPage() {
   );
 }
 
-/** شريط التقدم — عمر الكود الحالي */
-function CountdownBar({ expiresAt }: { expiresAt: string }) {
+/** شريط التقدم — عمر الكود الحالي بالنسبة لعمر الشريحة الحقيقي (كان مقسوم على 14 ثانية ثابتة — غلط) */
+function CountdownBar({ expiresAt, slotSeconds }: { expiresAt: string; slotSeconds: number }) {
   const [pct, setPct] = useState(100);
   useEffect(() => {
     const end = new Date(expiresAt).getTime();
+    const dur = Math.max(1000, slotSeconds * 1000);
     const t = setInterval(() => {
-      const p = Math.max(0, Math.min(100, ((end - Date.now()) / 14000) * 100));
+      const p = Math.max(0, Math.min(100, ((end - Date.now()) / dur) * 100));
       setPct(p);
     }, 250);
     return () => clearInterval(t);
-  }, [expiresAt]);
+  }, [expiresAt, slotSeconds]);
   return (
     <div className="w-56 h-1.5 rounded-full bg-white/10 overflow-hidden">
-      <div className="h-full rounded-full bg-emerald-400 transition-all duration-300" style={{ width: `${pct}%` }} />
+      <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, background: "var(--c-accent, #10B981)" }} />
     </div>
   );
 }

@@ -6,7 +6,7 @@
    - مفيش أي دعم لأي عملية دفع أوفلاين — ده قرار أمان متعمد
 ============================================================ */
 
-const CACHE = "nokhba-shell-v10";
+const CACHE = "nokhba-shell-v11";
 const SHELL = [
   "/",
   "/portal",
@@ -41,14 +41,15 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/api/")) return;
 
   // Shell + static: cache-first مع تحديث في الخلفية
+  // المطابقة بالـ pathname فقط — عشان نسخ اللوجو اللي عليها ?v= تلاقي نسختها في الكاش
   if (SHELL.includes(url.pathname) || url.pathname.startsWith("/_next/static/")) {
     event.respondWith(
-      caches.match(event.request).then((cached) => {
+      caches.match(url.pathname).then((cached) => {
         const fetched = fetch(event.request)
           .then((res) => {
             if (res && res.ok) {
               const copy = res.clone();
-              caches.open(CACHE).then((c) => c.put(event.request, copy));
+              caches.open(CACHE).then((c) => c.put(url.pathname, copy));
             }
             return res;
           })

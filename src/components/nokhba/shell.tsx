@@ -316,7 +316,7 @@ export function CenterShell({
               <img src={center.logo} alt={center.name} className="w-10 h-10 rounded-xl object-cover border border-border bg-card" />
             ) : (
               <span className="w-10 h-10 rounded-xl bg-card border border-border grid place-items-center shrink-0 overflow-hidden" aria-hidden>
-                <img src="/logo.png" alt="" className="w-full h-full object-contain p-[6%]" draggable={false} />
+                <img src="/logo.png?v=2" alt="" className="w-full h-full object-contain p-[6%]" draggable={false} />
               </span>
             )}
             <div className="min-w-0 leading-tight">
