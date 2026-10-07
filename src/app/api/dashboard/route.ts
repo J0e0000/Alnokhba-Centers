@@ -184,6 +184,51 @@ export const GET = handler(async () => {
     .filter((t) => cairoDateStr(t.createdAt) === today)
     .reduce((a, t) => a + t.amount, 0);
 
+  // ===== OPTIONAL INSIGHT — حضور آخر ٧ أيام مقابل الأسبوع اللي قبله =====
+  // استعلام واحد على الفهرس (centerId+date) + استعلام اسم مجموعة واحد بس لو فيه نزول فعلي.
+  let insight: {
+    thisWeek: number; prevWeek: number; changePct: number | null;
+    topDrop: { label: string; changePct: number } | null;
+  } | null = null;
+  try {
+    const dRef = new Date(`${today}T12:00:00Z`);
+    const iso = (x: Date) => x.toISOString().slice(0, 10);
+    const d7 = iso(new Date(dRef.getTime() - 7 * 86400000));
+    const d14 = iso(new Date(dRef.getTime() - 14 * 86400000));
+    const recent = await db.sessionInstance.findMany({
+      where: { centerId, date: { gte: d14, lte: today }, status: { not: "CANCELLED" } },
+      select: { date: true, groupId: true, _count: { select: { attendance: true } } },
+    });
+    let thisWeek = 0, prevWeek = 0;
+    const gThis = new Map<string, number>(), gPrev = new Map<string, number>();
+    for (const s of recent) {
+      const n = s._count.attendance;
+      if (s.date > d7) { thisWeek += n; if (s.groupId) gThis.set(s.groupId, (gThis.get(s.groupId) ?? 0) + n); }
+      else { prevWeek += n; if (s.groupId) gPrev.set(s.groupId, (gPrev.get(s.groupId) ?? 0) + n); }
+    }
+    const changePct = prevWeek > 0 ? Math.round(((thisWeek - prevWeek) / prevWeek) * 100) : null;
+    // المجموعة الأكثر تأثرًا: أكبر نزول مع عينة معقولة (≥3 في الأسبوع القبلي) — من غير ضجيج
+    let topDrop: { label: string; changePct: number } | null = null;
+    if (changePct !== null && changePct < 0) {
+      let worst: { id: string; pct: number } | null = null;
+      for (const [gid, prevN] of gPrev) {
+        if (prevN < 3) continue;
+        const thisN = gThis.get(gid) ?? 0;
+        if (thisN >= prevN) continue;
+        const pct = Math.round(((thisN - prevN) / prevN) * 100);
+        if (!worst || pct < worst.pct) worst = { id: gid, pct };
+      }
+      if (worst) {
+        const g = await db.group.findUnique({
+          where: { id: worst.id },
+          select: { name: true, subject: { select: { name: true } }, grade: { select: { name: true } } },
+        });
+        if (g) topDrop = { label: `${g.subject.name} — ${g.grade.name} ${g.name}`.trim(), changePct: worst.pct };
+      }
+    }
+    insight = { thisWeek, prevWeek, changePct, topDrop };
+  } catch { /* insight تحليلية بس — مينفعش تكسر الداشبورد */ }
+
   // Alerts
   const alerts: { level: "warn" | "info"; text: string }[] = [];
   const daysToRenewal = subscription ? Math.ceil((new Date(subscription.renewalDate).getTime() - new Date(today).getTime()) / 86400000) : null;
@@ -233,6 +278,7 @@ export const GET = handler(async () => {
       ? { plan: subscription.plan.name, status: subscription.status, renewalDate: subscription.renewalDate, pricePerStudent: subscription.pricePerStudent }
       : null,
     alerts,
+    insight,
   };
   dashCache.set(cacheKey, { at: Date.now(), payload: managerPayload });
   return ok(managerPayload);

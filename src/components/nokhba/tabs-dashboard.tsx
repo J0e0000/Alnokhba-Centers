@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   CalendarDays, GraduationCap, DoorOpen, LockOpen, ArrowLeft, Loader2,
   Zap, Ban, DoorClosed, PlayCircle, ClipboardCheck, Users,
+  TrendingUp, TrendingDown, UserPlus, FileCheck2, ClipboardList, ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,8 @@ type CompactSession = {
   startTime: string; endTime: string; room: string | null;
   subject: string; grade: string; groupName: string; teacher: string;
   students: number; presentCount: number | null;
+  /** ROSTER = من قاعدة البيانات · OPEN = حضور مفتوح (بدون قاعدة بيانات) */
+  studentSource?: "ROSTER" | "OPEN";
 };
 
 type TodayData = {
@@ -49,6 +52,9 @@ export function TabsDashboardView({ user, setView, openSession, goScanForSession
 }) {
   const [data, setData] = useState<TodayData | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
+  // بيانات المدير التشغيلية (محتاج انتباه + insight + أرقام) — من كاش الداشبورد 15 ثانية
+  const [legacy, setLegacy] = useState<LegacyDash | null>(null);
+  const roleIsManager = user.role === "MANAGER";
 
   useEffect(() => {
     let alive = true;
@@ -57,6 +63,15 @@ export function TabsDashboardView({ user, setView, openSession, goScanForSession
     const t = setInterval(load, 30000);
     return () => { alive = false; clearInterval(t); };
   }, []);
+
+  useEffect(() => {
+    if (!roleIsManager) return;
+    let alive = true;
+    const load = () => api<LegacyDash>("/api/dashboard", { silent: true }).then((d) => alive && setLegacy(d)).catch(() => {});
+    load();
+    const t = setInterval(load, 60000);
+    return () => { alive = false; clearInterval(t); };
+  }, [roleIsManager]);
 
   if (!data) return <Loading />;
 
@@ -76,6 +91,7 @@ export function TabsDashboardView({ user, setView, openSession, goScanForSession
   }
 
   const next = data.nextSession;
+  const attention = legacy?.opsSummary ?? null;
 
   return (
     <div className="space-y-5 nk-anim-stagger">
@@ -124,19 +140,24 @@ export function TabsDashboardView({ user, setView, openSession, goScanForSession
           className="w-full text-start nk-card nk-anim-lift rounded-3xl p-5 md:p-6 border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,white)] shadow-lg hover:shadow-xl transition active:scale-[0.995] relative overflow-hidden"
         >
           <div className="absolute inset-y-0 start-0 w-1.5 nk-brand-grad" aria-hidden />
-          <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
             <span className="text-[11px] font-extrabold nk-brand-text uppercase tracking-wider">
               {next.status === "LIVE" ? "شغالة دلوقتي" : "الحصة الجاية"}
             </span>
-            <span className="nk-brand-bg-soft nk-brand-text text-xs font-extrabold rounded-full px-3 py-1 nk-num" dir="ltr">
-              {formatTime12(next.startTime)} — {formatTime12(next.endTime)}
+            <span className="flex items-center gap-1.5">
+              {next.studentSource === "OPEN" && (
+                <span className="nk-brand-bg-soft nk-brand-text text-[10px] font-extrabold rounded-full px-2.5 py-1">حضور مفتوح</span>
+              )}
+              <span className="nk-brand-bg-soft nk-brand-text text-xs font-extrabold rounded-full px-3 py-1 nk-num" dir="ltr">
+                {formatTime12(next.startTime)} — {formatTime12(next.endTime)}
+              </span>
             </span>
           </div>
-          <h2 className="font-black text-xl md:text-2xl">{next.subject} — {next.grade} {next.groupName}</h2>
+          <h2 className="font-black text-xl md:text-2xl">{sessionTitle(next)}</h2>
           <p className="text-sm text-muted-foreground font-bold mt-1 flex items-center gap-2 flex-wrap">
-            <span>{next.teacher}</span>
+            {next.teacher !== "—" && <span>{next.teacher}</span>}
             {next.room && <span className="nk-brand-text font-extrabold">· {next.room}</span>}
-            <span className="nk-num">· {next.students} طالب</span>
+            <span className="nk-num">· {next.studentSource === "OPEN" ? `اتسجل ${next.students}` : `${next.students} طالب`}</span>
           </p>
           <div className="flex items-center gap-2.5 mt-4">
             <span className="rounded-xl nk-brand-grad text-white font-extrabold text-sm px-5 py-3 shadow flex items-center gap-2">
@@ -154,6 +175,56 @@ export function TabsDashboardView({ user, setView, openSession, goScanForSession
         </div>
       )}
 
+      {/* ===== NEEDS ATTENTION — أعلى من كل حاجة بعد الحصة الجاية (§25) ===== */}
+      {isManager && attention && <OpsSummaryStrip summary={attention} openSession={openSession} setView={setView} />}
+
+      {/* تنبيهات الاشتراك/الصندوق — جزء من «محتاج انتباه» */}
+      {isManager && (legacy?.alerts?.length ?? 0) > 0 && (
+        <div className="space-y-2">
+          {legacy!.alerts!.map((a, i) => (
+            <div key={i} className={cn(
+              "flex items-center gap-2.5 rounded-2xl border px-4 py-3 text-sm font-bold",
+              a.level === "warn" ? "bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-200" : "bg-sky-50 border-sky-200 text-sky-800 dark:bg-sky-950/30 dark:border-sky-800 dark:text-sky-200"
+            )}>
+              <AlertTriangle className="w-4.5 h-4.5 shrink-0" />
+              {a.text}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ===== QUICK ACTIONS — إجراءات المدير اليومية الكبيرة والواضحة (§16) ===== */}
+      {isManager && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <BigAction icon={<Zap className="w-7 h-7" />} label="امسح الحضور" desc="كشف حصة شغالة" onClick={() => setView("scan")} primary />
+          <BigAction icon={<Wallet className="w-6 h-6" />} label="تسجيل دفعة" desc="استلام فلوس" onClick={() => setView("payments")} />
+          <BigAction icon={<UserPlus className="w-6 h-6" />} label="إضافة طالب" desc="تسجيل طالب جديد" onClick={() => setView("students")} />
+          <BigAction icon={<FileCheck2 className="w-6 h-6" />} label="الامتحانات" desc="إنشاء ومراجعة" onClick={() => setView("exams")} />
+          <BigAction icon={<ClipboardList className="w-6 h-6" />} label="الواجبات" desc="متابعة التسليم" onClick={() => setView("assignments")} />
+        </div>
+      )}
+
+      {/* ===== المدرس: اختصارات التعليم — فوق مش تحت (§5) ===== */}
+      {isTeacher && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <BigAction icon={<CalendarDays className="w-6 h-6" />} label="جدول النهاردة" desc={`${k.sessions.total} حصة`} onClick={() => setView("schedule")} />
+          <BigAction icon={<Zap className="w-6 h-6" />} label="الكويزات" desc="كويزات سريعة" onClick={() => setView("quizzes")} />
+          <BigAction icon={<FileCheck2 className="w-6 h-6" />} label="الامتحانات" desc="إنشاء ومتابعة" onClick={() => setView("exams")} primary />
+          <BigAction icon={<ClipboardList className="w-6 h-6" />} label="الواجبات" desc="واجبات إلكترونية" onClick={() => setView("assignments")} />
+        </div>
+      )}
+
+      {/* ===== الاستقبال: 5 إجراءات أساسية — فوق مش تحت (§5) ===== */}
+      {!isManager && !isTeacher && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <BigAction icon={<Zap className="w-7 h-7" />} label="امسح QR" desc="تسجيل حضور فوري" onClick={() => setView("scan")} primary />
+          <BigAction icon={<GraduationCap className="w-6 h-6" />} label="ابحث عن طالب" desc="بالاسم أو الكود" onClick={() => setView("students")} />
+          <BigAction icon={<Wallet className="w-6 h-6" />} label="تسجيل دفع" desc="استلام فلوس" onClick={() => setView("payments")} />
+          <BigAction icon={<Users className="w-6 h-6" />} label="الطلاب" onClick={() => setView("students")} />
+          <BigAction icon={<CalendarDays className="w-6 h-6" />} label="جدول النهاردة" desc={`${k.sessions.total} حصة`} onClick={() => setView("schedule")} />
+        </div>
+      )}
+
       {/* ===== كروت حصص النهاردة — مختصرة ===== */}
       <SectionCard title="حصص النهاردة" icon={<CalendarDays className="w-4 h-4" />}>
         {data.sessions.length === 0 ? (
@@ -167,73 +238,80 @@ export function TabsDashboardView({ user, setView, openSession, goScanForSession
         )}
       </SectionCard>
 
-      {/* ===== المدير: محتاج انتباه + أرقام محفوظة من الداشبورد القديم ===== */}
-      {isManager && <ManagerExtras setView={setView} openSession={openSession} />}
+      {/* ===== OPTIONAL INSIGHT — لو فيه إشارة دالة بس (§21) ===== */}
+      {isManager && legacy?.insight && <InsightCard insight={legacy.insight} setView={setView} />}
 
-      {/* ===== المدرس: اختصارات التعليم ===== */}
-      {isTeacher && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <BigAction icon={<CalendarDays className="w-6 h-6" />} label="جدول النهاردة" desc={`${k.sessions.total} حصة`} onClick={() => setView("schedule")} />
-          <BigAction icon={<Zap className="w-6 h-6" />} label="الكويزات" desc="كويزات سريعة" onClick={() => setView("quizzes")} />
-          <BigAction icon={<ClipboardCheck className="w-6 h-6" />} label="الامتحانات" desc="إنشاء ومتابعة" onClick={() => setView("exams")} primary />
-          <BigAction icon={<Users className="w-6 h-6" />} label="الواجبات" desc="واجبات إلكترونية" onClick={() => setView("assignments")} />
-        </div>
-      )}
+      {/* ===== المدير: أرقام الشهر — الأساسي ظاهر والباقي مطوي ===== */}
+      {isManager && <ManagerExtras data={legacy} />}
+    </div>
+  );
+}
 
-      {/* ===== الاستقبال: 5 إجراءات أساسية ===== */}
-      {!isManager && !isTeacher && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          <BigAction icon={<Zap className="w-7 h-7" />} label="امسح QR" desc="تسجيل حضور فوري" onClick={() => setView("scan")} primary />
-          <BigAction icon={<GraduationCap className="w-6 h-6" />} label="ابحث عن طالب" desc="بالاسم أو الكود" onClick={() => setView("students")} />
-          <BigAction icon={<Wallet className="w-6 h-6" />} label="تسجيل دفع" desc="استلام فلوس" onClick={() => setView("payments")} />
-          <BigAction icon={<Users className="w-6 h-6" />} label="الطلاب" onClick={() => setView("students")} />
-          <BigAction icon={<CalendarDays className="w-6 h-6" />} label="جدول النهاردة" desc={`${k.sessions.total} حصة`} onClick={() => setView("schedule")} />
-        </div>
+/** أرقام المدير المالية — الأساسي ظاهر، والباقي مطوي عشان مفيش جدار أرقام (§6) */
+function ManagerExtras({ data }: { data: LegacyDash | null }) {
+  if (!data) return null;
+  return (
+    <div className="space-y-4">
+      {data.stats && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <MoneyStat label="تحصيل النهاردة" piastres={data.stats.collectedToday} tone="brand" icon={<Wallet className="w-4 h-4" />} />
+            <Stat label="حضور النهاردة" value={data.stats.attendanceToday} hint="طالب" />
+            <MoneyStat label="صافي الشهر" piastres={data.stats.monthNet} tone={(data.stats.monthNet ?? 0) >= 0 ? "success" : "danger"} />
+            <MoneyStat label="مستحقات على الطلاب" piastres={data.stats.totalOwed} tone="warning" />
+          </div>
+          <details className="group rounded-2xl border border-border bg-card">
+            <summary className="cursor-pointer select-none list-none px-4 py-3 text-[12.5px] font-extrabold text-muted-foreground flex items-center justify-between hover:text-foreground transition">
+              باقي أرقام الشهر — إيراد · مصروفات · أرصدة · نصيب المدرسين
+              <ChevronDown className="w-4 h-4 transition group-open:rotate-180" />
+            </summary>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-4 pb-4">
+              <MoneyStat label="إيراد الشهر" piastres={data.stats.monthRevenue} />
+              <MoneyStat label="مصروفات الشهر" piastres={data.stats.monthExpenses} />
+              <MoneyStat label="أرصدة الطلاب" piastres={data.stats.totalCredit} />
+              <MoneyStat label="نصيب مدرسين الشهر" piastres={data.stats.monthTeacherShare} />
+            </div>
+          </details>
+        </>
       )}
     </div>
   );
 }
 
-/** أرقام المدير المالية — محفوظة زي ما كانت (مفيش وظيفة اتشالت) */
-function ManagerExtras({ setView, openSession }: { setView: (v: ViewId) => void; openSession: (id: string) => void }) {
-  const [data, setData] = useState<LegacyDash | null>(null);
-  useEffect(() => {
-    let alive = true;
-    api<LegacyDash>("/api/dashboard").then((d) => alive && setData(d)).catch(() => {});
-    return () => { alive = false; };
-  }, []);
-  if (!data) return null;
-  const summary = data.opsSummary;
+/** OPTIONAL INSIGHT — إشارة واحدة دالة بس، من غير رسوم بيانية للشكل (§16/§21) */
+function InsightCard({ insight, setView }: { insight: NonNullable<LegacyDash["insight"]>; setView: (v: ViewId) => void }) {
+  const pct = insight.changePct;
+  // من غير عينة كافية أو تغيير غير دالّ → مفيش كارت (لا ضجيج)
+  if (pct === null || insight.prevWeek < 5 || (pct > -8 && pct < 8)) return null;
+  const down = pct < 0;
   return (
-    <div className="space-y-4">
-      {/* شريط «محتاج انتباه» — إجابة سؤال: إيه اللي محتاجني دلوقتي */}
-      {summary && <OpsSummaryStrip summary={summary} openSession={openSession} setView={setView} />}
-      {/* أرقام الشهر + الصندوق + مستحقات — كلها محفوظة */}
-      {data.stats && (
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-          <MoneyStat label="تحصيل النهاردة" piastres={data.stats.collectedToday} tone="brand" icon={<Wallet className="w-4 h-4" />} />
-          <Stat label="حضور النهاردة" value={data.stats.attendanceToday} hint="طالب" />
-          <MoneyStat label="إيراد الشهر" piastres={data.stats.monthRevenue} />
-          <MoneyStat label="صافي الشهر" piastres={data.stats.monthNet} tone={(data.stats.monthNet ?? 0) >= 0 ? "success" : "danger"} />
-          <MoneyStat label="مستحقات على الطلاب" piastres={data.stats.totalOwed} tone="warning" />
-          <MoneyStat label="أرصدة الطلاب" piastres={data.stats.totalCredit} />
-          <MoneyStat label="مصروفات الشهر" piastres={data.stats.monthExpenses} />
-          <MoneyStat label="نصيب مدرسين الشهر" piastres={data.stats.monthTeacherShare} />
-        </div>
-      )}
-      {(data.alerts?.length ?? 0) > 0 && (
-        <div className="space-y-2">
-          {data.alerts!.map((a, i) => (
-            <div key={i} className={cn(
-              "flex items-center gap-2.5 rounded-2xl border px-4 py-3 text-sm font-bold",
-              a.level === "warn" ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-sky-50 border-sky-200 text-sky-800"
-            )}>
-              <AlertTriangle className="w-4.5 h-4.5 shrink-0" />
-              {a.text}
-            </div>
-          ))}
-        </div>
-      )}
+    <div className={cn(
+      "rounded-2xl border-2 p-4 flex items-start gap-3.5",
+      down ? "bg-amber-50/70 border-amber-300 dark:bg-amber-950/20 dark:border-amber-800" : "bg-emerald-50/70 border-emerald-300 dark:bg-emerald-950/20 dark:border-emerald-800",
+    )}>
+      <span className={cn("rounded-xl p-2.5 shrink-0", down ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300")}>
+        {down ? <TrendingDown className="w-5 h-5" /> : <TrendingUp className="w-5 h-5" />}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="font-extrabold text-sm leading-relaxed">
+          الحضور {down ? "نزل" : "زاد"} <span className="nk-num">{Math.abs(pct)}%</span> الأسبوع ده مقارنة بالأسبوع اللي فات
+          <span className="text-muted-foreground font-bold"> — <span className="nk-num">{insight.thisWeek}</span> مقابل <span className="nk-num">{insight.prevWeek}</span> تسجيل حضور</span>
+        </p>
+        {down && insight.topDrop && (
+          <p className="text-xs font-bold text-muted-foreground mt-1">
+            الأكثر تأثرًا: <span className="text-foreground font-extrabold">{insight.topDrop.label}</span> — يستاهل مراجعة.
+          </p>
+        )}
+      </div>
+      <button
+        onClick={() => setView("reports")}
+        className={cn(
+          "shrink-0 rounded-xl px-3.5 py-2 text-xs font-extrabold border-2 active:scale-[0.98] transition",
+          down ? "border-amber-300 text-amber-800 hover:bg-amber-100 dark:text-amber-200 dark:border-amber-700 dark:hover:bg-amber-900/40" : "border-emerald-300 text-emerald-800 hover:bg-emerald-100 dark:text-emerald-200 dark:border-emerald-700 dark:hover:bg-emerald-900/40",
+        )}
+      >
+        شوف التقارير
+      </button>
     </div>
   );
 }
@@ -247,6 +325,10 @@ type LegacyDash = {
   };
   stats?: { attendanceToday: number; collectedToday: number; monthRevenue: number; monthTeacherShare: number; monthCenterShare: number; monthExpenses: number; monthNet: number; totalOwed: number; totalCredit: number; activeStudents: number };
   alerts?: { level: string; text: string }[];
+  insight?: {
+    thisWeek: number; prevWeek: number; changePct: number | null;
+    topDrop: { label: string; changePct: number } | null;
+  } | null;
 };
 
 function OpsSummaryStrip({ summary, openSession, setView }: {
@@ -322,16 +404,17 @@ function TodayMiniCard({ s, onOpen, onScan, opening }: {
           <span className={cn("nk-num text-center rounded-xl py-1 px-2 text-xs font-extrabold border", live ? "bg-emerald-600 text-white border-transparent" : "bg-card border-border")} dir="ltr">
             {formatTime12(s.startTime)}
           </span>
-          <span className="font-extrabold text-sm truncate">{s.subject} — {s.grade} {s.groupName}</span>
+          <span className="font-extrabold text-sm truncate">{sessionTitle(s)}</span>
           {live && <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300">شغالة 🟢</span>}
+          {s.studentSource === "OPEN" && <span className="text-[10px] font-extrabold nk-brand-text nk-brand-bg-soft rounded-full px-2 py-0.5 shrink-0">مفتوحة</span>}
           {cancelled && <span className="text-[10px] font-extrabold text-rose-600 dark:text-rose-300 inline-flex items-center gap-1"><Ban className="w-3 h-3" /> ملغاة</span>}
           {completed && <span className="text-[10px] font-bold text-muted-foreground inline-flex items-center gap-1"><DoorClosed className="w-3 h-3" /> مقفولة</span>}
           {s.kind === "planned" && !cancelled && <span className="text-[10px] font-bold text-muted-foreground">لسه متفتحتش</span>}
         </div>
         <p className="text-[11px] font-bold text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
-          <span>{s.teacher}</span>
+          {s.teacher !== "—" && <span>{s.teacher}</span>}
           {s.room && <span className="nk-brand-text font-extrabold">{s.room}</span>}
-          <span className="nk-num">{completed && s.presentCount != null ? `حضر ${s.presentCount}` : `${s.students} طالب`}</span>
+          <span className="nk-num">{completed && s.presentCount != null ? `حضر ${s.presentCount}` : s.studentSource === "OPEN" ? `اتسجل ${s.students}` : `${s.students} طالب`}</span>
         </p>
       </button>
       {live && onScan && (
@@ -373,6 +456,12 @@ function greeting(): string {
   if (h < 12) return "صباح الخير";
   if (h < 17) return "نهار سعيد";
   return "مساء الخير";
+}
+
+/** عنوان حصة من غير «— — —»: بيشيل أي جزء فاضي أو ناقص */
+function sessionTitle(s: { subject: string; grade: string; groupName: string }) {
+  const tail = [s.grade, s.groupName].filter((x) => x && x.trim() && x.trim() !== "—");
+  return tail.length ? `${s.subject} — ${tail.join(" ")}` : s.subject;
 }
 
 // keep fmt referenced for planned price display in future
