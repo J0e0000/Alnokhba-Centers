@@ -60,6 +60,8 @@ export const GET = handler(async () => {
     subject: string; grade: string; groupName: string; teacher: string;
     students: number; presentCount: number | null;
     groups: string[]; // group ids involved (for student KPI)
+    /** ROSTER = من قاعدة البيانات · OPEN = حضور مفتوح (بدون قاعدة بيانات) */
+    studentSource: "ROSTER" | "OPEN";
   };
 
   const compact: Compact[] = [];
@@ -78,6 +80,7 @@ export const GET = handler(async () => {
       teacher: s.group?.teacher?.name ?? "—",
       students: s._count.attendance, presentCount: s.presentCount,
       groups: s.groupId ? [s.groupId] : [],
+      studentSource: s.studentSource === "OPEN" ? "OPEN" : "ROSTER",
     });
   }
 
@@ -95,6 +98,7 @@ export const GET = handler(async () => {
       teacher: p.group.teacher?.name ?? "—",
       students: p.group._count.students, presentCount: null,
       groups: [p.groupId],
+      studentSource: "ROSTER",
     });
   }
 
