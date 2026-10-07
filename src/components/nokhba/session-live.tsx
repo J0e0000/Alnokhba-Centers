@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
-  ChevronRight, Clock, DoorClosed, Lock, LockOpen, Users, UserX, Loader2,
+  ChevronDown, Clock, DoorClosed, Lock, LockOpen, Users, UserX, Loader2,
   AlertTriangle, RotateCcw, Printer, CheckCircle2,
   CalendarX, Send, ScanLine, ClipboardCheck, ReceiptText, Download, GraduationCap, EllipsisVertical,
 } from "lucide-react";
@@ -461,29 +461,32 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
                 <ScanView user={user} embedded sessionOverride={sessionId} clearSessionOverride={() => {}} />
               )}
 
-              {/* المسجلين ومحضروش — مع التحضير المعكوس بضغطة واحدة */}
+              {/* المسجلين ومحضروش — الزرار الأساسي ظاهر دايمًا في السطر، وأسماء الغايبين مطوية تحته */}
               {!isOpenMode && data.absent.length > 0 && caps.name_attendance.enabled && (
-                <SectionCard
+                <FoldSection
                   title={`مسجلين ومحضروش (${data.absent.length})`}
                   icon={<UserX className="w-4 h-4" />}
+                  collapsedSummary={
+                    <span className="text-[11px] font-bold text-muted-foreground truncate hidden sm:block">أسماء الغايبين مطوية — اضغط للعرض</span>
+                  }
                   action={
                     <button
-                      onClick={() => setBulkOpen(true)}
-                      className="nk-brand-bg text-white font-extrabold rounded-xl px-3.5 py-2 flex items-center gap-1.5 text-xs shadow active:scale-[0.98]"
+                      onClick={(e) => { e.stopPropagation(); setBulkOpen(true); }}
+                      className="nk-brand-bg text-white font-extrabold rounded-xl px-3 py-1.5 flex items-center gap-1.5 text-xs shadow active:scale-[0.98] shrink-0"
                     >
-                      <CheckCircle2 className="w-4 h-4" /> علّم الكل حاضر ({data.absent.length})
+                      <CheckCircle2 className="w-4 h-4" /> علّم الكل ({data.absent.length})
                     </button>
                   }
                 >
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto nk-scroll">
                     {data.absent.map((a) => (
                       <Chip key={a.studentId} className="bg-card border-border">{a.name} · <span className="nk-num">{a.code}</span></Chip>
                     ))}
                   </div>
                   <p className="text-[11px] font-bold text-muted-foreground mt-3 bg-muted/50 rounded-xl px-3 py-2">
-                    الطالب اللي حضر متأخر؟ علّمه من المسح فوق. زرار «علّم الكل حاضر» للأولاد اللي حضروا كلهم — الغايبين فعلاً هيفضلوا من غير تحضير.
+                    الطالب اللي حضر متأخر؟ علّمه من المسح فوق. زرار «علّم الكل» للأولاد اللي حضروا كلهم — الغايبين فعلاً هيفضلوا من غير تحضير.
                   </p>
-                </SectionCard>
+                </FoldSection>
               )}
 
               <AttendanceTable data={data} printAttendance={printAttendance} showPrint />
@@ -522,10 +525,13 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
             /* ===== ملخص ما بعد القفل ===== */
             <SectionCard title="ملخص الحصة" icon={<CheckCircle2 className="w-4 h-4 text-emerald-600" />}>
               <div className="rounded-2xl bg-muted/60 border p-4 space-y-1.5 text-sm">
-                <SummaryRow label="المجموعة" value={`${s.grade} ${s.groupName}`} />
-                <SummaryRow label="المدرس" value={s.teacher} />
-                <SummaryRow label="القاعة" value={s.room ?? "—"} />
-                <SummaryRow label="الميعاد" value={`${formatTime12(s.startTime)} — ${formatTime12(s.endTime)}`} mono />
+                {/* بيانات الحصة في عمودين — نص الارتفاع، نفس المعلومات */}
+                <div className="grid grid-cols-2 gap-x-5">
+                  <SummaryRow label="المجموعة" value={`${s.grade} ${s.groupName}`} />
+                  <SummaryRow label="المدرس" value={s.teacher} />
+                  <SummaryRow label="القاعة" value={s.room ?? "—"} />
+                  <SummaryRow label="الميعاد" value={`${formatTime12(s.startTime)} — ${formatTime12(s.endTime)}`} mono />
+                </div>
                 <div className="border-t my-1" />
                 <SummaryRow label="حضر" value={`${e.presentCount} طالب`} strong />
                 <SummaryRow label="غاب" value={`${data.absent.length} طالب`} />
@@ -598,8 +604,21 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
                 )}
               </SectionCard>
 
-              {/* مدفوعات الحصة */}
-              <SectionCard title={`مدفوعات الحصة (${payments?.total ?? 0})`} icon={<ReceiptText className="w-4 h-4" />}>
+              {/* مدفوعات الحصة — مطوية: العدد قدام العنوان دايمًا، والدفعات عند الطلب */}
+              <FoldSection
+                title="مدفوعات الحصة"
+                icon={<ReceiptText className="w-4 h-4" />}
+                badge={
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-extrabold nk-num shrink-0">
+                    {paymentsLoading ? "…" : payments?.total ?? 0}
+                  </span>
+                }
+                collapsedSummary={
+                  payments && payments.payments.length > 0
+                    ? <span className="text-[11px] font-bold text-muted-foreground truncate hidden sm:block">اضغط لعرض الدفعات</span>
+                    : undefined
+                }
+              >
                 {paymentsLoading ? (
                   <div className="h-10 rounded-xl bg-muted animate-pulse" />
                 ) : !payments || payments.payments.length === 0 ? (
@@ -621,7 +640,7 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
                     ))}
                   </ul>
                 )}
-              </SectionCard>
+              </FoldSection>
             </>
           )}
         </div>
@@ -816,6 +835,62 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
 
 /* ============================= عناصر مساعدة ============================= */
 
+/* قسم قابل للطي — سرّ الصفحة القصيرة: العنوان والملخص والعدّاد ظاهرين دايمًا في سطر واحد،
+   والتفاصيل بتفتح بالضغط. أي معلومة مش شغل مباشر بتعيش جواه. */
+function FoldSection({ title, icon, badge, collapsedSummary, defaultOpen = false, action, children }: {
+  title: React.ReactNode; icon?: React.ReactNode; badge?: React.ReactNode;
+  collapsedSummary?: React.ReactNode; defaultOpen?: boolean; action?: React.ReactNode; children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section className="nk-card rounded-2xl overflow-hidden">
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            setOpen((v) => !v);
+          }
+        }}
+        className="flex items-center gap-2.5 px-4 py-3 cursor-pointer select-none nk-brand-bg-soft hover:brightness-[0.985] active:brightness-[0.97] transition"
+      >
+        {icon}
+        <span className="font-bold text-sm md:text-[15px] flex-1 min-w-0 truncate">{title}</span>
+        {badge}
+        {!open && collapsedSummary}
+        {action}
+        <ChevronDown className={cn("w-4 h-4 shrink-0 text-muted-foreground transition-transform duration-200", open && "rotate-180")} />
+      </div>
+      {open && <div className="p-4">{children}</div>}
+    </section>
+  );
+}
+
+/* صف أفاتار مضغوط — ملخص الكشف المطوي: أول ٥ حروف + «+N» بدل جدول طويل */
+function AvatarStack({ names }: { names: string[] }) {
+  const shown = names.slice(0, 5);
+  return (
+    <span className="hidden sm:flex items-center shrink-0" dir="ltr">
+      {shown.map((n, i) => (
+        <span
+          key={`${n}-${i}`}
+          className="w-6 h-6 rounded-lg nk-brand-bg-soft dark:bg-[color-mix(in_srgb,var(--c-primary)_26%,var(--card))] nk-brand-text grid place-items-center text-[10px] font-extrabold border-2 border-[var(--card)] -ml-1.5 first:ml-0"
+        >
+          {n.trim()[0]}
+        </span>
+      ))}
+      {names.length > 5 && (
+        <span className="w-6 h-6 rounded-lg bg-muted text-muted-foreground grid place-items-center text-[10px] font-extrabold border-2 border-[var(--card)] -ml-1.5">
+          +{names.length - 5}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function MiniStat({ label, value, tone, icon }: { label: string; value: number; tone: "ok" | "warn" | "muted"; icon: React.ReactNode }) {
   return (
     <div className={cn(
@@ -862,40 +937,49 @@ function ReviewFlag({ tone, text }: { tone: "ok" | "warn" | "info"; text: string
 function AttendanceTable({ data, printAttendance, showPrint }: {
   data: SessionDetail; printAttendance: () => void; showPrint?: boolean;
 }) {
+  const count = data.attendance.length;
   return (
-    <SectionCard
-      title={`حضور الحصة (${data.attendance.length})`}
+    <FoldSection
+      title={`حضور الحصة (${count})`}
       icon={<Users className="w-4 h-4" />}
+      /* كشوف صغيرة تفتح لوحدها — الكبيرة تفضل مطوية على سطر واحد (أفاتار + عدّاد) */
+      defaultOpen={count > 0 && count <= 8}
       action={
         showPrint ? (
-          <button onClick={printAttendance}
-            className="border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,white)] dark:border-[color-mix(in_srgb,var(--c-primary)_57%,#0d1420)] bg-card nk-brand-text font-extrabold rounded-xl px-3.5 py-2 flex items-center gap-1.5 text-xs active:scale-[0.98]">
-            <Printer className="w-4 h-4" />طباعة كشف الحضور
+          <button
+            onClick={(e) => { e.stopPropagation(); printAttendance(); }}
+            className="border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,white)] dark:border-[color-mix(in_srgb,var(--c-primary)_57%,#0d1420)] bg-card nk-brand-text font-extrabold rounded-xl px-3 py-1.5 flex items-center gap-1.5 text-xs active:scale-[0.98] shrink-0"
+          >
+            <Printer className="w-4 h-4" />طباعة
           </button>
         ) : undefined
       }
+      collapsedSummary={
+        count > 0 ? <AvatarStack names={data.attendance.map((a) => a.name)} />
+          : <span className="text-[11px] font-bold text-muted-foreground hidden sm:block">لسه محدش حضر</span>
+      }
     >
-      {data.attendance.length === 0 ? (
+      {count === 0 ? (
         <EmptyState title="لسه محدش حضر" hint="سجّل الحضور من أدوات المسح والكود اللي فوق." />
       ) : (
-        <div className="overflow-x-auto nk-scroll -mx-1 px-1">
+        <div className="overflow-y-auto nk-scroll max-h-[55vh] -mx-1 px-1">
           <table className="w-full text-sm min-w-[560px] border-collapse">
             <thead>
               <tr className="bg-muted/50 border-b">
-                <th className="px-3 py-2.5 text-start font-extrabold text-xs whitespace-nowrap">الطالب</th>
-                <th className="px-3 py-2.5 text-start font-extrabold text-xs whitespace-nowrap">الكود</th>
-                <th className="px-3 py-2.5 text-start font-extrabold text-xs whitespace-nowrap">الطريقة</th>
-                <th className="px-3 py-2.5 text-end font-extrabold text-xs whitespace-nowrap nk-num">المبلغ</th>
-                <th className="px-3 py-2.5 text-center font-extrabold text-xs whitespace-nowrap">الحالة</th>
-                <th className="px-3 py-2.5 text-end font-extrabold text-xs whitespace-nowrap">الوقت</th>
+                <th className="px-3 py-2 text-start font-extrabold text-xs whitespace-nowrap">الطالب</th>
+                <th className="px-3 py-2 text-start font-extrabold text-xs whitespace-nowrap">الكود</th>
+                <th className="px-3 py-2 text-start font-extrabold text-xs whitespace-nowrap">الطريقة</th>
+                <th className="px-3 py-2 text-end font-extrabold text-xs whitespace-nowrap nk-num">المبلغ</th>
+                <th className="px-3 py-2 text-center font-extrabold text-xs whitespace-nowrap">الحالة</th>
+                <th className="px-3 py-2 text-end font-extrabold text-xs whitespace-nowrap">الوقت</th>
               </tr>
             </thead>
             <tbody>
               {data.attendance.map((a) => (
                 <tr key={a.id} className="border-b last:border-0 hover:bg-muted/30 transition">
-                  <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-8 h-8 rounded-lg nk-brand-bg-soft dark:bg-[color-mix(in_srgb,var(--c-primary)_26%,var(--card))] nk-brand-text grid place-items-center font-extrabold text-xs shrink-0">{a.name.trim()[0]}</span>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-7 h-7 rounded-lg nk-brand-bg-soft dark:bg-[color-mix(in_srgb,var(--c-primary)_26%,var(--card))] nk-brand-text grid place-items-center font-extrabold text-xs shrink-0">{a.name.trim()[0]}</span>
                       <span className="font-bold text-sm truncate">{a.name}</span>
                       {(a.riskScore ?? 0) > 0 && (
                         <span
@@ -907,28 +991,28 @@ function AttendanceTable({ data, printAttendance, showPrint }: {
                       )}
                     </div>
                   </td>
-                  <td className="px-3 py-2.5">
+                  <td className="px-3 py-2">
                     <span className="nk-num font-bold text-sm" dir="ltr">{a.code}</span>
                     {a.unregistered && (
                       <span className="ms-1.5 rounded-full bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200 px-1.5 py-0.5 text-[9.5px] font-black whitespace-nowrap">غير مسجل</span>
                     )}
                   </td>
-                  <td className="px-3 py-2.5">
+                  <td className="px-3 py-2">
                     <span className="text-[11px] font-bold text-muted-foreground whitespace-nowrap">
                       {a.method === "SESSION_QR" ? "QR الحصة" : a.method === "QR_SCAN" ? "مسح كارت" : a.method === "MANUAL" ? "يدوي" : a.method ?? "—"}
                     </span>
                   </td>
-                  <td className="px-3 py-2.5 text-end nk-num font-extrabold whitespace-nowrap" dir="ltr">
+                  <td className="px-3 py-2 text-end nk-num font-extrabold whitespace-nowrap" dir="ltr">
                     {a.charged == null ? <span className="text-muted-foreground text-[10px]">بدون خصم</span> : <>{fmt(a.charged)} <span className="text-muted-foreground text-[10px]">ج</span></>}
                   </td>
-                  <td className="px-3 py-2.5 text-center">
+                  <td className="px-3 py-2 text-center">
                     <span className={cn(
                       "text-[11px] font-bold rounded-full border px-2 py-0.5 inline-flex items-center gap-1 whitespace-nowrap",
                       a.status === "PRESENT" ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-300" :
                       a.status === "LATE" ? "bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300" : "bg-sky-50 dark:bg-sky-950/50 border-sky-200 dark:border-sky-900 text-sky-700 dark:text-sky-300"
                     )}>{ATTENDANCE_LABEL[a.status]}</span>
                   </td>
-                  <td className="px-3 py-2.5 text-end text-xs text-muted-foreground font-semibold whitespace-nowrap" dir="ltr">
+                  <td className="px-3 py-2 text-end text-xs text-muted-foreground font-semibold whitespace-nowrap" dir="ltr">
                     {a.at ? (() => {
                       const d = new Date(a.at);
                       return formatTime12(`${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`);
@@ -940,17 +1024,15 @@ function AttendanceTable({ data, printAttendance, showPrint }: {
           </table>
         </div>
       )}
-    </SectionCard>
+    </FoldSection>
   );
 }
 
 /* ============================================================
    النشاط المشبوه (spec §16) — المحاولات المرفوضة/المعلمة من محرك المخاطر
-   المدرّس بي شوف ملخص بسيط؛ التفاصيل التقنية بيتفتحها عند الطلب.
-   مفيش لوائح تقنية مكدسة — علامات بالعربي + وقت + كود.
+   الكارت كله مطوي على سطر واحد بعداد — التفاصيل تفتح بالضغط.
 ============================================================ */
 function SuspiciousCard({ attempts }: { attempts: AttemptsRes | null }) {
-  const [open, setOpen] = useState(false);
   if (!attempts) return null;
   const suspicious = attempts.attempts.filter(
     (a) => !["ACCEPTED", "ALREADY_SAME_STUDENT", "ALREADY_ATTENDED"].includes(a.outcome) || a.riskScore > 0,
@@ -958,53 +1040,47 @@ function SuspiciousCard({ attempts }: { attempts: AttemptsRes | null }) {
   if (suspicious.length === 0) return null;
 
   return (
-    <SectionCard
-      title={`⚠️ النشاط المشبوه (${suspicious.length})`}
-      icon={<AlertTriangle className="w-4 h-4" />}
-      action={
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="border-2 border-border bg-card font-extrabold rounded-xl px-3.5 py-2 flex items-center gap-1.5 text-xs active:scale-[0.98] hover:bg-muted/50"
-          aria-expanded={open}
-        >
-          {open ? "إخفاء التفاصيل" : "عرض التفاصيل"}
-          <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", open && "rotate-90")} />
-        </button>
+    <FoldSection
+      title={`النشاط المشبوه (${suspicious.length})`}
+      icon={<AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
+      badge={
+        <span className="rounded-full bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200 px-2 py-0.5 text-[10px] font-black shrink-0">مراجعة</span>
+      }
+      collapsedSummary={
+        <span className="text-[11px] font-bold text-muted-foreground truncate hidden sm:block">محاولات رفضها النظام أو عليها إشارات — اضغط للتفاصيل</span>
       }
     >
       <p className="text-xs font-bold text-muted-foreground bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-xl px-3 py-2.5 leading-relaxed">
         محاولات حضور رفضها النظام أو عليها إشارات غير عادية — إدارة الحضور بتراجعها بنفسها. النظام مش بيتهم حد، بيصعّد الشك بس.
       </p>
-      {open && (
-        <div className="mt-3 space-y-1.5 max-h-72 overflow-y-auto nk-scroll">
-          {suspicious.map((a) => (
-            <div key={a.id} className="rounded-xl border border-border bg-card px-3 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-              <span className={cn(
-                "font-black whitespace-nowrap",
-                a.outcome === "DEVICE_LOCKED" ? "text-rose-700 dark:text-rose-300"
-                  : a.outcome.startsWith("ALREADY") || a.outcome === "ACCEPTED" ? "text-amber-700 dark:text-amber-300"
-                  : "text-muted-foreground",
-              )}>
-                {ATTEMPT_OUTCOME_LABEL[a.outcome] ?? a.outcome}
+      <div className="mt-3 space-y-1.5 max-h-72 overflow-y-auto nk-scroll">
+        {suspicious.map((a) => (
+          <div key={a.id} className="rounded-xl border border-border bg-card px-3 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            <span className={cn(
+              "font-black whitespace-nowrap",
+              a.outcome === "DEVICE_LOCKED" ? "text-rose-700 dark:text-rose-300"
+                : a.outcome.startsWith("ALREADY") || a.outcome === "ACCEPTED" ? "text-amber-700 dark:text-amber-300"
+                : "text-muted-foreground",
+            )}>
+              {ATTEMPT_OUTCOME_LABEL[a.outcome] ?? a.outcome}
+            </span>
+            {a.studentName && <span className="font-bold">{a.studentName}</span>}
+            {a.studentCode && <span className="nk-num text-muted-foreground" dir="ltr">كود {a.studentCode}</span>}
+            <span className="nk-num text-muted-foreground" dir="ltr">
+              {new Date(a.at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            </span>
+            {a.riskFlags.length > 0 && (
+              <span className="text-amber-700 dark:text-amber-300 font-bold">⚠️ {a.riskFlags.join(" + ")}</span>
+            )}
+            {(a.deviceTail || a.ip) && (
+              <span className="text-[10px] text-muted-foreground/80 nk-num" dir="ltr" title="إشارات تقنية للمراجعة (مش هوية)">
+                [{a.deviceTail ? `dev …${a.deviceTail}` : ""}{a.deviceTail && a.ip ? " · " : ""}{a.ip ? `ip ${a.ip}` : ""}]
               </span>
-              {a.studentName && <span className="font-bold">{a.studentName}</span>}
-              {a.studentCode && <span className="nk-num text-muted-foreground" dir="ltr">كود {a.studentCode}</span>}
-              <span className="nk-num text-muted-foreground" dir="ltr">
-                {new Date(a.at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-              </span>
-              {a.riskFlags.length > 0 && (
-                <span className="text-amber-700 dark:text-amber-300 font-bold">⚠️ {a.riskFlags.join(" + ")}</span>
-              )}
-              {(a.deviceTail || a.ip) && (
-                <span className="text-[10px] text-muted-foreground/80 nk-num" dir="ltr" title="إشارات تقنية للمراجعة (مش هوية)">
-                  [{a.deviceTail ? `dev …${a.deviceTail}` : ""}{a.deviceTail && a.ip ? " · " : ""}{a.ip ? `ip ${a.ip}` : ""}]
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </SectionCard>
+            )}
+          </div>
+        ))}
+      </div>
+    </FoldSection>
   );
 }
 
