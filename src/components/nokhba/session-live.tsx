@@ -1,25 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   ChevronRight, Clock, DoorClosed, Lock, LockOpen, Users, UserX, Loader2,
-  Banknote, GraduationCap, Wallet, TrendingUp, AlertTriangle, RotateCcw, Printer, CheckCircle2,
-  CalendarX, Send, LayoutDashboard, ScanLine, Wrench, ClipboardCheck, ReceiptText, Info, QrCode, Download,
+  AlertTriangle, RotateCcw, Printer, CheckCircle2,
+  CalendarX, Send, ScanLine, ClipboardCheck, ReceiptText, Download, GraduationCap, EllipsisVertical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, fmt, fmtE, formatTime12, ATTENDANCE_LABEL, userCan, userCanRequest, type SessionUser } from "./lib";
-import { PageHeader, Chip, Loading, SectionCard, EmptyState, MoneyStat, Stat } from "./shared";
+import { Chip, Loading, SectionCard, EmptyState } from "./shared";
 import { usePrint, PrintableAttendanceSheet } from "./print";
 import { feedback } from "./feedback";
 import { showSuccess } from "./success-bar";
 import { ScanView } from "./scan";
 import { SessionQrCard } from "./session-qr-card";
 import { useCaps } from "./caps";
-import { ActionSquare } from "./action-button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 type SessionDetail = {
   session: {
@@ -70,27 +72,23 @@ type SessionPayments = {
   payments: { id: string; type: string; amount: number; method: string | null; createdAt: string; student: { name: string; code: string } | null; receiptNumber: string | null }[];
 };
 
-type TabId = "overview" | "attendance" | "operations" | "review";
-
-const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: "overview", label: "نظرة عامة", icon: <LayoutDashboard className="w-4 h-4" /> },
-  { id: "attendance", label: "الحضور", icon: <ScanLine className="w-4 h-4" /> },
-  { id: "operations", label: "العمليات", icon: <Wrench className="w-4 h-4" /> },
-  { id: "review", label: "المراجعة", icon: <ClipboardCheck className="w-4 h-4" /> },
-];
+type StepId = "attendance" | "review";
 
 /**
- * مساحة عمل الحصة — خط أنابيب تشغيلي في مكان واحد:
- * نظرة عامة → الحضور → العمليات → المراجعة/القفل.
+ * مساحة عمل الحصة — خط أنابيب من خطوتين بس:
+ * ① سجّل الحضور (الشغل الأساسي — بيفتح عليه مباشرة) → ② راجع وقفل.
+ * بعد القفل الخط بيتحول لملخص نهائي جاهز للطباعة/التصدير.
  * نفس مكان العمل للكل: المدير والاستقبال (الدور بيحدد الأزرار المتاحة).
  * الحفظ ≠ القفل: الحضور بيتسجل لحظيًا، والقفل قرار صريح.
  */
 export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab, qrFullscreen }: {
   user: SessionUser; sessionId: string; onBack: () => void; onGoScan: () => void;
-  initialTab?: TabId; qrFullscreen?: boolean;
+  initialTab?: "overview" | "attendance" | "operations" | "review"; qrFullscreen?: boolean;
 }) {
   const [data, setData] = useState<SessionDetail | null>(null);
-  const [tab, setTab] = useState<TabId>(initialTab ?? "overview");
+  const [step, setStep] = useState<StepId>(initialTab === "review" ? "review" : "attendance");
+  // اختيار الخطوة تلقائيًا مرة واحدة لما الداتا توصل — إلا لو مكان مدفوع صراحة من نقطة الدخول
+  const stepChosen = useRef(initialTab === "attendance" || initialTab === "review");
   // فتح الكود بحجم الشاشة فورًا (workflow: الحصة المفتوحة = الكود هو الشغل)
   const [autoFullQr, setAutoFullQr] = useState<boolean>(qrFullscreen === true);
   const [closeOpen, setCloseOpen] = useState(false);
@@ -104,6 +102,7 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
   const [payments, setPayments] = useState<SessionPayments | null>(null);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [attempts, setAttempts] = useState<AttemptsRes | null>(null);
+  const [logOpen, setLogOpen] = useState(false);
   const caps = useCaps();
 
   const load = useCallback(() => {
@@ -122,6 +121,15 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
     return () => { clearInterval(t); clearInterval(t2); };
   }, [load, loadAttempts]);
 
+  // حصة مقفولة/ملغاة والمدفوع مش محدد؟ افتح على الملخص مباشرة — ده اللي جاي له
+  useEffect(() => {
+    if (data && !stepChosen.current) {
+      stepChosen.current = true;
+      const st = data.session.status;
+      if (st === "CLOSED" || st === "CANCELLED") setStep("review");
+    }
+  }, [data]);
+
   // مدفوعات الحصة — بتتحمل لما المراجعة تتفتح أو بعد القفل (مش بولينج مستمر)
   const loadPayments = useCallback(async () => {
     setPaymentsLoading(true);
@@ -131,7 +139,7 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
     } catch { /* toast */ } finally { setPaymentsLoading(false); }
   }, [sessionId]);
 
-  useEffect(() => { if (tab === "review") loadPayments(); }, [tab, loadPayments]);
+  useEffect(() => { if (step === "review") loadPayments(); }, [step, loadPayments]);
 
   const printSheet = usePrint();
 
@@ -164,7 +172,6 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
   const isManager = user.role === "MANAGER";
   const closed = s.status === "CLOSED";
   const cancelled = s.status === "CANCELLED";
-  const readOnly = closed || cancelled;
   const isOpenMode = s.studentSource === "OPEN"; // حضور مفتوح — مفيش كشف/غياب/حسابات (spec §15)
   const registered = data.attendance.length + data.absent.length;
   const lateCount = data.attendance.filter((a) => a.status === "LATE").length;
@@ -215,7 +222,7 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
       });
       window.dispatchEvent(new CustomEvent("nk-sessions-changed"));
       setCloseOpen(false);
-      setTab("review"); // الملخص التشغيلي بعد القفل
+      setStep("review"); // الملخص التشغيلي بعد القفل
       load();
       loadPayments();
       // شريط النجاح الدائم — حسب وضع الحصة (spec §10)
@@ -279,234 +286,142 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
     } catch { /* toast */ } finally { setBusy(false); }
   }
 
-  // ===== مؤشرات تقدم الخط التشغيلي =====
-  const steps = [
-    { key: "opened", label: "فتحت", done: !cancelled },
-    { key: "attendance", label: "حضور", done: data.attendance.length > 0 },
-    { key: "payments", label: "دفع", done: e.collected > 0 },
-    { key: "closed", label: "قفل", done: closed },
-  ];
+  const step1Active = step === "attendance";
+  const step2Active = step === "review";
 
   return (
-    <div className="space-y-4">
-      <button onClick={onBack} className="flex items-center gap-1 text-sm font-bold text-muted-foreground hover:text-foreground transition">
-        <ChevronRight className="w-4 h-4" /> رجوع
-      </button>
-
-      <PageHeader
-        title={isOpenMode ? s.subject : `${s.subject} — ${s.grade} ${s.groupName}`}
-        subtitle={isOpenMode
-          ? `${formatTime12(s.startTime)} — ${formatTime12(s.endTime)}${s.room ? ` · ${s.room}` : ""} · حضور مفتوح`
-          : `${formatTime12(s.startTime)} — ${formatTime12(s.endTime)}${s.room ? ` · ${s.room}` : ""} · ${s.teacher}`}
-        action={
-          cancelled ? (
-            <Chip className="bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300"><CalendarX className="w-3.5 h-3.5" /> ملغاة</Chip>
-          ) : closed ? (
-            isManager ? (
-              <button onClick={() => setReopenOpen(true)} className="border border-border bg-card font-bold rounded-xl px-3.5 py-2.5 flex items-center gap-1.5 text-sm">
-                <RotateCcw className="w-4 h-4" /> إعادة فتح
-              </button>
-            ) : (
-              <Chip className="bg-muted border-border text-muted-foreground"><DoorClosed className="w-3.5 h-3.5" /> مقفولة</Chip>
-            )
-          ) : (
-            canEnd ? (
-              <button onClick={() => setCloseOpen(true)} className="bg-rose-600 text-white font-extrabold rounded-xl px-4 py-2.5 shadow flex items-center gap-2 active:scale-[0.98]">
-                <Lock className="w-4.5 h-4.5" /> قفل الحصة
-              </button>
-            ) : (
-              <Chip className="bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-300">🟢 شغالة</Chip>
-            )
-          )
-        }
-      />
-
-      {/* ===== داشبورد الحصة الدائم — مختصر وملتصق بالأعلى (موبايل/ديسكتوب) ===== */}
-      <div className="nk-card rounded-2xl p-3.5 md:p-4 space-y-2.5 sticky top-[4.6rem] md:top-20 z-30" data-tour="session-dashboard">
-        <div className="flex items-center gap-2 flex-wrap text-xs font-bold">
-          {cancelled ? (
-            <span className="rounded-full bg-rose-600 text-white px-2.5 py-1 inline-flex items-center gap-1"><CalendarX className="w-3.5 h-3.5" /> ملغاة</span>
-          ) : closed ? (
-            <span className="rounded-full bg-muted text-foreground px-2.5 py-1 inline-flex items-center gap-1"><DoorClosed className="w-3.5 h-3.5" /> مقفولة</span>
-          ) : (
-            <span className="rounded-full bg-emerald-700 text-white px-2.5 py-1 inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-white/90 animate-pulse" /> شغالة دلوقتي</span>
-          )}
-          <span className="inline-flex items-center gap-1 text-muted-foreground"><Clock className="w-3.5 h-3.5" /><span className="nk-num">{formatTime12(s.startTime)} – {formatTime12(s.endTime)}</span></span>
-          {s.room && <span className="nk-brand-bg-soft dark:bg-[color-mix(in_srgb,var(--c-primary)_26%,var(--card))] nk-brand-text rounded-full px-2.5 py-1">{s.room}</span>}
-          {!isOpenMode && <span className="text-muted-foreground">{s.teacher}</span>}
-        </div>
-        <div className={cn("grid grid-cols-2 gap-2", !isOpenMode && "sm:grid-cols-5")}>
-          {isOpenMode ? (
-            // الحضور المفتوح: العدد المسجل هو المهم — مفيش غياب ولا فلوس (spec §9/§15)
-            <>
-              <MiniStat label="اتسجل" value={data.attendance.length} tone={data.attendance.length > 0 ? "ok" : "muted"} icon={<GraduationCap className="w-3.5 h-3.5" />} />
-              <MiniStat label="مشبوه" value={attempts?.suspiciousCount ?? 0} tone={(attempts?.suspiciousCount ?? 0) > 0 ? "warn" : "muted"} icon={<AlertTriangle className="w-3.5 h-3.5" />} />
-            </>
-          ) : (
-            <>
-              <MiniStat label="حاضر" value={e.presentCount} tone={e.presentCount > 0 ? "ok" : "muted"} icon={<GraduationCap className="w-3.5 h-3.5" />} />
-              <MiniStat label={`غايب من ${registered}`} value={data.absent.length} tone={data.absent.length > 0 ? "warn" : "muted"} icon={<UserX className="w-3.5 h-3.5" />} />
-              <MiniStat label="مشبوه" value={attempts?.suspiciousCount ?? 0} tone={(attempts?.suspiciousCount ?? 0) > 0 ? "warn" : "muted"} icon={<AlertTriangle className="w-3.5 h-3.5" />} />
-              <MiniStat label="دفع بالحصة" value={payments?.total ?? 0} tone={(payments?.total ?? 0) > 0 ? "ok" : "muted"} icon={<ReceiptText className="w-3.5 h-3.5" />} />
-              <MiniStat label="متأخر" value={e.outstanding > 0 ? Math.round(e.outstanding / 100) : 0} tone={e.outstanding > 0 ? "warn" : "muted"} icon={<AlertTriangle className="w-3.5 h-3.5" />} />
-            </>
-          )}
-        </div>
-        {/* تقدم الخط التشغيلي */}
-        <div className="flex items-center gap-1.5" aria-label="تقدم الحصة">
-          {steps.map((st, i) => (
-            <div key={st.key} className="flex items-center gap-1.5 flex-1 min-w-0" title={st.label}>
-              <span className={cn(
-                "flex-1 h-1.5 rounded-full transition",
-                st.done ? "nk-brand-grad" : "bg-muted",
-              )} />
-              <span className={cn("text-[10px] font-extrabold whitespace-nowrap", st.done ? "nk-brand-text" : "text-muted-foreground")}>{st.label}</span>
-              {i < steps.length - 1 && <span className="sr-only">ثم</span>}
+    <div className="space-y-3.5">
+      {/* ===== ١ · كارت الحصة المضغوط — الاسم والحالة والميعاد في نظرة واحدة ===== */}
+      <div className="nk-card rounded-2xl p-3.5 md:p-4" data-tour="session-dashboard">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              {cancelled ? (
+                <span className="rounded-full bg-rose-600 text-white px-2.5 py-1 inline-flex items-center gap-1 text-[11px] font-extrabold shrink-0"><CalendarX className="w-3.5 h-3.5" /> ملغاة</span>
+              ) : closed ? (
+                <span className="rounded-full bg-muted text-foreground border border-border px-2.5 py-1 inline-flex items-center gap-1 text-[11px] font-extrabold shrink-0"><DoorClosed className="w-3.5 h-3.5" /> مقفولة</span>
+              ) : (
+                <span className="rounded-full bg-emerald-700 text-white px-2.5 py-1 inline-flex items-center gap-1 text-[11px] font-extrabold shrink-0"><span className="w-2 h-2 rounded-full bg-white/90 animate-pulse" /> شغالة دلوقتي</span>
+              )}
+              <h1 className="font-extrabold text-base md:text-lg leading-snug min-w-0 truncate">
+                {isOpenMode ? s.subject : `${s.subject} — ${s.grade} ${s.groupName}`}
+              </h1>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ===== الخطوة الجاية — إجراء أساسي واحد واضح (تعقيد النظام مش على المستخدم) ===== */}
-      {!cancelled && (
-        <div className="nk-card rounded-2xl p-3 flex items-center gap-3" data-tour="session-next-action">
-          <span className="w-11 h-11 rounded-2xl nk-brand-bg-soft nk-brand-text grid place-items-center shrink-0">
-            {!closed && data.attendance.length === 0 ? <ScanLine className="w-5.5 h-5.5" /> : !closed ? <CheckCircle2 className="w-5.5 h-5.5" /> : <ClipboardCheck className="w-5.5 h-5.5" />}
-          </span>
-          <div className="flex-1 min-w-0">
-            <p className="font-extrabold text-sm">
-              {!closed && data.attendance.length === 0 ? "الحصة جاهزة — سجّل الحضور" : !closed ? (canEnd ? "الحضور اتحضر — اعتمد وقفل الحصة" : "الحضور اتحضر — راجع قبل القفل") : "الحصة خلصت — راجع النتائج"}
-            </p>
-            <p className="text-[11px] font-bold text-muted-foreground">
-              {!closed && data.attendance.length === 0
-                ? (caps.static_qr.enabled || caps.name_attendance.enabled || caps.dynamic_qr.enabled
-                    ? "امسح كارت أو استخدم QR الحصة أو علّم بالاسم"
-                    : "مفيش طرق حضور مفعّلة في المركز — كلّم المدير")
-                : !closed ? "القفل بيثبّت الإجماليات ويقفل الحسابات"
-                : "الإجماليات والحضور محفوظين"}
+            <p className="text-xs font-bold text-muted-foreground mt-1.5 flex items-center gap-1.5 flex-wrap">
+              <Clock className="w-3.5 h-3.5 shrink-0" />
+              <span className="nk-num">{formatTime12(s.startTime)} – {formatTime12(s.endTime)}</span>
+              {s.room && <span>· {s.room}</span>}
+              {!isOpenMode && <span>· {s.teacher}</span>}
+              {isOpenMode && <span className="nk-brand-text">· حضور مفتوح</span>}
             </p>
           </div>
-          <ActionSquare
-            icon={!closed && data.attendance.length === 0 ? <ScanLine className="w-6 h-6" /> : !closed ? <CheckCircle2 className="w-6 h-6" /> : <ClipboardCheck className="w-6 h-6" />}
-            label={!closed && data.attendance.length === 0 ? "احضر" : !closed ? (canEnd ? "اعتمد وقفل" : "راجع") : "النتائج"}
-            variant={!closed && data.attendance.length === 0 ? "primary" : !closed ? (canEnd ? "success" : "secondary") : "secondary"}
-            size="lg"
-            onClick={() => {
-              if (!closed && data.attendance.length === 0) setTab("attendance");
-              else if (!closed && canEnd) setCloseOpen(true);
-              else setTab("review");
-            }}
-            tooltip={!closed && data.attendance.length === 0 ? "الخطوة الجاية: تسجيل الحضور" : !closed && canEnd ? "اعتماد الحضور وقفل الحصة" : "مراجعة الحصة"}
-          />
-        </div>
-      )}
 
-      {/* ===== التابات — خط الأنابيب في نفس مساحة العمل ===== */}
-      <div className="grid grid-cols-4 gap-1.5 nk-card rounded-2xl p-1.5" role="tablist" aria-label="خطوات الحصة" data-tour="session-tabs">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "rounded-xl px-2 py-2.5 text-[11px] md:text-xs font-extrabold flex flex-col items-center gap-1 transition active:scale-[0.98] min-h-[3.4rem]",
-              tab === t.id
-                ? "nk-brand-grad text-white shadow"
-                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-              // الحضور والعمليات مالهمش لازمة بعد الإلغاء
-              cancelled && (t.id === "attendance" || t.id === "operations") && "hidden",
-            )}
-          >
-            {t.icon}
-            <span>{t.label}</span>
-          </button>
-        ))}
+          {/* الأدوات النادرة — قائمة واحدة مرتبة بدل تاب كامل */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="w-9 h-9 rounded-xl border border-border bg-card grid place-items-center shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition active:scale-95"
+                aria-label="أدوات إضافية"
+              >
+                <EllipsisVertical className="w-4.5 h-4.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={printAttendance}>
+                <Printer className="w-4 h-4" /> طباعة كشف الحضور
+              </DropdownMenuItem>
+              {!cancelled && (
+                <DropdownMenuItem onClick={onGoScan}>
+                  <ScanLine className="w-4 h-4" /> شاشة المسح الكاملة
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={() => setLogOpen(true)}>
+                <Clock className="w-4 h-4" /> سجل الحالة والبيانات
+              </DropdownMenuItem>
+              {!closed && !cancelled && (canCancelDirect || canCancelRequest) && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setCancelOpen(true)} className="text-rose-600 focus:text-rose-600">
+                    {canCancelDirect ? <CalendarX className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+                    {canCancelDirect ? "إلغاء الحصة" : "طلب إلغاء الحصة"}
+                  </DropdownMenuItem>
+                </>
+              )}
+              {closed && isManager && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setReopenOpen(true)}>
+                    <RotateCcw className="w-4 h-4" /> إعادة فتح الحصة
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
-      {/* =========================== نظرة عامة =========================== */}
-      {tab === "overview" && (
-        <div className="space-y-4 nk-anim-view">
-          {/* إجراءات سريعة */}
-          {!readOnly && (
-            <div className="grid grid-cols-2 gap-2.5">
-              {/* الحصة المفتوحة: زرار واحد = الكود بحجم الشاشة على طول — بلا خطوات (workflow أسرع) */}
-              <button onClick={() => { if (isOpenMode) setAutoFullQr(true); setTab("attendance"); }} className="nk-brand-grad text-white font-extrabold rounded-2xl px-4 py-4 shadow flex items-center justify-center gap-2 active:scale-[0.99]">
-                {isOpenMode ? <><QrCode className="w-5 h-5" /> اعرض كود الحضور</> : <><ScanLine className="w-5 h-5" /> ابدأ تسجيل الحضور</>}
-              </button>
-              <button onClick={() => setTab("review")} className="border-2 border-border bg-card text-foreground font-extrabold rounded-2xl px-4 py-4 flex items-center justify-center gap-2 active:scale-[0.99] transition hover:bg-muted/50">
-                <ClipboardCheck className="w-5 h-5" /> المراجعة قبل القفل
-              </button>
-            </div>
-          )}
-
-          {/* الأرقام */}
-          {isOpenMode ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <Stat label="اتسجل" value={data.attendance.length} hint={s.studentCodeLength ? `كود ${s.studentCodeLength} أرقام` : "حضور مفتوح"} icon={<GraduationCap className="w-4 h-4" />} tone="brand" />
-              <Stat label="محاولات مرفوضة" value={attempts?.suspiciousCount ?? 0} hint="من قفل الجهاز والإعدادات" icon={<AlertTriangle className="w-4 h-4" />} />
-              <Stat label="الحالة" value={closed ? "مقفولة" : "شغالة"} hint={s.room ?? undefined} icon={<CheckCircle2 className="w-4 h-4" />} />
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Stat label="حضر" value={e.presentCount} hint={`من ${registered} مسجل`} icon={<GraduationCap className="w-4 h-4" />} tone="brand" />
-              <MoneyStat label="قيمة الحصص" piastres={e.totalRevenue} hint={`سعر الحصة ${fmt(s.price)} ج`} />
-              <MoneyStat label="المحصّل" piastres={e.collected} tone="success" icon={<Banknote className="w-4 h-4" />} />
-              <MoneyStat label="المتأخر" piastres={e.outstanding} tone={e.outstanding > 0 ? "warning" : "muted"} icon={<AlertTriangle className="w-4 h-4" />} />
-            </div>
-          )}
-
-          {closed && !isOpenMode && (
-            <div className="grid grid-cols-2 gap-3">
-              <MoneyStat label="نصيب المدرس" piastres={e.teacherShare} tone="brand" icon={<Wallet className="w-4 h-4" />} hint={`${s.teacherPercent}% متفق عليها`} />
-              <MoneyStat label="نصيب السنتر" piastres={e.centerShare} tone="success" icon={<TrendingUp className="w-4 h-4" />} hint={`${100 - s.teacherPercent}%`} />
-            </div>
-          )}
-
-          {/* تنبيهات الحصة */}
-          {!readOnly && (
-            <div className="space-y-2">
-              {data.absent.length > 0 && e.presentCount > 0 && (
-                <div className="flex items-center gap-2.5 rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 px-4 py-3 text-sm font-bold text-amber-800 dark:text-amber-200">
-                  <AlertTriangle className="w-4.5 h-4.5 shrink-0" />
-                  {data.absent.length} طالب لسه محضرش — علّمهم فرادى من تاب الحضور أو «علّم الكل» بعد ما يخلصوا يجوا.
-                </div>
-              )}
-              {e.outstanding > 0 && (
-                <div className="flex items-center gap-2.5 rounded-2xl border border-sky-200 dark:border-sky-900 bg-sky-50 dark:bg-sky-950/50 px-4 py-3 text-sm font-bold text-sky-800 dark:text-sky-200">
-                  <Banknote className="w-4.5 h-4.5 shrink-0" />
-                  متأخرات على حاضري النهاردة {fmt(e.outstanding)} ج — تقدر تستلمها من كارت الطالب وقت المسح.
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* بيانات الحصة */}
-          <SectionCard title="بيانات الحصة" icon={<Info className="w-4 h-4" />}>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-              {!isOpenMode && <InfoCell label="المجموعة" value={`${s.grade} ${s.groupName}`} />}
-              <InfoCell label={isOpenMode ? "الاسم" : "المادة"} value={s.subject} />
-              {!isOpenMode && <InfoCell label="المدرس" value={s.teacher} />}
-              <InfoCell label="اليوم" value={s.date} mono />
-              <InfoCell label="الميعاد" value={`${formatTime12(s.startTime)} — ${formatTime12(s.endTime)}`} mono />
-              <InfoCell label="القاعة" value={s.room ?? "—"} />
-              {isOpenMode && <InfoCell label="مصدر الطلاب" value="حضور مفتوح (بدون كشف)" />}
-              {isOpenMode && s.studentCodeLength && <InfoCell label="طول الكود" value={`${s.studentCodeLength} أرقام`} mono />}
-              {s.openedAt && <InfoCell label="بدأت فعليًا" value={formatTime12(s.openedAt.slice(11, 16))} mono />}
-              {lateCount > 0 && <InfoCell label="متأخرين" value={`${lateCount} طالب`} />}
-              {!isOpenMode && <InfoCell label="سعر الحصة" value={`${fmt(s.price)} ج`} mono />}
-            </div>
-          </SectionCard>
-
-          {/* ملخص سريع للحضور الحالي */}
-          <AttendanceTable data={data} printAttendance={printAttendance} showPrint />
-          <SuspiciousCard attempts={attempts} />
+      {/* ===== ٢ · الخط التشغيلي — خطوتين واضحين بدل ٤ تابات وداشبورد ===== */}
+      {cancelled ? (
+        <div className="flex items-center gap-2.5 rounded-2xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/50 px-4 py-3 text-sm font-bold text-rose-800 dark:text-rose-200">
+          <CalendarX className="w-4.5 h-4.5 shrink-0" />
+          الحصة ملغاة — الحضور اللي اتسجل قبل الإلغاء محفوظ زي ما هو تحت.
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-1.5 nk-card rounded-2xl p-1.5" role="tablist" aria-label="خطوات الحصة" data-tour="session-tabs">
+          {/* الخطوة ١ — سجّل الحضور */}
+          <button
+            role="tab"
+            aria-selected={step1Active}
+            onClick={() => setStep("attendance")}
+            className={cn(
+              "rounded-xl px-3 py-2.5 text-start flex items-center gap-2.5 transition active:scale-[0.98] min-h-[3.6rem]",
+              step1Active ? "nk-brand-grad text-white shadow" : "text-foreground hover:bg-muted/60",
+            )}
+          >
+            <span className={cn(
+              "w-7 h-7 rounded-lg grid place-items-center text-xs font-black shrink-0",
+              step1Active ? "bg-white/20 text-white" : closed ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground",
+            )}>
+              {closed ? <CheckCircle2 className="w-4 h-4" /> : "١"}
+            </span>
+            <span className="min-w-0">
+              <span className="block font-extrabold text-xs md:text-[13px] leading-tight">سجّل الحضور</span>
+              <span className={cn("block text-[10px] font-bold leading-tight mt-0.5 truncate", step1Active ? "text-white/80" : "text-muted-foreground")}>
+                {isOpenMode
+                  ? `${data.attendance.length} اتسجل`
+                  : `${e.presentCount} حاضر · ${data.absent.length} غايب`}
+              </span>
+            </span>
+          </button>
+          {/* الخطوة ٢ — راجع وقفل */}
+          <button
+            role="tab"
+            aria-selected={step2Active}
+            onClick={() => setStep("review")}
+            className={cn(
+              "rounded-xl px-3 py-2.5 text-start flex items-center gap-2.5 transition active:scale-[0.98] min-h-[3.6rem]",
+              step2Active ? "nk-brand-grad text-white shadow" : "text-foreground hover:bg-muted/60",
+            )}
+          >
+            <span className={cn(
+              "w-7 h-7 rounded-lg grid place-items-center text-xs font-black shrink-0",
+              step2Active ? "bg-white/20 text-white" : closed ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground",
+            )}>
+              {closed ? <CheckCircle2 className="w-4 h-4" /> : "٢"}
+            </span>
+            <span className="min-w-0">
+              <span className="block font-extrabold text-xs md:text-[13px] leading-tight">راجع وقفل</span>
+              <span className={cn("block text-[10px] font-bold leading-tight mt-0.5 truncate", step2Active ? "text-white/80" : "text-muted-foreground")}>
+                {closed ? "الملخص النهائي" : isOpenMode ? "قفل وتصدير CSV" : canEnd ? "راجع الأرقام واقفل" : "مراجعة قبل قفل المدير"}
+              </span>
+            </span>
+          </button>
         </div>
       )}
 
-      {/* =========================== الحضور =========================== */}
-      {tab === "attendance" && !cancelled && (
-        <div className="space-y-4 nk-anim-view">
+      {/* =========================== الخطوة ١ · سجّل الحضور =========================== */}
+      {step === "attendance" && !cancelled && (
+        <div className="space-y-3.5 nk-anim-view">
           {closed ? (
             <>
               <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm font-bold text-muted-foreground">
@@ -517,28 +432,36 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
             </>
           ) : (
             <>
-              {/* الطرق المتاحة للحضور — بتتكيف مع قدرات المركز (المعطّل مش بيظهر خالص)
-                  حصص الحضور المفتوح: الـ QR بس — مفيش كشف تتصل به طرق الكارت/الاسم (spec §1B) */}
-              {!isOpenMode && (
-                <div className="nk-card rounded-2xl p-3 flex flex-wrap items-center gap-1.5 text-[11px] font-extrabold">
-                  <span className="text-muted-foreground me-1">طرق تسجيل الحضور:</span>
-                  {caps.static_qr.enabled && <span className="rounded-full border border-border bg-card px-2.5 py-1">١ · مسح كارت الطالب</span>}
-                  {caps.name_attendance.enabled && <span className="rounded-full border border-border bg-card px-2.5 py-1">٢ · البحث / التحديد اليدوي</span>}
-                  {caps.dynamic_qr.enabled && <span className="rounded-full nk-brand-bg text-white px-2.5 py-1 inline-flex items-center gap-1"><QrCode className="w-3 h-3" /> ٣ · QR الحصة المتنقل</span>}
-                  {!caps.static_qr.enabled && !caps.name_attendance.enabled && !caps.dynamic_qr.enabled && (
-                    <span className="rounded-full border border-amber-300 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 px-2.5 py-1 inline-flex items-center gap-1">
-                      مفيش طرق حضور مفعّلة في المركز — كلّم المدير
-                    </span>
-                  )}
+              {/* العداد — مكان واحد لكل الأرقام الحية */}
+              <div className={cn("grid grid-cols-2 gap-2", !isOpenMode && "sm:grid-cols-3")}>
+                {isOpenMode ? (
+                  <MiniStat label="اتسجل" value={data.attendance.length} tone={data.attendance.length > 0 ? "ok" : "muted"} icon={<GraduationCap className="w-3.5 h-3.5" />} />
+                ) : (
+                  <>
+                    <MiniStat label={`حاضر من ${registered}`} value={e.presentCount} tone={e.presentCount > 0 ? "ok" : "muted"} icon={<GraduationCap className="w-3.5 h-3.5" />} />
+                    <MiniStat label="غايب" value={data.absent.length} tone={data.absent.length > 0 ? "warn" : "muted"} icon={<UserX className="w-3.5 h-3.5" />} />
+                  </>
+                )}
+                <MiniStat label="محاولات مشبوهة" value={attempts?.suspiciousCount ?? 0} tone={(attempts?.suspiciousCount ?? 0) > 0 ? "warn" : "muted"} icon={<AlertTriangle className="w-3.5 h-3.5" />} />
+              </div>
+
+              {/* تنبيه لو مفيش طرق حضور مفعّلة في المركز */}
+              {!isOpenMode && !caps.static_qr.enabled && !caps.name_attendance.enabled && !caps.dynamic_qr.enabled && (
+                <div className="flex items-center gap-2.5 rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/50 px-4 py-3 text-sm font-bold text-amber-800 dark:text-amber-200">
+                  <AlertTriangle className="w-4.5 h-4.5 shrink-0" />
+                  مفيش طرق حضور مفعّلة في المركز — كلّم المدير يفعّلها من الإعدادات.
                 </div>
               )}
+
+              {/* كود الحصة المتنقل — حصص الحضور المفتوح: ده هو الشغل كله */}
+              {caps.dynamic_qr.enabled && <SessionQrCard sessionId={sessionId} autoFullscreen={autoFullQr} onFullscreenHandled={() => setAutoFullQr(false)} />}
+
               {/* المسح المدمج — نفس محرك شاشة الحضور المجرب، بس مربوط بالحصة دي */}
               {!isOpenMode && (caps.static_qr.enabled || caps.name_attendance.enabled) && (
                 <ScanView user={user} embedded sessionOverride={sessionId} clearSessionOverride={() => {}} />
               )}
-              {caps.dynamic_qr.enabled && <SessionQrCard sessionId={sessionId} autoFullscreen={autoFullQr} onFullscreenHandled={() => setAutoFullQr(false)} />}
-              <AttendanceTable data={data} printAttendance={printAttendance} showPrint />
-              <SuspiciousCard attempts={attempts} />
+
+              {/* المسجلين ومحضروش — مع التحضير المعكوس بضغطة واحدة */}
               {!isOpenMode && data.absent.length > 0 && caps.name_attendance.enabled && (
                 <SectionCard
                   title={`مسجلين ومحضروش (${data.absent.length})`}
@@ -562,75 +485,18 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
                   </p>
                 </SectionCard>
               )}
+
+              <AttendanceTable data={data} printAttendance={printAttendance} showPrint />
+              <SuspiciousCard attempts={attempts} />
             </>
           )}
         </div>
       )}
 
-      {/* =========================== العمليات =========================== */}
-      {tab === "operations" && !cancelled && (
-        <div className="space-y-4 nk-anim-view">
-          <SectionCard title="أدوات الحصة" icon={<Wrench className="w-4 h-4" />}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <OpButton
-                icon={<Printer className="w-5 h-5" />}
-                label="طباعة كشف الحضور"
-                desc="ورقة رسمية بالحضور والغياب"
-                onClick={printAttendance}
-              />
-              <OpButton
-                icon={<ScanLine className="w-5 h-5" />}
-                label="شاشة المسح الكاملة"
-                desc="وضع الاستقبال/الكشك المستقل"
-                onClick={onGoScan}
-              />
-            </div>
-          </SectionCard>
-
-          <SectionCard title="إدارة الحصة" icon={<DoorClosed className="w-4 h-4" />}>
-            <div className="space-y-2.5">
-              {(canCancelDirect || canCancelRequest) && !closed && (
-                <OpButton
-                  icon={canCancelDirect ? <CalendarX className="w-5 h-5" /> : <Send className="w-5 h-5" />}
-                  label={canCancelDirect ? "إلغاء الحصة" : "طلب إلغاء الحصة"}
-                  desc={canCancelDirect ? "بسبب إجباري بيتسجل في سجل العمليات" : "بيروح للمدير يقرر فيه"}
-                  tone="danger"
-                  onClick={() => setCancelOpen(true)}
-                />
-              )}
-              {closed && isManager && (
-                <OpButton
-                  icon={<RotateCcw className="w-5 h-5" />}
-                  label="إعادة فتح حصة مقفولة"
-                  desc="حركة عكسية على الحسابات — مش مسح"
-                  onClick={() => setReopenOpen(true)}
-                />
-              )}
-              {!closed && (
-                <div className="text-[11px] font-bold text-muted-foreground bg-muted/50 rounded-xl px-3 py-2 leading-relaxed">
-                  تذكير: الحفظ مش قفل — الحضور والمدفوعات بتتسجل لحظيًا وبتفضل محفوظة لو خرجت ورجعت. القفل قرار صريح بيثبّت الحسابات من تاب المراجعة.
-                </div>
-              )}
-            </div>
-          </SectionCard>
-
-          <SectionCard title="سجل الحالة" icon={<Clock className="w-4 h-4" />}>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <InfoCell label="الحالة الحالية" value={closed ? "مقفولة" : "شغالة (مفتوحة)"} />
-              <InfoCell label="فتحت في" value={s.openedAt ? new Date(s.openedAt).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" }) : "—"} mono />
-              <InfoCell label="اتقفلت في" value={s.closedAt ? new Date(s.closedAt).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" }) : "—"} mono />
-              <InfoCell label="عدد المسجلين" value={`${registered} طالب`} mono />
-            </div>
-          </SectionCard>
-        </div>
-      )}
-
-      {/* =========================== المراجعة / الملخص =========================== */}
-      {tab === "review" && (
-        <div className="space-y-4 nk-anim-view">
-          {cancelled ? (
-            <EmptyState icon={<CalendarX className="w-8 h-8" />} title="الحصة ملغاة" hint="مفيش مراجعة — الحضور المسجل قبل الإلغاء محفوظ زي ما هو." />
-          ) : closed && isOpenMode ? (
+      {/* =========================== الخطوة ٢ · راجع وقفل =========================== */}
+      {step === "review" && !cancelled && (
+        <div className="space-y-3.5 nk-anim-view">
+          {closed && isOpenMode ? (
             /* ===== ملخص ما بعد القفل — حضور مفتوح (spec §10/§15): مفيش كشف ولا غياب ===== */
             <SectionCard title="ملخص الحصة" icon={<CheckCircle2 className="w-4 h-4 text-emerald-600" />}>
               <div className="rounded-2xl bg-muted/60 border p-4 space-y-1.5 text-sm">
@@ -672,11 +538,6 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
                 <SummaryRow label={`نصيب السنتر (${100 - s.teacherPercent}%)`} value={fmtE(e.centerShare)} strong highlight />
               </div>
               <div className="flex flex-wrap gap-2 mt-3">
-                {isOpenMode && (
-                  <button onClick={downloadCsv} className="flex-1 min-w-[150px] border-2 border-border bg-card nk-brand-text font-extrabold rounded-xl px-4 py-3 flex items-center justify-center gap-2 text-sm active:scale-[0.98] transition hover:bg-muted/50">
-                    <Download className="w-4.5 h-4.5" /> تصدير CSV
-                  </button>
-                )}
                 <button onClick={printAttendance} className="flex-1 min-w-[150px] border-2 border-border bg-card font-extrabold rounded-xl px-4 py-3 flex items-center justify-center gap-2 text-sm active:scale-[0.98] transition hover:bg-muted/50">
                   <Printer className="w-4.5 h-4.5" /> طباعة كشف الحضور
                 </button>
@@ -763,6 +624,14 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
               </SectionCard>
             </>
           )}
+        </div>
+      )}
+
+      {/* =========================== الحصة الملغاة — السجل المحفوظ =========================== */}
+      {cancelled && (
+        <div className="space-y-3.5 nk-anim-view">
+          <AttendanceTable data={data} printAttendance={printAttendance} showPrint />
+          <SuspiciousCard attempts={attempts} />
         </div>
       )}
 
@@ -916,6 +785,31 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ===== سجل الحالة والبيانات — كل تفاصيل الحصة في حوار واحد ===== */}
+      <Dialog open={logOpen} onOpenChange={setLogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Clock className="w-5 h-5 nk-brand-text" /> سجل الحالة والبيانات</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <InfoCell label="الحالة الحالية" value={cancelled ? "ملغاة" : closed ? "مقفولة" : "شغالة (مفتوحة)"} />
+              <InfoCell label="اليوم" value={s.date} mono />
+              <InfoCell label="فتحت في" value={s.openedAt ? new Date(s.openedAt).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" }) : "—"} mono />
+              <InfoCell label="اتقفلت في" value={s.closedAt ? new Date(s.closedAt).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" }) : "—"} mono />
+              <InfoCell label="عدد المسجلين" value={`${registered} طالب`} mono />
+              {lateCount > 0 && <InfoCell label="متأخرين" value={`${lateCount} طالب`} />}
+              {!isOpenMode && <InfoCell label="سعر الحصة" value={`${fmt(s.price)} ج`} mono />}
+              {isOpenMode && <InfoCell label="مصدر الطلاب" value="حضور مفتوح (بدون كشف)" />}
+              {isOpenMode && s.studentCodeLength && <InfoCell label="طول الكود" value={`${s.studentCodeLength} أرقام`} mono />}
+            </div>
+            <p className="text-[11px] font-bold text-muted-foreground bg-muted/50 rounded-xl px-3 py-2 leading-relaxed">
+              الحفظ مش قفل — الحضور والمدفوعات بتتسجل لحظيًا وبتفضل محفوظة لو خرجت ورجعت. القفل بيتعمل من خطوة «راجع وقفل».
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -951,31 +845,6 @@ function InfoCell({ label, value, mono }: { label: string; value: string; mono?:
   );
 }
 
-function OpButton({ icon, label, desc, onClick, tone }: {
-  icon: React.ReactNode; label: string; desc: string; onClick: () => void; tone?: "danger";
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "rounded-2xl border-2 p-3.5 flex items-center gap-3 text-start transition active:scale-[0.98] min-h-[4.2rem]",
-        tone === "danger"
-          ? "border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-950/70"
-          : "border-border bg-card hover:bg-muted/50",
-      )}
-    >
-      <span className={cn(
-        "w-10 h-10 rounded-xl grid place-items-center shrink-0",
-        tone === "danger" ? "bg-rose-600 text-white" : "nk-brand-bg-soft dark:bg-[color-mix(in_srgb,var(--c-primary)_26%,var(--card))] nk-brand-text",
-      )}>{icon}</span>
-      <span className="min-w-0">
-        <span className="block font-extrabold text-sm">{label}</span>
-        <span className="block text-[11px] font-semibold text-muted-foreground">{desc}</span>
-      </span>
-    </button>
-  );
-}
-
 function ReviewFlag({ tone, text }: { tone: "ok" | "warn" | "info"; text: string }) {
   return (
     <div className={cn(
@@ -1007,7 +876,7 @@ function AttendanceTable({ data, printAttendance, showPrint }: {
       }
     >
       {data.attendance.length === 0 ? (
-        <EmptyState title="لسه محدش حضر" hint="سجّل الحضور من تاب الحضور فوق." />
+        <EmptyState title="لسه محدش حضر" hint="سجّل الحضور من أدوات المسح والكود اللي فوق." />
       ) : (
         <div className="overflow-x-auto nk-scroll -mx-1 px-1">
           <table className="w-full text-sm min-w-[560px] border-collapse">
