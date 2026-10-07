@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   ChevronDown, Clock, DoorClosed, Lock, LockOpen, Users, UserX, Loader2,
   AlertTriangle, RotateCcw, Printer, CheckCircle2,
-  CalendarX, Send, ScanLine, ClipboardCheck, ReceiptText, Download, GraduationCap, EllipsisVertical,
+  CalendarX, Send, ScanLine, ClipboardCheck, ReceiptText, Download, EllipsisVertical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, fmt, fmtE, formatTime12, ATTENDANCE_LABEL, userCan, userCanRequest, type SessionUser } from "./lib";
@@ -432,18 +432,7 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
             </>
           ) : (
             <>
-              {/* العداد — مكان واحد لكل الأرقام الحية */}
-              <div className={cn("grid grid-cols-2 gap-2", !isOpenMode && "sm:grid-cols-3")}>
-                {isOpenMode ? (
-                  <MiniStat label="اتسجل" value={data.attendance.length} tone={data.attendance.length > 0 ? "ok" : "muted"} icon={<GraduationCap className="w-3.5 h-3.5" />} />
-                ) : (
-                  <>
-                    <MiniStat label={`حاضر من ${registered}`} value={e.presentCount} tone={e.presentCount > 0 ? "ok" : "muted"} icon={<GraduationCap className="w-3.5 h-3.5" />} />
-                    <MiniStat label="غايب" value={data.absent.length} tone={data.absent.length > 0 ? "warn" : "muted"} icon={<UserX className="w-3.5 h-3.5" />} />
-                  </>
-                )}
-                <MiniStat label="محاولات مشبوهة" value={attempts?.suspiciousCount ?? 0} tone={(attempts?.suspiciousCount ?? 0) > 0 ? "warn" : "muted"} icon={<AlertTriangle className="w-3.5 h-3.5" />} />
-              </div>
+              {/* مفيش صف أرقام هنا — العدادات عايشة في عنوان الخطوة وترويسات الأقسام المطوية نفسها */}
 
               {/* تنبيه لو مفيش طرق حضور مفعّلة في المركز */}
               {!isOpenMode && !caps.static_qr.enabled && !caps.name_attendance.enabled && !caps.dynamic_qr.enabled && (
@@ -888,26 +877,6 @@ function AvatarStack({ names }: { names: string[] }) {
         </span>
       )}
     </span>
-  );
-}
-
-function MiniStat({ label, value, tone, icon }: { label: string; value: number; tone: "ok" | "warn" | "muted"; icon: React.ReactNode }) {
-  return (
-    <div className={cn(
-      "rounded-xl border px-2.5 py-2 flex items-center gap-2 min-w-0",
-      tone === "ok" ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-900"
-        : tone === "warn" ? "bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-900"
-        : "bg-muted/50 border-border",
-    )}>
-      <span className={cn(
-        "shrink-0",
-        tone === "ok" ? "text-emerald-700 dark:text-emerald-300" : tone === "warn" ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground",
-      )}>{icon}</span>
-      <div className="min-w-0">
-        <span className={cn("nk-num block font-extrabold text-sm leading-none", tone === "muted" && "text-muted-foreground")}>{value}</span>
-        <span className="block text-[10px] font-bold text-muted-foreground mt-0.5 truncate">{label}</span>
-      </div>
-    </div>
   );
 }
 
