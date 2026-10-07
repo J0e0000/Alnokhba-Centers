@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { fmt, formatDateAR, todayStr, BRAND_DEFAULTS } from "./lib";
+import { fmt, formatDateAR, todayStr, BRAND_DEFAULTS, normalizeCenterBranding } from "./lib";
 import type { CenterInfo } from "./lib";
 
 /* ============================================================
@@ -221,8 +221,8 @@ export function PrintableCards({ cards, center }: { cards: CardData[]; center: C
 
 /** نسخة الطباعة من الكارت — نفس تصميم الشاشة لكن بدون ظلال وبتدرجات قابلة للطباعة */
 function CardForPrint({ card, center, index }: { card: CardData; center: CenterInfo | null; index: number }) {
-  const primary = center?.primaryColor ?? BRAND_DEFAULTS.primary;
-  const secondary = center?.secondaryColor ?? BRAND_DEFAULTS.secondary;
+  const primary = normalizeCenterBranding(center)?.primaryColor ?? BRAND_DEFAULTS.primary;
+  const secondary = normalizeCenterBranding(center)?.secondaryColor ?? BRAND_DEFAULTS.secondary;
   const headerInk = brandInk(primary, secondary);
   return (
     <div className="nk-print-card" style={{ width: "85.6mm", height: "53.98mm", borderRadius: "3mm", overflow: "hidden", border: "0.4mm dashed #b9c6cc", background: "#fff", position: "relative", color: "#1b2635" }}>
@@ -325,8 +325,8 @@ function RcRow({ label, value, strong }: { label: string; value: string; strong?
 
 /** A4 receipt — نصف ورقة، هيدر براند + تفاصيل + توقيع */
 export function PrintableReceiptA4({ data, center }: { data: ReceiptData; center: CenterInfo | null }) {
-  const primary = center?.primaryColor ?? BRAND_DEFAULTS.primary;
-  const secondary = center?.secondaryColor ?? BRAND_DEFAULTS.secondary;
+  const primary = normalizeCenterBranding(center)?.primaryColor ?? BRAND_DEFAULTS.primary;
+  const secondary = normalizeCenterBranding(center)?.secondaryColor ?? BRAND_DEFAULTS.secondary;
   const r = data.receipt;
   const s = data.student;
   const t = rcType(r.type);
@@ -471,8 +471,8 @@ export type PrintableReportData = {
 };
 
 export function PrintableReport({ data, center }: { data: PrintableReportData; center: CenterInfo | null }) {
-  const primary = center?.primaryColor ?? BRAND_DEFAULTS.primary;
-  const secondary = center?.secondaryColor ?? BRAND_DEFAULTS.secondary;
+  const primary = normalizeCenterBranding(center)?.primaryColor ?? BRAND_DEFAULTS.primary;
+  const secondary = normalizeCenterBranding(center)?.secondaryColor ?? BRAND_DEFAULTS.secondary;
   const now = new Date();
   const stamp = `${formatDateAR(todayStr(now))} · ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
@@ -581,8 +581,8 @@ export function PrintableDaySchedule({ dayLabel, dateStr, halls, center }: {
   halls: DayScheduleHall[];
   center: CenterInfo | null;
 }) {
-  const primary = center?.primaryColor ?? BRAND_DEFAULTS.primary;
-  const secondary = center?.secondaryColor ?? BRAND_DEFAULTS.secondary;
+  const primary = normalizeCenterBranding(center)?.primaryColor ?? BRAND_DEFAULTS.primary;
+  const secondary = normalizeCenterBranding(center)?.secondaryColor ?? BRAND_DEFAULTS.secondary;
   const totalSlots = halls.reduce((n, h) => n + h.slots.length, 0);
   const now = new Date();
   const stamp = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
@@ -678,8 +678,8 @@ export type AttendanceSheetData = {
 };
 
 export function PrintableAttendanceSheet({ data, center }: { data: AttendanceSheetData; center: CenterInfo | null }) {
-  const primary = center?.primaryColor ?? BRAND_DEFAULTS.primary;
-  const secondary = center?.secondaryColor ?? BRAND_DEFAULTS.secondary;
+  const primary = normalizeCenterBranding(center)?.primaryColor ?? BRAND_DEFAULTS.primary;
+  const secondary = normalizeCenterBranding(center)?.secondaryColor ?? BRAND_DEFAULTS.secondary;
   const s = data.session;
   const now = new Date();
   const stamp = `${formatDateAR(todayStr(now))} · ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;

@@ -3,6 +3,7 @@ import { ok, handler, readJson } from "@/lib/api";
 import { requireManager } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { cleanRaw } from "@/lib/normalize";
+import { normalizeCenterBranding } from "@/lib/branding";
 
 export const dynamic = "force-dynamic";
 
@@ -12,13 +13,15 @@ const HEX = /^#[0-9a-fA-F]{6}$/;
 export const GET = handler(async () => {
   const user = await requireManager();
   const center = await db.center.findUnique({ where: { id: user.centerId } });
+  // القيم الافتراضية القديمة بتتقرا كهوية اللوجو الرسمية — والفورم بيتخزن بالنظيفة فقاعدة الداتا بتتشفى مع أول حفظ
+  const b = normalizeCenterBranding(center);
   return ok({
-    branding: center
+    branding: b
       ? {
-          name: center.name, logo: center.logo, primaryColor: center.primaryColor,
-          secondaryColor: center.secondaryColor, accentColor: center.accentColor,
-          phone: center.phone, whatsapp: center.whatsapp, address: center.address,
-          slogan: center.slogan, signature: center.signature, social: center.social ? JSON.parse(center.social) : {},
+          name: b.name, logo: b.logo, primaryColor: b.primaryColor,
+          secondaryColor: b.secondaryColor, accentColor: b.accentColor,
+          phone: b.phone, whatsapp: b.whatsapp, address: b.address,
+          slogan: b.slogan, signature: b.signature, social: b.social ? JSON.parse(b.social) : {},
         }
       : null,
     // تنبيهات الواتساب — opt-in من المدير + سجل الموافقة (شيفا)
@@ -56,7 +59,7 @@ export const PATCH = handler(async (req: Request) => {
     data.name = name;
   }
   if (body.primaryColor !== undefined) {
-    if (!HEX.test(body.primaryColor)) throw new Error("اللون الأساسي مش مكتوب صح (مثال: #0E9F6E).");
+    if (!HEX.test(body.primaryColor)) throw new Error("اللون الأساسي مش مكتوب صح (مثال: #0B1B4F).");
     data.primaryColor = body.primaryColor;
   }
   if (body.secondaryColor !== undefined) {

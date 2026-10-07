@@ -38,7 +38,7 @@ async function POST_impl(req: NextRequest) {
     if (!name?.trim()) throw new ApiError("اكتب اسم المادة.", 400);
     const dup = await db.acaSubject.findUnique({ where: { name: name.trim() } });
     if (dup) throw new ApiError("المادة دي موجودة خلاص.", 400);
-    const s = await db.acaSubject.create({ data: { name: name.trim(), color: color || "#0E9F6E", code: code || null } });
+    const s = await db.acaSubject.create({ data: { name: name.trim(), color: color || "#2563EB", code: code || null } });
     await logAudit({ user, action: "إضافة مادة", entity: "ACA_SUBJECT", entityId: s.id, after: { name: s.name } });
     return NextResponse.json({ subject: { id: s.id } }, { status: 201 });
   }
