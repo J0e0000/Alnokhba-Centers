@@ -106,6 +106,8 @@ const RE = {
   groupAttendance: /نسبه حضور|حضور (مجموعه|group)|attendance (rate|of|for)/,
   todaySessions: /كام (حصه|حصة)|ايه (الحصص|حصص)|حصص النهارده|جدول النهارده|how many (sessions|classes)|sessions today|schedule today/,
   todaySummary: /(النهارده|اليوم|today).*(ايه|ملخص|حصل|مهم|وريني|بصلي|وضع|اخبار|مشهور)|ايه اللي حصل|ملخص (اليوم|النهارده)|حضور (النهارده|اليوم)|today'?s? (summary|overview)|what happened today|وريني الملخص|(show|give) me today|today.*(summary|overview|attendance)/,
+  debtors: /(عليه|عليهم|عليها) (فلوس|مبلغ|مديونيه)|مديونيه|مديونيات|المتاخرات|متاخرات|مستحقات|لسه (مدفعش|ماقفلش)|who owes|owe(s)? (us|money)|unpaid|outstanding (balance|payments)/,
+  tomorrow: /(عندنا|فيه|ايه|جدول|حصص|وريني).*(بكره|بكرا|غدا|بكرة)|(بكره|بكرا|غدا|بكرة).*(حصص|جدول|عندنا)|tomorrow( s)? (sessions|classes|schedule)|what( s| is) (on )?tomorrow/,
   groupsList: /المجموعات|مجموعاتي|مجموعات السنتر|كام مجموعه|غروبات|my groups|show( me)? groups|list groups/,
   weakStudents: /مستواه نازل|مستوي نازل|الضعفاء|ضعيف|محتاج(ين)? متابعه|متعثر(ين)?|متلخبط(ين)?|struggling|falling behind|weak students|needs? follow ?-?up|مين محتاج/,
   collection: /كام (اتنصل|جمع|تحصيل)|التحصيل|ايراد النهارده|collections? today|how much (collected|did we collect)|ايراد/,
@@ -332,6 +334,22 @@ export function fallbackPlan(
     const prevInsights = (prev?.data?.insights as unknown[] | undefined)?.length ?? 0;
     if (prev && prevInsights > 0) return doneWith(prev, "خلصت — ملاحظات المتابعة فوق.");
     return { say: "هجيب أهم ملاحظات المتابعة: الغياب المتكرر والرصيد والمتأخرين — من قواعد المتابعة الثابتة.", tool: { name: "dashboard.get_today", args: { withInsights: true } } };
+  }
+
+  /* ================= المديونيات (finance.debtors) ================= */
+  if (RE.debtors.test(t)) {
+    const prev = obsOf(observations, "finance.debtors");
+    if (prev) return doneWith(prev, "خلصت — قايمة المديونيات فوق.");
+    return { say: "هجيبلك الطلاب اللي عليهم فلوس مرتبين من الأكبر.", tool: { name: "finance.debtors", args: {} } };
+  }
+
+  /* ================= حصص بكره (schedule.get_day) ================= */
+  if (RE.tomorrow.test(t)) {
+    const prev = obsOf(observations, "schedule.get_day");
+    if (prev) return doneWith(prev, "خلصت — حصص بكره فوق.");
+    // تاريخ بكره بتوقيت القاهرة (en-CA بيدّي YYYY-MM-DD)
+    const date = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo" }).format(new Date(Date.now() + 86_400_000));
+    return { say: "هجيبلك حصص بكره.", tool: { name: "schedule.get_day", args: { date } } };
   }
 
   /* ================= المجموعات ================= */

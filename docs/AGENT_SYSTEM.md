@@ -122,3 +122,32 @@ TOOL EXECUTION (server)  →  VERIFY from database  →  AUDIT  →  RESULT CARD
    `AGENT_LLM_BASE_URL=https://my-host/v1` · `AGENT_LLM_MODEL=qwen2.5-14b-instruct` · `AGENT_LLM_API_KEY=...` (اختياري) — وبس. مفيش سطر واحد يتغير في الأدوات أو الوكيل.
 2. **مزود جديد بامتياز:** اعمل class ينفذ `LLMProvider` (ملف واحد في `src/ai/providers/`) وسجله في `getLLM()` بالأولوية اللي تحبها.
 3. **بدون موديل خالص:** النظام يشتغل بالفول باك الحتمي — نفس الأدوات، نفس الصلاحيات، نفس التأكيد.
+
+---
+
+## Zaki rebuild — models, routing, tools (branch `zaki-rebuild`)
+
+### Models (env, server-side only)
+| Variable | Meaning |
+|---|---|
+| `AGENT_LLM_PROVIDER` | `anthropic` or empty/`openai-compatible` (default, old behaviour) |
+| `AGENT_LLM_MODEL` | model id (e.g. a Claude model id, or `qwen2.5-14b-instruct`) |
+| `AGENT_LLM_API_KEY` | provider key |
+| `AGENT_LLM_BASE_URL` | required for openai-compatible; optional for anthropic |
+| `AGENT_LLM_FALLBACK_PROVIDER` / `_MODEL` / `_API_KEY` / `_BASE_URL` | optional second model; used automatically when the primary errors/times out |
+| `NK_AGENT_BRAIN_FIRST=1` | restore the old order (regex brain before the model) |
+| `NK_AGENT_DEBUG=1` | log raw model replies to server logs |
+
+Resolution order is unchanged: env → center settings (OpenAI-compatible) → built-in ZAI → regex brain only.
+
+### Routing
+The regex brain answers alone for canned replies (greeting/thanks/security refusal), mid-task follow-ups, and short requests (≤ 6 words). Longer/open requests go to the model first; the brain is the safety net if the model fails. A task started by the model stays with the model.
+
+### Tools added
+`schedule.get_day`, `finance.get_collection`, `finance.debtors` (financial permission), `message.draft_balance_reminder` (drafts text + wa.me link, never sends), `student.update_contact` (EDIT_STUDENT, MEDIUM → confirmation, audited, verified). The model is shown only the tools the current user is allowed to run.
+
+### Not implemented on purpose
+Payments/refunds by the agent: the ledger + receipt write lives inline in `POST /api/payments`. It should be extracted into a shared, tested function before an agent tool wraps it.
+
+### Observability
+`GET /api/agent/status` — any user: tools available to them. Manager: active model, last-7-day split of `llm` / `brain` / `fallback`, and the latest un-mapped requests (`provider = "fallback"`) — the backlog of missing tools/intents. Add failing phrases to `scripts/agent_brain_eval.mts`.
