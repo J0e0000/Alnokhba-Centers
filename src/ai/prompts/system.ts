@@ -1,5 +1,6 @@
 import "server-only";
 import { toolCatalogForPrompt } from "../tools/registry";
+import type { ToolDef } from "../tools/types";
 import { contextBlock, type AgentContextSnapshot } from "../context/builder";
 
 /* ============================================================
@@ -52,8 +53,8 @@ export const AGENT_SYSTEM_AR = `أنت «زكي» — عقل الوكيل الذ
 والسؤال «مين الطالب؟» هنا غلط — السياق بيجاوب على السؤال قبل ما تسأله.`;
 
 /** بناء رسالة النظام الكاملة: البروتوكول + كتالوج الأدوات + السياق */
-export function buildSystemPrompt(ctx: AgentContextSnapshot): string {
-  const catalog = toolCatalogForPrompt();
+export function buildSystemPrompt(ctx: AgentContextSnapshot, tools?: ToolDef[]): string {
+  const catalog = toolCatalogForPrompt(tools);
   return `${AGENT_SYSTEM_AR}
 
 ## الأدوات المتاحة (الكتالوج الرسمي)
