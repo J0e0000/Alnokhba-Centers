@@ -4,6 +4,8 @@ import "./groups";
 import "./attendance";
 import "./reports";
 import "./dashboard";
+import "./schedule";
+import "./finance";
 import { allTools } from "./registry";
 
 /* ============================================================
@@ -12,7 +14,7 @@ import { allTools } from "./registry";
    prompts بيتحدثوا لوحدهم (spec §3/§22)
 ============================================================ */
 
-export { allTools, getTool, toolCatalogForPrompt, authorizeAndValidate } from "./registry";
+export { allTools, getTool, toolCatalogForPrompt, availableToolsFor, authorizeAndValidate } from "./registry";
 export type { ToolDef, ToolOutput, ToolContext, AgentCard, RiskLevel } from "./types";
 export { ToolError, CONFIRM_POLICY } from "./types";
 
