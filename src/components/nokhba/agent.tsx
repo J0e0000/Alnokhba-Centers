@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { api } from "./lib";
 import type { SessionUser } from "./lib";
+import { startMicRecording, type RecordingSession } from "./voice-recorder";
 import {
   AgentCardView, ConfirmationCard, PlanCard, StepChip, ErrorCard, SuccessCard,
   type AgentCard, type StepItem, type CardActionHandler,
@@ -56,6 +57,7 @@ const STATE_LABEL: Record<string, string> = {
   PLANNING: "برتب الخطوات…",
   EXECUTING: "بنفذ…",
   VERIFYING: "بتأكد من النتيجة…",
+  TRANSCRIBING: "بحوّل صوتك لنص…",
   WAITING_CONFIRMATION: "مستني تأكيدك",
   COMPLETED: "خلصت",
   FAILED: "حصلت مشكلة",
@@ -168,6 +170,7 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
   const [hasVoice, setHasVoice] = useState(false);
   const [hasTts, setHasTts] = useState(false);
   const [ttsOn, setTtsOn] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
 
   const taskIdRef = useRef<string | null>(null);
   const lastUserText = useRef<string>("");
@@ -178,27 +181,33 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
   const finalTranscriptRef = useRef("");
   const manualStopRef = useRef(false);
   const lastAgentTextRef = useRef("");
+  const recordingRef = useRef<RecordingSession | null>(null);
+  const speakAudioRef = useRef<HTMLAudioElement | null>(null);
+  const silenceTimerRef = useRef(0);
+  const levelRef = useRef({ lastLoud: 0, started: 0 });
 
   // قدرات الصوت — بعد التركيب فقط (تفادي اختلاف SSR)
   useEffect(() => {
-    setHasVoice(!!((window as SRWindow).SpeechRecognition || (window as SRWindow).webkitSpeechRecognition));
-    setHasTts("speechSynthesis" in window);
+    // المايك السيرفري (تسجيل WAV + تعرف على السيرفر) شغال على كل المتصفحات الحديثة —
+    // ده الأساس. التعرف جوه المتصفح بقى فول باك بس.
+    const hasSR = !!((window as SRWindow).SpeechRecognition || (window as SRWindow).webkitSpeechRecognition);
+    setHasVoice(!!navigator.mediaDevices?.getUserMedia || hasSR);
+    setHasTts(true); // صوت زكي سيرفري دلوقتي — الزرار دايمًا ظاهر
     setTtsOn(localStorage.getItem("nk-agent-tts") !== "0"); // الصوت مفتوح افتراضيًا — سهل كتمه من زرار السماعة
   }, []);
 
-  /* ---------- الرد الصوتي (TTS) — زكي بيتكلم بنفس لغة الرد ---------- */
+  /* ---------- الرد الصوتي (TTS) — صوت عربي سيرفري على كل المتصفحات ----------
+     معظم أجهزة الكمبيوتر مفيهاش صوت عربي جاهز في المتصفح — فبنولّد الصوت
+     سيرفري (/api/agent/speak) ولو فشل نرجع لصوت المتصفح لو متاح. */
   const shutUp = useCallback(() => {
     try { window.speechSynthesis?.cancel(); } catch { /* صامت */ }
+    try { speakAudioRef.current?.pause(); } catch { /* صامت */ }
+    speakAudioRef.current = null;
   }, []);
-  const speak = useCallback((text: string) => {
-    if (!("speechSynthesis" in window) || !text.trim()) return;
+
+  const browserSpeak = useCallback((clean: string) => {
+    if (!("speechSynthesis" in window) || !clean) return;
     try {
-      const clean = text
-        .replace(/[*_#`>•—–…]/g, " ")
-        .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-      if (!clean) return;
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(clean.slice(0, 420));
       const voices = window.speechSynthesis.getVoices();
@@ -210,6 +219,34 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
       window.speechSynthesis.speak(u);
     } catch { /* صامت — الصوت إضافة مش شرط */ }
   }, []);
+
+  const speak = useCallback((text: string) => {
+    const clean = text
+      .replace(/[*_#`>•—–…]/g, " ")
+      .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!clean) return;
+    fetch("/api/agent/speak", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: clean }),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`speak-http-${res.status}`);
+        const blob = await res.blob();
+        if (!blob.type.startsWith("audio")) throw new Error("speak-type");
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        speakAudioRef.current = audio;
+        audio.onended = () => {
+          URL.revokeObjectURL(url);
+          if (speakAudioRef.current === audio) speakAudioRef.current = null;
+        };
+        await audio.play();
+      })
+      .catch(() => browserSpeak(clean)); // فول باك — صوت المتصفح لو فيه عربي
+  }, [browserSpeak]);
 
   // سياق الصفحة — من shell (view) + من أحداث التطبيق (طالب/حصة مفتوحة)
   useEffect(() => {
@@ -360,23 +397,52 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
     setState("IDLE");
   }, []);
 
-  /* ---------- الصوت — إدخال بيتكلم + إرسال تلقائي، ورسايل واضحة بدل مايك صامت ---------- */
-  const toggleMic = useCallback(() => {
-    if (listening) {
-      // الضغطة التانية = وقف يدوي — النص المكتوب يفضل في الخانة من غير إرسال
-      manualStopRef.current = true;
-      try { recognitionRef.current?.stop(); } catch { /* صامت */ }
-      setListening(false);
-      return;
+  /* ---------- الصوت — تسجيل سيرفري شغال على كل المتصفحات (spec §11) ----------
+     الأساس: نسجل WAV من المايك ونحوّله نص على السيرفر (/api/agent/transcribe) —
+     التعرف بيحصل سيرفري بعيد عن مشاكل متصفح معينة أو غياب دعم العربي.
+     الفول باك: التعرف جوه المتصفح (Web Speech) لو السيرفر مش متاح. */
+  const pushVoiceError = useCallback((text: string) => {
+    push({ id: crypto.randomUUID(), kind: "error", text });
+  }, [push]);
+
+  const clearSilenceTimer = useCallback(() => {
+    if (silenceTimerRef.current) {
+      window.clearInterval(silenceTimerRef.current);
+      silenceTimerRef.current = 0;
     }
+  }, []);
+
+  const finalizeRecording = useCallback(async (sess: RecordingSession) => {
+    setListening(false);
+    setTranscribing(true);
+    setState("TRANSCRIBING");
+    try {
+      const { base64 } = await sess.stop();
+      const d = await api<{ text: string }>("/api/agent/transcribe", {
+        method: "POST",
+        body: { audio: base64 },
+        silent: true,
+      });
+      const text = String(d.text ?? "").trim();
+      setTranscribing(false);
+      setState("IDLE");
+      if (text) send(text);
+      else pushVoiceError("مقدرتش أسمع كلام واضح — قرّب من المايك واتكلم بعدل وجرب تاني.");
+    } catch (e) {
+      setTranscribing(false);
+      setState("IDLE");
+      pushVoiceError(e instanceof Error && e.message ? e.message : "حصلت مشكلة في تحويل الصوت — جرب تاني.");
+    }
+  }, [send, pushVoiceError]);
+
+  /** فول باك — التعرف جوه المتصفح (Chrome/Edge غالبًا) */
+  const startBrowserRecognition = useCallback(() => {
     const w = window as SRWindow;
     const SRCtor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
     if (!SRCtor) {
-      push({ id: crypto.randomUUID(), kind: "error", text: "المتصفح ده مش بيدعم الإدخال الصوتي — جرب Chrome أو Edge أو Safari." });
+      pushVoiceError("المايك مش متاح دلوقتي — اسمح بالمايك من أيقونة القفل جنب العنوان وجرب تاني.");
       return;
     }
-    // لو زكي بيتكلم دلوقتي — اسكت قبل ما نسمع
-    shutUp();
     try {
       const rec = new SRCtor();
       rec.lang = "ar-EG";
@@ -396,25 +462,66 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
       };
       rec.onend = () => {
         setListening(false);
-        // الإرسال التلقائي لو انتهى التسجيل طبيعيًا — تجربة مساعد صوتي حقيقية
         const t = finalTranscriptRef.current.trim();
         if (t && !manualStopRef.current) send(t);
       };
       rec.onerror = (ev) => {
         setListening(false);
         const code = ev.error ?? "";
-        // no-speech/aborted = مفيش كلام أو وقف سريع — سلوك طبيعي من غير إزعاج
         if (code === "aborted" || code === "no-speech") return;
-        push({ id: crypto.randomUUID(), kind: "error", text: VOICE_ERRORS[code] ?? "حصلت مشكلة في المايك — جرب تاني." });
+        pushVoiceError(VOICE_ERRORS[code] ?? "حصلت مشكلة في المايك — جرب تاني.");
       };
       recognitionRef.current = rec;
       rec.start();
       setListening(true);
     } catch {
       setListening(false);
-      push({ id: crypto.randomUUID(), kind: "error", text: "مقدرتش شغّل المايك — قفل أي تاب تاني بيستخدم المايك وجرب تاني." });
+      pushVoiceError("مقدرتش شغّل المايك — قفل أي تاب تاني بيستخدم المايك وجرب تاني.");
     }
-  }, [listening, push, send, shutUp]);
+  }, [pushVoiceError, send]);
+
+  const toggleMic = useCallback(() => {
+    if (listening || transcribing) {
+      // الضغطة التانية = خلصت الكلام → تحويل لنص وإرسال فوري
+      manualStopRef.current = true;
+      clearSilenceTimer();
+      const sess = recordingRef.current;
+      recordingRef.current = null;
+      if (sess) {
+        void finalizeRecording(sess);
+        return;
+      }
+      try { recognitionRef.current?.stop(); } catch { /* صامت */ }
+      setListening(false);
+      return;
+    }
+    // لو زكي بيتكلم دلوقتي — اسكت قبل ما نسمع
+    shutUp();
+    levelRef.current = { lastLoud: Date.now(), started: Date.now() };
+    void startMicRecording({
+      onLevel: (level) => { if (level > 0.05) levelRef.current.lastLoud = Date.now(); },
+    })
+      .then((sess) => {
+        recordingRef.current = sess;
+        manualStopRef.current = false;
+        setListening(true);
+        // وقف تلقائي لما المستخدم يسكت ~1.8 ثانية — تجربة مساعد صوتي حقيقي
+        silenceTimerRef.current = window.setInterval(() => {
+          if (!recordingRef.current) return;
+          const now = Date.now();
+          if (now - levelRef.current.started > 1400 && now - levelRef.current.lastLoud > 1800) {
+            const s = recordingRef.current;
+            recordingRef.current = null;
+            clearSilenceTimer();
+            void finalizeRecording(s);
+          }
+        }, 250);
+      })
+      .catch(() => {
+        // تسجيل WAV مش متاح (إذن/جهاز) → فول باك لتعرف المتصفح لو موجود
+        startBrowserRecognition();
+      });
+  }, [listening, transcribing, finalizeRecording, shutUp, startBrowserRecognition, clearSilenceTimer]);
 
   const toggleTts = useCallback(() => {
     setTtsOn((v) => {
@@ -571,7 +678,7 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
               </div>
 
               {/* شريط الحالة أثناء الشغل */}
-              {(running || state === "WAITING_CONFIRMATION") && (
+              {(running || transcribing || state === "WAITING_CONFIRMATION") && (
                 <div className="shrink-0 bg-muted/60 border-b border-border px-4 py-1.5 flex items-center gap-2">
                   {STATE_ICON[state] ?? <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span className="text-[11px] font-black">{stateLabel ?? "بشتغل…"}</span>
@@ -678,20 +785,36 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
                     {hasVoice && (
                       <button
                         onClick={toggleMic}
-                        aria-label={listening ? "إيقاف المايك" : "تسجيل صوتي"}
+                        aria-label={listening ? "خلصت الكلام — حول وابعت" : "تسجيل صوتي"}
                         className={cn(
                           "w-10 h-10 rounded-2xl grid place-items-center shrink-0 border transition",
-                          listening ? "bg-rose-600 text-white border-rose-600 animate-pulse" : "border-border bg-muted/50 text-muted-foreground",
+                          listening
+                            ? "bg-rose-600 text-white border-rose-600 animate-pulse"
+                            : transcribing
+                              ? "nk-brand-bg text-white border-transparent"
+                              : "border-border bg-muted/50 text-muted-foreground",
                         )}
                       >
-                        {listening ? <MicOff className="w-4.5 h-4.5" /> : <Mic className="w-4.5 h-4.5" />}
+                        {transcribing ? (
+                          <Loader2 className="w-4.5 h-4.5 animate-spin" />
+                        ) : listening ? (
+                          <MicOff className="w-4.5 h-4.5" />
+                        ) : (
+                          <Mic className="w-4.5 h-4.5" />
+                        )}
                       </button>
                     )}
                     <input
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
-                      placeholder={listening ? "بتسمعك…" : "اكتب طلبك… مثال: مين غايب النهارده؟"}
+                      placeholder={
+                        transcribing
+                          ? "بحوّل صوتك لنص…"
+                          : listening
+                            ? "بتسمعك… اتكلم عادي وهيبعت لوحده لما تسكت"
+                            : "اكتب طلبك… مثال: مين غايب النهارده؟"
+                      }
                       disabled={running || !online}
                       className="flex-1 min-w-0 rounded-2xl border border-input bg-background px-3.5 py-2.5 text-sm font-bold outline-none focus:ring-2 nk-brand-ring disabled:opacity-50"
                       maxLength={1000}
