@@ -345,3 +345,23 @@ Work Log:
 
 Stage Summary:
 - صوت زكي بقى سيرفري بالاتجاهين: التسجيل WAV من كل المتصفح → تعرف سيرفري، والرد الصوتي عربي طبيعي من السيرفر — كده مستحيل يبوظ بسبب متصفح/جهاز مفيش فيه دعم عربي، والإذن المسموح بيتحول لصوت شغال فعلًا. طلبات كلمات السر بتترفض أمنيًا في كل المسارات (مخ حتمي + برومبت الموديل). والموديلات المفتوحة الأقوى في العربي (Qwen3/Llama 3.3/ALLaM/Jais) documented جاهزة للوصل من الإعدادات في دقيقة. commit 9cc0645 + دفعة origin (74996ef..9cc0645) — Vercel هيعمل deploy تلقائي.
+
+---
+Task ID: zaki-rebuild-patch
+Agent: Super Z (main)
+Task: user uploaded zaki-rebuild.patch — "see how can you benefit from this to upgrade and fix zaki". باتش خارجي (LLM-first routing + كتالوج لكل مستخدم + أدوات جدول/تحصيل + JSON mode + unmapped logging).
+
+Work Log:
+- فحص الباتش قبل التطبيق: git apply --check ✓ — وكل المتطلبات الدلالية اتأكدت: hasPermission/requiredCapability/ToolContext في types+registry · getCenterCapabilities+capabilityBool · usage tokens في LLMGenerateResult · StudentTransaction (PAYMENT/piastres) · SessionInstance→group→subject/teacher · todayStr في lib/normalize · مفيش متصلين خارجيين لـ buildSystemPrompt.
+- ROOT CAUSE اللي الباتش بيحلها: المخ الحتمي كان أول واحد دايمًا — فالموديل الذكي (بعد ما المدير يوصله من الإعدادات) كان بيشوف بس الصيغ اللي الريجكس مش فاهمها، فالترقية «الموديلات المفتوحة» كانت مش هتحس بيها. الباتش قلب الترتيب: الموديل أول للطلبات المفتوحة (>6 كلمات)، والمخ للردود الجاهزة (تحية/شكر/رفض أمني)/متابعة وسط مهمة/طلبات قصيرة، وبيرجع للأول بـ NK_AGENT_BRAIN_FIRST=1.
+- تحسين فوق الباتش (ثغرة ميت): مهمة بدأها الموديل ووقع الموديل (شبكة/اتشال) كانت بتخلص fallbackUnknown فورًا حتى لو المخ يعرف الطلب — اتصلحت: brainPlan بيتحسب دايمًا وبيبقى شبكة أمان تحت الموديل (حماية اللوب بالـ observations بتقفل النية المكررة بالملخص مش بإعادة تنفيذ).
+- إصلاح مالي: finance.get_collection كان Math.round(piastres/100) — في المجاميع بيضيع قروش (150.50→151). بقى يعرض .toFixed(2) بس لما فيه قروش.
+- ربط المخ بالأدوات الجديدة (الباتش ضاف الأدوات بس المخ مكان يعرفها): «عندنا إيه بكرة؟» → schedule.get_day بتاريخ بكرة (todayStr+24h بتوقيت القاهرة) · «حصّلنا كام النهارده؟» → finance.get_collection — مع توسيع regex التحصيل للصيغة المصرية «حصلنا كام» (كانت مش بتتشال) + تحديث رسايل المساعدة والبدائل.
+- speak: 429 من خدمة الصوت بيرجع 429+Retry-After بدل 502 (العميل يرجع لصوت المتصفح بهدوء ويجرب بعدين).
+- voice e2e: بيتعطل لو فيكستشور arabic_tts_test.wav مش موجود (ملف مولّد مش ملتزم) — بقى self-healing بيستخدم مخرج الـ TTS من الخطوة 2.
+- VERIFY: tsc 0 · eslint نظيف · build ✓ · e2e_agent 43/43 (مرتين) · attendance 45 · device-lock 33 · qr-slot 15 · anticheat 23 = 159 أخضر (الدروس: متباعدتش السويتات أقل من 65 ثانية → rate-limit المصمم بيضرب، التانية نظيفة) · متصفح: «عندنا إيه بكرة؟» رد بالمواعيد + «حصّلنا كام؟» جاب كارت تحصيل برقم من الداتابيز (لقطات download/zaki_schedule_tomorrow.png و zaki_collection.png).
+- TTS الخارجي كان بيرجع 429 طول الجلسة (ضغط على الخدمة) — السلوك سليم: العميل بيرجع لصوت المتصفح العربي، والـ route بيرجع 429 واضح.
+- commit d005e29 → push (9cc0645..d005e29) — Vercel هيعمل deploy.
+
+Stage Summary:
+- زكي بقى فعلاً «يستاهل موديل»: لما المدير يوصل أي موديل OpenAI-compatible (Qwen3/Llama 3.3/ALLaM/Jais من OpenRouter/Groq/Ollama) الطلبات المفتوحة بتروح له أول بأول، والمخ الحتمي بقى حارس أمان مش حاجز. الأدوات اتوسعت للجدول والتحصيل بأرقام حقيقية من الداتابيز، وكل طلب مش مفهوم بيتلوج بعلم unmapped عشان نعرف نجيب نوايا جديدة بإحصاء مش بتخمين. البروتوكول بقى JSON صارم مع تراجع آمن للسيرفرات القديمة.
