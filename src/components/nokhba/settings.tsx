@@ -184,6 +184,11 @@ function AgentBrainTab() {
               المخ المدمج بيفهم الطلبات الشائعة وينفذها بنفس الأدوات والصلاحيات والتأكيد.
               لو توصّلت موديل ذكي (OpenAI أو OpenRouter أو Groq أو أي خدمة متوافقة، أو سيرفر محلي زي Ollama) — زكي هيفهم أي صيغة وتلقائية أكتر.
             </p>
+            <p className="text-muted-foreground">
+              موديلات مفتوحة المصدر قوية في العربي (كلها تشتغل من OpenRouter أو Groq أو Ollama):
+              <span dir="ltr" className="font-extrabold nk-brand-text"> Qwen3 · Llama 3.3 70B · ALLaM 7B/13B · Jais 30B · Falcon-H1-Arabic </span>
+              — كلها بتدعم function calling فتقدر تشغّل أدوات زكي كاملة.
+            </p>
             {cfg.envConfigured && <p className="text-amber-600 dark:text-amber-400">ملحوظة: إعدادات السيرفر (ENV) عندها الأولوية — الإعداد من هنا بيتجاهل لحد ما تتشال من الـ ENV.</p>}
           </div>
 

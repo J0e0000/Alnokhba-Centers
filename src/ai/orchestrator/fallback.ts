@@ -154,6 +154,20 @@ export function fallbackPlan(
     };
   }
 
+  /* ================= طلبات بيانات دخول — رفض أمني صريح (spec §34) =================
+     ممنوع في كل الأحوال إعطاء حسابات أو كلمات سر — الطلب بيرد عليه رفض واضح
+     قبل أي تفكير آخر، سواء بالمخ الحتمي أو أي موديل. */
+  const asksPassword = /(باسورد|باسوورد|كلمه السر|باصورد|password)/.test(t);
+  const asksAdminAccount = /(حساب|account)/.test(t) && /(ادمن|المدير|مدير|اداري|admin)/.test(t) && !/كشف حساب/.test(t);
+  if (asksPassword || asksAdminAccount) {
+    return {
+      say: hasAr(text)
+        ? "لأ — ده مش هقدر أعمله. الحسابات وكلمات السر بيانات حساسة ومش بتتشارك في أي شات، ولا حتى أنا مسموحلي أشوفها. حسابك انت واخد صلاحياته من الإدارة، ولو عايز صلاحيات أكتر أو حساب لموظف جديد، ده بيتعمل من شاشة الموظفين أو من إدارة المنصة مباشرة."
+        : "I can't share accounts or passwords — credentials are sensitive and never shared through chat, and I don't have access to them anyway. Your account has the permissions it needs; for more access or a new staff account, use the staff screen or contact the platform admins.",
+      done: true,
+    };
+  }
+
   /* ================= تسجيل طالب في مجموعة — pipeline بحالة ================= */
   if (isEnroll) {
     const intentText = RE.enroll.test(t) ? text : (ctx.goal ?? text);
