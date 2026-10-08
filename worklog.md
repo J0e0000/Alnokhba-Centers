@@ -307,3 +307,24 @@ Work Log:
 
 Stage Summary:
 - النخبة بقت فيها وكيل ذكي حقيقي: بيفهم عربي مصري وإنجليزي، بيخطط بصوت آمن، بينفذ بأدوات مسجلة بصلاحيات سنتر وصلاحيات الحساب، بيطلب تأكيد للحساس، بيتحقق من الداتابيز بعد التنفيذ، بيسجل كل حاجة، وشكله زكي على الموبايل والديسكتوب. الموديل قابل للاستبدال من env من غير لمس الأدوات، ولو مفيش موديل الفول باك الحتمي بيشتغل بنفس الأمان.
+
+---
+Task ID: zaki-agent-fix (الوكيل في الإنتاج + الصوت + مخ أذكى)
+Agent: Super Z (main)
+Task: "fix it and also the voice in it isn't working, make sure all works (and make the agent smarter)" — سكرينشوت من الإنتاج: كارت «Cannot read properties of undefined (reading 'create')» على سؤال «من هنحضرش النهاردة؟» في لوحة زكي.
+
+Work Log:
+- ROOT CAUSE (الإنتاج): prisma/schema.postgres.prisma اتعمل قبل إضافة موديلات الوكيل → الكلينت المنشور مكانش فيه AgentTask/AgentMessage/AgentToolExecution/AgentConfirmation/AgentMemory → db.agentTask.create بيرمي TypeError خام. نفس نمط Task O/P (schema drift).
+- FIX 1: build_postgres_schema.py أعاد توليد السكيما (+5 جداول +3 أعمدة Center للعقل الذكي agentLlmBaseUrl/Model/ApiKey في السكيمتين) + db push محلي. build-time db push فشل فوق الـ pooler زي Task P → TEMP manager-only POST /api/admin/schema-sync بـ 23 statement DDL إضافي hardcoded (مفيش SQL من الطلب) autocommit واحد-بواحد → 23/23 ✅ → الـ endpoint اتشال واتأكدت 404 (commit de69423 → 74996ef).
+- FIX 2 (الصوت — agent.tsx): مايك كان صامت عند أي فشل → دلوقتي: onerror بيكود الخطأ → رسالة عربية واضحة لكل حالة (not-allowed/audio-capture/network/language) + start() في try/catch + نتايج فورية (interimResults) بتظهر في الخانة + إرسال تلقائي لما التسجيل يخلص طبيعي (الضغطة التانية = وقف يدوي بيسيب النص) + hasVoice/hasTts بحالة بعد التركيب (تفادي SSR mismatch).
+- FIX 3 (الرد الصوتي): زكي بيتكلم — speechSynthesis بصوت عربي لو متاح، بيقري آخر رسالة (نتيجة نهائية أو سؤال) بس من غير ترديد الخطوات، زرار سماعة في الهيدر (مفتوح افتراضيًا + كتم محفوظ nk-agent-tts)، وسكات تلقائي لما المستخدم يبعت أو يسمع.
+- SMARTER A (ترتيب العقول): المخ الحتمي بقى الأول — fallbackPlan يشتغل فورًا للنوايا المعروفة (سريع/ثابت/مجاني/بدون 429) والموديل الذكي للصيغ المفتوحة اللي المخ ميعرفهاش، وfallbackUnknown آخر حاجة. provider label: brain|llm|fallback في التدقيق.
+- SMARTER B (مخ أكبر): نوايا جديدة: «من هنحضرش/مش حاضر/مجاش النهاردة» · «مين غاب أكتر من N مرات» (فوق absent_today عشان ميتلخبطش) · «كام حصة النهاردة» · «حضور مجموعة X إزاي» (pipeline قائمة→نسبة) · «مين مستواه نازل/محتاج متابعة» · «التحصيل» · تحيات/شكر/مساعدة · متابعة بحث بالاسم بعد نتايج بحث · كود طالب مباشر → student.get. تطبيع عربي (همزات/تاء مربوطة/تشكيل) — \b مش بيشتغل مع العربي فاتصلح بـ(\s|$). اختيارات المستخدم («رياضيات — Group B» / «أحمد (99002)») بتكمل نفس المهمة عبر goal + pickStudent/pickGroup. حماية لوب: كل نية لو ملاحظتها موجودة تقفل بالملخص/الخطأ (doneWith) بدل التكرار؛ ملاحظات الأخطاء بتقفل بالخطأ الحقيقي مش «مفيش مطابقة».
+- SMARTER C (كتالوج + بروتوكول): argsSummary بيورّي قيم الـ enum — كان سبب فشل الموديل في attendance.get (كان بيخمّن mode) + رسائل validation بتفصّل المشكلة للموديل + سياق الطالب المفتوح دخل رسالة المستخدم بالـ id + مثال few-shot للضمائر في الـ system prompt + لوج تشخيصي سيرفري لردود الموديل الفاشلة.
+- SMARTER D (العقل الذكي في الإعدادات): تاب «زكي — العقل الذكي» (مدير بس): Base URL + Model + API Key (سيرفري بس، GET بيرجع الذيل ••••، المقنّع في التدقيق) + زرار «جرب الاتصال» (POST /api/agent/llm-test برسايل أخطاء عربية لكل حالة 401/404/429/timeout/fetch) + getLLM(centerId) بالأولوية env → center (TTL 30s + resetLLMCache عند الحفظ) → ZAI → fallback.
+- حماية: runAgentMessage كله في try/catch — أخطاء الداتابيز بتوصل برسالة عربية مفهومة والتفاصيل في اللوج (مفيش أخطاء إنجليزي خام تاني).
+- VERIFY: e2e_agent.sh مولّع بـ 14 فحص جديد (6b-6i) = 43/43 (×2 بعد استقرار — الفشل اللي في النص كان rate-limit الـ auth شغال زي ما هو مصمم) · ريجريشن كامل: attendance 45 + device-lock 33 + qr-slot 15 + anticheat 23 = 116/116 · tsc/eslint/build ✓ · متصفح: اللوحة + درس + أمثلة + مايك + زرار الصوت + كارت «غايبين النهاردة (13)» على الطلب اللي كان باظ + تاب العقل الذكي بيحفظ ويجرب + موبايل 390 مايك بيرد برسالة الإذن بدل الصمت (لقطات download/agent-ui-*.png).
+- PROD E2E: auth 200 · /api/agent/tasks 200 · «من هنحضرش النهاردة؟» → attendance.get → «النهاردة كله تمام — مفيش غايبين.» COMPLETED · «مين غاب أكتر من 3 مرات؟» → COMPLETED · «كام حصة النهاردة؟» → dashboard COMPLETED · settings فيها agentLlm (masked) · schema-sync 404 بعد الإزالة.
+
+Stage Summary:
+- زكي بقى شغال فعلًا في الإنتاج: نفس الطلب اللي كان طالع فيه خطأ تقني بقى بيجاوب وينفذ ويتحقق من الداتابيز. الصوت بقى بالاتجاهين — مايك بيفهم ليه بيصمت (رسايل واضحة) وزكي بيرد بصوت قابل للكتم. والمخ بقى أذكى في الحالتين: المخ الحتمي المدمج فهم المصري والإنجليزي ومتابعة الاختيارات وحماية من اللوب، وأي موديل OpenAI-compatible يقدر المدير يوصّله من الإعدادات بدقيقة ويجرب الاتصال قبل الحفظ.
