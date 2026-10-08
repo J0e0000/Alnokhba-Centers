@@ -21,6 +21,8 @@ export type LLMGenerateOptions = {
   maxTokens?: number;
   /** مهلة بالمللي ثانية — الافتراضي من الـ provider */
   timeoutMs?: number;
+  /** اطلب JSON صارم من الموديل (response_format) — المزود اللي مش بيدعمه بيتجاهله */
+  json?: boolean;
 };
 
 export type LLMGenerateResult = {

@@ -19,7 +19,10 @@ curl -s -b "$JAR" -X POST "$BASE/api/agent/speak" -H "Content-Type: application/
   -d '{"text":"تمام، هجيلك قايمة الغايبين النهاردة حالًا."}' -o /tmp/zk_speak2.wav -D - -w "http=%{http_code} bytes=%{size_download}\n" 2>/dev/null | grep -iE "x-speak-cache|http=" || true
 
 echo "=== 4) POST /api/agent/transcribe (WAV from TTS roundtrip) ==="
-B64=$(base64 -w0 /home/z/my-project/scripts/arabic_tts_test.wav)
+# الفيكستشور الملتزم ممكن يكون مش موجود (ملف مولّد) — نستخدم نفس WAV اللي طلع من TTS فوق (نفس فكرة الـ roundtrip)
+WAV=/home/z/my-project/scripts/arabic_tts_test.wav
+[ -f "$WAV" ] || WAV=/tmp/zk_speak.wav
+B64=$(base64 -w0 "$WAV")
 cat > /tmp/zk_asr.json <<EOF
 {"audio":"$B64","mime":"audio/wav"}
 EOF
