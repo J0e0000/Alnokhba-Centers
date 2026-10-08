@@ -6,7 +6,7 @@ import { getLLM } from "../providers";
 import { extractJson, type LLMMessage } from "../providers/llm-provider";
 import { buildSystemPrompt, firstUserMessage } from "../prompts/system";
 import { buildAgentContext, type AgentClientContext, type AgentContextSnapshot } from "../context/builder";
-import { getTool, authorizeAndValidate } from "../tools";
+import { getTool, authorizeAndValidate, availableToolsFor } from "../tools";
 import { ToolError, CONFIRM_POLICY, type ToolOutput, type AgentCard } from "../tools/types";
 import { fallbackPlan, fallbackUnknown, type AgentTurn } from "./fallback";
 import { z } from "zod";
@@ -273,8 +273,9 @@ async function agentLoop(opts: {
     iterations++;
     emit({ type: "state", state: iterations === 1 ? "UNDERSTANDING" : "ANALYZING" });
 
-    // ==== مدخلات الجولة: آخر رسالة مستخدم حقيقية + ملاحظات الأدوات + هدف المهمة ====
-    const lastUser = [...(await loadTranscript(taskId))]
+    // ==== مدخلات الجولة: الترانسكريبت بيتحمّل مرة واحدة بس (كان بيتحمّل مرتين كل دورة) ====
+    const transcript = await loadTranscript(taskId);
+    const lastUser = [...transcript]
       .reverse()
       .find((m) => m.role === "user" && !m.content.startsWith("نتيجة الأداة") && !m.content.startsWith("[المستخدم"));
     let userText = lastUser?.content ?? "";
@@ -285,49 +286,78 @@ async function agentLoop(opts: {
     });
     const observations = obsRows.map((r) => r.content as { tool: string; summary?: string; error?: string; data?: Record<string, unknown> });
     // هدف المهمة الأصلي — عشان اختيارات المستخدم («رياضيات — Group B») تكمل نفس المهمة
-    const taskGoal = (await db.agentTask.findUnique({ where: { id: taskId }, select: { goal: true } }))?.goal ?? "";
+    const taskRow = await db.agentTask.findUnique({ where: { id: taskId }, select: { goal: true, provider: true } });
+    const taskGoal = taskRow?.goal ?? "";
+    // مهمة بدأها الموديل (provider بصيغة "name:model") تكمل بالموديل — المخ الحتمي ميخطفهاش في النص
+    const llmDriven = !!taskRow?.provider && taskRow.provider.includes(":");
 
-    // ==== ترتيب العقول (أذكى وأثبت): ١) المخ الحتمي للنوايا المعروفة — فوري ومجاني وثابت
-    let turn: AgentTurn | null = fallbackPlan(userText, { selectedStudent: ctx.selectedStudent, goal: taskGoal }, observations);
+    // ==== ترتيب العقول ====
+    // المخ الحتمي (regex) سريع ومجاني لكنه بيفهم صيغ محددة بس. لو فيه موديل متوصل، المخ بيتصرف لوحده في:
+    // ردود جاهزة (تحية/شكر/رفض أمني)، متابعة وسط مهمة، أو طلب قصير وواضح (≤ 6 كلمات).
+    // أي طلب أطول/أحر بيروح للموديل الأول، والمخ الحتمي بيبقى شبكة الأمان لو الموديل فشل.
+    // NK_AGENT_BRAIN_FIRST=1 بيرجّع الترتيب القديم بالكامل.
+    const brainPlan = fallbackPlan(userText, { selectedStudent: ctx.selectedStudent, goal: taskGoal }, observations);
+    const llm = await getLLM(user.centerId);
+    // مهمة بدأها الموديل بتكمل بالموديل ما دام متوصل — المخ مبيسبقهاش عشان ميخطفهاش في النص؛
+    // بس لو الموديل مش متوصل أصلًا (اتشال من الإعدادات/شبكة واقعة) المخ يرجع يشتغل عادي.
+    const brainTurn: AgentTurn | null = llmDriven && llm ? null : brainPlan;
+    const wordCount = userText.trim().split(/\s+/).filter(Boolean).length;
+    const brainIsEnough = !!brainTurn && (
+      !llm || process.env.NK_AGENT_BRAIN_FIRST === "1" ||
+      !!brainTurn.done || observations.length > 0 || wordCount <= 6
+    );
+    let turn: AgentTurn | null = brainIsEnough ? brainTurn : null;
     let provider = "brain";
 
-    // ٢) الموديل الذكي — للصيغ المفتوحة اللي المخ الحتمي ميعرفهاش
-    if (!turn) {
+    if (!turn && llm) {
       provider = "llm";
+      const tools = await availableToolsFor({ user, centerId: user.centerId, taskId });
       const messages: LLMMessage[] = [
-        { role: "system", content: buildSystemPrompt(ctx) },
-        ...(await loadTranscript(taskId)),
+        { role: "system", content: buildSystemPrompt(ctx, tools) },
+        ...transcript,
       ];
-      const llm = await getLLM(user.centerId);
-      if (llm) {
-        // محاولتان: التانية مع تنبيه بتصحيح البروتوكول (self-correction)
-        for (let attempt = 0; attempt < 2 && !turn; attempt++) {
-          try {
-            const msgs2 = attempt === 0
-              ? messages
-              : [...messages, { role: "user" as const, content: "ردّك السابق مش مطابق للبروتوكول — رد JSON واحد بس بالشكل المطلوب بالظبط." }];
-            const res = await llm.generate(msgs2, { temperature: 0.2, maxTokens: 900 });
-            if (process.env.NK_AGENT_DEBUG === "1") {
-              console.error("[agent:debug] raw model reply:", res.text.slice(0, 400));
-            }
-            const parsed = parseTurn(res.text);
-            if (parsed) {
-              turn = parsed;
-              await db.agentTask.update({ where: { id: taskId }, data: { provider: `${res.provider}:${res.model}` } });
-            }
-          } catch (e) {
-            // لوج التشخيص سيرفري — بيبين لو الموديل باظ بروتوكوله أو المدخلات غلط
-            console.error("[agent] llm turn failed:", e instanceof Error ? e.message : e);
-            turn = null; // هنجرب تاني أو ننزل للفول باك
+      // محاولتان: التانية مع تنبيه بتصحيح البروتوكول (self-correction)
+      for (let attempt = 0; attempt < 2 && !turn; attempt++) {
+        const t0 = Date.now();
+        try {
+          const msgs2 = attempt === 0
+            ? messages
+            : [...messages, { role: "user" as const, content: "ردّك السابق مش مطابق للبروتوكول — رد JSON واحد بس بالشكل المطلوب بالظبط." }];
+          const res = await llm.generate(msgs2, { temperature: 0.2, maxTokens: 1200, json: true });
+          if (process.env.NK_AGENT_DEBUG === "1") {
+            console.error("[agent:debug] raw model reply:", res.text.slice(0, 400));
           }
+          const parsed = parseTurn(res.text);
+          if (parsed) {
+            turn = parsed;
+            console.info(`[agent] llm ok ${res.provider}:${res.model} ${Date.now() - t0}ms in=${res.usage?.inputTokens ?? "?"} out=${res.usage?.outputTokens ?? "?"} attempt=${attempt + 1}`);
+            await db.agentTask.update({ where: { id: taskId }, data: { provider: `${res.provider}:${res.model}` } });
+          }
+        } catch (e) {
+          // لوج التشخيص سيرفري — بيبين لو الموديل باظ بروتوكوله أو المدخلات غلط
+          console.error(`[agent] llm turn failed (${Date.now() - t0}ms):`, e instanceof Error ? e.message : e);
+          turn = null; // هنجرب تاني أو ننزل للمخ الحتمي
         }
       }
     }
 
-    // ٣) مفيش موديل والمخ الحتمي ميعرفش — رد صادق بالبدائل (spec §40)
+    // الموديل فشل أو مش متوصل → المخ الحتمي شبكة الأمان (حتى في مهمة موديل — عنده حماية لوب من الملاحظات،
+    // ومش هيكلف حاجة: بيقفل النية المكررة بالملخص بدل ما ينفذها تاني)
+    if (!turn && brainPlan) {
+      provider = "brain";
+      turn = brainPlan;
+    }
+
+    // مفيش موديل والمخ الحتمي ميعرفش — رد صادق بالبدائل (spec §40) + علامة «طلب غير مفهوم» في التدقيق
+    // عشان نعرف إيه الأدوات/النوايا الناقصة بدل التخمين.
+    let unmapped = false;
     if (!turn) {
       provider = "fallback";
+      unmapped = true;
       turn = fallbackUnknown(userText);
+    }
+    if (provider !== "llm" && taskRow?.provider !== provider) {
+      await db.agentTask.update({ where: { id: taskId }, data: { provider } }).catch(() => {});
     }
 
     // ==== حفظ رد الوكيل + بثه ====
@@ -397,7 +427,7 @@ async function agentLoop(opts: {
     });
     await logAudit({
       user, action: AUDIT.AGENT_TASK_COMPLETED, entity: "AGENT_TASK", entityId: taskId,
-      after: { provider, toolsUsed: toolCount },
+      after: { provider, toolsUsed: toolCount, ...(unmapped ? { unmapped: true, goal: taskGoal.slice(0, 200) } : {}) },
     });
     emit({ type: "done", status: "COMPLETED" });
     return;

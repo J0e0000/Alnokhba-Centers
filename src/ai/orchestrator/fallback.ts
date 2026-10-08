@@ -1,4 +1,5 @@
 import "server-only";
+import { todayStr } from "@/lib/normalize";
 
 /* ============================================================
    FALLBACK PLANNER — المخ الحتمي لزكي (بيشتغل من غير أي LLM)
@@ -108,7 +109,8 @@ const RE = {
   todaySummary: /(النهارده|اليوم|today).*(ايه|ملخص|حصل|مهم|وريني|بصلي|وضع|اخبار|مشهور)|ايه اللي حصل|ملخص (اليوم|النهارده)|حضور (النهارده|اليوم)|today'?s? (summary|overview)|what happened today|وريني الملخص|(show|give) me today|today.*(summary|overview|attendance)/,
   groupsList: /المجموعات|مجموعاتي|مجموعات السنتر|كام مجموعه|غروبات|my groups|show( me)? groups|list groups/,
   weakStudents: /مستواه نازل|مستوي نازل|الضعفاء|ضعيف|محتاج(ين)? متابعه|متعثر(ين)?|متلخبط(ين)?|struggling|falling behind|weak students|needs? follow ?-?up|مين محتاج/,
-  collection: /كام (اتنصل|جمع|تحصيل)|التحصيل|ايراد النهارده|collections? today|how much (collected|did we collect)|ايراد/,
+  collection: /كام (اتنصل|جمع|تحصيل)|التحصيل|ايراد|حصلنا|جمعنا|اتحصل|collections? (today|this week)|how much (collected|did we collect)/,
+  tomorrowSessions: /بكره|بكرا|غدا|tomorrow/,
   openSession: /افتح (حصه|حضور|session)|اعمل حصه|ابدأ حضور|open (a )?session|start (a )?session/,
   greeting: /^(سلام|السلام عليكم|هاي|هلا|ازيك|عامل ايه|صباح|مساء|مرحبا|اهلا)(\s|$)|^(hi|hello|hey|good (morning|evening|afternoon))\b/,
   thanks: /(شكرا|متشكر|تسلم|ربنا يخليك|thanks|thank you|thx)/,
@@ -148,8 +150,8 @@ export function fallbackPlan(
   if (RE.help.test(t) && t.length < 40) {
     return {
       say: hasAr(text)
-        ? "تقدر تطلب مني: «مين غايب النهارده؟» · «اللي غابوا 3 مرات» · «ملخص النهاردة» · «كام حصة النهاردة؟» · «هاتلي أحمد» · «تقرير أحمد» · «حضور مجموعة المعلومات؟» · «سجل أحمد في مجموعة B» — بالعربي أو English."
-        : "You can ask: «who is absent today?» · «frequent absentees» · «today's summary» · «find Ahmed» · «report of Ahmed» · «attendance of Group B» · «enroll Ahmed in Group B».",
+        ? "تقدر تطلب مني: «مين غايب النهارده؟» · «اللي غابوا 3 مرات» · «ملخص النهاردة» · «كام حصة النهاردة؟» · «عندنا إيه بكرة؟» · «حصّلنا كام النهارده؟» · «هاتلي أحمد» · «تقرير أحمد» · «حضور مجموعة المعلومات؟» · «سجل أحمد في مجموعة B» — بالعربي أو English."
+        : "You can ask: «who is absent today?» · «frequent absentees» · «today's summary» · «tomorrow's schedule» · «how much did we collect?» · «find Ahmed» · «report of Ahmed» · «attendance of Group B» · «enroll Ahmed in Group B».",
       done: true,
     };
   }
@@ -311,6 +313,14 @@ export function fallbackPlan(
     return { say: "قولي اسم المجموعة أو المادة وأنا أجيب نسبة حضورها.", need_info: { question: "أنهي مجموعة؟" } };
   }
 
+  /* ================= حصص بكرة (جدول أي يوم مش النهاردة بس) ================= */
+  if (RE.tomorrowSessions.test(t)) {
+    const tomorrow = todayStr(new Date(Date.now() + 24 * 60 * 60 * 1000));
+    const prev = obsOf(observations, "schedule.get_day");
+    if (prev) return doneWith(prev, "خلصت — حصص بكرة فوق.");
+    return { say: "هجيب حصص بكرة ومواعيدها وحالتها.", tool: { name: "schedule.get_day", args: { date: tomorrow } } };
+  }
+
   /* ================= حصص النهاردة ================= */
   if (RE.todaySessions.test(t)) {
     const prev = obsOf(observations, "dashboard.get_today");
@@ -318,8 +328,15 @@ export function fallbackPlan(
     return { say: "هجيب حصص النهاردة وحالتها.", tool: { name: "dashboard.get_today", args: { withInsights: false } } };
   }
 
-  /* ================= ملخص النهاردة / التحصيل ================= */
-  if (RE.todaySummary.test(t) || RE.collection.test(t)) {
+  /* ================= التحصيل — أداة مالية حقيقية (رقم من الداتابيز) ================= */
+  if (RE.collection.test(t)) {
+    const prev = obsOf(observations, "finance.get_collection");
+    if (prev) return doneWith(prev, "خلصت — التحصيل فوق.");
+    return { say: "هجيبلك إجمالي التحصيل النهاردة.", tool: { name: "finance.get_collection", args: {} } };
+  }
+
+  /* ================= ملخص النهاردة ================= */
+  if (RE.todaySummary.test(t)) {
     const prev = obsOf(observations, "dashboard.get_today");
     if (prev) return doneWith(prev, "خلصت — الملخص فوق.");
     return { say: "هجيبلك ملخص النهاردة: الحصص والحضور والتحصيل وأهم الملاحظات.", tool: { name: "dashboard.get_today", args: {} } };
@@ -379,8 +396,8 @@ export function fallbackUnknown(text: string): AgentTurn {
   const ar = hasAr(text);
   return {
     say: ar
-      ? "الطلب ده مش من الحاجات اللي أقدر أعملها دلوقتي. أقدر أساعدك في:\n• «مين غايب النهارده؟» و«اللي غابوا 3 مرات»\n• «ملخص النهاردة» و«كام حصة النهاردة؟»\n• «هاتلي أحمد» و«تقرير أحمد»\n• «حضور مجموعة كذا إزاي؟»\n• «سجل أحمد في مجموعة B»\nولو عايزني أفهم أي صيغة، المدير يقدر يوصلني بموديل ذكي من الإعدادات ← «زكي — العقل الذكي»."
-      : "I can't map this request yet. I can help with: today's absentees, frequent absences, today's summary, student search, student reports, group attendance, and enrolling a student. A manager can also connect a smart model from Settings → Zaki Brain.",
+      ? "الطلب ده مش من الحاجات اللي أقدر أعملها دلوقتي. أقدر أساعدك في:\n• «مين غايب النهارده؟» و«اللي غابوا 3 مرات»\n• «ملخص النهاردة» و«كام حصة النهاردة؟» و«عندنا إيه بكرة؟»\n• «حصّلنا كام النهارده؟»\n• «هاتلي أحمد» و«تقرير أحمد»\n• «حضور مجموعة كذا إزاي؟»\n• «سجل أحمد في مجموعة B»\nولو عايزني أفهم أي صيغة، المدير يقدر يوصلني بموديل ذكي من الإعدادات ← «زكي — العقل الذكي»."
+      : "I can't map this request yet. I can help with: today's absentees, frequent absences, today's summary, tomorrow's schedule, today's collection, student search, student reports, group attendance, and enrolling a student. A manager can also connect a smart model from Settings → Zaki Brain.",
     done: true,
   };
 }

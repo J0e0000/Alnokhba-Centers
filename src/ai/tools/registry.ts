@@ -28,8 +28,8 @@ export function allTools(): ToolDef[] {
 }
 
 /** كتالوج مختصر للأدوات — ده اللي الـ LLM بيشوفه في الـ system prompt */
-export function toolCatalogForPrompt(): string {
-  return allTools()
+export function toolCatalogForPrompt(tools: ToolDef[] = allTools()): string {
+  return tools
     .map((t) => {
       const args = argsSummary(t.input);
       const perm = t.requiredPermission ? ` | صلاحية: ${t.permissionLabel ?? t.requiredPermission}` : "";
@@ -38,6 +38,29 @@ export function toolCatalogForPrompt(): string {
       return `- ${t.name} — ${t.description}${t.usageHint ? `\n  امتى تستخدمها: ${t.usageHint}` : ""}\n  خطورة: ${risk}${perm}${cap}\n  المدخلات (JSON Schema): ${args}`;
     })
     .join("\n");
+}
+
+/** الأدوات اللي المستخدم ده فعلًا يقدر ينفذها (صلاحية + قدرة سنتر) —
+ *  الموديل بيشوف دول بس، فمبيقترحش أدوات هتتحجب. التفويض الحقيقي لسه في authorizeAndValidate. */
+export async function availableToolsFor(ctx: ToolContext): Promise<ToolDef[]> {
+  let caps: Awaited<ReturnType<typeof import("@/lib/center-capabilities")["getCenterCapabilities"]>> | null = null;
+  const out: ToolDef[] = [];
+  for (const t of allTools()) {
+    if (t.requiredPermission && !hasPermission(ctx.user, t.requiredPermission)) continue;
+    if (t.requiredCapability) {
+      try {
+        const m = await import("@/lib/center-capabilities");
+        caps ??= await m.getCenterCapabilities(ctx.centerId);
+        const state = caps[t.requiredCapability.key as keyof typeof caps];
+        const ok = t.requiredCapability.config
+          ? m.capabilityBool(state?.config ?? {}, t.requiredCapability.config, false)
+          : (state?.enabled ?? false);
+        if (!ok) continue;
+      } catch { continue; }
+    }
+    out.push(t);
+  }
+  return out;
 }
 
 /** ملخص مدخلات من الـ zod schema — JSON Schema رسمي (zod v4) */

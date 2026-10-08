@@ -31,20 +31,25 @@ export class OpenAICompatibleProvider implements LLMProvider {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), opts?.timeoutMs ?? 60_000);
     try {
-      const res = await fetch(`${this.baseUrl}/chat/completions`, {
-        method: "POST",
-        signal: controller.signal,
-        headers: {
-          "Content-Type": "application/json",
-          ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
-        },
-        body: JSON.stringify({
-          model: this.model,
-          messages,
-          temperature: opts?.temperature ?? 0.2,
-          max_tokens: opts?.maxTokens ?? 1500,
-        }),
-      });
+      const send = (withJson: boolean) =>
+        fetch(`${this.baseUrl}/chat/completions`, {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            "Content-Type": "application/json",
+            ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
+          },
+          body: JSON.stringify({
+            model: this.model,
+            messages,
+            temperature: opts?.temperature ?? 0.2,
+            max_tokens: opts?.maxTokens ?? 1500,
+            ...(withJson ? { response_format: { type: "json_object" } } : {}),
+          }),
+        });
+      // JSON mode: بعض السيرفرات (Ollama/vLLM القديمة) بترفضه بـ 400 — نعيد من غيره مرة واحدة
+      let res = await send(!!opts?.json);
+      if (!res.ok && res.status === 400 && opts?.json) res = await send(false);
       if (!res.ok) throw new Error(`llm-http-${res.status}`);
       const data = (await res.json()) as {
         choices?: { message?: { content?: string } }[];
