@@ -16,7 +16,7 @@ import { Tour } from "./tour";
 import { HelpButton } from "./help";
 import { CENTER_TOUR, RECEPTION_TOUR, ADMIN_TOUR } from "./help-content";
 import { StaffNotificationsBell } from "./staff-bell";
-import { ZakiAssistant } from "./zaki";
+import { AgentDock } from "./agent";
 import { UndoRedoButtons } from "./undo-buttons";
 import {
   Sheet, SheetContent, SheetTrigger, SheetTitle,
@@ -441,7 +441,7 @@ export function CenterShell({
       )}
 
       {/* ===== زكي — المساعد الذكي ===== */}
-      <ZakiAssistant />
+      <AgentDock user={user} view={view} />
 
       {/* ===== Mobile bottom nav — أول 4 تابات + المزيد ===== */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 nk-glass-bar border-t print:hidden" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 4px)" }} aria-label="التنقل الرئيسي">

@@ -70,7 +70,9 @@
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^11.1.0",
     "vaul": "^1.1.2",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "z-ai-web-dev-sdk": "^0.0.18",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

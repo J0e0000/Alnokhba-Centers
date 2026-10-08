@@ -53,6 +53,10 @@ export function App() {
   }, []);
   const [studentId, setStudentId] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  // سياق الوكيل الذكي (زكي) — الطالب/الحصة المفتوحين حاليًا عشان يفهم الضمائر («تقريره»)
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("nk-agent-context", { detail: { studentId: studentId ?? undefined, sessionId: sessionId ?? undefined } }));
+  }, [studentId, sessionId]);
   // لانش الحصة: تاب البداية + هل نفتح الـ QR بحجم الشاشة فورًا (workflow أسهل للحضور المفتوح)
   const [sessionLaunch, setSessionLaunch] = useState<{ tab?: "overview" | "attendance" | "operations" | "review"; qrFullscreen?: boolean } | null>(null);
   const [sessionOverride, setSessionOverride] = useState<string | null>(null);

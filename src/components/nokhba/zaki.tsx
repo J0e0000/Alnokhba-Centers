@@ -36,8 +36,7 @@ const SEV_STYLE: Record<string, { chip: string; icon: React.ReactNode; label: st
   INFO: { chip: "bg-sky-600 text-white", icon: <Info className="w-3.5 h-3.5" />, label: "للمتابعة" },
 };
 
-export function ZakiAssistant() {
-  const [open, setOpen] = useState(false);
+export function ZakiInsightsPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [data, setData] = useState<ZakiData | null>(null);
   const [loading, setLoading] = useState(false);
   const [answer, setAnswer] = useState<Answer | null>(null);
@@ -65,40 +64,15 @@ export function ZakiAssistant() {
   function navigate(go?: { view: string; studentId?: string }) {
     if (!go) return;
     window.dispatchEvent(new CustomEvent("nk-navigate", { detail: { view: go.view } }));
-    setOpen(false);
+    onClose();
   }
 
-  const topSev = data?.findings?.[0]?.severity ?? "INFO";
-  const badge = topSev === "CRITICAL" ? "bg-rose-600" : topSev === "WARNING" ? "bg-amber-500" : "nk-brand-grad";
   const count = data?.findings?.length ?? 0;
 
   return (
-    <>
-      {/* الزرار العائم */}
-      <motion.button
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.6, type: "spring", stiffness: 260, damping: 18 }}
-        onClick={() => setOpen(true)}
-        aria-label="افتح زكي — المساعد الذكي"
-        className={cn(
-          "fixed bottom-[5.4rem] md:bottom-6 end-4 z-[70] rounded-full shadow-lg text-white",
-          "w-13 h-13 md:w-14 md:h-14 p-3.5 flex items-center justify-center",
-          badge,
-        )}
-      >
-        <Sparkles className="w-6 h-6" />
-        {count > 0 && (
-          <span className="absolute -top-1 -end-1 min-w-5 h-5 rounded-full bg-foreground text-background text-[10px] font-black grid place-items-center px-1 nk-num">
-            {count}
-          </span>
-        )}
-      </motion.button>
-
-      {/* اللوحة */}
-      <AnimatePresence>
-        {open && (
-          <motion.div
+    <AnimatePresence>
+      {open && (
+        <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
@@ -118,7 +92,7 @@ export function ZakiAssistant() {
                 <button onClick={load} aria-label="تحديث" className="p-2 rounded-xl hover:bg-white/15">
                   <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
                 </button>
-                <button onClick={() => setOpen(false)} aria-label="إغلاق" className="p-2 rounded-xl hover:bg-white/15">
+                <button onClick={onClose} aria-label="إغلاق" className="p-2 rounded-xl hover:bg-white/15">
                   <X className="w-4.5 h-4.5" />
                 </button>
               </div>
@@ -230,6 +204,5 @@ export function ZakiAssistant() {
           </motion.div>
         )}
       </AnimatePresence>
-    </>
   );
 }
