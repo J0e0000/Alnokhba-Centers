@@ -147,4 +147,13 @@ export const AUDIT = {
   PUBLIC_CHECKIN_REJECTED: "رفض محاولة حضور عام",
   DEVICE_ALREADY_USED: "رفض — جهاز اتسجل بيه حضور في نفس الحصة",
   SUSPICIOUS_ACTIVITY: "اكتشاف نشاط مشبوه في الحضور",
+  // الوكيل الذكي (زكي Agent)
+  AGENT_TASK_CREATED: "مهمة وكيل ذكي",
+  AGENT_TASK_COMPLETED: "اكتمال مهمة الوكيل",
+  AGENT_TASK_FAILED: "فشل مهمة الوكيل",
+  AGENT_TASK_CANCELLED: "إلغاء مهمة الوكيل",
+  AGENT_TOOL_EXECUTED: "تنفيذ أداة عبر الوكيل",
+  AGENT_TOOL_BLOCKED: "حجب أداة عن الوكيل (صلاحية)",
+  AGENT_CONFIRMATION_GRANTED: "تأكيد عملية الوكيل",
+  AGENT_CONFIRMATION_CANCELLED: "إلغاء تأكيد عملية الوكيل",
 } as const;

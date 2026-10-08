@@ -288,3 +288,22 @@ Work Log:
 
 Stage Summary:
 - التطبيق بقى بلون اللوجو بالظبط: كحلي للهوية والأزرار الأساسية، أزرق للحركة والروابط، تركواز للإبراز — على الشاشة والطباعة والبورتالات والإعدادات. ولو أي سنتر قديم في أي داتابيز لسه شايل الألوان الخضرا، الموحّد بيرجعه للوجو من غير لمسة داتا، والتخصيص الحقيقي محترم.
+
+---
+Task ID: zaki-agent (طبقة الوكيل الذكي الكاملة — ALNOKHBA MANAGEMENT)
+Agent: Super Z (main)
+Task: بناء نظام وكيل ذكي كامل (LLM/Orchestrator/Tools/Permissions/Confirmations/Tasks/Mobile UX) جوه النخبة — مش شات بوت.
+
+Work Log:
+- معمارية src/ai/: providers (عقد LLMProvider + zai + openai-compatible + factory من env) · prompts (بروتوكول JSON صارم + كتالوج أدوات متولد من zod v4 toJSONSchema) · context (سياق مُتحقق: دور/سنتر/صفحة/طالب مفتوح) · memory (AgentMemory منظمة) · tools (registry + authorizeAndValidate: schema→permission→capability) · orchestrator (حلقة حقيقية tool⇄observe + self-correction retry + فول باك حتمي بحالة) · tasks (AgentTask/Messages/Executions/Confirmations في Prisma).
+- 8 أدوات MVP: student.search/get · group.list/enroll_student · attendance.start_session/get · reports.get_student_report · dashboard.get_today (بيقرا قواعد زكي الحتمية من lib/zaki.ts — مصدر حقيقة واحد). كل أداة: risk + requiredPermission + handler + preview (بدون side effects) + verify (من الداتابيز).
+- استخراج sessions-core.ts (تعارضات القاعة/المدرس + حضور المدرس التلقائي) من route الحصص لمكتبة مشتركة — أداة فتح الحصة بتستخدم نفس قواعد الـ API بالظبط. (درس: الاستخراج الأول كان قصّد GET handler + OpenBody → 405 في attendance_modes؛ اترجع ونظف الديف → 45/45 تاني.)
+- سياسة التأكيد: LOW=فوري · MEDIUM/HIGH=تأكيد إلزامي. كارت التأكيد من preview() بدون تنفيذ (باج خطير اتصلح: المعاينة كانت بتنفذ!). التنفيذ من صف AgentConfirmation المخزن + إعادة فحص صلاحية + تدقيق.
+- UI: AgentDock (موبايل bottom-sheet + fullscreen، ديسكتوب لوحة جانبية RTL) + agent-cards (طالب/طلبة/تقرير/insight/تأكيد/خطأ/خطة/خطوات حية) + درس أول استخدام + مساعدة (٥ أنواع طلبات) + أمثلة + اختصارات سياقية + تلميحات + مهام تاريخية + مايك (SpeechRecognition ar-EG) + أوفلاين. زكي = الشخصية، العقل سيرفري. ZakiInsightsPanel اتضمنت جوه الوكيل.
+- بروتوكول مقاوم: needInfo camelCase alias · رد فاضي/خطة-من-غير-أداة = خرق بروتوكول → retry بتنبيه → فول باك · closing message مضمون من آخر أداة متحققة (ممنوع سكوت) · خيارات سؤال التوضيح بتوصل للـ UI كأزرار قابلة للضغط.
+- VERIFY: e2e_agent.sh = 22/22 (×3): قراءة تلقائية · توضيح → تأكيد → تنفيذ → تحقق DB · رفض لا ينفذ · تكرار «مسجل أصلاً» · حقن DROP TABLE محجوب · مدرس متحجب بالصلاحية · إنجليزي · تاريخ + تدقيق. ريجريشن النظام كله 116 أخضر (attendance 45 · device-lock 33 · qr-slot 15 · anticheat 23). tsc/eslint/build ✓. متصفح: موبايل 390 (درس/أمثلة/حالات/كارت تأكيد/نجاح + قيد التدقيق في DB) وديسكتوب (لوحة + تاريخ). لقطات: download/agent-*.png.
+- حذار مأخوذ: lib.ts فيها "use client" فالـ API server بيسعد من src/lib/branding.ts المحايدة (قبل كده) — نفس المبدأ اتطبق هنا: src/ai كلها server-only والـ SDK جوه providers بس.
+- commit (التالي) + push → الإنتاج.
+
+Stage Summary:
+- النخبة بقت فيها وكيل ذكي حقيقي: بيفهم عربي مصري وإنجليزي، بيخطط بصوت آمن، بينفذ بأدوات مسجلة بصلاحيات سنتر وصلاحيات الحساب، بيطلب تأكيد للحساس، بيتحقق من الداتابيز بعد التنفيذ، بيسجل كل حاجة، وشكله زكي على الموبايل والديسكتوب. الموديل قابل للاستبدال من env من غير لمس الأدوات، ولو مفيش موديل الفول باك الحتمي بيشتغل بنفس الأمان.
