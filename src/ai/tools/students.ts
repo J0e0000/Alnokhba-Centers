@@ -67,7 +67,7 @@ register({
     }));
     return {
       summary: `لقيت ${students.length} ${students.length === 1 ? "طالب" : "طلبة"} مطابقين لـ «${args.q}».`,
-      data: { matches: students.length, students: students.map((s) => ({ id: s.id, name: s.name, code: s.code, status: s.status, groups: s.registrations.map((g) => g.group.name) })) },
+      data: { matches: students.length, q: args.q, students: students.map((s) => ({ id: s.id, name: s.name, code: s.code, status: s.status, groups: s.registrations.map((g) => g.group.name) })) },
       cards,
     };
   },

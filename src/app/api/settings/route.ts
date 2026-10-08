@@ -4,6 +4,7 @@ import { requireManager } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { cleanRaw } from "@/lib/normalize";
 import { normalizeCenterBranding } from "@/lib/branding";
+import { resetLLMCache } from "@/ai/providers";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,14 @@ export const GET = handler(async () => {
           waConsentNote: center.waConsentNote,
         }
       : null,
+    // زكي — العقل الذكي: إعدادات الموديل. المفتاح مش بيرجع للعميل أبدًا (الذيل بس للعرض)
+    agentLlm: {
+      baseUrl: center?.agentLlmBaseUrl ?? "",
+      model: center?.agentLlmModel ?? "",
+      hasKey: !!center?.agentLlmApiKey,
+      keyTail: center?.agentLlmApiKey ? center.agentLlmApiKey.slice(-4) : "",
+      envConfigured: !!(process.env.AGENT_LLM_BASE_URL?.trim() && process.env.AGENT_LLM_MODEL?.trim()),
+    },
   });
 });
 
@@ -43,6 +52,8 @@ type BrandBody = {
   // تنبيهات الواتساب (opt-in)
   waPaymentsEnabled?: boolean; waLowBalanceEnabled?: boolean;
   waLowBalanceThreshold?: number; waConsentNote?: string | null;
+  // زكي — العقل الذكي (OpenAI-compatible) — المفتاح سيرفري بس ومش بيرجع للعرض
+  agentLlmBaseUrl?: string; agentLlmModel?: string; agentLlmApiKey?: string; agentLlmClearKey?: boolean;
 };
 
 /** PATCH /api/settings — update center branding (manager) */
@@ -110,6 +121,40 @@ export const PATCH = handler(async (req: Request) => {
         waLowBalanceThreshold: center.waLowBalanceThreshold,
       },
       after: waData, reason: "إعدادات تنبيهات الواتساب",
+    });
+  }
+
+  // زكي — العقل الذكي: رابط/موديل/مفتاح (OpenAI-compatible). المفتاح بيتخزن ومش بيرجع للعرض
+  const agentData: Record<string, string | null> = {};
+  if (body.agentLlmBaseUrl !== undefined) {
+    const u = String(body.agentLlmBaseUrl).trim().replace(/\/+$/, "");
+    if (u && !/^https?:\/\//i.test(u)) throw new Error("رابط الموديل لازم يبدأ بـ http:// أو https://");
+    if (u && !u.includes("://")) throw new Error("رابط الموديل مش مكتوب صح.");
+    agentData.agentLlmBaseUrl = u || null;
+  }
+  if (body.agentLlmModel !== undefined) {
+    const m = String(body.agentLlmModel).trim();
+    if (m.length > 120) throw new Error("اسم الموديل طويل جدًا.");
+    agentData.agentLlmModel = m || null;
+  }
+  if (body.agentLlmApiKey !== undefined && String(body.agentLlmApiKey).trim() !== "") {
+    const k = String(body.agentLlmApiKey).trim();
+    if (k.length > 400) throw new Error("المفتاح طويل جدًا.");
+    agentData.agentLlmApiKey = k;
+  }
+  if (body.agentLlmClearKey === true) agentData.agentLlmApiKey = null;
+  if (Object.keys(agentData).length) {
+    await db.center.update({ where: { id: center.id }, data: agentData as never });
+    resetLLMCache(); // التغيير يبقى شغال فورًا من غير ما نستنى التخزين المؤقت
+    await logAudit({
+      user, action: AUDIT.BRANDING_UPDATED, entity: "CENTER", entityId: center.id,
+      after: {
+        agentLlmBaseUrl: agentData.agentLlmBaseUrl ?? undefined,
+        agentLlmModel: agentData.agentLlmModel ?? undefined,
+        agentLlmApiKey: agentData.agentLlmApiKey ? "***" : undefined,
+        agentLlmClearKey: body.agentLlmClearKey === true ? true : undefined,
+      },
+      reason: "إعدادات العقل الذكي لزكي",
     });
   }
 
