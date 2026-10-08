@@ -44,11 +44,13 @@ export function toolCatalogForPrompt(): string {
 function argsSummary(schema: z.ZodType): string {
   try {
     const json = z.toJSONSchema(schema, { target: "draft-7" }) as Record<string, unknown>;
-    // نسخة مضغوطة: properties + required بس
+    // نسخة مضغوطة: properties + required + القيم المسموحة (enum) — من غيرها الموديل بيخمّن القيم ويغلط
     const props = (json.properties ?? {}) as Record<string, Record<string, unknown>>;
     const required = new Set((json.required ?? []) as string[]);
     const parts = Object.entries(props).map(([k, v]) => {
-      const type = Array.isArray(v.type) ? v.type.join("|") : (v.type as string) ?? (v.anyOf ? "multi" : "any");
+      let type = Array.isArray(v.type) ? v.type.join("|") : (v.type as string) ?? (v.anyOf ? "multi" : "any");
+      if (Array.isArray(v.enum) && v.enum.length) type += ` — لازم واحدة من: ${v.enum.map((x) => `"${String(x)}"`).join(" | ")}`;
+      if (v.format) type += ` (${String(v.format)})`;
       return `${k}${required.has(k) ? "" : "?"}: ${type}${v.description ? ` (${v.description})` : ""}`;
     });
     return `{ ${parts.join(", ")} }`;
@@ -65,11 +67,13 @@ export async function authorizeAndValidate(
   rawArgs: unknown,
   ctx: ToolContext,
 ): Promise<{ args: unknown }> {
-  // 1) schema validation
+  // 1) schema validation — رسالة الخطأ بتوصل للموديل في محاولة التصحيح، فلازم تكون بتفهمه بالظبط
   const parsed = tool.input.safeParse(rawArgs);
   if (!parsed.success) {
     const first = parsed.error.issues[0];
-    throw new ToolError("VALIDATION", `مدخلات الأداة ${tool.name} مش مظبوطة${first?.path?.length ? ` (${first.path.join(".")})` : ""}.`);
+    const path = first?.path?.length ? ` (${first.path.join(".")})` : "";
+    const detail = first?.message ? `: ${first.message}` : "";
+    throw new ToolError("VALIDATION", `مدخلات الأداة ${tool.name} مش مظبوطة${path}${detail} — راجع شكل المدخلات المطلوب في الكتالوج وصلّحها.`);
   }
   // 2) صلاحية الحساب (نظام الصلاحيات الرسمي للنخبة)
   if (tool.requiredPermission && !hasPermission(ctx.user, tool.requiredPermission)) {

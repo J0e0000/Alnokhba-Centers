@@ -25,9 +25,9 @@ model Center {
   name           String
   slug           String   @unique
   logo           String? // data URL
-  primaryColor   String   @default("#0B1B4F")
-  secondaryColor String   @default("#2563EB")
-  accentColor    String?
+  primaryColor   String   @default("#0B1B4F") // كحلي اللوجو — هوية AlNokhba
+  secondaryColor String   @default("#2563EB") // أزرق اللوجو
+  accentColor    String?  // لو فاضي بيفضل تركواز اللوجو #10B981 من applyCenterBranding
   phone          String?
   whatsapp       String?
   address        String?
@@ -40,6 +40,11 @@ model Center {
   waLowBalanceEnabled  Boolean @default(false)
   waLowBalanceThreshold Int   @default(5000) // piastres
   waConsentNote        String? // free-text consent record (who agreed, when)
+  // Zaki Agent — العقل الذكي: اتصال أي موديل متوافق مع OpenAI (اختياري).
+  // فاضي = المخ الحتمي المدمج (fallback brain) + ZAI لو متاح في بيئة النشر.
+  agentLlmBaseUrl String?
+  agentLlmModel   String?
+  agentLlmApiKey  String? // بتتخزن سيرفري بس — مش بترجع للعميل أبدًا (GET بيرجع ذيلها بس)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -58,6 +63,7 @@ model Center {
   billings     PlatformBilling[]
   templates    WhatsAppTemplate[]
   auditLogs    AuditLog[]
+  agentTasks   AgentTask[]
   books        Book[]
   subscription Subscription?
   txns         CenterTransaction[]
@@ -122,6 +128,8 @@ model User {
   acaRequestsMade    AcaRequest[]       @relation("AcaRequester")
   acaRequestsDecided AcaRequest[]       @relation("AcaDecider")
   acaNotifications   AcaNotification[]
+  agentTasks       AgentTask[]
+  agentMemories    AgentMemory[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -1847,4 +1855,102 @@ model AssignmentSubmission {
 
   @@unique([assignmentId, studentId])
   @@index([studentId, status])
+}
+
+// ============================================================
+// AI AGENT LAYER (زكي — وكيل النخبة الذكي)
+// الـ LLM مش بيلمس الداتابيز مباشرة — كل حاجة بتمر على أدوات مسجلة
+// بصلاحيات سيرفر ومستويات خطورة وتأكيد. الموديلات هنا للتتبع والذاكرة فقط.
+// ============================================================
+
+model AgentTask {
+  id        String   @id @default(cuid())
+  centerId  String
+  userId    String // صاحب الطلب — كل الصلاحيات بتتحسب على أساسه
+  title     String // عنوان قصير للمهمة (بيتولد من الطلب)
+  goal      String // نص المستخدم الأصلي
+  // ACTIVE | WAITING_CONFIRMATION | COMPLETED | FAILED | CANCELLED
+  status    String   @default("ACTIVE")
+  plan      Json? // [{title, tool, why}] — ملخص آمن للمستخدم (مش reasoning)
+  result    Json? // الملخص النهائي + الكروت
+  error     String?
+  provider  String? // zai | openai-compatible | fallback — من أجل التتبع
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  center    Center   @relation(fields: [centerId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  messages    AgentMessage[]
+  executions  AgentToolExecution[]
+  confirmations AgentConfirmation[]
+
+  @@index([centerId, createdAt])
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+model AgentMessage {
+  id        String   @id @default(cuid())
+  taskId    String
+  // role: user | assistant | tool — الترتيب ده هو transcript الـ LLM
+  role      String
+  // kind: text | plan | cards | confirmation | result | error | observation
+  kind      String   @default("text")
+  content   Json // {text} أو {plan:[...]} أو {cards:[...]} أو ملاحظة الأداة
+  createdAt DateTime @default(now())
+  task      AgentTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, createdAt])
+}
+
+model AgentToolExecution {
+  id         String   @id @default(cuid())
+  taskId     String
+  toolName   String
+  stepIndex  Int      @default(0)
+  input      Json
+  output     Json?
+  // PENDING | RUNNING | SUCCEEDED | FAILED | SKIPPED | BLOCKED (صلاحية) | AWAITING_CONFIRM
+  status     String   @default("PENDING")
+  risk       String   @default("LOW") // LOW | MEDIUM | HIGH
+  confirmedBy String? // userId لو اتنفذت بعد تأكيد
+  error      String?
+  durationMs Int?
+  createdAt  DateTime @default(now())
+  task       AgentTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([toolName, createdAt])
+}
+
+model AgentConfirmation {
+  id           String   @id @default(cuid())
+  taskId       String
+  executionId  String? // صف التنفيذ المعلق
+  toolName     String
+  args         Json
+  summary      String // "هسجل أحمد محمد في Group B" — نص التأكيد الآمن
+  details      Json? // معاينة: المتأثرين، النتيجة المتوقعة
+  risk         String   @default("MEDIUM")
+  // PENDING | CONFIRMED | CANCELLED | EXPIRED
+  status       String   @default("PENDING")
+  decidedBy    String?
+  createdAt    DateTime @default(now())
+  decidedAt    DateTime?
+  task         AgentTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([status])
+}
+
+model AgentMemory {
+  id        String   @id @default(cuid())
+  userId    String
+  // scope: USER_PREF (لغة/تفضيلات) | SESSION (سياق شغل مؤقت) — مفيش ذاكرة طويلة حرة
+  scope     String   @default("USER_PREF")
+  key       String
+  value     Json
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, scope, key])
 }

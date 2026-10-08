@@ -186,6 +186,65 @@ agent '{"text":"Show today'\''s attendance summary","context":{"view":"home"}}'
 has '"type":"done"'
 
 # =============================================================
+echo "===== 6b) الطلب اللي فشل في الإنتاج: «من هنحضرش النهاردة؟» ====="
+agent '{"text":"من هنحضرش النهاردة؟","context":{"view":"today"}}'
+has '"type":"step"'
+has '"status":"COMPLETED"'
+ABS_STEPS=$(echo "$EVENTS" | grep -c '"tool":"attendance.get"')
+[ "$ABS_STEPS" = "1" ] && ok "exactly one attendance.get (no loop)" || bad "exactly one attendance.get (got $ABS_STEPS)"
+
+# =============================================================
+echo "===== 6c) غياب متكرر برقم ====="
+agent '{"text":"مين غاب أكتر من 4 مرات آخر شهر؟","context":{"view":"reports"}}'
+echo "$EVENTS" | grep -q '"tool":"attendance.get"' && ok "frequent absentees tool" || bad "frequent absentees tool"
+has '"status":"COMPLETED"'
+
+# =============================================================
+echo "===== 6d) تحية ومساعدة — بدون أدوات ====="
+agent '{"text":"سلام عليكم","context":{"view":"home"}}'
+has '"status":"COMPLETED"'
+echo "$EVENTS" | grep -q '"type":"step"' && bad "greeting ran no tool" || ok "greeting ran no tool"
+agent '{"text":"تقدر تعمل ايه؟","context":{"view":"home"}}'
+has '"status":"COMPLETED"'
+echo "$EVENTS" | grep -q '"type":"step"' && bad "help ran no tool" || ok "help ran no tool"
+
+# =============================================================
+echo "===== 6e) كام حصة النهاردة ====="
+agent '{"text":"كام حصة النهاردة؟","context":{"view":"today"}}'
+has '"tool":"dashboard.get_today"'
+has '"status":"COMPLETED"'
+
+# =============================================================
+echo "===== 6f) حضور مجموعة — خطوتين (قائمة ثم نسبة) ====="
+agent "{\"text\":\"حضور مجموعة $GSUBJ إزاي؟\",\"context\":{\"view\":\"reports\"}}"
+echo "$EVENTS" | grep -q '"tool":"group.list"' && ok "group.list step" || bad "group.list step"
+echo "$EVENTS" | grep -q '"tool":"attendance.get"' && ok "by_group step" || bad "by_group step"
+has '"status":"COMPLETED"'
+
+# =============================================================
+echo "===== 6g) تقريره (ضمير + طالب مفتوح على الشاشة) ====="
+agent "{\"text\":\"اعمللي تقريره\",\"context\":{\"view\":\"students\",\"studentId\":\"$SID\"}}"
+has '"tool":"reports.get_student_report"'
+has '"status":"COMPLETED"'
+
+# =============================================================
+echo "===== 6h) متابعة بحث — نفس الاسم ميتبحثش تاني (حماية اللوب) ====="
+agent "{\"text\":\"هاتلي $SNAME_FULL\",\"context\":{\"view\":\"students\"}}"
+has '"tool":"student.search"'
+TID6H=$(extract taskId)
+agent "{\"text\":\"$SNAME_FULL\",\"taskId\":\"$TID6H\"}"
+SEARCH_STEPS=$(echo "$EVENTS" | grep -c '"tool":"student.search"')
+[ "$SEARCH_STEPS" = "0" ] && ok "same-name follow-up closes without re-search" || bad "same-name follow-up re-searched ($SEARCH_STEPS)"
+
+# =============================================================
+echo "===== 6i) اختبار اتصال العقل الذكي (بدون إعداد) + الإعدادات فيها agentLlm ====="
+LLMTEST=$(curl -s -b "$JAR" -X POST "$BASE/api/agent/llm-test" -H "Content-Type: application/json" -d '{}')
+echo "$LLMTEST" | grep -q '"ok":false' && ok "llm-test refuses without config" || bad "llm-test refuses without config"
+SETTINGS=$(curl -s -b "$JAR" "$BASE/api/settings")
+echo "$SETTINGS" | grep -q '"agentLlm"' && ok "settings expose agentLlm (masked)" || bad "settings expose agentLlm (masked)"
+echo "$SETTINGS" | grep -q 'apiKey":' && bad "settings leak key field" || ok "settings never leak key"
+
+# =============================================================
 echo "===== 7) تاريخ المهام ====="
 TASKS=$(curl -s -b "$JAR" "$BASE/api/agent/tasks")
 echo "$TASKS" | grep -q '"tasks"' && ok "tasks list" || bad "tasks list"

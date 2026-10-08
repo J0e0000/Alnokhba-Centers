@@ -266,7 +266,6 @@ async function agentLoop(opts: {
   iterationOffset?: number;
 }): Promise<void> {
   const { user, taskId, ctx, clientCtx, emit } = opts;
-  const system = buildSystemPrompt(ctx);
   let iterations = opts.iterationOffset ?? 0;
   let toolCount = await db.agentToolExecution.count({ where: { taskId } });
 
@@ -274,47 +273,61 @@ async function agentLoop(opts: {
     iterations++;
     emit({ type: "state", state: iterations === 1 ? "UNDERSTANDING" : "ANALYZING" });
 
-    const messages: LLMMessage[] = [
-      { role: "system", content: system },
-      ...(await loadTranscript(taskId)),
-    ];
+    // ==== مدخلات الجولة: آخر رسالة مستخدم حقيقية + ملاحظات الأدوات + هدف المهمة ====
+    const lastUser = [...(await loadTranscript(taskId))]
+      .reverse()
+      .find((m) => m.role === "user" && !m.content.startsWith("نتيجة الأداة") && !m.content.startsWith("[المستخدم"));
+    let userText = lastUser?.content ?? "";
+    // رسالة المستخدم الأولى بتتحفظ مع ترويسة سياق — الفهم بيشتغل على النص الخام بس
+    if (userText.startsWith("[سياق سريع")) userText = userText.split("\n").slice(1).join("\n");
+    const obsRows = await db.agentMessage.findMany({
+      where: { taskId, role: "tool" }, orderBy: { createdAt: "asc" }, select: { content: true },
+    });
+    const observations = obsRows.map((r) => r.content as { tool: string; summary?: string; error?: string; data?: Record<string, unknown> });
+    // هدف المهمة الأصلي — عشان اختيارات المستخدم («رياضيات — Group B») تكمل نفس المهمة
+    const taskGoal = (await db.agentTask.findUnique({ where: { id: taskId }, select: { goal: true } }))?.goal ?? "";
 
-    // ==== جولة الموديل (أو الفول باك) ====
-    let turn: AgentTurn | null = null;
-    let provider = "llm";
-    const llm = await getLLM();
-    if (llm) {
-      // محاولتان: التانية مع تنبيه بتصحيح البروتوكول (self-correction)
-      for (let attempt = 0; attempt < 2 && !turn; attempt++) {
-        try {
-          const msgs2 = attempt === 0
-            ? messages
-            : [...messages, { role: "user" as const, content: "ردّك السابق مش مطابق للبروتوكول — رد JSON واحد بس بالشكل المطلوب بالظبط." }];
-          const res = await llm.generate(msgs2, { temperature: 0.2, maxTokens: 900 });
-          const parsed = parseTurn(res.text);
-          if (parsed) {
-            turn = parsed;
-            await db.agentTask.update({ where: { id: taskId }, data: { provider: `${res.provider}:${res.model}` } });
+    // ==== ترتيب العقول (أذكى وأثبت): ١) المخ الحتمي للنوايا المعروفة — فوري ومجاني وثابت
+    let turn: AgentTurn | null = fallbackPlan(userText, { selectedStudent: ctx.selectedStudent, goal: taskGoal }, observations);
+    let provider = "brain";
+
+    // ٢) الموديل الذكي — للصيغ المفتوحة اللي المخ الحتمي ميعرفهاش
+    if (!turn) {
+      provider = "llm";
+      const messages: LLMMessage[] = [
+        { role: "system", content: buildSystemPrompt(ctx) },
+        ...(await loadTranscript(taskId)),
+      ];
+      const llm = await getLLM(user.centerId);
+      if (llm) {
+        // محاولتان: التانية مع تنبيه بتصحيح البروتوكول (self-correction)
+        for (let attempt = 0; attempt < 2 && !turn; attempt++) {
+          try {
+            const msgs2 = attempt === 0
+              ? messages
+              : [...messages, { role: "user" as const, content: "ردّك السابق مش مطابق للبروتوكول — رد JSON واحد بس بالشكل المطلوب بالظبط." }];
+            const res = await llm.generate(msgs2, { temperature: 0.2, maxTokens: 900 });
+            if (process.env.NK_AGENT_DEBUG === "1") {
+              console.error("[agent:debug] raw model reply:", res.text.slice(0, 400));
+            }
+            const parsed = parseTurn(res.text);
+            if (parsed) {
+              turn = parsed;
+              await db.agentTask.update({ where: { id: taskId }, data: { provider: `${res.provider}:${res.model}` } });
+            }
+          } catch (e) {
+            // لوج التشخيص سيرفري — بيبين لو الموديل باظ بروتوكوله أو المدخلات غلط
+            console.error("[agent] llm turn failed:", e instanceof Error ? e.message : e);
+            turn = null; // هنجرب تاني أو ننزل للفول باك
           }
-        } catch {
-          turn = null; // هنجرب تاني أو ننزل للفول باك
         }
       }
     }
+
+    // ٣) مفيش موديل والمخ الحتمي ميعرفش — رد صادق بالبدائل (spec §40)
     if (!turn) {
       provider = "fallback";
-      // الفول باك بياخد آخر رسالة مستخدم حقيقية (مش ملاحظات الأدوات)
-      const lastUser = [...(await loadTranscript(taskId))]
-        .reverse()
-        .find((m) => m.role === "user" && !m.content.startsWith("نتيجة الأداة") && !m.content.startsWith("[المستخدم"));
-      const text = lastUser?.content ?? "";
-      // ملاحظات الأدوات السابقة — الفول باك وكيل مصغر بيقرا الحالة منها
-      const obsRows = await db.agentMessage.findMany({
-        where: { taskId, role: "tool" }, orderBy: { createdAt: "asc" }, select: { content: true },
-      });
-      const observations = obsRows.map((r) => r.content as { tool: string; summary?: string; data?: Record<string, unknown> });
-      const planned = fallbackPlan(text, { selectedStudent: ctx.selectedStudent }, observations);
-      turn = planned ?? fallbackUnknown(text);
+      turn = fallbackUnknown(userText);
     }
 
     // ==== حفظ رد الوكيل + بثه ====
@@ -418,48 +431,57 @@ export async function runAgentMessage(opts: {
 
   emit({ type: "state", state: "UNDERSTANDING" });
 
-  // مهمة جديدة أو تكملة
-  let taskId = opts.taskId;
-  if (taskId) {
-    const task = await db.agentTask.findFirst({ where: { id: taskId, userId: user.id } });
-    if (!task) {
-      emit({ type: "error", message: "المهمة دي مش موجودة." });
-      emit({ type: "done", status: "FAILED" });
-      return;
-    }
-    await db.agentTask.update({ where: { id: taskId }, data: { status: "ACTIVE" } });
-  } else {
-    const task = await db.agentTask.create({
-      data: {
-        centerId: user.centerId,
-        userId: user.id,
-        title: text.length > 60 ? `${text.slice(0, 60)}…` : text,
-        goal: text,
-        status: "ACTIVE",
-      },
-      select: { id: true },
-    });
-    taskId = task.id;
-    await logAudit({
-      user, action: AUDIT.AGENT_TASK_CREATED, entity: "AGENT_TASK", entityId: taskId,
-      after: { goal: text },
-    });
-  }
-  emit({ type: "task", taskId, title: (await db.agentTask.findUnique({ where: { id: taskId }, select: { title: true } }))?.title ?? "", status: "ACTIVE" });
-
-  const ctx = await buildAgentContext(user, opts.clientCtx, text);
-  await persistMessage(taskId, "user", "text", { text: firstUserMessage(text, ctx) });
-
+  // كل حاجة تحت try — ممنوع خطأ تقني يوصله للمستخدم كنص إنجليزي خام (نفس رسالة عربية واضحة دايمًا)
   try {
-    await agentLoop({ user, taskId, ctx, clientCtx: opts.clientCtx, emit });
+    // مهمة جديدة أو تكملة
+    let taskId = opts.taskId;
+    if (taskId) {
+      const task = await db.agentTask.findFirst({ where: { id: taskId, userId: user.id } });
+      if (!task) {
+        emit({ type: "error", message: "المهمة دي مش موجودة." });
+        emit({ type: "done", status: "FAILED" });
+        return;
+      }
+      await db.agentTask.update({ where: { id: taskId }, data: { status: "ACTIVE" } });
+    } else {
+      const task = await db.agentTask.create({
+        data: {
+          centerId: user.centerId,
+          userId: user.id,
+          title: text.length > 60 ? `${text.slice(0, 60)}…` : text,
+          goal: text,
+          status: "ACTIVE",
+        },
+        select: { id: true },
+      });
+      taskId = task.id;
+      await logAudit({
+        user, action: AUDIT.AGENT_TASK_CREATED, entity: "AGENT_TASK", entityId: taskId,
+        after: { goal: text },
+      });
+    }
+    emit({ type: "task", taskId, title: (await db.agentTask.findUnique({ where: { id: taskId }, select: { title: true } }))?.title ?? "", status: "ACTIVE" });
+
+    const ctx = await buildAgentContext(user, opts.clientCtx, text);
+    await persistMessage(taskId, "user", "text", { text: firstUserMessage(text, ctx) });
+
+    try {
+      await agentLoop({ user, taskId, ctx, clientCtx: opts.clientCtx, emit });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "خطأ غير متوقع في الوكيل.";
+      console.error("[agent] loop error:", msg);
+      await db.agentTask.update({ where: { id: taskId }, data: { status: "FAILED", error: msg } }).catch(() => {});
+      await logAudit({
+        user, action: AUDIT.AGENT_TASK_FAILED, entity: "AGENT_TASK", entityId: taskId,
+        after: { error: msg },
+      });
+      emit({ type: "error", message: "حصلت مشكلة في تشغيل المهمة — جرب تاني." });
+      emit({ type: "done", status: "FAILED" });
+    }
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "خطأ غير متوقع في الوكيل.";
-    await db.agentTask.update({ where: { id: taskId }, data: { status: "FAILED", error: msg } }).catch(() => {});
-    await logAudit({
-      user, action: AUDIT.AGENT_TASK_FAILED, entity: "AGENT_TASK", entityId: taskId,
-      after: { error: msg },
-    });
-    emit({ type: "error", message: "حصلت مشكلة في تشغيل المهمة — جرب تاني." });
+    // أخطاء الحفظ/الداتابيز نفسها — رسالة عربية مفهومة + التفاصيل في اللوج سيرفري بس
+    console.error("[agent] fatal:", e instanceof Error ? e.message : e);
+    emit({ type: "error", message: "مقدرتش أبدأ المهمة دلوقتي — جرب تاني بعد لحظات، ولو اتصالتها إن حد يتأكد إن جداول الوكيل متزامنة مع الداتابيز." });
     emit({ type: "done", status: "FAILED" });
   }
 }

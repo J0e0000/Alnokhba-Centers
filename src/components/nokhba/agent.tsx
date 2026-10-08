@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles, X, Send, Mic, MicOff, Maximize2, Minimize2, History, CircleHelp,
   BrainCircuit, Loader2, WifiOff, GraduationCap, ListChecks, Lightbulb,
+  Volume2, VolumeX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "./lib";
@@ -127,15 +128,28 @@ const TUTORIAL: { title: string; body: string; demo?: React.ReactNode }[] = [
   { title: "بالعربي أو English", body: "«هاتلي تقرير أحمد» أو \"Show today's attendance\" — الاتنين زي بعض." },
 ];
 
-/* ---------- الصوت (spec §11) — مدخل صوتي اختياري ---------- */
+/* ---------- الصوت (spec §11) — مدخل صوتي + رد صوتي اختياري ---------- */
+type SRResultItem = { transcript: string };
+type SRResult = { isFinal: boolean; 0: SRResultItem; length: number };
+type SREvent = { resultIndex: number; results: { length: number; [i: number]: SRResult } };
+type SRErrorEvent = { error?: string };
 type SpeechRecognitionLike = {
   lang: string; continuous: boolean; interimResults: boolean;
-  onresult: ((ev: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onresult: ((ev: SREvent) => void) | null;
   onend: (() => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((ev: SRErrorEvent) => void) | null;
   start(): void; stop(): void;
 };
 type SRWindow = Window & { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike };
+
+/** أخطاء التعرف على الصوت — رسائل مفهومة بدل مايك صامت */
+const VOICE_ERRORS: Record<string, string> = {
+  "not-allowed": "المايك مقفول — اسمح للموقع بالمايك من أيقونة القفل جوه المتصفح وجرب تاني.",
+  "service-not-allowed": "خدمة المايك مرفوضة من المتصفح — اسمح بالوصول للمايك من إعدادات الموقع.",
+  "audio-capture": "مفيش مايك متوصل أو المتصفح مش شايفه — اتأكد من التوصيل وجرب.",
+  "network": "التعرف على الصوت محتاج إنترنت شغال — اتأكد من الاتصال وجرب تاني.",
+  "language-not-supported": "المتصفح ده مش بيدعم التعرف على العربي — جرب Chrome أو Edge.",
+};
 
 export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
   const [open, setOpen] = useState(false);
@@ -151,6 +165,9 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [tasks, setTasks] = useState<{ id: string; title: string; status: string; createdAt: string }[]>([]);
   const [hintHidden, setHintHidden] = useState(true);
+  const [hasVoice, setHasVoice] = useState(false);
+  const [hasTts, setHasTts] = useState(false);
+  const [ttsOn, setTtsOn] = useState(false);
 
   const taskIdRef = useRef<string | null>(null);
   const lastUserText = useRef<string>("");
@@ -158,6 +175,41 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const finalTranscriptRef = useRef("");
+  const manualStopRef = useRef(false);
+  const lastAgentTextRef = useRef("");
+
+  // قدرات الصوت — بعد التركيب فقط (تفادي اختلاف SSR)
+  useEffect(() => {
+    setHasVoice(!!((window as SRWindow).SpeechRecognition || (window as SRWindow).webkitSpeechRecognition));
+    setHasTts("speechSynthesis" in window);
+    setTtsOn(localStorage.getItem("nk-agent-tts") !== "0"); // الصوت مفتوح افتراضيًا — سهل كتمه من زرار السماعة
+  }, []);
+
+  /* ---------- الرد الصوتي (TTS) — زكي بيتكلم بنفس لغة الرد ---------- */
+  const shutUp = useCallback(() => {
+    try { window.speechSynthesis?.cancel(); } catch { /* صامت */ }
+  }, []);
+  const speak = useCallback((text: string) => {
+    if (!("speechSynthesis" in window) || !text.trim()) return;
+    try {
+      const clean = text
+        .replace(/[*_#`>•—–…]/g, " ")
+        .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (!clean) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(clean.slice(0, 420));
+      const voices = window.speechSynthesis.getVoices();
+      const ar = voices.find((v) => v.lang?.toLowerCase().startsWith("ar"));
+      if (ar) u.voice = ar;
+      u.lang = ar?.lang ?? "ar-EG";
+      u.rate = 1.05;
+      u.pitch = 1;
+      window.speechSynthesis.speak(u);
+    } catch { /* صامت — الصوت إضافة مش شرط */ }
+  }, []);
 
   // سياق الصفحة — من shell (view) + من أحداث التطبيق (طالب/حصة مفتوحة)
   useEffect(() => {
@@ -203,8 +255,10 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
         if (e.kind === "error") {
           push({ id: e.id ?? crypto.randomUUID(), kind: "error", text: e.text ?? "حصلت مشكلة.", retry: true });
         } else if (e.kind === "question") {
+          lastAgentTextRef.current = e.text ?? "";
           push({ id: e.id ?? crypto.randomUUID(), kind: "agent", text: e.text ?? "", options: e.options });
         } else {
+          lastAgentTextRef.current = e.text ?? "";
           push({ id: e.id ?? crypto.randomUUID(), kind: "agent", text: e.text ?? "", plan: e.plan });
         }
         break;
@@ -224,13 +278,15 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
       case "done":
         setRunning(false);
         setState(e.status === "COMPLETED" ? "COMPLETED" : e.status === "FAILED" ? "FAILED" : e.status === "WAITING_CONFIRMATION" ? "WAITING_CONFIRMATION" : "IDLE");
+        // الرد الصوتي — آخر رسالة من زكي (النتيجة النهائية أو السؤال) — مفيش ترديد للخطوات
+        if (ttsOn && e.status !== "FAILED" && lastAgentTextRef.current) speak(lastAgentTextRef.current);
         break;
       case "error":
         setRunning(false);
         push({ id: crypto.randomUUID(), kind: "error", text: e.message ?? "خطأ غير متوقع.", retry: true });
         break;
     }
-  }, [push]);
+  }, [push, ttsOn, speak]);
 
   const runSSE = useCallback(async (url: string, body: Record<string, unknown>) => {
     const ctrl = new AbortController();
@@ -273,6 +329,7 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
   const send = useCallback((text: string) => {
     const t = text.trim();
     if (!t || running || !online) return;
+    shutUp(); // صوت جديد بيلغي أي رد سابق لسه بيتقري
     lastUserText.current = t;
     setInput("");
     push({ id: crypto.randomUUID(), kind: "user", text: t });
@@ -282,7 +339,7 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
       taskId: taskIdRef.current ?? undefined,
       context: { view, ...ctxRef.current },
     });
-  }, [online, push, running, runSSE, view]);
+  }, [online, push, running, runSSE, view, shutUp]);
 
   const retry = useCallback(() => {
     if (lastUserText.current) send(lastUserText.current);
@@ -303,30 +360,70 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
     setState("IDLE");
   }, []);
 
-  /* ---------- الصوت ---------- */
+  /* ---------- الصوت — إدخال بيتكلم + إرسال تلقائي، ورسايل واضحة بدل مايك صامت ---------- */
   const toggleMic = useCallback(() => {
     if (listening) {
-      recognitionRef.current?.stop();
+      // الضغطة التانية = وقف يدوي — النص المكتوب يفضل في الخانة من غير إرسال
+      manualStopRef.current = true;
+      try { recognitionRef.current?.stop(); } catch { /* صامت */ }
       setListening(false);
       return;
     }
     const w = window as SRWindow;
     const SRCtor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
-    if (!SRCtor) return;
-    const rec = new SRCtor();
-    rec.lang = "ar-EG";
-    rec.continuous = false;
-    rec.interimResults = false;
-    rec.onresult = (ev) => {
-      const transcript = ev.results?.[0]?.[0]?.transcript ?? "";
-      if (transcript) setInput((prev) => `${prev}${prev ? " " : ""}${transcript}`);
-    };
-    rec.onend = () => setListening(false);
-    rec.onerror = () => setListening(false);
-    recognitionRef.current = rec;
-    rec.start();
-    setListening(true);
-  }, [listening]);
+    if (!SRCtor) {
+      push({ id: crypto.randomUUID(), kind: "error", text: "المتصفح ده مش بيدعم الإدخال الصوتي — جرب Chrome أو Edge أو Safari." });
+      return;
+    }
+    // لو زكي بيتكلم دلوقتي — اسكت قبل ما نسمع
+    shutUp();
+    try {
+      const rec = new SRCtor();
+      rec.lang = "ar-EG";
+      rec.continuous = false;
+      rec.interimResults = true;
+      finalTranscriptRef.current = "";
+      manualStopRef.current = false;
+      rec.onresult = (ev) => {
+        let interim = "";
+        for (let i = 0; i < ev.results.length; i++) {
+          const r = ev.results[i];
+          const tr = r[0]?.transcript ?? "";
+          if (r.isFinal) finalTranscriptRef.current += (finalTranscriptRef.current ? " " : "") + tr;
+          else interim += tr;
+        }
+        setInput(finalTranscriptRef.current || interim);
+      };
+      rec.onend = () => {
+        setListening(false);
+        // الإرسال التلقائي لو انتهى التسجيل طبيعيًا — تجربة مساعد صوتي حقيقية
+        const t = finalTranscriptRef.current.trim();
+        if (t && !manualStopRef.current) send(t);
+      };
+      rec.onerror = (ev) => {
+        setListening(false);
+        const code = ev.error ?? "";
+        // no-speech/aborted = مفيش كلام أو وقف سريع — سلوك طبيعي من غير إزعاج
+        if (code === "aborted" || code === "no-speech") return;
+        push({ id: crypto.randomUUID(), kind: "error", text: VOICE_ERRORS[code] ?? "حصلت مشكلة في المايك — جرب تاني." });
+      };
+      recognitionRef.current = rec;
+      rec.start();
+      setListening(true);
+    } catch {
+      setListening(false);
+      push({ id: crypto.randomUUID(), kind: "error", text: "مقدرتش شغّل المايك — قفل أي تاب تاني بيستخدم المايك وجرب تاني." });
+    }
+  }, [listening, push, send, shutUp]);
+
+  const toggleTts = useCallback(() => {
+    setTtsOn((v) => {
+      const nv = !v;
+      localStorage.setItem("nk-agent-tts", nv ? "1" : "0");
+      if (!nv) shutUp();
+      return nv;
+    });
+  }, [shutUp]);
 
   /* ---------- المهام السابقة ---------- */
   const loadTasks = useCallback(async () => {
@@ -394,7 +491,6 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
     setMode("chat");
   }, []);
 
-  const hasVoice = typeof window !== "undefined" && !!((window as SRWindow).SpeechRecognition || (window as SRWindow).webkitSpeechRecognition);
   const stateLabel = STATE_LABEL[state];
 
   return (
@@ -448,6 +544,11 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
                     )}
                   </p>
                 </div>
+                {hasTts && (
+                  <button onClick={toggleTts} aria-label={ttsOn ? "كتم صوت زكي" : "تشغيل صوت زكي"} className="p-2 rounded-xl hover:bg-white/15">
+                    {ttsOn ? <Volume2 className="w-4.5 h-4.5" /> : <VolumeX className="w-4.5 h-4.5" />}
+                  </button>
+                )}
                 <button onClick={() => { setMode("tasks"); void loadTasks(); }} aria-label="المهام" className="p-2 rounded-xl hover:bg-white/15">
                   <History className="w-4.5 h-4.5" />
                 </button>

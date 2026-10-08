@@ -34,6 +34,11 @@ model Center {
   waLowBalanceEnabled  Boolean @default(false)
   waLowBalanceThreshold Int   @default(5000) // piastres
   waConsentNote        String? // free-text consent record (who agreed, when)
+  // Zaki Agent — العقل الذكي: اتصال أي موديل متوافق مع OpenAI (اختياري).
+  // فاضي = المخ الحتمي المدمج (fallback brain) + ZAI لو متاح في بيئة النشر.
+  agentLlmBaseUrl String?
+  agentLlmModel   String?
+  agentLlmApiKey  String? // بتتخزن سيرفري بس — مش بترجع للعميل أبدًا (GET بيرجع ذيلها بس)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   Palette, MessageCircle, Users, ScrollText, Loader2, Save, Plus, Pencil, Trash2,
   ShieldCheck, Eye, Upload, Variable, Smartphone, SlidersHorizontal, ScanLine,
+  Sparkles, PlugZap, KeyRound, Trash,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, applyCenterBranding, darkenForAA, BRAND_DEFAULTS, type SessionUser } from "./lib";
@@ -115,6 +116,130 @@ function WhatsAppAlertsCard() {
   );
 }
 
+/* ============================================================
+   زكي — العقل الذكي: توصيل أي موديل متوافق مع OpenAI (اختياري).
+   من غير موديل → المخ الحتمي المدمج شغال بنفس الأدوات والصلاحيات.
+   المفتاح بيتخزن سيرفري ومش بيرجع للعرض — الذيل بس.
+============================================================ */
+function AgentBrainTab() {
+  const [cfg, setCfg] = useState<{ baseUrl: string; model: string; hasKey: boolean; keyTail: string; envConfigured: boolean } | null>(null);
+  const [baseUrl, setBaseUrl] = useState("");
+  const [model, setModel] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const load = useCallback(() => {
+    api<{ agentLlm: typeof cfg }>("/api/settings", { silent: true })
+      .then((d) => {
+        if (!d.agentLlm) return;
+        setCfg(d.agentLlm);
+        setBaseUrl(d.agentLlm.baseUrl ?? "");
+        setModel(d.agentLlm.model ?? "");
+      })
+      .catch(() => {});
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  async function save(clearKey = false) {
+    setBusy(true);
+    setTestResult(null);
+    try {
+      const body: Record<string, unknown> = { agentLlmBaseUrl: baseUrl, agentLlmModel: model };
+      if (apiKey.trim()) body.agentLlmApiKey = apiKey.trim();
+      if (clearKey) body.agentLlmClearKey = true;
+      await api("/api/settings", { method: "PATCH", body });
+      setApiKey("");
+      toast.success("إعدادات العقل الذكي اتحفظت — زكي هيستخدمها من أول محادثة جديدة.");
+      await load();
+    } catch { /* toast من api */ } finally { setBusy(false); }
+  }
+
+  async function test() {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const r = await api<{ ok: boolean; error?: string; latencyMs?: number; sample?: string }>("/api/agent/llm-test", {
+        method: "POST",
+        body: { baseUrl, model, ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}) },
+      });
+      setTestResult(r.ok
+        ? { ok: true, text: `الموديل رد في ${r.latencyMs}ms — «${r.sample ?? "تمام"}»` }
+        : { ok: false, text: r.error ?? "فشل الاتصال." });
+    } catch { setTestResult({ ok: false, text: "فشل الاختبار — جرب تاني." }); } finally { setTesting(false); }
+  }
+
+  if (!cfg) return <Loading />;
+  const filled = baseUrl.trim() && model.trim();
+
+  return (
+    <div className="space-y-4">
+      <PageHeader title="زكي — العقل الذكي" subtitle="وصّل زكي بأي موديل ذكي متوافق مع OpenAI — أو خلّيه بالمخ المدمج" />
+      <SectionCard title="موديل زكي اللغوي (اختياري)" icon={<Sparkles className="w-4 h-4" />}>
+        <div className="space-y-3">
+          <div className="rounded-xl border nk-brand-border nk-brand-bg-soft p-3.5 text-xs font-bold leading-relaxed space-y-1">
+            <p className="font-black text-sm">زكي شغال دلوقتي بـ: {cfg.envConfigured ? "موديل من إعدادات السيرفر" : cfg.baseUrl && cfg.model ? "الموديل الموصّل من هنا" : "المخ المدمج (بدون موديل خارجي)"}</p>
+            <p className="text-muted-foreground">
+              المخ المدمج بيفهم الطلبات الشائعة وينفذها بنفس الأدوات والصلاحيات والتأكيد.
+              لو توصّلت موديل ذكي (OpenAI أو OpenRouter أو Groq أو أي خدمة متوافقة، أو سيرفر محلي زي Ollama) — زكي هيفهم أي صيغة وتلقائية أكتر.
+            </p>
+            {cfg.envConfigured && <p className="text-amber-600 dark:text-amber-400">ملحوظة: إعدادات السيرفر (ENV) عندها الأولوية — الإعداد من هنا بيتجاهل لحد ما تتشال من الـ ENV.</p>}
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <label htmlFor="llm-url" className="text-xs font-bold text-muted-foreground">رابط الخدمة (Base URL)</label>
+              <input id="llm-url" dir="ltr" disabled={busy} className={inputCls(false)} value={baseUrl}
+                onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" autoComplete="off" />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="llm-model" className="text-xs font-bold text-muted-foreground">اسم الموديل</label>
+              <input id="llm-model" dir="ltr" disabled={busy} className={inputCls(false)} value={model}
+                onChange={(e) => setModel(e.target.value)} placeholder="gpt-4o-mini" autoComplete="off" />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="llm-key" className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
+              <KeyRound className="w-3.5 h-3.5" /> مفتاح الـ API
+              {cfg.hasKey && <span className="nk-brand-text">مخزّن (ينتهي بـ ••••{cfg.keyTail})</span>}
+            </label>
+            <input id="llm-key" dir="ltr" type="password" disabled={busy} className={inputCls(false)} value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)} placeholder={cfg.hasKey ? "اتركه فاضي لو مش هتغيّره" : "sk-..."} autoComplete="new-password" />
+            <p className="text-[10.5px] text-muted-foreground font-semibold">المفتاح بيتخزن على السيرفر بس ومش بيظهر لأي حد تاني — حتى في سجل العمليات بيتسجل مقنّع.</p>
+          </div>
+
+          {testResult && (
+            <div className={cn("rounded-xl border px-3.5 py-2.5 text-xs font-extrabold",
+              testResult.ok ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                : "border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300")}>
+              {testResult.ok ? "✓ " : "✕ "}{testResult.text}
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2 pt-1">
+            <button onClick={() => save()} disabled={busy || !filled}
+              className="rounded-xl nk-brand-bg text-white px-4 py-2.5 text-sm font-black flex items-center gap-1.5 disabled:opacity-40 active:scale-[0.98] transition">
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} حفظ الإعداد
+            </button>
+            <button onClick={test} disabled={testing || !filled}
+              className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-extrabold text-muted-foreground flex items-center gap-1.5 disabled:opacity-40 active:scale-[0.98] transition">
+              {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlugZap className="w-4 h-4" />} جرب الاتصال
+            </button>
+            {cfg.hasKey && (
+              <button onClick={() => save(true)} disabled={busy}
+                className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-extrabold text-rose-600 dark:text-rose-400 flex items-center gap-1.5 disabled:opacity-40">
+                <Trash className="w-4 h-4" /> شيل المفتاح
+              </button>
+            )}
+          </div>
+        </div>
+      </SectionCard>
+    </div>
+  );
+}
+
 /* لون نص مقروء فوق أي لون براند (داكن للخلفيات الفاتحة — زي الذهبي على كحلي)
    عشان معاينة الهوية والرقائق الملونة تفضل واضحة مهما كان اختيار السنتر */
 function readableOn(bg: string | null | undefined): string {
@@ -134,6 +259,7 @@ const TABS = [
   { id: "attendance", label: "الحضور", icon: <ScanLine className="w-4 h-4" /> },
   { id: "whatsapp", label: "قوالب واتساب", icon: <MessageCircle className="w-4 h-4" /> },
   { id: "staff", label: "الموظفين", icon: <Users className="w-4 h-4" /> },
+  { id: "agent", label: "زكي — العقل الذكي", icon: <Sparkles className="w-4 h-4" /> },
   { id: "prefs", label: "تفضيلاتي", icon: <SlidersHorizontal className="w-4 h-4" /> },
   { id: "audit", label: "سجل العمليات", icon: <ScrollText className="w-4 h-4" /> },
 ] as const;
@@ -146,7 +272,7 @@ export function SettingsView({ user, onBrandingChanged }: { user: SessionUser; o
       <PageHeader title="الإعدادات" subtitle="هوية السنتر والقوالب والموظفين والسجل" />
 
       <div className="flex gap-1.5 overflow-x-auto nk-scroll pb-1">
-        {TABS.map((t) => (
+        {TABS.filter((t) => t.id !== "agent" || user.role === "MANAGER").map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={cn(
               "shrink-0 rounded-2xl border px-4 py-2.5 font-extrabold text-sm transition flex items-center gap-2",
@@ -161,6 +287,7 @@ export function SettingsView({ user, onBrandingChanged }: { user: SessionUser; o
       {tab === "attendance" && <AttendanceTab />}
       {tab === "whatsapp" && <WhatsAppTab />}
       {tab === "staff" && <StaffTab />}
+      {tab === "agent" && user.role === "MANAGER" && <AgentBrainTab />}
       {tab === "prefs" && <PersonalPrefsTab />}
       {tab === "audit" && <AuditTab />}
     </div>
