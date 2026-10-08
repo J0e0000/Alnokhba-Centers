@@ -5,6 +5,8 @@ import "./attendance";
 import "./reports";
 import "./dashboard";
 import "./schedule";
+import "./students-edit";
+import "./messaging";
 import "./finance";
 import { allTools } from "./registry";
 
