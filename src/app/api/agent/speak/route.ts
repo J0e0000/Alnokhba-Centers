@@ -86,6 +86,13 @@ export const POST = handler(async (req: Request) => {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[agent:speak] failed:", msg.slice(0, 200));
+    // 429 من خدمة الصوت = ضغط مؤقت — نرجّع 429 + Retry-After عشان العميل يرجع لصوت المتصفح بهدوء ويجرب بعدين
+    if (/\b429\b|too many requests/i.test(msg)) {
+      return Response.json(
+        { error: "خدمة الصوت مشغولة دلوقتي — هنعيد المحاولة تلقائيًا." },
+        { status: 429, headers: { "Retry-After": "30" } },
+      );
+    }
     return fail("خدمة الصوت مش متاحة دلوقتي — هعرض الرد كتابة بس.", 502);
   }
 });
