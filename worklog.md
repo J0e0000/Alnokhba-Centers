@@ -328,3 +328,20 @@ Work Log:
 
 Stage Summary:
 - زكي بقى شغال فعلًا في الإنتاج: نفس الطلب اللي كان طالع فيه خطأ تقني بقى بيجاوب وينفذ ويتحقق من الداتابيز. الصوت بقى بالاتجاهين — مايك بيفهم ليه بيصمت (رسايل واضحة) وزكي بيرد بصوت قابل للكتم. والمخ بقى أذكى في الحالتين: المخ الحتمي المدمج فهم المصري والإنجليزي ومتابعة الاختيارات وحماية من اللوب، وأي موديل OpenAI-compatible يقدر المدير يوصّله من الإعدادات بدقيقة ويجرب الاتصال قبل الحفظ.
+
+---
+Task ID: agent-voice-universal-smart
+Agent: main (Super Z)
+Task: «still the voice commands doesn't work although i gave it permission (search github for open source models) + arabic pronouncing not available + search open-source models to make the ai smarter + each question shows me (give me the admin account)»
+
+Work Log:
+- بحث (web_search): STT مفتوح = Vosk/Whisper · TTS عربي مفتوح = Coqui/MMS/Piper · LLM عربي مفتوح = Qwen3/Llama 3.3/ALLaM/Jais/Falcon-H1-Arabic — القرار: الأساس سيرفري (z-ai SDK ASR/TTS/LLM) لأنه شغال على كل المتصفحات، والموديلات المفتوحة تتوصل من إعدادات العقل (OpenAI-compatible) — التوثيق اتضاف في شاشة الإعدادات.
+- اختبار قدرات SDK سكريبتات محفوظة: test_arabic_voice.ts + test_asr_formats.ts → TTS عربي wav ✓ (mp3 unsupported 400) · ASR يقبل WAV+WebM ويرفض MP4/Safari · LLM بيرد مصري طبيعي.
+- صوت دخول سيرفري (الحل الجذري لـ«بيسمح للمايك ومش شغال»): src/components/nokhba/voice-recorder.ts — getUserMedia+AudioContext→PCM→downsample 16k→WAV base64 (شغال على كل المتصفحات بدون SpeechRecognition) + /api/agent/transcribe (auth+rateLimit+حدود حجم+رسايل عربية) → النص يدخل الشات ويتبعت تلقائي. Web Speech بقى فول باك بس. وقف تلقائي لما المستخدم يسكت ~1.8s (onLevel silence detection) + ضغطة تانية = إرسال فوري.
+- رد صوتي عربي سيرفري (حل «النطق العربي مش موجود»): /api/agent/speak — zai.audio.tts (voice tongtong, wav) + كاش LRU (24 مدخل، X-Speak-Cache hit/miss) + قص آمن عند آخر جملة (900 حرف) · العميل: fetch→Audio element مع فول باك لصوت المتصفح العربي لو السيرفر فشل.
+- أمن: «give me the admin account»/«اعطني حساب الأدمن»/«هاتلي الباسورد» → رفض صريح من المخ الحتمي (كشف حساب مستثنى عشان ميتلخبطش مع المحاسبة) + قاعدة جديدة في system prompt: ممنوع تسليم أي بيانات دخول نهائيًا.
+- ذكاء: المخ الحتمي الأول (فوري) والموديل (GLM مدمج أو أي OpenAI-compatible من الإعدادات: OpenRouter/Groq/Ollama) للصيغ المفتوحة — إعدادات شاشة العقل بتعرض الموديلات المفتوحة العربية الموصى بها.
+- اختبارات: e2e_agent_voice.sh جديد (login+speak wav valid+cache hit+transcribe roundtrip+رفض أمني بالعربي والإنجليزي+غايبين+LLM مفتوح) · e2e_agent 43/43 · attendance 45/45 · device-lock 33/33 · qr-slot 15/15 · anticheat 23/23 (مجموع 159 أخضر؛ فشل نص الطريق كان rate-limit مش بگ — التانية نظيفة) · tsc 0 · eslint نظيف · build ✓ · متصفح: المايك ظاهر دايمًا، إذن مرفوض برسالة عربية واضحة (مش صمت)، «مين غايب النهارده؟» جاب كارت 13 غايب (لقطات download/zaki_*.png).
+
+Stage Summary:
+- صوت زكي بقى سيرفري بالاتجاهين: التسجيل WAV من كل المتصفح → تعرف سيرفري، والرد الصوتي عربي طبيعي من السيرفر — كده مستحيل يبوظ بسبب متصفح/جهاز مفيش فيه دعم عربي، والإذن المسموح بيتحول لصوت شغال فعلًا. طلبات كلمات السر بتترفض أمنيًا في كل المسارات (مخ حتمي + برومبت الموديل). والموديلات المفتوحة الأقوى في العربي (Qwen3/Llama 3.3/ALLaM/Jais) documented جاهزة للوصل من الإعدادات في دقيقة. commit 9cc0645 + دفعة origin (74996ef..9cc0645) — Vercel هيعمل deploy تلقائي.
