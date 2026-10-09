@@ -73,6 +73,7 @@
         "eslint": "^9",
         "eslint-config-next": "^16.1.1",
         "pngjs": "^7.0.0",
+        "server-only": "^0.0.1",
         "tailwindcss": "^4",
         "tw-animate-css": "^1.3.5",
         "typescript": "^5",
@@ -1263,6 +1264,8 @@
     "scheduler": ["scheduler@0.27.0", "https://registry.npmjs.com/scheduler/-/scheduler-0.27.0.tgz", {}, "sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q=="],
 
     "semver": ["semver@6.3.1", "https://registry.npmjs.com/semver/-/semver-6.3.1.tgz", { "bin": { "semver": "bin/semver.js" } }, "sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA=="],
+
+    "server-only": ["server-only@0.0.1", "", {}, "sha512-qepMx2JxAa5jjfzxG79yPPq+8BuFToHd1hm7kI+Z4zAq1ftQiP7HcxMhDDItrbtwVeLg/cY2JnKnrcFkmiswNA=="],
 
     "set-blocking": ["set-blocking@2.0.0", "", {}, "sha512-KiKBS8AnWGEyLzofFfmvKwpdPzqiy16LvQfK3yv/fVH7Bj13/wl3JSR1J+rfgRE9q7xUJK4qvgS8raSOeLUehw=="],
 
