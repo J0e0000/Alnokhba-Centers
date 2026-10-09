@@ -12,7 +12,10 @@ const CSP = [
   "font-src 'self' data:",
   "connect-src 'self'",
   "worker-src 'self' blob:",
-  "frame-ancestors 'none'",
+  // الشاشات المدمجة (معاينة الشات/الويب فيو) مسموحة — كان DENY بيمنع الاستخدام من أي لوحة مدمجة
+  // وخلّي المستخدم يفتكر إن النظام «بيسجّله خروج فورًا» (الكوكي Third-party مش بيوصل)
+  // التطوير بيسمح بـ http://localhost:* عشان اختبار التضمين محليًا — الإنتاج https بس
+  `frame-ancestors 'self' http://localhost:* https:`,
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
@@ -20,11 +23,13 @@ const CSP = [
 
 const SECURITY_HEADERS = [
   { key: "Content-Security-Policy", value: CSP },
-  { key: "X-Frame-Options", value: "DENY" },
+  // X-Frame-Options اتشال — frame-ancestors فوق بتغطيه، وبوجوده مع CSP بيكسر التضمين
+  // في المحركات اللي بتحترم XFO قبل CSP (الحماية من clickjacking زي ما هي عبر frame-ancestors)
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  // الكاميرا مسموحة (self) بس — مطلوبة لماسح QR؛ الباقي مقفول
-  { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(), payment=(), usb=()" },
+  // الكاميرا والميكروفون مسموحين (self) — ماسح QR + إدخال Zaki الصوتي.
+  // microphone=() كانت بتقفل الميكروفون على مستوى المتصفح حتى لو المستخدم وافق — ده كان سبب فشل الصوت
+  { key: "Permissions-Policy", value: "camera=(self), microphone=(self), geolocation=(), payment=(), usb=()" },
   { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
   { key: "X-DNS-Prefetch-Control", value: "off" },
 ];

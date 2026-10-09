@@ -30,19 +30,30 @@ export type PortalStudent = {
   };
 };
 
+/** خيارات كوكي البورتال — maxAge بدل expires (مش بيتأثر بساعة جهاز المستخدم)
+ *  + SameSite=None/Partitioned في الإنتاج عشان البورتال يشتغل جوه شاشات مدمجة */
+function portalCookieOptions(expiresAt: Date) {
+  const maxAge = Math.max(60, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
+  if (!COOKIE_SECURE) {
+    return { httpOnly: true, sameSite: "lax" as const, path: "/", maxAge };
+  }
+  return {
+    httpOnly: true,
+    sameSite: "none" as const,
+    secure: true,
+    partitioned: true,
+    path: "/",
+    maxAge,
+  };
+}
+
 /** إنشاء جلسة طالب (بعد التحقق من الكود + الموبايل) */
 export async function createPortalSession(studentId: string): Promise<void> {
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + PORTAL_DAYS * 24 * 3600 * 1000);
   await db.studentPortalSession.create({ data: { token, studentId, expiresAt } });
   const jar = await cookies();
-  jar.set(PORTAL_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: COOKIE_SECURE,
-    path: "/",
-    expires: expiresAt,
-  });
+  jar.set(PORTAL_COOKIE, token, portalCookieOptions(expiresAt));
 }
 
 export async function destroyPortalSession(): Promise<void> {
@@ -87,13 +98,7 @@ export async function getPortalStudent(): Promise<PortalStudent | null> {
     const extended = new Date(Date.now() + PORTAL_DAYS * 24 * 3600 * 1000);
     try {
       await db.studentPortalSession.update({ where: { token }, data: { expiresAt: extended } });
-      jar.set(PORTAL_COOKIE, token, {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: COOKIE_SECURE,
-        path: "/",
-        expires: extended,
-      });
+      jar.set(PORTAL_COOKIE, token, portalCookieOptions(extended));
     } catch { /* best-effort — الجلسة شغالة زي ما هي */ }
   }
 
