@@ -407,14 +407,18 @@ async function resolveOpenSession(
     throw new ToolError("VALIDATION", `في أكتر من حصة مفتوحة — سجّل في أنهي واحدة؟ ${opts.join(" / ")}`);
   }
 
+  // «الكيمياء» و«كيمياء» نفس الحصة — الأداة التعريف بتتشال من الفحص
+  const qBare = q.startsWith("ال") && q.length > 3 ? q.slice(2) : q;
   const qTokens = q.split(" ").filter((w) => w.length > 1 && !["حصه", "مجموعه", "المجموعه", "الحصه"].includes(w));
   const scored = open
     .map((s) => {
       const hay = normAr(`${s.group?.subject.name ?? s.name ?? ""} ${s.group?.name ?? ""} ${s.group?.grade?.name ?? ""}`);
       let score = 0;
       if (hay === q || hay.includes(q) || q.includes(hay)) score += 6;
+      else if (qBare !== q && (hay === qBare || hay.includes(qBare))) score += 6;
       for (const tok of qTokens) {
-        if (hay.includes(tok)) score += 2;
+        const bare = tok.startsWith("ال") && tok.length > 3 ? tok.slice(2) : tok;
+        if (hay.includes(tok) || (bare !== tok && hay.includes(bare))) score += 2;
         if (normAr(s.startTime) === tok) score += 4; // «الحصة الـ 5» / اختيار بميعاد
       }
       return { s, score };
