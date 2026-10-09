@@ -47,6 +47,21 @@ def main() -> int:
         r"generator\s+client\s*\{[^}]*\}", fix_generator, schema, count=1
     )
 
+    # 3) أعمدة "معلقة المزامنة" — موجودة في سكيما SQLite المحلية بس مش متزامنة
+    #    بعد على قاعدة الإنتاج (db push بيتعطل أحيانًا على pgbouncer وقت البيلد).
+    #    العمود بيتشال من نسخة الإنتاج لحد ما المزامنة اليدوية تتعمل — عشان
+    #    العميل المولّد ميفشّلش كل query بتعمل full-row select (زي GET /api/settings).
+    #    لإعادة تفعيل العمود: اعمل db push يدوي (docs/PRODUCTION-DB.md) وشيل السطر من تحت.
+    PENDING_COLUMNS = [
+        "agentSttModel",  # STT model setting — pending production DB sync
+    ]
+    removed = []
+    for col in PENDING_COLUMNS:
+        pat = re.compile(rf"^\s*{col}\s+String\?\s*(//[^\n]*)?\n", re.MULTILINE)
+        schema, n = pat.subn("", schema)
+        if n:
+            removed.append(col)
+
     with open(DST, "w", encoding="utf-8") as f:
         f.write(HEADER + schema)
 
