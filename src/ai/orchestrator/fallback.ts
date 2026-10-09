@@ -128,6 +128,53 @@ function extractGroupKey(text: string): string | null {
   return m ? m[1] : null;
 }
 
+/** اسم الحصة/المجموعة من الطلب — «حصة رياضيات» / «مجموعة فيزياء A» */
+function extractSessionKey(text: string): string | null {
+  const m = text.match(/(?:حص[هة]|الحص[هة]|مجموع[هة]|المجموع[هة]|group|session)\s+([\u0600-\u06FFa-zA-Z0-9]{2,})/i);
+  return m ? m[1] : null;
+}
+
+/**
+ * نص أسماء الحضور من طلب التسجيل — «سجل حضور أحمد ومحمد في حصة رياضيات»
+ * ← «أحمد ومحمد» (الأداة بتجزّئها ضد الكشف بنوافذ، فبنسيبه نص حر).
+ */
+function extractAttendanceNames(text: string): string | null {
+  let s = text.replace(/\s+/g, " ").trim();
+  // جزء الغايبين/المستثنين مش أسماء حضور — اتشال قبل أي استخراج
+  s = s.replace(/\s*(?:—|-|،|,)?\s*(?:الغايبين|غايبين|ما ?عدا|إلا|الا|except)[\s\S]*$/i, " ");
+  const m = s.match(/(?:الحضور|حضور|attendance|present)\s*[:：]?\s*(.+)$/i);
+  if (m) {
+    s = m[1];
+  } else {
+    s = s.replace(/^(?:سجل(?:لي)?|سجّل(?:لي)?|علم(?:لي)?|علّم(?:لي)?|اكتب(?:لي)?|mark|take|record)\s+/i, "");
+    s = s.replace(/^(?:على\s+)/i, "");
+  }
+  // شيل الذيل: اليوم + الحصة/المجموعة + الكل/الباقي + كلمات الحالة
+  s = s
+    .replace(/(?:في\s+)?(?:حص[هة]|مجموع[هة]|group|session)\s+[\u0600-\u06FFa-zA-Z0-9]+\s*/gi, " ")
+    .replace(/(?:النهارده|النهاردة|اليوم|دلوقتي|بس)\s*$/i, "")
+    .trim()
+    .replace(/^(?:الكل|كلهم|الكله|الباقي|باقيهم|كل\s+المسجلين)\s*/i, "")
+    .replace(/^[وو]\s+/, "")
+    .replace(/[،,:،\s]+$/, "")
+    .replace(/\s+(?:حضور|الحضور|حاضرين?|حاضر|present)\s*$/i, "")
+    .trim();
+  return s.length >= 2 ? s : null;
+}
+
+/** نص الغايبين/المستثنين خام — «الغايبين عمر وسالم» / «ما عدا عمر» ← «عمر وسالم» (الأداة بتحله) */
+function extractExceptNames(text: string): string | null {
+  const m = text.match(/(?:الغايبين|غايبين|ما ?عدا|إلا|الا|except)\s*[:：]?\s*([\u0600-\u06FFa-zA-Z\s،,و—-]+?)(?=(?:و)?(?:سجل|علم|الباقي|باقيهم|كلهم|الكله|والباقي)|$)/i);
+  if (!m) return null;
+  const s = m[1]
+    .replace(/[—\-،,]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^(?:الكل|كلهم|الكله|الباقي|باقيهم)\s*/i, "")
+    .replace(/[،,\s]+$/, "");
+  return s.length >= 2 ? s : null;
+}
+
 function extractNumber(text: string): number | null {
   const m = norm(text).match(/(\d+)/);
   return m ? parseInt(m[1], 10) : null;
@@ -157,6 +204,9 @@ const RE = {
   collection: /كام (اتنصل|جمع|تحصيل)|التحصيل|ايراد|حصلنا|جمعنا|اتحصل|collections? (today|this week)|how much (collected|did we collect)/,
   tomorrowSessions: /بكره|بكرا|غدا|tomorrow/,
   openSession: /افتح (حصه|حضور|session)|اعمل حصه|ابدأ حضور|open (a )?session|start (a )?session/,
+  // تسجيل حضور بالأسماء — لازم فعل تسجيل/تعليم صريح عشان ميخبطش مع أسئلة الغياب
+  markAttendance: /سجل(لي)? (الحضور|حضور)|سجل .{0,30}(حاضرين|حضور)|الحضور(\s|:|$)|علم(لي)? (على|ان)|اكتب (الحضور|حضور)|سجل (الباقي|باقيهم|كلهم|الكله)|الغايبين.{0,40}(سجل|علم|الباقي|باقيهم)|ما عدا.{0,40}(سجل|علم|الباقي)|سجل الكل|mark (attendance|present|the rest|them)|take attendance|record attendance/,
+  closeSession: /اقفل (الحصه|حصه|الحصة|الحضور|session|اليوم)|سكر (الحصه|حصه|الحصة)|قفل (الحصه|حصه|الحصة)|close (the |this )?(session|class)|end (the |this )?(session|class)/,
   greeting: /^(سلام|السلام عليكم|هاي|هلا|ازيك|عامل ايه|صباح|مساء|مرحبا|اهلا)(\s|$)|^(hi|hello|hey|good (morning|evening|afternoon))\b/,
   thanks: /(شكرا|متشكر|تسلم|ربنا يخليك|thanks|thank you|thx)/,
   help: /تقدر تعمل ايه|ايه اللي تعرفه|امكانياتك|مساعده|إزاي|how (do|can) (i|you)|what can you (do|help)|help( me)?$|اسئله/,
@@ -189,7 +239,12 @@ export function fallbackPlan(
 
   /* ================= تحيات ومجاملات ومساعدة ================= */
   if (RE.greeting.test(t)) {
-    return { say: hasAr(text) ? "أهلًا بيك! أنا زكي — قولّي عايز إيه؟ أقدر أفتح حصص، أسجل دفعات، أضيف طلبة ومجموعات، أطلع غايبين النهاردة وملخص اليوم وأقارير الطلبة." : "Hey! I'm Zaki — I can open sessions, record payments, add students and groups, pull today's absentees, summaries and student reports.", done: true };
+    return {
+      say: hasAr(text)
+        ? "أهلًا بيك! أنا زكي — قولّي عايز إيه؟ أقدر أفتح وأقفل حصص، أسجل حضور بالأسماء، أسجل دفعات، أضيف طلبة ومجموعات، أطلع غايبين النهاردة وملخص اليوم وأقارير الطلبة."
+        : "Hey! I'm Zaki — I can open and close sessions, mark attendance by name, record payments, add students and groups, pull today's absentees, summaries and student reports.",
+      done: true,
+    };
   }
   if (RE.thanks.test(t) && t.length < 30) {
     return { say: hasAr(text) ? "ده واجبي! لو محتاج أي حاجة تانية أنا هنا." : "Anytime! I'm here if you need anything else.", done: true };
@@ -197,8 +252,8 @@ export function fallbackPlan(
   if (RE.help.test(t) && t.length < 40) {
     return {
       say: hasAr(text)
-        ? "تقدر تطلب مني: «مين غايب النهارده؟» · «اللي غابوا 3 مرات» · «ملخص النهاردة» · «كام حصة النهاردة؟» · «عندنا إيه بكرة؟» · «افتح حصة رياضيات» · «حصّلنا كام النهارده؟» · «سجل دفعة 50 جنيه لأحمد» · «اعمل مجموعة رياضيات للصف الأول الثانوي بسعر 60» · «ضيف طالب جديد» · «هاتلي أحمد» · «تقرير أحمد» · «سجل أحمد في مجموعة B» — بالعربي أو English."
-        : "You can ask: «who is absent today?» · «today's summary» · «open the math session» · «how much did we collect?» · «record a 50 EGP payment for Ahmed» · «create a math group for grade 1 sec» · «add a new student» · «find Ahmed» · «report of Ahmed» · «enroll Ahmed in Group B».",
+        ? "تقدر تطلب مني: «مين غايب النهارده؟» · «سجل حضور أحمد ومحمد» · «الغايبين عمر وسالم — سجل الباقي» · «اقفل الحصة» · «افتح حصة رياضيات» · «ملخص النهاردة» · «عندنا إيه بكرة؟» · «حصّلنا كام النهارده؟» · «سجل دفعة 50 جنيه لأحمد» · «اعمل مجموعة رياضيات للصف الأول الثانوي بسعر 60» · «ضيف طالب جديد» · «هاتلي أحمد» · «تقرير أحمد» · «سجل أحمد في مجموعة B» — بالعربي أو English."
+        : "You can ask: «who is absent today?» · «mark Ahmed and Mohamed present» · «open the math session» · «close the session» · «today's summary» · «how much did we collect?» · «record a 50 EGP payment for Ahmed» · «create a math group» · «add a new student» · «find Ahmed» · «report of Ahmed» · «enroll Ahmed in Group B».",
       done: true,
     };
   }
@@ -373,6 +428,39 @@ export function fallbackPlan(
     return { say: "قولي اسم الطالب أو كوده وأنا أطلع تقريره.", need_info: { question: "مين الطالب؟" } };
   }
 
+  /* ================= تسجيل حضور بالأسماء — pipeline (حصة ← أسماء ← تأكيد) =================
+     مهم قبل أسئلة الغياب: «الغايبين عمر وسالم سجل الباقي» فيها «غايبين» بس نيتها كتابة */
+  const isMarkAtt = RE.markAttendance.test(t) || (!!gi && RE.markAttendance.test(gi) && !RE.absentToday.test(t));
+  if (isMarkAtt) {
+    const intentText = RE.markAttendance.test(t) ? text : (ctx.goal ?? text);
+    const prev = obsOf(observations, "attendance.mark_names");
+    if (prev && !prev.error) return doneWith(prev, "خلصت — الحضور اتسجل.");
+    // في غلطة قبل كده: إعادة المحاولة بس لو النص دلوقتي رد اختيار/تصحيح قصير (مش تكرار نفس الطلب —
+    // تكرار نفس الصيغة هيعيد نفس الغلطة = لوب) — حماية لوب إجبارية (spec §38)
+    const retrySession = prev?.error && !RE.markAttendance.test(t) ? extractSessionKey(text) : null;
+    if (prev?.error && !retrySession) return doneWith(prev, "محتاج توضيح — جرب تاني بعد ما تحدد.");
+    const sessionKey = retrySession ?? extractSessionKey(intentText);
+    const names = extractAttendanceNames(intentText);
+    const except = extractExceptNames(intentText);
+    const markRest = /الباقي|باقيهم|كلهم|الكله|الكل|كل المسجلين|mark (the )?rest|everyone else|all (of )?them/.test(norm(intentText));
+    if (!names && !markRest) {
+      return { say: "تمام — مين اللي هسجل حضورهم؟ اكتب الأسماء مفصولة بـ «و» أو فاصلة.", need_info: { question: "إيه الأسماء؟" } };
+    }
+    return {
+      say: `جاهز أسجل الحضور${sessionKey ? ` في حصة ${sessionKey}` : " في حصة النهاردة"} — جايبلك كارت التأكيد بالأسماء محلولة والتحميل.`,
+      plan: ["أحل الأسماء ضد كشف الحصة", "أعرض التأكيد", "أسجل (بتأكيدك)"],
+      tool: {
+        name: "attendance.mark_names",
+        args: {
+          ...(sessionKey ? { session: sessionKey } : {}),
+          ...(names ? { namesText: names } : {}),
+          ...(markRest ? { markRest: true } : {}),
+          ...(except ? { exceptText: except } : {}),
+        },
+      },
+    };
+  }
+
   /* ================= الغياب المتكرر (قبل الغايبين النهاردة — عشان «أكتر من N مرات» متلخبطش) ================= */
   if (RE.frequentAbsent.test(t)) {
     const prev = obsOf(observations, "attendance.get");
@@ -459,6 +547,17 @@ export function fallbackPlan(
     return { say: "هجيبلك مجموعاتك النشطة.", tool: { name: "group.list", args: {} } };
   }
 
+  /* ================= قفل الحصة — نفس الـ API الرسمي (تجميعات + مستحقات) ================= */
+  if (RE.closeSession.test(t) || (!!gi && RE.closeSession.test(gi))) {
+    const closed = obsOf(observations, "attendance.close_session");
+    if (closed) return doneWith(closed, "خلصت — الحصة اتقفلت.");
+    const sessionKey = extractSessionKey(text) ?? extractSessionKey(ctx.goal ?? "");
+    return {
+      say: `جاهز أقفل الحصة${sessionKey ? ` (${sessionKey})` : ""} — لو فيه حصة مفتوحة واحدة بس هتقفل هي، ولو أكتر هسألك. جايب كارت التأكيد بحسابات الحصة.`,
+      tool: { name: "attendance.close_session", args: { ...(sessionKey ? { session: sessionKey } : {}) } },
+    };
+  }
+
   /* ================= فتح حصة — pipeline حقيقي: جدول النهاردة ← اختيار ← تأكيد ================= */
   if (RE.openSession.test(t)) {
     const opened = obsOf(observations, "attendance.start_session");
@@ -534,7 +633,7 @@ export function fallbackUnknown(text: string): AgentTurn {
   const ar = hasAr(text);
   return {
     say: ar
-      ? "الطلب ده مش من الحاجات اللي أقدر أعملها بالظبط. أقدر أساعدك في:\n• «افتح حصة رياضيات» · «مين غايب النهارده؟» · «ملخص النهاردة» · «عندنا إيه بكرة؟»\n• «سجل دفعة 50 جنيه لأحمد» · «حصّلنا كام النهارده؟»\n• «اعمل مجموعة رياضيات للصف الأول الثانوي بسعر 60» · «ضيف طالب جديد»\n• «هاتلي أحمد» · «تقرير أحمد» · «سجل أحمد في مجموعة B»\nولو الصيغة مختلفة، المدير يقدر يوصلني بموديل ذكي من الإعدادات ← «زكي — العقل الذكي» وأندهم أي طلب بالكلام العادي."
+      ? "الطلب ده مش من الحاجات اللي أقدر أعملها بالظبط. أقدر أساعدك في:\n• «سجل حضور أحمد ومحمد» · «الغايبين عمر وسالم — سجل الباقي» · «مين غايب النهارده؟»\n• «افتح حصة رياضيات» · «اقفل الحصة» · «ملخص النهاردة» · «عندنا إيه بكرة؟»\n• «سجل دفعة 50 جنيه لأحمد» · «حصّلنا كام النهارده؟»\n• «اعمل مجموعة رياضيات للصف الأول الثانوي بسعر 60» · «ضيف طالب جديد»\n• «هاتلي أحمد» · «تقرير أحمد» · «سجل أحمد في مجموعة B»\nولو الصيغة مختلفة، المدير يقدر يوصلني بموديل ذكي من الإعدادات ← «زكي — العقل الذكي» وأندهم أي طلب بالكلام العادي."
       : "I can't map this request yet. I can help with: opening sessions, today's absentees and summary, recording payments, creating groups and students, search and reports. A manager can also connect a smart model from Settings → Zaki Brain so I understand any phrasing.",
     done: true,
   };
