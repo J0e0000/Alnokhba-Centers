@@ -40,12 +40,53 @@ function norm(t: string): string {
     .toLowerCase();
 }
 
+/** استخراج مبلغ الدفعة — «50 جنيه» / «50ج» / رقم مفرد. ممنوع \b مع العربي */
+function extractAmount(text: string): number | null {
+  const n = norm(text);
+  const withUnit = n.match(/(\d+(?:[.,]\d+)?)\s*(?:جنيه|جنيها|ج(?=\s|$)|egp)/);
+  if (withUnit) {
+    const v = parseFloat(withUnit[1].replace(",", "."));
+    return v > 0 && v <= 100_000 ? v : null;
+  }
+  const plain = n.match(/(?:^|\s)(\d+(?:[.,]\d+)?)(?:\s|$)/);
+  if (plain) {
+    const v = parseFloat(plain[1].replace(",", "."));
+    return v > 0 && v <= 100_000 ? v : null;
+  }
+  return null;
+}
+
+/** طريقة الدفع من الكلام — فودافون/انستاباي/كاش */
+function methodOf(text: string): "CASH" | "VODAFONE" | "INSTAPAY" | null {
+  const n = norm(text);
+  if (/فودافون|فود|vodafone/.test(n)) return "VODAFONE";
+  if (/انستا|انستاباي|insta/.test(n)) return "INSTAPAY";
+  if (/كاش|cash/.test(n)) return "CASH";
+  return null;
+}
+
+/** اسم الطالب من طلب دفعة — «لأحمد محمد» / «لـ أحمد» / «من أحمد» / «لحساب أحمد» */
+function extractPaymentName(text: string): string | null {
+  const m = text.match(/(?:لحساب|لـ|لأ|لا|ل|من)\s*([\u0600-\u06FFa-zA-Z]{2,}(?:\s+[\u0600-\u06FFa-zA-Z]{2,}){0,3})/);
+  if (!m) return null;
+  const stop = ["جنيه", "ج", "كاش", "فودافون", "انستا", "انستاباي", "النهارده", "اليوم", "دفعه", "حساب"];
+  const words = m[1].split(/\s+/)
+    .map((w, i) => (i === 0 ? w.replace(/^لل?/, "") : w)) // «لأحمد» ← «أحمد»
+    .filter((w) => w.length >= 2 && !stop.includes(w) && !/^\d+([.,]\d+)?$/.test(w));
+  return words.length ? words.join(" ") : null;
+}
+
 type StudentRow = { id: string; name: string; code: string };
 type GroupRow = { id: string; name: string; subject: string };
 
 const obsOf = (obs: Observation[], tool: string): Observation | undefined =>
   [...obs].reverse().find((o) => o.tool === tool);
-const studentsOf = (o?: Observation): StudentRow[] => ((o?.data?.students ?? o?.data?.absentees ?? o?.data?.flagged) as StudentRow[] | undefined) ?? [];
+const studentsOf = (o?: Observation): StudentRow[] => {
+  const rows = (o?.data?.students ?? o?.data?.absentees ?? o?.data?.flagged) as StudentRow[] | undefined;
+  if (rows) return rows;
+  const one = o?.data?.student as (StudentRow & Record<string, unknown>) | undefined;
+  return one?.id ? [one as StudentRow] : []; // نتيجة student.get — طالب واحد
+};
 const groupsOf = (o?: Observation): GroupRow[] => ((o?.data?.groups) as GroupRow[] | undefined) ?? [];
 
 /** اختيار طالب من رسالة («أحمد محمد (99002)» أو تطابق اسم) */
@@ -100,7 +141,11 @@ const doneWith = (o?: Observation, fallback?: string): AgentTurn =>
 
 /* ---------------- كاشفات النوايا (على النص المطبّع) ---------------- */
 const RE = {
-  enroll: /سجل|ضيف.*(مجموعه)|enroll|register|add .* to (group|جراب)/,
+  // التسجيل في مجموعة لازم يكون فيه «في مجموعة» صريح — عشان «سجل دفعة» متلخبطش معه
+  enroll: /سجل .{1,50}?(?:في|فى) مجموعه|سجل في مجموعه|ضيف .{1,50}?(?:في مجموعه|لمجموعه)|حط .{1,50}? في مجموعه|enroll|register .{1,40} (?:to|in)|add .{1,50} to (?:a |the )?(group|جراب)/,
+  payRecord: /سجل دفعه|دفعه (جديده|من|لـ|ل)|استلمت|قبضت|سجل (مبلغ|فلوس|حساب|كاش)|دفع (لي|ليا|لى)|record (a )?payment|payment (from|for)|got (a )?payment/,
+  newStudent: /طالب جديد|ضيف طالب|اضف طالب|سجل طالب جديد|new student|add (a )?student/,
+  createGroup: /اعمل (مجموعه|جرروب)|ضيف مجموعه|اضف مجموعه|انشاء مجموعه|انشى مجموعه|مجموعه جديده|create (a )?(new )?group|new group/,
   report: /تقرير|report|ملف الطالب|معلومات عن|نبذه عن|how is .* doing/,
   absentToday: /(من|مين|انهي|ايه|فين).*(غايب|غايبين|هنحضرش|مش حاضر|مجاش|ماجاش|ناقص)|غايبين.*(النهارده|اليوم)|الغايبين|who('s| is| didn'?t| has)?\s*(absent|missing|not coming|skipping)|didn'?t come/,
   frequentAbsent: /(غايب|غاب|غياب|متكرر).*(كتير|مرات|متكرر|الاسبوع|الشهر)|(اكثر من).*(مره|مرات|غياب)|غيابهم|الغياب المتكرر|frequent(ly)? (absent|missing)|absences|kept missing/,
@@ -133,8 +178,10 @@ export function fallbackPlan(
   const looksLikePick = t.length <= 60 && !extractName(text) &&
     (/^(كمل|اكمل|خلاص|تمام|ايوه|اها|اختر|دا|ده|يلا|اوك|ok|go|continue|yes|yeah)(\s|$)/.test(t) || /[-—(]|\d{3,}/.test(t));
   const gi = looksLikePick && ctx.goal ? norm(ctx.goal) : "";
-  const isEnroll = RE.enroll.test(t) || (!!gi && RE.enroll.test(gi) && !RE.report.test(t));
-  const isReport = !isEnroll && (RE.report.test(t) || (!!gi && RE.report.test(gi)));
+  // الدفعات قبل كل حاجة — «سجل دفعة» شكلها «سجل…» بس نيتها تاني خالص (والأسئلة «كام» بتروح للتحصيل)
+  const isPay = (RE.payRecord.test(t) || (!!gi && RE.payRecord.test(gi))) && !/كام|اد ايه|how much/.test(t);
+  const isEnroll = !isPay && (RE.enroll.test(t) || (!!gi && RE.enroll.test(gi) && !RE.report.test(t)));
+  const isReport = !isEnroll && !isPay && (RE.report.test(t) || (!!gi && RE.report.test(gi)));
 
   const last = observations[observations.length - 1];
   const searchObs = obsOf(observations, "student.search");
@@ -142,7 +189,7 @@ export function fallbackPlan(
 
   /* ================= تحيات ومجاملات ومساعدة ================= */
   if (RE.greeting.test(t)) {
-    return { say: hasAr(text) ? "أهلًا بيك! أنا زكي — قولّي عايز إيه؟ أقدر أطلعلك غايبين النهاردة، ملخص اليوم، أدوّر على طالب، أعمل تقرير، أو أسجّل طالب في مجموعة." : "Hey! I'm Zaki — what do you need? I can pull today's absentees, today's summary, find a student, build a report, or enroll a student.", done: true };
+    return { say: hasAr(text) ? "أهلًا بيك! أنا زكي — قولّي عايز إيه؟ أقدر أفتح حصص، أسجل دفعات، أضيف طلبة ومجموعات، أطلع غايبين النهاردة وملخص اليوم وأقارير الطلبة." : "Hey! I'm Zaki — I can open sessions, record payments, add students and groups, pull today's absentees, summaries and student reports.", done: true };
   }
   if (RE.thanks.test(t) && t.length < 30) {
     return { say: hasAr(text) ? "ده واجبي! لو محتاج أي حاجة تانية أنا هنا." : "Anytime! I'm here if you need anything else.", done: true };
@@ -150,8 +197,8 @@ export function fallbackPlan(
   if (RE.help.test(t) && t.length < 40) {
     return {
       say: hasAr(text)
-        ? "تقدر تطلب مني: «مين غايب النهارده؟» · «اللي غابوا 3 مرات» · «ملخص النهاردة» · «كام حصة النهاردة؟» · «عندنا إيه بكرة؟» · «حصّلنا كام النهارده؟» · «هاتلي أحمد» · «تقرير أحمد» · «حضور مجموعة المعلومات؟» · «سجل أحمد في مجموعة B» — بالعربي أو English."
-        : "You can ask: «who is absent today?» · «frequent absentees» · «today's summary» · «tomorrow's schedule» · «how much did we collect?» · «find Ahmed» · «report of Ahmed» · «attendance of Group B» · «enroll Ahmed in Group B».",
+        ? "تقدر تطلب مني: «مين غايب النهارده؟» · «اللي غابوا 3 مرات» · «ملخص النهاردة» · «كام حصة النهاردة؟» · «عندنا إيه بكرة؟» · «افتح حصة رياضيات» · «حصّلنا كام النهارده؟» · «سجل دفعة 50 جنيه لأحمد» · «اعمل مجموعة رياضيات للصف الأول الثانوي بسعر 60» · «ضيف طالب جديد» · «هاتلي أحمد» · «تقرير أحمد» · «سجل أحمد في مجموعة B» — بالعربي أو English."
+        : "You can ask: «who is absent today?» · «today's summary» · «open the math session» · «how much did we collect?» · «record a 50 EGP payment for Ahmed» · «create a math group for grade 1 sec» · «add a new student» · «find Ahmed» · «report of Ahmed» · «enroll Ahmed in Group B».",
       done: true,
     };
   }
@@ -168,6 +215,60 @@ export function fallbackPlan(
         : "I can't share accounts or passwords — credentials are sensitive and never shared through chat, and I don't have access to them anyway. Your account has the permissions it needs; for more access or a new staff account, use the staff screen or contact the platform admins.",
       done: true,
     };
+  }
+
+  /* ================= طالب/مجموعة جديدة — دي بيت handledها الموديل الذكي (كتالوج group.create / student.create)
+     لأنها محتاجة جمع مدخلات غني (تليفونات/سعر/مرحلة) — لو مفيش موديل، fallbackUnknown هيقول الصراحة */
+  if (RE.newStudent.test(t) || RE.createGroup.test(t)) return null;
+
+  /* ================= تسجيل دفعة — pipeline بحالة (بحث/كود ← مبلغ ← تأكيد) ================= */
+  if (isPay) {
+    const intentText = RE.payRecord.test(t) ? text : (ctx.goal ?? text);
+    const paidObs = obsOf(observations, "finance.record_payment");
+    if (paidObs) return doneWith(paidObs, "خلصت — الدفعة اتسجلت.");
+    const getObs = obsOf(observations, "student.get"); // طلب بالكود بيجه student.get
+    const srcObs = searchObs ?? getObs;
+    if (srcObs && srcObs.data?.students === undefined && srcObs.data?.student === undefined) return doneWith(srcObs, "البحث فشل.");
+    const students = studentsOf(srcObs);
+    const picked = students.length ? pickStudent(students, text) : null;
+    const student = picked ?? (students.length === 1 ? students[0] : null);
+
+    if (student) {
+      const amount = extractAmount(text) ?? extractAmount(intentText);
+      const method = methodOf(text) ?? methodOf(intentText);
+      if (amount == null) {
+        return { say: `تمام — ${student.name}. كام جنيه الدفعة؟`, need_info: { question: "كام جنيه؟" } };
+      }
+      return {
+        say: `جاهز أسجل دفعة ${amount} جنيه لـ ${student.name} — جايبلك كارت التأكيد.`,
+        tool: { name: "finance.record_payment", args: { student: student.name, amount, ...(method ? { method } : {}) } },
+      };
+    }
+    if (srcObs && students.length > 1) {
+      return {
+        say: "لقيت أكتر من طالب — مين فيهم؟",
+        need_info: { question: "مين الطالب اللي دفع؟", options: students.slice(0, 5).map((s) => `${s.name} (${s.code})`) },
+      };
+    }
+    if (srcObs && students.length === 0) return doneWith(srcObs, `مفيش طالب مطابق — جرب الاسم زي ما هو في ملف الطالب.`);
+    // كود طالب مباشر في طلب الدفعة — «سجل دفعة 25 جنيه لـ 99002»
+    const codeM = t.match(/(\d{5})/);
+    if (codeM && !getObs) {
+      return {
+        say: `هجيب الطالب اللي كوده ${codeM[1]} وبعدها أسجل الدفعة.`,
+        plan: ["أجيب الطالب بالكود", "أسجل الدفعة (بتأكيدك)"],
+        tool: { name: "student.get", args: { code: codeM[1] } },
+      };
+    }
+    const name = extractPaymentName(intentText) ?? ctx.selectedStudent?.name ?? null;
+    if (name && !srcObs) {
+      return {
+        say: `هبحث عن «${name}» الأول وبعدها أسجل الدفعة.`,
+        plan: ["أدور على الطالب", "أسجل الدفعة (بتأكيدك)"],
+        tool: { name: "student.search", args: { q: name, limit: 5 } },
+      };
+    }
+    return { say: "قولي اسم الطالب اللي دفع والمبلغ — مثال: «سجل دفعة 50 جنيه لأحمد محمد».", need_info: { question: "مين الطالب اللي دفع؟" } };
   }
 
   /* ================= تسجيل طالب في مجموعة — pipeline بحالة ================= */
@@ -358,11 +459,48 @@ export function fallbackPlan(
     return { say: "هجيبلك مجموعاتك النشطة.", tool: { name: "group.list", args: {} } };
   }
 
-  /* ================= فتح حصة — توجيه صادق (مفيش أداة جدول لسه) ================= */
+  /* ================= فتح حصة — pipeline حقيقي: جدول النهاردة ← اختيار ← تأكيد ================= */
   if (RE.openSession.test(t)) {
+    const opened = obsOf(observations, "attendance.start_session");
+    if (opened) return doneWith(opened, "خلصت — الحصة اتفتحت.");
+    const dayObs = obsOf(observations, "schedule.get_day");
+    if (dayObs && dayObs.data?.slots === undefined) return doneWith(dayObs, "قراية الجدول فشلت.");
+    if (!dayObs) {
+      return {
+        say: "هشوف جدول النهاردة الأول وأجيبلك الحصص المجدولة.",
+        plan: ["أشوف جدول النهاردة", "أحدد الحصة", "أفتح الحصة (بتأكيدك)"],
+        tool: { name: "schedule.get_day", args: { date: todayStr() } },
+      };
+    }
+    const slots = (dayObs.data?.slots as { slotId: string; startTime: string; endTime: string; group: string; subject: string }[] | undefined) ?? [];
+    if (!slots.length) {
+      return { say: "مفيش حصص مجدولة النهاردة في الجدول — لو عايز حصة إضافية، شاشة «حصص اليوم» بتفتح حصة لأي مجموعة في ثانية.", done: true };
+    }
+    const slotLabel = (sl: { subject: string; group: string; startTime: string; endTime: string }) => `${sl.subject} — ${sl.group} (${sl.startTime}–${sl.endTime})`;
+    // مطابقة على الرسالة الحالية + هدف المهمة («افتح حصة رياضيات» أو اختيار «رياضيات — B (17:00–18:30)»)
+    const nt = `${norm(text)} ${norm(ctx.goal ?? "")}`;
+    const scored = slots
+      .map((sl) => {
+        const hay = norm(`${sl.subject} ${sl.group}`);
+        let score = 0;
+        for (const tok of nt.split(" ")) {
+          if (tok.length > 1 && hay.includes(tok)) score += 1;
+        }
+        if (nt.includes(norm(sl.startTime))) score += 3; // «الحصة الـ 5» أو اختيار بخيار فيه الوقت
+        return { sl, score };
+      })
+      .sort((a, b) => b.score - a.score);
+    const best = scored[0];
+    if (best && best.score > 0 && best.score > (scored[1]?.score ?? 0)) {
+      const sl = best.sl;
+      return {
+        say: `جاهز أفتح حصة ${slotLabel(sl)} — جايبلك كارت التأكيد.`,
+        tool: { name: "attendance.start_session", args: { scheduleId: sl.slotId, date: todayStr() } },
+      };
+    }
     return {
-      say: "فتح الحصص من زكي لسه مش متاح — بس من شاشة «حصص اليوم» بتضغط على الحصة وتفتح في ثانية، وأنا بعد كده أقدر أقولك مين غايب فيها. تحب أجيبلك حصص النهاردة؟",
-      done: true,
+      say: "في أكتر من حصة مجدولة النهاردة — أنهي واحدة؟",
+      need_info: { question: "أنهي حصة؟", options: slots.slice(0, 5).map(slotLabel) },
     };
   }
 
@@ -396,8 +534,8 @@ export function fallbackUnknown(text: string): AgentTurn {
   const ar = hasAr(text);
   return {
     say: ar
-      ? "الطلب ده مش من الحاجات اللي أقدر أعملها دلوقتي. أقدر أساعدك في:\n• «مين غايب النهارده؟» و«اللي غابوا 3 مرات»\n• «ملخص النهاردة» و«كام حصة النهاردة؟» و«عندنا إيه بكرة؟»\n• «حصّلنا كام النهارده؟»\n• «هاتلي أحمد» و«تقرير أحمد»\n• «حضور مجموعة كذا إزاي؟»\n• «سجل أحمد في مجموعة B»\nولو عايزني أفهم أي صيغة، المدير يقدر يوصلني بموديل ذكي من الإعدادات ← «زكي — العقل الذكي»."
-      : "I can't map this request yet. I can help with: today's absentees, frequent absences, today's summary, tomorrow's schedule, today's collection, student search, student reports, group attendance, and enrolling a student. A manager can also connect a smart model from Settings → Zaki Brain.",
+      ? "الطلب ده مش من الحاجات اللي أقدر أعملها بالظبط. أقدر أساعدك في:\n• «افتح حصة رياضيات» · «مين غايب النهارده؟» · «ملخص النهاردة» · «عندنا إيه بكرة؟»\n• «سجل دفعة 50 جنيه لأحمد» · «حصّلنا كام النهارده؟»\n• «اعمل مجموعة رياضيات للصف الأول الثانوي بسعر 60» · «ضيف طالب جديد»\n• «هاتلي أحمد» · «تقرير أحمد» · «سجل أحمد في مجموعة B»\nولو الصيغة مختلفة، المدير يقدر يوصلني بموديل ذكي من الإعدادات ← «زكي — العقل الذكي» وأندهم أي طلب بالكلام العادي."
+      : "I can't map this request yet. I can help with: opening sessions, today's absentees and summary, recording payments, creating groups and students, search and reports. A manager can also connect a smart model from Settings → Zaki Brain so I understand any phrasing.",
     done: true,
   };
 }

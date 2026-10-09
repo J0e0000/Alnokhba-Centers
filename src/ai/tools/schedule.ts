@@ -24,6 +24,7 @@ register({
   risk: "LOW",
   async handler(args, ctx): Promise<ToolOutput> {
     const date = args.date ?? todayStr();
+    // الحصص المفتوحة فعلًا في اليوم ده
     const sessions = await db.sessionInstance.findMany({
       where: { centerId: ctx.centerId, date },
       select: {
@@ -33,20 +34,45 @@ register({
       orderBy: { startTime: "asc" },
       take: 60,
     });
+    // الحصص المجدولة في الجدول الأسبوعي ليهوم اليوم ده (لسه متفتحتش) —
+    // دي اللي الـ LLM محتاجها عشان يفتح حصة بـ attendance.start_session (scheduleId)
+    const slots = await db.scheduleSlot.findMany({
+      where: { centerId: ctx.centerId, dayOfWeek: new Date(`${date}T12:00:00Z`).getUTCDay(), isActive: true },
+      select: {
+        id: true, startTime: true, endTime: true, room: true,
+        group: { select: { id: true, name: true, subject: { select: { name: true } }, teacher: { select: { name: true } }, _count: { select: { students: { where: { status: "ACTIVE" } } } } } },
+      },
+      orderBy: { startTime: "asc" },
+      take: 60,
+    });
     const rows = sessions.map((s) => ({
       label: `${s.startTime ?? ""}${s.endTime ? `–${s.endTime}` : ""}`.trim() || "—",
       value: `${s.group?.subject.name ?? ""} — ${s.group?.name ?? ""}${s.group?.teacher?.name ? ` (${s.group.teacher.name})` : ""} · ${s.status}`,
     }));
+    for (const sl of slots) {
+      rows.push({
+        label: `${sl.startTime}${sl.endTime ? `–${sl.endTime}` : ""}`,
+        value: `${sl.group.subject.name} — ${sl.group.name}${sl.group.teacher?.name ? ` (${sl.group.teacher.name})` : ""} · مجدولة (مش متفتحة)`,
+      });
+    }
+    const summaryBits: string[] = [];
+    summaryBits.push(sessions.length ? `${sessions.length} حصة متفتحة` : "مفيش حصص متفتحة");
+    summaryBits.push(slots.length ? `${slots.length} حصة مجدولة في الجدول` : "مفيش حصص مجدولة في الجدول");
     return {
-      summary: sessions.length ? `يوم ${date}: ${sessions.length} حصة.` : `مفيش حصص مسجلة يوم ${date}.`,
+      summary: `يوم ${date}: ${summaryBits.join(" · ")}.`,
       data: {
         date,
         sessions: sessions.map((s) => ({
           id: s.id, status: s.status, startTime: s.startTime, endTime: s.endTime,
           group: s.group?.name, subject: s.group?.subject.name, teacher: s.group?.teacher?.name,
         })),
+        slots: slots.map((sl) => ({
+          slotId: sl.id, startTime: sl.startTime, endTime: sl.endTime, room: sl.room,
+          groupId: sl.group.id, group: sl.group.name, subject: sl.group.subject.name,
+          teacher: sl.group.teacher?.name, students: sl.group._count.students,
+        })),
       },
-      cards: sessions.length ? [{ type: "report", title: `حصص ${date}`, rows }] : [],
+      cards: rows.length ? [{ type: "report", title: `حصص ${date}`, rows }] : [],
     };
   },
 });
