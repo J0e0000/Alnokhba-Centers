@@ -323,7 +323,9 @@ async function agentLoop(opts: {
           const msgs2 = attempt === 0
             ? messages
             : [...messages, { role: "user" as const, content: "ردّك السابق مش مطابق للبروتوكول — رد JSON واحد بس بالشكل المطلوب بالظبط." }];
-          const res = await llm.generate(msgs2, { temperature: 0.2, maxTokens: 1200, json: true });
+          // maxTokens 2000: موديلات الـ reasoning (زي gpt-oss على Groq) بتستهلك من الـ output
+          // في تفكير داخلي قبل الـ JSON — 1200 كانت بتقطع الرد في النص (البروتوكول بيفشل)
+          const res = await llm.generate(msgs2, { temperature: 0.2, maxTokens: 2000, json: true });
           if (process.env.NK_AGENT_DEBUG === "1") {
             console.error("[agent:debug] raw model reply:", res.text.slice(0, 400));
           }
