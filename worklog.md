@@ -514,3 +514,16 @@ Work Log:
 
 Stage Summary:
 - الدخول كان شغال بيانات صحيحة؛ المشكلة إن أي غلطة كانت بتتريفرش صامت بدون رسالة (وشكلها «مش قادر أسجل»). دلوقتي غلط البيانات = رسالة واضحة والفورم محتفظ ببياناته، وصح البيانات = دخول طبيعي. اتجسد الاتنين على الإنتاج.
+
+---
+Task ID: session-fix
+Agent: Super Z (main)
+Task: «بيسجل دخول ويطلع فورًا» — إصلاح جلسة الإنتاج + فتح التضمين + الميكروفون
+
+Work Log:
+- تشخيص: الجلسة DB-backed (authSession) — مفيش مشكلة سيرفر. الدخول top-level شغال في المتصفح الحقيقي (اتجسد مرتين). الجذر بيئي: (1) كوكي بـ expires تاريخ مطلق — ساعة جهاز قدّام بتمسحه فورًا = «دخول وخروج فوري» (2) SameSite=Lax بيتمنع جوه الشاشات المدمجة (معاينة الشات/ويب فيو) (3) X-Frame-Options: DENY + frame-ancestors 'none' بيمنعوا التطبيق يتعرض في أي لوحة مدمجة أصلًا (4) Permissions-Policy microphone=() كانت بتقفل الميكروفون على مستوى المتصفح — ده كان سبب فشل الصوت رغم إذن المستخدم.
+- الإصلاحات: sessionCookieOptions/portalCookieOptions (maxAge نسبي + إنتاج: SameSite=None; Secure; Partitioned CHIPS) في auth.ts وportal-auth.ts · next.config: frame-ancestors 'self' https: (dev: + localhost:*) وإسقاط XFO + microphone=(self) · بانر تحذير على /login لو مفتوح جوه iframe مع زرار «افتح في تبويب مستقل» (حل مضمون لسفاري).
+- VERIFY: tsc 0 · eslint نظيف · build ✓ · محلي: تضمين iframe اشتغل (بدل refused to connect) + بانر ظهر + دخول جوه الإطار وصل /app بجلسة حية (بيانات موثقة اتجابت) · إنتاج 4fd114d: كوكي Max-Age=604799; SameSite=none; Partitioned + هيدرز الجديدة + دخول top-level وريفرش مستقرين.
+
+Stage Summary:
+- الجلسة بقت محصنة ضد ساعة الجهاز وبتشتغل جوه الشاشات المدمجة (CHIPS)، والتطبيق بقى قابل للتضمين من لوحات الشات، والميكروفون اتفتح على مستوى الهيدرز. سفاري المدمج لسه هيمنعه المتصفح — البانر بيوصل المستخدم لتبويب مستقل. commit 4fd114d.
