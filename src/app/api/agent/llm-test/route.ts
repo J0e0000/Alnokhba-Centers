@@ -43,12 +43,14 @@ export const POST = handler(async (req: Request) => {
   const provider = new OpenAICompatibleProvider(baseUrl, model, apiKey);
   const started = Date.now();
   try {
+    // maxTokens 512: موديلات الـ reasoning (زي gpt-oss على Groq) بتحرق توكنز تفكير داخلي
+    // قبل ما تكتب الحرف الأول — 20 توكن كانت بترجّع محتوى فاضي (llm-empty-response) مع أنها شغالة.
     const res = await provider.generate(
       [
         { role: "system", content: "أنت اختبار اتصال. رُد بكلمة واحدة فقط: تمام" },
         { role: "user", content: "قل: تمام" },
       ],
-      { temperature: 0, maxTokens: 20, timeoutMs: 25_000 },
+      { temperature: 0, maxTokens: 512, timeoutMs: 25_000 },
     );
     resetLLMCache();
     await logAudit({
@@ -72,9 +74,11 @@ export const POST = handler(async (req: Request) => {
           ? "الرابط أو الموديل مش موجود (404) — راجع المسار لازم ينتهي بـ /v1 غالبًا."
           : /llm-http-(429)/.test(msg)
             ? "المزود رافض مؤقتًا (429) — الحساب وصل حد الاستخدام."
-            : /fetch|network/i.test(msg)
-              ? "مقدرتش أوصل للرابط — تأكد من عنوان الموديل وإن النت شغال من السيرفر."
-              : "فشل الاتصال بالموديل — راجع الرابط والمفتاح واسم الموديل.";
+            : /llm-empty-response/.test(msg)
+              ? "الموديل رد فاضي — غالبًا موديل تفكير (reasoning) مستهلك التوكنز قبل الكتابة. استخدم موديل غير تفكيري أو زوّد الحد."
+              : /fetch|network/i.test(msg)
+                ? "مقدرتش أوصل للرابط — تأكد من عنوان الموديل وإن النت شغال من السيرفر."
+                : "فشل الاتصال بالموديل — راجع الرابط والمفتاح واسم الموديل.";
     return ok({ ok: false, error: friendly, raw: msg.slice(0, 120) });
   }
   } catch (e) {
