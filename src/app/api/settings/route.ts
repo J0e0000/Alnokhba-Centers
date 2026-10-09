@@ -43,10 +43,14 @@ export const GET = handler(async () => {
       envConfigured: !!(process.env.AGENT_LLM_BASE_URL?.trim() && process.env.AGENT_LLM_MODEL?.trim()),
     },
     // تحويل الصوت لنص (whisper) — نفس مفتاح العقل بيشتغل، الموديل قابل للتهيئة
-    agentStt: {
-      model: center?.agentSttModel ?? "",
-      envConfigured: !!process.env.AGENT_STT_API_KEY?.trim(),
-    },
+    // (agentSttModel ممكن يكون لسه مش متزامن على الإنتاج — بنرجع فاضي بدل ما نكسر GET)
+    agentStt: (() => {
+      try {
+        return { model: (center as unknown as { agentSttModel?: string | null })?.agentSttModel ?? "", envConfigured: !!process.env.AGENT_STT_API_KEY?.trim() };
+      } catch {
+        return { model: "", envConfigured: !!process.env.AGENT_STT_API_KEY?.trim() };
+      }
+    })(),
   });
 });
 
@@ -156,7 +160,19 @@ export const PATCH = handler(async (req: Request) => {
     agentData.agentSttModel = m || null;
   }
   if (Object.keys(agentData).length) {
-    await db.center.update({ where: { id: center.id }, data: agentData as never });
+    try {
+      await db.center.update({ where: { id: center.id }, data: agentData as never });
+    } catch {
+      // agentSttModel لسه مش متزامن على قاعدة الإنتاج (db push بيتعطل أحيانًا على pgbouncer) —
+      // بنفصل العمود الجديد: بقية الإعدادات تتحفظ عادي، والموديل بيتكتب أول ما العمود يتضاف.
+      const { agentSttModel: _stt, ...rest } = agentData as Record<string, string | null>;
+      if (Object.keys(rest).length) {
+        await db.center.update({ where: { id: center.id }, data: rest as never });
+      }
+      if (_stt !== undefined) {
+        throw new Error("موديل الصوت محتاج مزامنة قاعدة البيانات الأول (npx prisma db push) — باقي الإعدادات اتحفظت.");
+      }
+    }
     resetLLMCache(); // التغيير يبقى شغال فورًا من غير ما نستنى التخزين المؤقت
     await logAudit({
       user, action: AUDIT.BRANDING_UPDATED, entity: "CENTER", entityId: center.id,
