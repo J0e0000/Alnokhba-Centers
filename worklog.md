@@ -545,3 +545,19 @@ Work Log:
 
 Stage Summary:
 - زكي دلوقتي بيفهم حضور بالكلام الطبيعي المصري والإنجليزي من غير أوامر ثابتة، والأدوات بتحل الأسماء والمجموعات بنفسها على السيرفر، والموديل عمره ما بيلف في لوب. الاختبارات 98/98. القاعدة الجديدة محتاجة بس: رابط Postgres في متغيرات Vercel الجديدة → deploy (الجداول بتتعمل لوحدها) → أمر ترحيل واحد → إعادة إدخال مفتاح Groq.
+
+---
+Task ID: nine-db-link
+Agent: Super Z (main)
+Task: user: «https://alnokhba-centers-nine.vercel.app — This is the one your token is available on, link it with the database already made»
+
+Work Log:
+- تشخيص جذر «دخول ← خروج فوري» على النشر الجديد (nine): البيلد بيولّد عميل SQLite (فحص vercel-build.sh) → **مفيش DATABASE_URL خالص على المشروع** — النشر شغال «وضع تجريبي مؤقت»: كل نسخة lambda بتاخد نسخة SQLite خاصة من الباندل (db.ts fallback ينسخ لـ /tmp).
+- إثبات قاطع: (1) burst متوازي 8 طلبات × 5 رندات بنفس كوكي جلسة صالح — أغلب الطلبات 401 عشوائي و/api/auth دايمًا 200 (الجلسة موجودة في نسخة الـ lambda اللي عمل اللوجين بس) (2) probe استمرارية: PUT preferences theme=dark 3 مرات ← GET متوازي رجّع خليط dark/401 — الكتابة بتضيع بين النسخ (3) api() بيعمل reload على أي 401 ← «خروج فوري» بعد اللوجين مباشرة.
+- الحل اللي ينفع من هنا (مفيش Vercel token/CLI في الساندبوكس — اتمكدت): (a) commit 4c00ec5: دعم GROQ_API_KEY القياسي في سلسلة العقل (وصفة gpt-oss-120b) وSTT (whisper) + envConfigured في الإعدادات تحسبه + علامة commit في /api/agent/status — النشر وصل (marker=4c00ec5) بس source فضل fallback يعني متغير المستخدم اسمه مش من الأسماء المقروءة (ACCEPTED: GROQ_API_KEY أو AGENT_LLM_BASE_URL/MODEL/API_KEY). (b) commit 33b648a: dbMode() في db.ts + GET /api/system/db-status عام (postgres|demo|local) + بانر أحمر على صفحة الدخول في وضع demo + توثيق في PRODUCTION-DB.md.
+- VERIFY: tsc 0 · eslint نظيف · build ✓ · محلي db-status={"mode":"local"} · إنتاج بعد النشر: db-status={"mode":"demo"} (تأكيد نهائي إن القاعدة مش مرتبطة) + البانر ظاهر فعليًا على /login بagent-browser · burst probe قبل وبعد نفس النتايج (متوقع لحد ربط القاعدة).
+- ملاحظة أمان: الريبو **عام** (github.com/J0e0000/Alnokhba-Centers رجّع 200 من غير توكن) — ممنوع نهائيًا commit أي secrets/.env فيه.
+- البيانات الموجودة دلوقتي على nine كلها من نسخة SQLite المدمجة (29 مستخدم/4 سنترات/37 طالب — فيها بقايا اختبارات زي مجموعة «اختبار-mv1gvns0» وسنترات caps-test-a/b) — هتترحل للـ Postgres لما المستخدم يربط DATABASE_URL (سكريبت migrate_sqlite_to_postgres.ts جاهز والبنية بتتعمل لوحدها في البيلد).
+
+Stage Summary:
+- السبب الحقيقي لـ «signs me out immediately» على nine: النشر شغال من غير قاعدة بيانات خالص (وضع demo مؤقت بنسخ SQLite لكل lambda) — مش عيب كود في الدخول. الرابط الوحيد الناقص من المستخدم: Vercel ← nine ← Settings ← Environment Variables ← DATABASE_URL (Postgres/Neon) ← Redeploy؛ بعدها /api/system/db-status يقلب postgres والبانر يختفي، وساعتها أرحل البيانات وأتحقق end-to-end. مفتاح Groq: لازم يكون اسمه بالظبط GROQ_API_KEY (أو AGENT_LLM_*) — الاسم التاني مش بيتقري.
