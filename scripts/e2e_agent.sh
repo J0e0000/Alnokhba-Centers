@@ -28,9 +28,15 @@ login() {
   [ "$code" = "200" ]
 }
 
-agent() { # agent <json-body>
-  EVENTS=$(curl -s -N -b "$JAR" -X POST "$BASE/api/agent/message" \
-    -H "Content-Type: application/json" -d "$1" | grep '^data:' | sed 's/^data: //')
+agent() { # agent <json-body> — تبخيد 4ث بين النداءات (حد المعدل 20/دقيقة بيحسب المرفوض كمان)
+  local body="$1" attempt
+  for attempt in 1 2 3; do
+    sleep 4
+    EVENTS=$(curl -s -N -b "$JAR" -X POST "$BASE/api/agent/message" \
+      -H "Content-Type: application/json" -d "$body" | grep '^data:' | sed 's/^data: //')
+    [ -n "$EVENTS" ] && return 0
+    sleep 20 # اتضرب 429 — استنى النافذة تخف
+  done
 }
 
 confirm() {
@@ -276,6 +282,10 @@ TOOL_EXEC=$(dbq "p.agentToolExecution.count({where:{taskId:'$TASKID',status:'SUC
 echo "===== 6k) فتح حصة — pipeline بحالة (جدول ← تأكيد ← حصة OPEN في الداتابيز) ====="
 # تنظيف أي سلوتات اختبار قديمة 05:00 للمجموعة (من رنات سابقة) عشان المطابقة تبقى وحيدة
 dbq "p.scheduleSlot.findMany({where:{groupId:'$GID',startTime:'05:00'}}).then(slots=>Promise.all(slots.map(s=>p.sessionInstance.findMany({where:{scheduleId:s.id}}).then(ss=>Promise.all(ss.map(x=>p.attendance.deleteMany({where:{sessionId:x.id}}).then(()=>p.sessionInstance.delete({where:{id:x.id}}).catch(0))))).then(()=>p.scheduleSlot.delete({where:{id:s.id}}).catch(0)))).then(()=>slots.length))" >/dev/null
+# + حصص يتيمة من رنات أقدم (سلوتها اتمسح وهي لسه مفتوحة) — بتسبب تعارض مطابقة
+# + كل حصص مجموعة الاختبار المفتوحة النهاردة (حتى الحقيقية 20:00 من رنة فاتت) — عشان الحل يحل حصة واحدة بس
+TODAY=$(node -e "console.log(new Date().toISOString().slice(0,10))")
+dbq "p.sessionInstance.findMany({where:{centerId:'cmufick570003iqo9fnqvrh2c',date:'$TODAY',status:'OPEN',OR:[{startTime:'05:00'},{groupId:'$GID'}]}}).then(ss=>Promise.all(ss.map(x=>p.studentTransaction.deleteMany({where:{sessionId:x.id}}).then(()=>p.attendance.deleteMany({where:{sessionId:x.id}})).then(()=>p.sessionInstance.delete({where:{id:x.id}}).catch(0))))).then(()=>1)" >/dev/null
 DOW=$(node -e "console.log(new Date(new Date().toISOString().slice(0,10)+'T12:00:00Z').getUTCDay())")
 SLOT_JSON=$(dbq "p.scheduleSlot.create({data:{centerId:'cmufick570003iqo9fnqvrh2c',dayOfWeek:$DOW,startTime:'05:00',endTime:'06:00',groupId:'$GID'},include:{group:{include:{subject:true}}}}).then(s=>JSON.stringify({id:s.id,subject:s.group.subject.name}))")
 SLOT_ID=$(echo "$SLOT_JSON" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).id))")
@@ -292,9 +302,64 @@ OPENED=$(dbq "p.sessionInstance.count({where:{scheduleId:'$SLOT_ID',status:'OPEN
 [ "$OPENED" = "1" ] && ok "DB: session OPEN from agent" || bad "DB: session not open ($OPENED)"
 TOOL_EXEC=$(dbq "p.agentToolExecution.count({where:{taskId:'$TASKID',status:'SUCCEEDED',toolName:'attendance.start_session'}})")
 [ "$TOOL_EXEC" -ge 1 ] && ok "tool execution SUCCEEDED + verified" || bad "tool execution SUCCEEDED + verified"
+
+# ===== 6l) تسجيل حضور بالأسماء — pipeline (تأكيد ← حضور في الداتابيز + تحميل) =====
+SESSION_ID=$(dbq "p.sessionInstance.findFirst({where:{scheduleId:'$SLOT_ID',status:'OPEN'}}).then(s=>s.id)")
+# طالب تاني في كشف الحصة عشان اختبار التحضير المعكوس
+DIFF_JSON=$(dbq "p.student.findFirst({where:{centerId:'cmufick570003iqo9fnqvrh2c',status:'ACTIVE',id:{not:'$SID'}},select:{id:true,name:true}}).then(s=>JSON.stringify(s))")
+DIFF_SID=$(echo "$DIFF_JSON" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).id))")
+DIFF_NAME=$(echo "$DIFF_JSON" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).name))")
+dbq "p.studentGroup.upsert({where:{studentId_groupId:{studentId:'$DIFF_SID',groupId:'$GID'}},update:{status:'ACTIVE'},create:{studentId:'$DIFF_SID',groupId:'$GID',registeredBy:'system'}})" >/dev/null
+
+agent "{\"text\":\"سجل حضور $SNAME_FULL في حصة $SLOT_SUBJ\",\"context\":{\"view\":\"today\"}}"
+has '"type":"confirmation"'
+MARK_TASK=$(extract taskId)
+ATT_BEFORE=$(dbq "p.attendance.count({where:{sessionId:'$SESSION_ID'}})")
+[ "$ATT_BEFORE" = "0" ] && ok "no attendance before confirm" || bad "no attendance before confirm ($ATT_BEFORE)"
+
+confirm "$MARK_TASK" confirm
+has '"tool":"attendance.mark_names"'
+has '"COMPLETED"'
+ATT_MARKED=$(dbq "p.attendance.count({where:{sessionId:'$SESSION_ID',studentId:'$SID',status:'PRESENT'}})")
+[ "$ATT_MARKED" = "1" ] && ok "DB: student marked PRESENT" || bad "DB: student marked PRESENT ($ATT_MARKED)"
+CHARGED=$(dbq "p.studentTransaction.count({where:{sessionId:'$SESSION_ID',studentId:'$SID',type:'CHARGE'}})")
+[ "$CHARGED" = "1" ] && ok "DB: session charge recorded (official rules)" || bad "DB: session charge recorded ($CHARGED)"
+TOOL_EXEC=$(dbq "p.agentToolExecution.count({where:{taskId:'$MARK_TASK',status:'SUCCEEDED',toolName:'attendance.mark_names'}})")
+[ "$TOOL_EXEC" -ge 1 ] && ok "mark_names SUCCEEDED + verified" || bad "mark_names SUCCEEDED + verified"
+
+# ===== 6m) التحضير المعكوس — «الغايبين X — سجل الباقي» (بيسجّل التالت فعليًا) =====
+THIRD_JSON=$(dbq "p.student.findFirst({where:{centerId:'cmufick570003iqo9fnqvrh2c',status:'ACTIVE',id:{notIn:['$SID','$DIFF_SID']}},select:{id:true,name:true}}).then(s=>JSON.stringify(s))")
+THIRD_SID=$(echo "$THIRD_JSON" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).id))")
+dbq "p.studentGroup.upsert({where:{studentId_groupId:{studentId:'$THIRD_SID',groupId:'$GID'}},update:{status:'ACTIVE'},create:{studentId:'$THIRD_SID',groupId:'$GID',registeredBy:'system'}})" >/dev/null
+agent "{\"text\":\"الغايبين $DIFF_NAME — سجل الباقي في حصة $SLOT_SUBJ\",\"context\":{\"view\":\"today\"}}"
+has '"type":"confirmation"'
+REST_TASK=$(extract taskId)
+confirm "$REST_TASK" confirm
+has '"tool":"attendance.mark_names"'
+THIRD_ATT=$(dbq "p.attendance.count({where:{sessionId:'$SESSION_ID',studentId:'$THIRD_SID',status:'PRESENT'}})")
+[ "$THIRD_ATT" = "1" ] && ok "DB: rest-of-roster student marked by markRest" || bad "DB: rest-of-roster student marked by markRest ($THIRD_ATT)"
+DIFF_ATT=$(dbq "p.attendance.count({where:{sessionId:'$SESSION_ID',studentId:'$DIFF_SID'}})")
+[ "$DIFF_ATT" = "0" ] && ok "DB: excepted (absent) student NOT marked" || bad "DB: excepted student marked ($DIFF_ATT)"
+SID_STILL=$(dbq "p.attendance.count({where:{sessionId:'$SESSION_ID',studentId:'$SID'}})")
+[ "$SID_STILL" = "1" ] && ok "DB: already-marked not duplicated" || bad "DB: duplicate mark ($SID_STILL)"
+
+# ===== 6n) قفل الحصة — تجميعات الإيراد + CLOSED في الداتابيز =====
+# (نستنى شوية — حد المعدل 20 رسالة/دقيقة والسويت وصلت له عند النص)
+sleep 15
+agent "{\"text\":\"اقفل حصة $SLOT_SUBJ\",\"context\":{\"view\":\"today\"}}"
+has '"type":"confirmation"'
+CLOSE_TASK=$(extract taskId)
+confirm "$CLOSE_TASK" confirm
+has '"tool":"attendance.close_session"'
+has '"COMPLETED"'
+CLOSED=$(dbq "p.sessionInstance.count({where:{id:'$SESSION_ID',status:'CLOSED'}})")
+[ "$CLOSED" = "1" ] && ok "DB: session CLOSED from agent" || bad "DB: session CLOSED from agent"
+AGG=$(dbq "p.sessionInstance.findUnique({where:{id:'$SESSION_ID'}}).then(s=>s.presentCount!=null&&s.totalRevenue!=null)")
+[ "$AGG" = "true" ] && ok "DB: close aggregates computed" || bad "DB: close aggregates computed"
+
 # تنظيف سلوت الاختبار والحصة (الاختبار وراه اختبار — الحصة مالهاش لازمة في الداتا)
-dbq "p.sessionInstance.findMany({where:{scheduleId:'$SLOT_ID'}}).then(ss=>Promise.all(ss.map(x=>p.attendance.deleteMany({where:{sessionId:x.id}}).then(()=>p.sessionInstance.delete({where:{id:x.id}}))))).then(()=>p.scheduleSlot.delete({where:{id:'$SLOT_ID'}})).then(()=>1)" >/dev/null
-ok "test slot + session cleaned up"
+dbq "p.studentTransaction.deleteMany({where:{sessionId:'$SESSION_ID'}}).then(()=>p.attendanceEvent.deleteMany({where:{sessionId:'$SESSION_ID'}})).then(()=>p.studentGroup.deleteMany({where:{groupId:'$GID',studentId:{in:['$DIFF_SID','$THIRD_SID']}}})).then(()=>p.sessionInstance.findMany({where:{scheduleId:'$SLOT_ID'}}).then(ss=>Promise.all(ss.map(x=>p.attendance.deleteMany({where:{sessionId:x.id}}).then(()=>p.sessionInstance.delete({where:{id:x.id}})))))).then(()=>p.scheduleSlot.delete({where:{id:'$SLOT_ID'}})).then(()=>1)" >/dev/null
+ok "test slot + session + charges cleaned up"
 
 # =============================================================
 echo "===== 7) تاريخ المهام ====="
