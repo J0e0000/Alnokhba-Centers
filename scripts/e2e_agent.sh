@@ -245,6 +245,58 @@ echo "$SETTINGS" | grep -q '"agentLlm"' && ok "settings expose agentLlm (masked)
 echo "$SETTINGS" | grep -q 'apiKey":' && bad "settings leak key field" || ok "settings never leak key"
 
 # =============================================================
+echo "===== 6j) تسجيل دفعة — pipeline بحالة (كود الطالب ← تأكيد ← إيصال في الداتابيز) ====="
+SCODE=$(dbq "p.student.findUnique({where:{id:'$SID'}}).then(s=>s.code)")
+BAL_BEFORE=$(dbq "p.studentTransaction.aggregate({where:{studentId:'$SID'},_sum:{amount:true}}).then(a=>a._sum.amount??0)")
+# ٦ كلمات بالظبط → المسار الحتمي (المخ) بلا اعتماد على مزاج الموديل
+agent "{\"text\":\"سجل دفعة 25 جنيه لـ $SCODE\",\"context\":{\"view\":\"students\"}}"
+has '"tool":"student.get"'
+has '"type":"confirmation"'
+has '"WAITING_CONFIRMATION"'
+TASKID=$(extract taskId)
+CONFID=$(extract confirmationId)
+[ -n "$CONFID" ] && ok "payment confirmation card shown" || bad "payment confirmation card shown"
+
+# مفيش دفعة قبل التأكيد (نافذة دقيقة عشان رنات سابقة متتلخبطش)
+TXN_BEFORE=$(dbq "p.studentTransaction.count({where:{studentId:'$SID',amount:2500,type:'PAYMENT',createdAt:{gte:new Date(Date.now()-60000)}}})")
+[ "$TXN_BEFORE" = "0" ] && ok "no payment before confirm" || bad "no payment before confirm"
+
+confirm "$TASKID" confirm
+has '"tool":"finance.record_payment"'
+has '"COMPLETED"'
+BAL_AFTER=$(dbq "p.studentTransaction.aggregate({where:{studentId:'$SID'},_sum:{amount:true}}).then(a=>a._sum.amount??0)")
+DIFF=$((BAL_AFTER - BAL_BEFORE))
+[ "$DIFF" = "2500" ] && ok "DB: balance +2500 piastres (25 EGP)" || bad "DB: balance diff=$DIFF (expected 2500)"
+RCPT=$(dbq "p.receipt.count({where:{txn:{studentId:'$SID',amount:2500,type:'PAYMENT'}}})")
+[ "$RCPT" -ge 1 ] && ok "DB: receipt RC issued" || bad "DB: receipt missing"
+TOOL_EXEC=$(dbq "p.agentToolExecution.count({where:{taskId:'$TASKID',status:'SUCCEEDED',toolName:'finance.record_payment'}})")
+[ "$TOOL_EXEC" -ge 1 ] && ok "tool execution SUCCEEDED + verified" || bad "tool execution SUCCEEDED + verified"
+
+# =============================================================
+echo "===== 6k) فتح حصة — pipeline بحالة (جدول ← تأكيد ← حصة OPEN في الداتابيز) ====="
+# تنظيف أي سلوتات اختبار قديمة 05:00 للمجموعة (من رنات سابقة) عشان المطابقة تبقى وحيدة
+dbq "p.scheduleSlot.findMany({where:{groupId:'$GID',startTime:'05:00'}}).then(slots=>Promise.all(slots.map(s=>p.sessionInstance.findMany({where:{scheduleId:s.id}}).then(ss=>Promise.all(ss.map(x=>p.attendance.deleteMany({where:{sessionId:x.id}}).then(()=>p.sessionInstance.delete({where:{id:x.id}}).catch(0))))).then(()=>p.scheduleSlot.delete({where:{id:s.id}}).catch(0)))).then(()=>slots.length))" >/dev/null
+DOW=$(node -e "console.log(new Date(new Date().toISOString().slice(0,10)+'T12:00:00Z').getUTCDay())")
+SLOT_JSON=$(dbq "p.scheduleSlot.create({data:{centerId:'cmufick570003iqo9fnqvrh2c',dayOfWeek:$DOW,startTime:'05:00',endTime:'06:00',groupId:'$GID'},include:{group:{include:{subject:true}}}}).then(s=>JSON.stringify({id:s.id,subject:s.group.subject.name}))")
+SLOT_ID=$(echo "$SLOT_JSON" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).id))")
+SLOT_SUBJ=$(echo "$SLOT_JSON" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).subject))")
+echo "   سلوت اختبار: $SLOT_SUBJ (dow=$DOW)"
+agent "{\"text\":\"افتح حصة $SLOT_SUBJ\",\"context\":{\"view\":\"today\"}}"
+has '"tool":"schedule.get_day"'
+has '"type":"confirmation"'
+TASKID=$(extract taskId)
+confirm "$TASKID" confirm
+has '"tool":"attendance.start_session"'
+has '"COMPLETED"'
+OPENED=$(dbq "p.sessionInstance.count({where:{scheduleId:'$SLOT_ID',status:'OPEN'}})")
+[ "$OPENED" = "1" ] && ok "DB: session OPEN from agent" || bad "DB: session not open ($OPENED)"
+TOOL_EXEC=$(dbq "p.agentToolExecution.count({where:{taskId:'$TASKID',status:'SUCCEEDED',toolName:'attendance.start_session'}})")
+[ "$TOOL_EXEC" -ge 1 ] && ok "tool execution SUCCEEDED + verified" || bad "tool execution SUCCEEDED + verified"
+# تنظيف سلوت الاختبار والحصة (الاختبار وراه اختبار — الحصة مالهاش لازمة في الداتا)
+dbq "p.sessionInstance.findMany({where:{scheduleId:'$SLOT_ID'}}).then(ss=>Promise.all(ss.map(x=>p.attendance.deleteMany({where:{sessionId:x.id}}).then(()=>p.sessionInstance.delete({where:{id:x.id}}))))).then(()=>p.scheduleSlot.delete({where:{id:'$SLOT_ID'}})).then(()=>1)" >/dev/null
+ok "test slot + session cleaned up"
+
+# =============================================================
 echo "===== 7) تاريخ المهام ====="
 TASKS=$(curl -s -b "$JAR" "$BASE/api/agent/tasks")
 echo "$TASKS" | grep -q '"tasks"' && ok "tasks list" || bad "tasks list"
