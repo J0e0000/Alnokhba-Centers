@@ -19,7 +19,15 @@ export async function api<T = Record<string, unknown>>(
       body: opts.body ? JSON.stringify(opts.body) : undefined,
       cache: "no-store",
     });
-    if (res.status === 401 && typeof window !== "undefined") {
+    // 401 = الجلسة انتهت → ريفرش لشاشة الدخول.
+    // لكن محاولة تسجيل الدخول نفسها (username+password من غير action) لو رجعت 401
+    // دي «بيانات غلط» مش «جلسة انتهت» — لازم رسالة السيرفر توصل للمستخدم
+    // من غير ريفرش يفضّي الفورم ويخليه يفتكر إن النظام مش شغال.
+    const b = (opts.body ?? null) as Record<string, unknown> | null;
+    const isLoginAttempt =
+      path === "/api/auth" && opts.method === "POST" &&
+      !!b && !b.action && "username" in b && "password" in b;
+    if (res.status === 401 && typeof window !== "undefined" && !isLoginAttempt) {
       window.location.reload();
       throw new Error("انتهت الجلسة — جاري تحميل الصفحة.");
     }
