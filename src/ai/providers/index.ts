@@ -2,6 +2,8 @@ import "server-only";
 import type { LLMProvider } from "./llm-provider";
 import { ZaiProvider } from "./zai-provider";
 import { OpenAICompatibleProvider } from "./openai-compatible";
+import { AnthropicProvider } from "./anthropic-provider";
+import { FailoverProvider } from "./failover-provider";
 import { db } from "@/lib/db";
 
 /* ============================================================
@@ -31,15 +33,26 @@ export async function getLLM(centerId?: string): Promise<LLMProvider | null> {
   return resolved.provider;
 }
 
+/** يبني موديل من متغيرات بيئة بالبادئة دي: <P>_PROVIDER (anthropic | openai-compatible) + _MODEL + _API_KEY + _BASE_URL */
+function providerFromEnv(prefix: string): LLMProvider | null {
+  const env = (k: string) => process.env[`${prefix}_${k}`]?.trim() ?? "";
+  const kind = env("PROVIDER").toLowerCase();
+  const model = env("MODEL");
+  const baseUrl = env("BASE_URL");
+  const apiKey = env("API_KEY");
+  if (kind === "anthropic") {
+    return model && apiKey ? new AnthropicProvider(model, apiKey, baseUrl || undefined) : null;
+  }
+  // الافتراضي: OpenAI-compatible (السلوك القديم بالظبط لما PROVIDER مش متحدد)
+  return baseUrl && model ? new OpenAICompatibleProvider(baseUrl, model, apiKey) : null;
+}
+
 async function resolveLLM(centerId?: string): Promise<{ provider: LLMProvider | null; source: LLMSource }> {
-  // 1) البيئة (الأعلى — لنشر self-hosted)
-  const baseUrl = process.env.AGENT_LLM_BASE_URL?.trim();
-  const model = process.env.AGENT_LLM_MODEL?.trim();
-  if (baseUrl && model) {
-    return {
-      provider: new OpenAICompatibleProvider(baseUrl, model, process.env.AGENT_LLM_API_KEY?.trim() ?? ""),
-      source: "env",
-    };
+  // 1) البيئة (الأعلى — لنشر self-hosted أو موديل خارجي) + اختياري موديل احتياطي (failover)
+  const primary = providerFromEnv("AGENT_LLM");
+  if (primary) {
+    const backup = providerFromEnv("AGENT_LLM_FALLBACK");
+    return { provider: backup ? new FailoverProvider([primary, backup]) : primary, source: "env" };
   }
 
   // 2) إعداد السنتر من شاشة الإعدادات (المدير بيوصل أي موديل متوافق مع OpenAI)
