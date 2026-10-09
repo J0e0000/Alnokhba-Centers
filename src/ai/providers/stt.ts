@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
    STT — تحويل الصوت لنص (spec Phase 8B)
    سلسلة مزودين بترتيب أولوية — المفتاح سيرفري دايمًا:
    1) Groq / OpenAI-compatible (whisper) — لو فيه مفتاح:
-      env AGENT_STT_API_KEY ← مفتاح السنتر agentLlmApiKey (نفس حساب Groq)
+      env AGENT_STT_API_KEY ← env GROQ_API_KEY (نفس المفتاح القياسي بتاع العقل) ← مفتاح السنتر agentLlmApiKey (نفس حساب Groq)
       endpoint: env AGENT_STT_BASE_URL ← baseUrl السنتر ← api.groq.com
       model:    env AGENT_STT_MODEL ← agentSttModel للسنتر ← whisper-large-v3-turbo
    2) ZAI المدمج (ASR) — شبكة أمان دايمًا متاحة في بيئة النشر دي
@@ -33,7 +33,8 @@ export function sttPrompt(): string {
 type GroqConfig = { baseUrl: string; apiKey: string; model: string; source: "env" | "center" };
 
 async function groqConfig(centerId?: string): Promise<GroqConfig | null> {
-  const envKey = process.env.AGENT_STT_API_KEY?.trim() ?? "";
+  // AGENT_STT_API_KEY لو متظبط بينتصر — وGROQ_API_KEY (الاسم القياسي) احتياطي كفاية
+  const envKey = process.env.AGENT_STT_API_KEY?.trim() || process.env.GROQ_API_KEY?.trim() || "";
   const envBase = process.env.AGENT_STT_BASE_URL?.trim() ?? "";
   const envModel = process.env.AGENT_STT_MODEL?.trim() ?? "";
   if (envKey) {
