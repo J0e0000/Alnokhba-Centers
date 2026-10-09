@@ -280,14 +280,19 @@ TOOL_EXEC=$(dbq "p.agentToolExecution.count({where:{taskId:'$TASKID',status:'SUC
 
 # =============================================================
 echo "===== 6k) فتح حصة — pipeline بحالة (جدول ← تأكيد ← حصة OPEN في الداتابيز) ====="
-# تنظيف أي سلوتات اختبار قديمة 05:00 للمجموعة (من رنات سابقة) عشان المطابقة تبقى وحيدة
-dbq "p.scheduleSlot.findMany({where:{groupId:'$GID',startTime:'05:00'}}).then(slots=>Promise.all(slots.map(s=>p.sessionInstance.findMany({where:{scheduleId:s.id}}).then(ss=>Promise.all(ss.map(x=>p.attendance.deleteMany({where:{sessionId:x.id}}).then(()=>p.sessionInstance.delete({where:{id:x.id}}).catch(0))))).then(()=>p.scheduleSlot.delete({where:{id:s.id}}).catch(0)))).then(()=>slots.length))" >/dev/null
-# + حصص يتيمة من رنات أقدم (سلوتها اتمسح وهي لسه مفتوحة) — بتسبب تعارض مطابقة
-# + كل حصص مجموعة الاختبار المفتوحة النهاردة (حتى الحقيقية 20:00 من رنة فاتت) — عشان الحل يحل حصة واحدة بس
-TODAY=$(node -e "console.log(new Date().toISOString().slice(0,10))")
-dbq "p.sessionInstance.findMany({where:{centerId:'cmufick570003iqo9fnqvrh2c',date:'$TODAY',status:'OPEN',OR:[{startTime:'05:00'},{groupId:'$GID'}]}}).then(ss=>Promise.all(ss.map(x=>p.studentTransaction.deleteMany({where:{sessionId:x.id}}).then(()=>p.attendance.deleteMany({where:{sessionId:x.id}})).then(()=>p.sessionInstance.delete({where:{id:x.id}}).catch(0))))).then(()=>1)" >/dev/null
-DOW=$(node -e "console.log(new Date(new Date().toISOString().slice(0,10)+'T12:00:00Z').getUTCDay())")
-SLOT_JSON=$(dbq "p.scheduleSlot.create({data:{centerId:'cmufick570003iqo9fnqvrh2c',dayOfWeek:$DOW,startTime:'05:00',endTime:'06:00',groupId:'$GID'},include:{group:{include:{subject:true}}}}).then(s=>JSON.stringify({id:s.id,subject:s.group.subject.name}))")
+# مجموعة اختبار حصرية للرن دي — اسم وحيد = مفيش تعارض مطابقة مع أي حصص/مجموعات قديمة
+# ولا طلبة مسجلين مسبقًا — كل التحضير تحت سيطرة الاختبار (العزل البيئي)
+UNIQ=$(node -e "console.log(Date.now().toString(36))")
+BASEG=$(dbq "p.group.findFirst({where:{centerId:'cmufick570003iqo9fnqvrh2c',isActive:true},select:{subjectId:true,gradeId:true}}).then(g=>JSON.stringify(g))")
+SUBJ_ID=$(echo "$BASEG" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).subjectId))")
+GRADE_ID=$(echo "$BASEG" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).gradeId))")
+TESTG_JSON=$(dbq "p.group.create({data:{centerId:'cmufick570003iqo9fnqvrh2c',name:'اختبار-$UNIQ',gradeId:'$GRADE_ID',subjectId:'$SUBJ_ID',sessionPrice:5000}}).then(g=>JSON.stringify({id:g.id}))")
+GID=$(echo "$TESTG_JSON" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).id))")
+# الطالب الأساسي بيتسجل في المجموعة الحصرية (الكشف = أعضاء المجموعة وقت التنفيذ)
+dbq "p.studentGroup.upsert({where:{studentId_groupId:{studentId:'$SID',groupId:'$GID'}},update:{status:'ACTIVE'},create:{studentId:'$SID',groupId:'$GID',registeredBy:'system'}})" >/dev/null
+# DOW بتوقيت القاهرة (نفس منطق السيرفر todayStr) — كان UTC بيتأخر يوم في المساء فالسلوت بيتحط في يوم غلط
+DOW=$(TZ=Africa/Cairo node -e "console.log(new Date(new Date().toLocaleDateString('en-CA')+'T12:00:00Z').getUTCDay())")
+SLOT_JSON=$(dbq "p.scheduleSlot.create({data:{centerId:'cmufick570003iqo9fnqvrh2c',dayOfWeek:$DOW,startTime:'05:00',endTime:'06:00',groupId:'$GID'},include:{group:{include:{subject:true}}}}).then(s=>JSON.stringify({id:s.id,subject:s.group.name}))")
 SLOT_ID=$(echo "$SLOT_JSON" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).id))")
 SLOT_SUBJ=$(echo "$SLOT_JSON" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).subject))")
 echo "   سلوت اختبار: $SLOT_SUBJ (dow=$DOW)"
@@ -343,6 +348,47 @@ DIFF_ATT=$(dbq "p.attendance.count({where:{sessionId:'$SESSION_ID',studentId:'$D
 SID_STILL=$(dbq "p.attendance.count({where:{sessionId:'$SESSION_ID',studentId:'$SID'}})")
 [ "$SID_STILL" = "1" ] && ok "DB: already-marked not duplicated" || bad "DB: duplicate mark ($SID_STILL)"
 
+# ===== 6m2) صيغ طبيعية بديلة لتسجيل الحضور (spec P2) — عامية مصري + إنجليزي =====
+# كل الصيغ لازم توصل لنفس الأداة (mark_names) وبعد التأكيد: تسجيل واحد PRESENT من غير تكرار
+PARA_JSON=$(dbq "p.student.findFirst({where:{centerId:'cmufick570003iqo9fnqvrh2c',status:'ACTIVE',id:{notIn:['$SID','$DIFF_SID','$THIRD_SID']}},select:{id:true,name:true}}).then(s=>JSON.stringify(s))")
+PARA_SID=$(echo "$PARA_JSON" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).id))")
+PARA_NAME=$(echo "$PARA_JSON" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).name))")
+dbq "p.studentGroup.upsert({where:{studentId_groupId:{studentId:'$PARA_SID',groupId:'$GID'}},update:{status:'ACTIVE'},create:{studentId:'$PARA_SID',groupId:'$GID',registeredBy:'system'}})" >/dev/null
+echo "   طالب صيغ الاختبار: $PARA_NAME"
+
+# 1) «خلي X حاضر» — فعل عامي بادئ
+agent "{\"text\":\"خلي $PARA_NAME حاضر\",\"context\":{\"view\":\"today\"}}"
+has '"tool":"attendance.mark_names"'
+has '"type":"confirmation"'
+P1=$(extract taskId); confirm "$P1" confirm; has '"COMPLETED"'
+
+# 2) «X جه النهارده، سجله» — اسم الأول + فعل بضمير متصل
+agent "{\"text\":\"$PARA_NAME جه النهارده، سجله\",\"context\":{\"view\":\"today\"}}"
+has '"tool":"attendance.mark_names"'
+P2=$(extract taskId); confirm "$P2" confirm; has '"COMPLETED"'
+
+# 3) «بص يا زكي، X موجود، ظبط حضوره» — مخاطبة + جملة حضور + أمر إحالي
+agent "{\"text\":\"بص يا زكي، $PARA_NAME موجود، ظبط حضوره\",\"context\":{\"view\":\"today\"}}"
+has '"tool":"attendance.mark_names"'
+P3=$(extract taskId); confirm "$P3" confirm; has '"COMPLETED"'
+
+# 4) «Mark X as present» — إنجليزي
+agent "{\"text\":\"Mark $PARA_NAME as present\",\"context\":{\"view\":\"today\"}}"
+has '"tool":"attendance.mark_names"'
+P4=$(extract taskId); confirm "$P4" confirm; has '"COMPLETED"'
+
+# 5) الصيغة القياسية «سجل حضور X» — مرجع بعد البدائل (idempotent)
+agent "{\"text\":\"سجل حضور $PARA_NAME في حصة $SLOT_SUBJ\",\"context\":{\"view\":\"today\"}}"
+has '"tool":"attendance.mark_names"'
+P5=$(extract taskId); confirm "$P5" confirm; has '"COMPLETED"'
+
+PARA_ATT=$(dbq "p.attendance.count({where:{sessionId:'$SESSION_ID',studentId:'$PARA_SID',status:'PRESENT'}})")
+[ "$PARA_ATT" = "1" ] && ok "DB: all 5 paraphrase forms → exactly one PRESENT (idempotent)" || bad "DB: paraphrase marks wrong ($PARA_ATT)"
+PARA_EXEC=$(dbq "p.agentToolExecution.count({where:{toolName:'attendance.mark_names',status:'SUCCEEDED',taskId:{in:['$P1','$P2','$P3','$P4','$P5']}}})")
+# الأول بينفذ فعليًا — الباقي no-ops idempotent (مفيش تسجيلات جديدة) وده التصرف الصح.
+# العدّاد ممكن يزيد لو الموديل صحح مدخلات ومحاولة فاشلة + ناجحة — الثابت المهم: تسجيل واحد في الداتابيز
+[ "$PARA_EXEC" -ge 1 ] && ok "mark executed ($PARA_EXEC runs), DB invariant holds" || bad "no successful execution"
+
 # ===== 6n) قفل الحصة — تجميعات الإيراد + CLOSED في الداتابيز =====
 # (نستنى شوية — حد المعدل 20 رسالة/دقيقة والسويت وصلت له عند النص)
 sleep 15
@@ -357,8 +403,8 @@ CLOSED=$(dbq "p.sessionInstance.count({where:{id:'$SESSION_ID',status:'CLOSED'}}
 AGG=$(dbq "p.sessionInstance.findUnique({where:{id:'$SESSION_ID'}}).then(s=>s.presentCount!=null&&s.totalRevenue!=null)")
 [ "$AGG" = "true" ] && ok "DB: close aggregates computed" || bad "DB: close aggregates computed"
 
-# تنظيف سلوت الاختبار والحصة (الاختبار وراه اختبار — الحصة مالهاش لازمة في الداتا)
-dbq "p.studentTransaction.deleteMany({where:{sessionId:'$SESSION_ID'}}).then(()=>p.attendanceEvent.deleteMany({where:{sessionId:'$SESSION_ID'}})).then(()=>p.studentGroup.deleteMany({where:{groupId:'$GID',studentId:{in:['$DIFF_SID','$THIRD_SID']}}})).then(()=>p.sessionInstance.findMany({where:{scheduleId:'$SLOT_ID'}}).then(ss=>Promise.all(ss.map(x=>p.attendance.deleteMany({where:{sessionId:x.id}}).then(()=>p.sessionInstance.delete({where:{id:x.id}})))))).then(()=>p.scheduleSlot.delete({where:{id:'$SLOT_ID'}})).then(()=>1)" >/dev/null
+# تنظيف سلوت الاختبار والحصة والمجموعة الحصرية (الاختبار وراه اختبار — مالهاش لازمة في الداتا)
+dbq "p.studentTransaction.deleteMany({where:{sessionId:'$SESSION_ID'}}).then(()=>p.attendanceEvent.deleteMany({where:{sessionId:'$SESSION_ID'}})).then(()=>p.studentGroup.deleteMany({where:{groupId:'$GID',studentId:{in:['$SID','$DIFF_SID','$THIRD_SID','$PARA_SID']}}})).then(()=>p.sessionInstance.findMany({where:{scheduleId:'$SLOT_ID'}}).then(ss=>Promise.all(ss.map(x=>p.attendance.deleteMany({where:{sessionId:x.id}}).then(()=>p.sessionInstance.delete({where:{id:x.id}})))))).then(()=>p.scheduleSlot.delete({where:{id:'$SLOT_ID'}}).catch(0)).then(()=>p.group.delete({where:{id:'$GID'}}).catch(0)).then(()=>1)" >/dev/null
 ok "test slot + session + charges cleaned up"
 
 # =============================================================
