@@ -56,9 +56,14 @@ export const POST = handler(async (req: Request) => {
       return fail("خدمة التعرف على الصوت مشغولة دلوقتي (تجاوزنا حد الطلبات) — استنى دقيقة وجرب تاني.", 429);
     }
     if (/stt-all-providers-failed/.test(msg)) {
-      // رمز تشخيص آمن (كود HTTP أو نوع الشبكة بس — من غير أي مفتاح أو جسم الرد) عشان الدعم يعرف مين اللي وقع
-      const code = msg.match(/groq-stt-(\d{3})/)?.[1] ?? (/groq: (TypeError|AbortError|FetchError)/.test(msg) ? "NET" : undefined);
-      return fail(`خدمة التعرف على الصوت مش متاحة دلوقتي — جرب تاني بعد لحظات أو اكتب طلبك.${code ? ` (رمز: STT-${code})` : ""}`, 502);
+      // سبب تشخيصي آمن: أكواد HTTP وأجسام أخطاء المزودين العامة — والمفاتيح بتنضف قبل العرض
+      const reason = msg
+        .replace(/gsk_[A-Za-z0-9_-]+/g, "***")
+        .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "***")
+        .replace(/\s+/g, " ")
+        .replace(/^stt-all-providers-failed:\s*/, "")
+        .slice(0, 220);
+      return fail(`خدمة التعرف على الصوت مش متاحة دلوقتي — جرب تاني بعد لحظات أو اكتب طلبك. (${reason})`, 502);
     }
     return fail("مقدرتش أحوّل التسجيل لنص — جرب تسجل تاني، ولو فضلت المشكلة اكتب طلبك.", 502);
   }
