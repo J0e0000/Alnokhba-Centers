@@ -11,6 +11,30 @@ const SESSION_DAYS = 7;
 // الكوكيز تتسجل Secure على Vercel (HTTPS دايمًا) — محليًا http فبنسيبها زي ما هي
 const COOKIE_SECURE = process.env.VERCEL === "1";
 
+/**
+ * خيارات كوكي الجلسة — بتصلّح سببين حقيقيين لـ «بيسجل دخول ويطلع لوحده»:
+ * 1) maxAge بدل expires: الـ expires تاريخ مطلق من ساعة السيرفر — لو ساعة جهاز
+ *    المستخدم قدّام، المتصفح بيمسح الكوكي فورًا. الـ maxAge بيتحسب من ساعة
+ *    المتصفح نفسه فمش بيتأثر بأي انحراف.
+ * 2) الإنتاج: SameSite=None + Partitioned (CHIPS) — عشان الجلسة تشتغل جوه
+ *    الشاشات المدمجة (معاينة الشات/الويب فيو) بدل ما الكوكي يتمنع ويحصل خروج فوري.
+ *    التطوير على http: المتصفح بيرفض None من غير Secure → Lax زي ما هي.
+ */
+function sessionCookieOptions(expiresAt: Date) {
+  const maxAge = Math.max(60, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
+  if (!COOKIE_SECURE) {
+    return { httpOnly: true, sameSite: "lax" as const, path: "/", maxAge };
+  }
+  return {
+    httpOnly: true,
+    sameSite: "none" as const,
+    secure: true,
+    partitioned: true,
+    path: "/",
+    maxAge,
+  };
+}
+
 // ============================= SUPPORT ACCESS (دخول الدعم الفني) =============================
 // الأدمن بيدخل باسم مستخدم (مدير/استقبال) لمساعدته — من غير ما يعرف أو يشوف الباسورد.
 // ٣ كوكيز: جلسة الموظف المؤقتة + توكن رجوع الأدمن (httpOnly) + معرّف جلسة الدعم للبانر.
@@ -92,13 +116,7 @@ export async function createSession(userId: string): Promise<string> {
   await db.authSession.deleteMany({ where: { expiresAt: { lt: new Date() } } }).catch(() => {});
   await db.authSession.create({ data: { token, userId, expiresAt } });
   const jar = await cookies();
-  jar.set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: COOKIE_SECURE,
-    path: "/",
-    expires: expiresAt,
-  });
+  jar.set(SESSION_COOKIE, token, sessionCookieOptions(expiresAt));
   return token;
 }
 
@@ -165,19 +183,10 @@ export async function createSupportSession(
   const jar = await cookies();
   const adminToken = jar.get(SESSION_COOKIE)?.value;
   if (adminToken) {
-    jar.set(ADMIN_RETURN_COOKIE, adminToken, {
-      httpOnly: true, sameSite: "lax", secure: COOKIE_SECURE, path: "/",
-      expires: expiresAt,
-    });
+    jar.set(ADMIN_RETURN_COOKIE, adminToken, sessionCookieOptions(expiresAt));
   }
-  jar.set(SESSION_COOKIE, token, {
-    httpOnly: true, sameSite: "lax", secure: COOKIE_SECURE, path: "/",
-    expires: expiresAt,
-  });
-  jar.set(SUPPORT_COOKIE, support.id, {
-    httpOnly: true, sameSite: "lax", secure: COOKIE_SECURE, path: "/",
-    expires: expiresAt,
-  });
+  jar.set(SESSION_COOKIE, token, sessionCookieOptions(expiresAt));
+  jar.set(SUPPORT_COOKIE, support.id, sessionCookieOptions(expiresAt));
 
   return { supportId: support.id, expiresAt: expiresAt.toISOString() };
 }

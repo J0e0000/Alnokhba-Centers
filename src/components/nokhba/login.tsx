@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { LogIn, ShieldCheck, UserRound, KeyRound, Smartphone, GraduationCap, Briefcase, ArrowRight, UserPlus, Loader2 } from "lucide-react";
 import { api, normalizeDigits, type SessionUser } from "./lib";
 import { AlNokhbaMark } from "./shared";
+import { ExternalLink, TriangleAlert } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -18,6 +19,12 @@ export function LoginScreen({ onLogin }: { onLogin: (user: SessionUser) => void 
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [signupOpen, setSignupOpen] = useState(false);
+  // الصفحة مفتوحة جوه إطار مدمج (معاينة شات/ويب فيو)؟ — سفاري ومتصفحات صارمة بتمنع
+  // كوكي الجلسة جوه الإطارات فبيحصل «دخول → خروج فوري»؛ الحل المضمون تبويب مستقل
+  const [embedded, setEmbedded] = useState(false);
+  useEffect(() => {
+    try { setEmbedded(window.self !== window.top); } catch { setEmbedded(true); }
+  }, []);
 
   async function submit(e?: React.FormEvent) {
     e?.preventDefault();
@@ -59,6 +66,28 @@ export function LoginScreen({ onLogin }: { onLogin: (user: SessionUser) => void 
             </p>
           </div>
         </div>
+
+        {/* ===== تحذير الإطار المدمج ===== */}
+        {embedded && (
+          <div className="mb-3 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-amber-900">
+            <p className="flex items-center gap-2 text-sm font-extrabold">
+              <TriangleAlert className="w-4.5 h-4.5 shrink-0" />
+              النظام مفتوح جوه صفحة تانية (إطار مدمج)
+            </p>
+            <p className="mt-1.5 text-xs font-bold leading-relaxed">
+              بعض المتصفحات بتمنع الجلسة جوه الإطارات المدمجة — فبتحصل «دخول وخروج فوري».
+              لو حصلك كده، افتح النظام في تبويب مستقل وهتشتغل عادي.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.open(window.location.href, "_blank", "noopener")}
+              className="mt-2.5 h-10 w-full rounded-xl bg-amber-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-amber-600 transition active:scale-[0.99]"
+            >
+              <ExternalLink className="w-4 h-4" />
+              افتح في تبويب مستقل
+            </button>
+          </div>
+        )}
 
         {/* ===== تسجيل الدخول ===== */}
         <form onSubmit={submit} className="nk-glass rounded-3xl p-6 space-y-4">
