@@ -42,6 +42,11 @@ export const GET = handler(async () => {
       keyTail: center?.agentLlmApiKey ? center.agentLlmApiKey.slice(-4) : "",
       envConfigured: !!(process.env.AGENT_LLM_BASE_URL?.trim() && process.env.AGENT_LLM_MODEL?.trim()),
     },
+    // تحويل الصوت لنص (whisper) — نفس مفتاح العقل بيشتغل، الموديل قابل للتهيئة
+    agentStt: {
+      model: center?.agentSttModel ?? "",
+      envConfigured: !!process.env.AGENT_STT_API_KEY?.trim(),
+    },
   });
 });
 
@@ -54,6 +59,7 @@ type BrandBody = {
   waLowBalanceThreshold?: number; waConsentNote?: string | null;
   // زكي — العقل الذكي (OpenAI-compatible) — المفتاح سيرفري بس ومش بيرجع للعرض
   agentLlmBaseUrl?: string; agentLlmModel?: string; agentLlmApiKey?: string; agentLlmClearKey?: boolean;
+  agentSttModel?: string;
 };
 
 /** PATCH /api/settings — update center branding (manager) */
@@ -143,6 +149,12 @@ export const PATCH = handler(async (req: Request) => {
     agentData.agentLlmApiKey = k;
   }
   if (body.agentLlmClearKey === true) agentData.agentLlmApiKey = null;
+  if (body.agentSttModel !== undefined) {
+    const m = String(body.agentSttModel).trim();
+    if (m.length > 120) throw new Error("اسم موديل الصوت طويل جدًا.");
+    if (m && !/^[a-zA-Z0-9._\/-]+$/.test(m)) throw new Error("اسم موديل الصوت مش مكتوب صح.");
+    agentData.agentSttModel = m || null;
+  }
   if (Object.keys(agentData).length) {
     await db.center.update({ where: { id: center.id }, data: agentData as never });
     resetLLMCache(); // التغيير يبقى شغال فورًا من غير ما نستنى التخزين المؤقت
@@ -153,6 +165,7 @@ export const PATCH = handler(async (req: Request) => {
         agentLlmModel: agentData.agentLlmModel ?? undefined,
         agentLlmApiKey: agentData.agentLlmApiKey ? "***" : undefined,
         agentLlmClearKey: body.agentLlmClearKey === true ? true : undefined,
+        agentSttModel: agentData.agentSttModel ?? undefined,
       },
       reason: "إعدادات العقل الذكي لزكي",
     });

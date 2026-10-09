@@ -39,6 +39,7 @@ model Center {
   agentLlmBaseUrl String?
   agentLlmModel   String?
   agentLlmApiKey  String? // بتتخزن سيرفري بس — مش بترجع للعميل أبدًا (GET بيرجع ذيلها بس)
+  agentSttModel   String? // موديل تحويل الصوت لنص (whisper) — فاضي = الافتراضي whisper-large-v3-turbo
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

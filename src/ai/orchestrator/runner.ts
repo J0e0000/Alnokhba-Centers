@@ -356,7 +356,9 @@ async function agentLoop(opts: {
     if (!turn) {
       provider = "fallback";
       unmapped = true;
-      turn = fallbackUnknown(userText);
+      // الاقتراحات من الأدوات المتاحة فعلًا للحساب ده (spec Phase 9) — مش كتالوج ثابت
+      const availTools = await availableToolsFor({ user, centerId: user.centerId, taskId }).catch(() => []);
+      turn = fallbackUnknown(userText, availTools.map((t) => ({ name: t.name, usageHint: t.usageHint })));
     }
     if (provider !== "llm" && taskRow?.provider !== provider) {
       await db.agentTask.update({ where: { id: taskId }, data: { provider } }).catch(() => {});
