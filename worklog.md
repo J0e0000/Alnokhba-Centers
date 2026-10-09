@@ -498,3 +498,19 @@ Work Log:
 
 Stage Summary:
 - whisper-large-v3-turbo شغال على الإنتاج بمفتاح سيرفري وموديل قابل للتهيئة (العمود معلق المزامنة — يدوي من docs/PRODUCTION-DB.md أو أول db push ناجح). دقة الإنتاج اتجسدت بحرفية على صوت مفهوم. الصوت في الـ UI بيمر على مراجعة المستخدم قبل التنفيذ. الإنتاج اشفى من كسر GET /api/settings بعد ما العميل اتطابق مع الداتا.
+
+---
+Task ID: login-fix
+Agent: Super Z (main)
+Task: «Can't sign in» — تشخيص دخول الإنتاج وإصلاحه
+
+Work Log:
+- تشخيص HTTP أولًا: POST /api/auth بكوكي + بدونه، وراوخ الكوكي، وGET /api/auth بجلسة وبدونها، وفحص Set-Cookie (nokhba_session; Secure; HttpOnly; SameSite=lax) — كله سليم، والدخول الصحيح شغال.
+- محاكاة متصفح حقيقية (agent-browser) على الإنتاج: دخول صحيح → /app تمام. دخول غلط → **الصفحة بتعمل reload صامت من غير أي رسالة** — ده اللي بيحسس المستخدم إن «الدخول مش شغال».
+- الجذر: في src/components/nokhba/lib.ts — دالة api() كانت بتعمل window.location.reload() على أي 401 قبل ما توصل رسالة السيرفر، والدخول الغلط بيرجّع 401 («اسم المستخدم أو كلمة السر غلط») فالرسالة بتنبعض والفورم بيضفر.
+- الإصلاح: isLoginAttempt (POST /api/auth بـ username+password من غير action) مستثنى من الريفرش — رسالة السيرفر بتطلع toast، وباقي حالات انتهاء الجلسة (update-prefs/support-exit/أي API تاني) زي ما هي.
+- فحص بقية المتصلين بـ /api/auth (receipt-actions=update-prefs، shell=support-exit/logout، academia=logout، signup) — كلهم مستثنين صح. papi بتاعة البورتال ملهاش نفس النمط. Toaster عام في الـ root layout فالرسالة بتظهر على /login.
+- VERIFY: tsc 0 · eslint نظيف · build ✓ · محلي: غلط → toast «اسم المستخدم أو كلمة السر غلط.» + صح → /app · push 05a062b → إنتاج: نفس السيناريوهين اتجسدا على الإنتاج.
+
+Stage Summary:
+- الدخول كان شغال بيانات صحيحة؛ المشكلة إن أي غلطة كانت بتتريفرش صامت بدون رسالة (وشكلها «مش قادر أسجل»). دلوقتي غلط البيانات = رسالة واضحة والفورم محتفظ ببياناته، وصح البيانات = دخول طبيعي. اتجسد الاتنين على الإنتاج.
