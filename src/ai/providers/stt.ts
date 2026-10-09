@@ -46,20 +46,34 @@ async function groqConfig(centerId?: string): Promise<GroqConfig | null> {
   }
   if (centerId) {
     try {
+      // الأعمدة القديمة (موجودة في كل قواعد البيانات) في استعلام مستقل —
+      // وagentSttModel في استعلام لوحده: لو العمود لسه متزامنش على الإنتاج
+      // (db push بيتعطل أحيانًا على pgbouncer) الاستعلام بيفشل بسالم
+      // والافتراضي whisper بيتستخدم — بدل ما Groq كله يتخطى.
       const center = await db.center.findUnique({
         where: { id: centerId },
-        select: { agentLlmBaseUrl: true, agentLlmApiKey: true, agentSttModel: true },
+        select: { agentLlmBaseUrl: true, agentLlmApiKey: true },
       });
       if (center?.agentLlmApiKey?.trim()) {
+        let sttModel: string | null = null;
+        try {
+          const c2 = await db.center.findUnique({
+            where: { id: centerId },
+            select: { agentSttModel: true },
+          });
+          sttModel = c2?.agentSttModel ?? null;
+        } catch {
+          // العمود مش متزامن بعد — الموديل الافتراضي بيتستخدم
+        }
         return {
           baseUrl: envBase || center.agentLlmBaseUrl?.trim() || DEFAULT_GROQ_BASE,
           apiKey: center.agentLlmApiKey.trim(),
-          model: envModel || center.agentSttModel?.trim() || DEFAULT_STT_MODEL,
+          model: envModel || sttModel?.trim() || DEFAULT_STT_MODEL,
           source: "center",
         };
       }
     } catch {
-      // عمود/جدول ناقص — نكمل لـ ZAI بدل ما نكسر الصوت
+      // جدول/عمود ناقص — نكمل لـ ZAI بدل ما نكسر الصوت
     }
   }
   return null;
