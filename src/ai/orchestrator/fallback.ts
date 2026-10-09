@@ -197,6 +197,8 @@ const RE = {
   absentToday: /(من|مين|انهي|ايه|فين).*(غايب|غايبين|هنحضرش|مش حاضر|مجاش|ماجاش|ناقص)|غايبين.*(النهارده|اليوم)|الغايبين|who('s| is| didn'?t| has)?\s*(absent|missing|not coming|skipping)|didn'?t come/,
   frequentAbsent: /(غايب|غاب|غياب|متكرر).*(كتير|مرات|متكرر|الاسبوع|الشهر)|(اكثر من).*(مره|مرات|غياب)|غيابهم|الغياب المتكرر|frequent(ly)? (absent|missing)|absences|kept missing/,
   groupAttendance: /نسبه حضور|حضور (مجموعه|group)|attendance (rate|of|for)/,
+  // تحليل الأداء — أداة reports.analyze (مقارنات فترات + غياب مجموعات + تحصيل + متابعة)
+  analyze: /حلل|تحليل (اداء|الاداء|السنتر|المركز|الاسبوع|الشهر)|اداء (السنتر|المركز|الاسبوع|الشهر)|قارن|مقارنه|اكتر مجموعه.*?(غياب|غايب)|الاكتر غياب|تحصيلها اقل|تحصيل اقل|تحصيل الاسبوع|تحصيل الشهر|من اول الشهر|ما ?اتقفلتش|لسه مفتوح|حصص مفتوح|analyze|performance|compare|unclosed/,
   todaySessions: /كام (حصه|حصة)|ايه (الحصص|حصص)|حصص النهارده|جدول النهارده|how many (sessions|classes)|sessions today|schedule today/,
   todaySummary: /(النهارده|اليوم|today).*(ايه|ملخص|حصل|مهم|وريني|بصلي|وضع|اخبار|مشهور)|ايه اللي حصل|ملخص (اليوم|النهارده)|حضور (النهارده|اليوم)|today'?s? (summary|overview)|what happened today|وريني الملخص|(show|give) me today|today.*(summary|overview|attendance)/,
   groupsList: /المجموعات|مجموعاتي|مجموعات السنتر|كام مجموعه|غروبات|my groups|show( me)? groups|list groups/,
@@ -390,6 +392,20 @@ export function fallbackPlan(
     return {
       tool: { name: "group.enroll_student", args: { studentId: student.id, groupId: g.id } },
       say: `جاهز أسجل ${student.name} في ${g.subject} — ${g.name}.`,
+    };
+  }
+
+  /* ================= تحليل أداء الفترة (reports.analyze) — قبل تقرير الطالب عشان «حلل/قارن» متلخبطش معه ================= */
+  // لو الطلب عن طالب بالاسم/المفتوح على الشاشة → تقرير الطالب هو الصح، مش تحليل السنتر
+  if ((RE.analyze.test(t) || (!!gi && RE.analyze.test(gi))) && !(isReport && (ctx.selectedStudent || extractName(text)))) {
+    const prevAna = obsOf(observations, "reports.analyze");
+    if (prevAna) return doneWith(prevAna, "خلصت — التحليل فوق.");
+    // الفترة: شهر لو متذكر، يوم لو النهارده، وغير كده أسبوع
+    const period = /(الشهر|month)/.test(t) ? "month" : /(النهارده|اليوم|today)/.test(t) ? "day" : "week";
+    return {
+      say: "هعمل تحليل للفترة دي ومقارنة باللي قبلها: حضور وغياب، أكتر المجموعات غيابًا، التحصيل، الحصص اللي لسه مفتوحة، والطلبة المحتاجين متابعة.",
+      plan: ["أجيب بيانات الفترة", "أقارنها بالفترة اللي فاتت", "ألخصلك النتايج والتوصيات"],
+      tool: { name: "reports.analyze", args: { period } },
     };
   }
 
@@ -628,13 +644,35 @@ export function fallbackPlan(
   return null;
 }
 
-/** رد الوكيل لما الفول باك ميعرفش الطلب — بيقول الحقيقة ويقترح (spec §40) */
-export function fallbackUnknown(text: string): AgentTurn {
+/** رد الوكيل لما الفول باك ميعرفش الطلب — بيقول الحقيقة ويقترح (spec §40/Phase 9).
+ *  الاقتراحات بتتولد من الأدوات اللي متاحة فعلًا للحساب ده (usageHint أمثلة) —
+ *  مش كتالوج ثابت — فالمستخدم مش بيشوف حاجات هتتحجب بصلاحياته.
+ *  لو مفيش أدوات متمررة → كتالوج افتراضي مضغوط. */
+export function fallbackUnknown(text: string, tools?: { name: string; usageHint?: string }[]): AgentTurn {
   const ar = hasAr(text);
-  return {
-    say: ar
-      ? "الطلب ده مش من الحاجات اللي أقدر أعملها بالظبط. أقدر أساعدك في:\n• «سجل حضور أحمد ومحمد» · «الغايبين عمر وسالم — سجل الباقي» · «مين غايب النهارده؟»\n• «افتح حصة رياضيات» · «اقفل الحصة» · «ملخص النهاردة» · «عندنا إيه بكرة؟»\n• «سجل دفعة 50 جنيه لأحمد» · «حصّلنا كام النهارده؟»\n• «اعمل مجموعة رياضيات للصف الأول الثانوي بسعر 60» · «ضيف طالب جديد»\n• «هاتلي أحمد» · «تقرير أحمد» · «سجل أحمد في مجموعة B»\nولو الصيغة مختلفة، المدير يقدر يوصلني بموديل ذكي من الإعدادات ← «زكي — العقل الذكي» وأندهم أي طلب بالكلام العادي."
-      : "I can't map this request yet. I can help with: opening sessions, today's absentees and summary, recording payments, creating groups and students, search and reports. A manager can also connect a smart model from Settings → Zaki Brain so I understand any phrasing.",
-    done: true,
-  };
+  const staticAr =
+    "الطلب ده مش من الحاجات اللي أقدر أعملها بالظبط. أقدر أساعدك في:\n• «سجل حضور أحمد ومحمد» · «الغايبين عمر وسالم — سجل الباقي» · «مين غايب النهارده؟»\n• «افتح حصة رياضيات» · «اقفل الحصة» · «ملخص النهاردة» · «عندنا إيه بكرة؟»\n• «سجل دفعة 50 جنيه لأحمد» · «حصّلنا كام النهارده؟»\n• «اعمل مجموعة رياضيات للصف الأول الثانوي بسعر 60» · «ضيف طالب جديد»\n• «هاتلي أحمد» · «تقرير أحمد» · «سجل أحمد في مجموعة B»\nولو الصيغة مختلفة، المدير يقدر يوصلني بموديل ذكي من الإعدادات ← «زكي — العقل الذكي» وأندهم أي طلب بالكلام العادي.";
+  const staticEn =
+    "I can't map this request yet. I can help with: opening sessions, today's absentees and summary, recording payments, creating groups and students, search and reports. A manager can also connect a smart model from Settings → Zaki Brain so I understand any phrasing.";
+
+  if (tools?.length) {
+    // أمثلة حقيقية من الكتالوج الفعلي — أول مثال من usageHint لكل أداة (مكركبش)
+    const examples: string[] = [];
+    for (const t of tools) {
+      if (!t.usageHint) continue;
+      const first = t.usageHint.split(" / ")[0]?.trim().replace(/[«»"]/g, "");
+      if (first && !examples.some((e) => e === first)) examples.push(first);
+      if (examples.length >= 9) break;
+    }
+    if (examples.length) {
+      const lines = examples.map((e) => `• «${e}»`).join("\n");
+      return {
+        say: ar
+          ? `الطلب ده مش من الحاجات اللي أقدر أعملها بالظبط بدورك الحالي. اللي أقدر أعمله دلوقتي:\n${lines}\nولو محتاج صيغة مختلفة، قولني بطريقتك — ولو الطلب محتاج صلاحية أعلى، هقولك بصراحة.`
+          : `I can't map this request yet. Here's what I can actually do right now:\n${lines}\nJust ask in your own words — and if something needs higher permissions, I'll say so honestly.`,
+        done: true,
+      };
+    }
+  }
+  return { say: ar ? staticAr : staticEn, done: true };
 }

@@ -3,6 +3,7 @@ import "./students";
 import "./groups";
 import "./attendance";
 import "./reports";
+import "./analytics";
 import "./dashboard";
 import "./schedule";
 import "./finance";

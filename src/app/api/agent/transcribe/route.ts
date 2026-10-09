@@ -1,5 +1,6 @@
 import { handler, readJson, ok, fail } from "@/lib/api";
 import { requireCenterUser, rateLimit } from "@/lib/auth";
+import { transcribeAudio } from "@/ai/providers/stt";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -7,12 +8,14 @@ export const maxDuration = 60;
 /* ============================================================
    POST /api/agent/transcribe — تحويل الصوت لنص (سيرفري)
    body: { audio: string(base64), mime?: string }
-   بياخد تسجيل المايك من المتصفح (WAV/WebM) ويرجّع النص.
-   الفرق عن Web Speech API بتاع المتصفح: ده شغال على كل المتصفحات
-   (حتى اللي بتاعها بيفشل أو مفيش دعم عربي) لأن التعرف بيحصل سيرفري.
+   بياخد تسجيل المايك من المتصفح (WAV) ويرجّع النص.
+   المزودين بالأولوية: Groq whisper (مفتاح سيرفري بس، موديل قابل
+   للتهيئة من الإعدادات) ← ZAI المدمج. بنستخدم endpoint
+   التسجيل (transcription) مش الترجمة — عشان كلام المستخدم يفضل بلغته.
+   raw audio مش بيتخزن في أي حاجة — بيتبعث للتعرف وبيتم إتمامه.
 ============================================================ */
 
-const MAX_AUDIO_BYTES = 8 * 1024 * 1024; // 8MB ≈ 4 دقايق تسجيل مضغوط
+const MAX_AUDIO_BYTES = 8 * 1024 * 1024; // 8MB ≈ 8 دقايق WAV 16kHz مونو
 
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
@@ -31,19 +34,30 @@ export const POST = handler(async (req: Request) => {
   if (approxBytes < 800) {
     return fail("الميكروفون مدكوش صوت — قرب من المايك وجرب تاني.", 400);
   }
+  // فحص المدة من حجم WAV (16kHz × 2 bytes) — طلب أطول من حد التسجيل = حاجة غلط
+  const approxSeconds = approxBytes / 32_000;
+  if (approxSeconds > 90) {
+    return fail("التسجيل أطول من الحد المسموح (90 ثانية) — قسّمه لطلبات أقصر.", 413);
+  }
+
+  const mime = String(body.mime ?? "audio/wav").slice(0, 60);
+  if (mime && !/^audio\//i.test(mime)) {
+    return fail("صيغة الملف مش صوت — سجل من المايك تاني.", 415);
+  }
 
   try {
-    const ZAI = (await import("z-ai-web-dev-sdk")).default;
-    const zai = await ZAI.create();
-    const result = await zai.audio.asr.create({ file_base64: base64 });
-    const text = String(result?.text ?? "").trim();
-    if (!text) {
-      return fail("مقدرتش أسمع كلام واضح — قرب من المايك واتكلم بوضوح وجرب تاني.", 422);
-    }
-    return ok({ text });
+    const r = await transcribeAudio(base64, mime, user.centerId);
+    return ok({ text: r.text, provider: r.provider, model: r.model });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[agent:transcribe] failed:", msg.slice(0, 200));
-    return fail("خدمة التعرف على الصوت مش متاحة دلوقتي — جرب تاني بعد لحظات أو اكتب طلبك.", 502);
+    // أخطاء المزود الخارجي — رسالة عربية مفهومة من غير تفاصيل تقنية ولا مفاتيح
+    if (/rate.?limit|429/i.test(msg)) {
+      return fail("خدمة التعرف على الصوت مشغولة دلوقتي (تجاوزنا حد الطلبات) — استنى دقيقة وجرب تاني.", 429);
+    }
+    if (/stt-all-providers-failed/.test(msg)) {
+      return fail("خدمة التعرف على الصوت مش متاحة دلوقتي — جرب تاني بعد لحظات أو اكتب طلبك.", 502);
+    }
+    return fail("مقدرتش أحوّل التسجيل لنص — جرب تسجل تاني، ولو فضلت المشكلة اكتب طلبك.", 502);
   }
 });

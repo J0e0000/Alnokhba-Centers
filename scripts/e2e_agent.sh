@@ -362,6 +362,31 @@ dbq "p.studentTransaction.deleteMany({where:{sessionId:'$SESSION_ID'}}).then(()=
 ok "test slot + session + charges cleaned up"
 
 # =============================================================
+echo "===== 6c) تحليل الأداء — أداة reports.analyze (مقارنة فترات حتمية) ====="
+agent '{"text":"حلل أداء السنتر الأسبوع ده","context":{"view":"reports"}}'
+has '"tool":"reports.analyze"'
+has '"type":"done"'
+ANA_MSG=$(echo "$EVENTS" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{for(const l of d.split('\n')){try{const e=JSON.parse(l);if(e.type==='message'&&e.text)console.log(e.text)}catch{}}})")
+if echo "$ANA_MSG" | grep -qE "أسبوع|7 أيام|آخر"; then ok "summary mentions the period"; else bad "summary missing period (got: $(echo "$ANA_MSG" | head -c 80))"; fi
+
+echo "===== 6d) مقارنة شهرية + تحصيل من أول الشهر ====="
+agent '{"text":"قارن الغياب الشهر ده بالشهر اللي فات","context":{"view":"reports"}}'
+has '"tool":"reports.analyze"'
+ANA2=$(echo "$EVENTS" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{for(const l of d.split('\n')){try{const e=JSON.parse(l);if(e.type==='step'&&e.summary)console.log(e.summary)}catch{}}})")
+echo "$ANA2" | grep -q "الشهر" && ok "month period detected" || bad "month period missing"
+
+echo "===== 6e) مدرس من غير صلاحية → التحليل محجوب بصراحة (مش أرقام) ====="
+login agent_teach_t
+agent '{"text":"حلل أداء السنتر الأسبوع ده","context":{"view":"reports"}}'
+# طبقتين حماية: الكتالوج متفلتر (الموديل مش بيشوفها) + authorizeAndValidate بترفض التنفيذ
+if echo "$EVENTS" | grep -q 'صلاحية'; then ok "blocked server-side with permission error"; else
+  if echo "$EVENTS" | grep -q '"tool":"reports.analyze"'; then bad "reports.analyze ran for teacher without permission"; else ok "reports.analyze filtered from teacher catalog (no call at all)"; fi
+fi
+if echo "$EVENTS" | grep -q '"type":"cards"'; then bad "teacher got data cards from analytics"; else ok "no analytics data cards for teacher"; fi
+has '"type":"done"'
+login manager
+
+# =============================================================
 echo "===== 7) تاريخ المهام ====="
 TASKS=$(curl -s -b "$JAR" "$BASE/api/agent/tasks")
 echo "$TASKS" | grep -q '"tasks"' && ok "tasks list" || bad "tasks list"

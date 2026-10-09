@@ -249,7 +249,7 @@ export function StepChip({ step }: { step: StepItem }) {
 }
 
 /* ---------- كارت خطأ مع إجراءات (spec §16) ---------- */
-export function ErrorCard({ text, onRetry }: { text: string; onRetry?: () => void }) {
+export function ErrorCard({ text, onRetry, retryLabel }: { text: string; onRetry?: () => void; retryLabel?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="rounded-2xl border-2 border-rose-300 dark:border-rose-800 bg-rose-50/70 dark:bg-rose-950/20 p-3.5 space-y-2">
@@ -260,7 +260,7 @@ export function ErrorCard({ text, onRetry }: { text: string; onRetry?: () => voi
       {onRetry && (
         <div className="flex gap-2">
           <button onClick={onRetry} className="rounded-xl nk-brand-bg text-white px-4 py-2 text-xs font-black active:scale-[0.98] transition">
-            إعادة المحاولة
+            {retryLabel ?? "إعادة المحاولة"}
           </button>
         </div>
       )}

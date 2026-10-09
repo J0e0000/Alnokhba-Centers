@@ -29,7 +29,7 @@ type ChatItem =
   | { id: string; kind: "step"; step: StepItem }
   | { id: string; kind: "cards"; cards: AgentCard[] }
   | { id: string; kind: "confirmation"; confirmationId: string; summary: string; risk: string }
-  | { id: string; kind: "error"; text: string; retry?: boolean }
+  | { id: string; kind: "error"; text: string; retry?: boolean; voiceRetry?: boolean }
   | { id: string; kind: "success"; text: string };
 
 type AgentEvent = {
@@ -171,6 +171,8 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
   const [hasTts, setHasTts] = useState(false);
   const [ttsOn, setTtsOn] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
+  const [micStarting, setMicStarting] = useState(false);
+  const [voiceDraft, setVoiceDraft] = useState(false); // نص صوتي مستني مراجعة المستخدم قبل الإرسال
 
   const taskIdRef = useRef<string | null>(null);
   const lastUserText = useRef<string>("");
@@ -182,6 +184,7 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
   const manualStopRef = useRef(false);
   const lastAgentTextRef = useRef("");
   const recordingRef = useRef<RecordingSession | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const speakAudioRef = useRef<HTMLAudioElement | null>(null);
   const silenceTimerRef = useRef(0);
   const levelRef = useRef({ lastLoud: 0, started: 0 });
@@ -369,6 +372,7 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
     shutUp(); // صوت جديد بيلغي أي رد سابق لسه بيتقري
     lastUserText.current = t;
     setInput("");
+    setVoiceDraft(false); // النص اتبعت — المراجعة خلصت
     push({ id: crypto.randomUUID(), kind: "user", text: t });
     setMode("chat");
     void runSSE("/api/agent/message", {
@@ -401,8 +405,8 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
      الأساس: نسجل WAV من المايك ونحوّله نص على السيرفر (/api/agent/transcribe) —
      التعرف بيحصل سيرفري بعيد عن مشاكل متصفح معينة أو غياب دعم العربي.
      الفول باك: التعرف جوه المتصفح (Web Speech) لو السيرفر مش متاح. */
-  const pushVoiceError = useCallback((text: string) => {
-    push({ id: crypto.randomUUID(), kind: "error", text });
+  const pushVoiceError = useCallback((text: string, canRetryVoice = false) => {
+    push({ id: crypto.randomUUID(), kind: "error", text, retry: false, voiceRetry: canRetryVoice });
   }, [push]);
 
   const clearSilenceTimer = useCallback(() => {
@@ -418,7 +422,7 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
     setState("TRANSCRIBING");
     try {
       const { base64 } = await sess.stop();
-      const d = await api<{ text: string }>("/api/agent/transcribe", {
+      const d = await api<{ text: string; provider?: string; model?: string }>("/api/agent/transcribe", {
         method: "POST",
         body: { audio: base64 },
         silent: true,
@@ -426,14 +430,21 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
       const text = String(d.text ?? "").trim();
       setTranscribing(false);
       setState("IDLE");
-      if (text) send(text);
-      else pushVoiceError("مقدرتش أسمع كلام واضح — قرّب من المايك واتكلم بعدل وجرب تاني.");
+      if (text) {
+        // مراجعة قبل الإرسال (spec 8C): النص بيروح مربع الكتابة — المستخدم يراجع/يعدل ويبعت بنفسه.
+        // الصوت مش بيتنفذ على طول — نفس قواعد الأمان بتاعة الكتابة بتنطبق على الطلبات الصوتية.
+        setInput(text);
+        setVoiceDraft(true);
+        window.setTimeout(() => inputRef.current?.focus(), 60);
+      } else {
+        pushVoiceError("مقدرتش أسمع كلام واضح — قرّب من المايك واتكلم بعدل وجرب تاني.", true);
+      }
     } catch (e) {
       setTranscribing(false);
       setState("IDLE");
-      pushVoiceError(e instanceof Error && e.message ? e.message : "حصلت مشكلة في تحويل الصوت — جرب تاني.");
+      pushVoiceError(e instanceof Error && e.message ? e.message : "حصلت مشكلة في تحويل الصوت — جرب تاني.", true);
     }
-  }, [send, pushVoiceError]);
+  }, [pushVoiceError]);
 
   /** فول باك — التعرف جوه المتصفح (Chrome/Edge غالبًا) */
   const startBrowserRecognition = useCallback(() => {
@@ -463,7 +474,12 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
       rec.onend = () => {
         setListening(false);
         const t = finalTranscriptRef.current.trim();
-        if (t && !manualStopRef.current) send(t);
+        if (t && !manualStopRef.current) {
+          // فول باك المتصفح كمان بيمر على المراجعة قبل الإرسال
+          setInput(t);
+          setVoiceDraft(true);
+          window.setTimeout(() => inputRef.current?.focus(), 60);
+        }
       };
       rec.onerror = (ev) => {
         setListening(false);
@@ -478,11 +494,12 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
       setListening(false);
       pushVoiceError("مقدرتش شغّل المايك — قفل أي تاب تاني بيستخدم المايك وجرب تاني.");
     }
-  }, [pushVoiceError, send]);
+  }, [pushVoiceError]);
 
   const toggleMic = useCallback(() => {
-    if (listening || transcribing) {
-      // الضغطة التانية = خلصت الكلام → تحويل لنص وإرسال فوري
+    if (listening || transcribing || micStarting) {
+      if (micStarting) return; // لسه بنطلب الإذن — ممنوع مسجّلين متوازيين
+      // الضغطة التانية = خلصت الكلام → تحويل لنص ومراجعة قبل الإرسال
       manualStopRef.current = true;
       clearSilenceTimer();
       const sess = recordingRef.current;
@@ -497,11 +514,13 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
     }
     // لو زكي بيتكلم دلوقتي — اسكت قبل ما نسمع
     shutUp();
+    setMicStarting(true);
     levelRef.current = { lastLoud: Date.now(), started: Date.now() };
     void startMicRecording({
       onLevel: (level) => { if (level > 0.05) levelRef.current.lastLoud = Date.now(); },
     })
       .then((sess) => {
+        setMicStarting(false);
         recordingRef.current = sess;
         manualStopRef.current = false;
         setListening(true);
@@ -518,10 +537,11 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
         }, 250);
       })
       .catch(() => {
+        setMicStarting(false);
         // تسجيل WAV مش متاح (إذن/جهاز) → فول باك لتعرف المتصفح لو موجود
         startBrowserRecognition();
       });
-  }, [listening, transcribing, finalizeRecording, shutUp, startBrowserRecognition, clearSilenceTimer]);
+  }, [listening, transcribing, micStarting, finalizeRecording, shutUp, startBrowserRecognition, clearSilenceTimer]);
 
   const toggleTts = useCallback(() => {
     setTtsOn((v) => {
@@ -738,7 +758,7 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
                         </button>
                       </div>
                     ) : (
-                      items.map((it) => <ItemView key={it.id} item={it} onAction={onCardAction} onRetry={retry} onDecide={decide} confirmBusy={confirmBusy} onPick={send} />)
+                      items.map((it) => <ItemView key={it.id} item={it} onAction={onCardAction} onRetry={retry} onVoiceRetry={toggleMic} onDecide={decide} confirmBusy={confirmBusy} onPick={send} />)
                     )}
 
                     {/* تلميح سياقي */}
@@ -781,21 +801,36 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
                       <WifiOff className="w-3.5 h-3.5" /> مستني الاتصال… الطلب مش هيتبعت لحد ما النت يرجع
                     </p>
                   )}
+                  {voiceDraft && !listening && !transcribing && input.trim() && (
+                    <div className="flex items-center gap-1.5 mb-1.5 rounded-xl border nk-brand-border nk-brand-bg-soft px-2.5 py-1.5">
+                      <Mic className="w-3.5 h-3.5 nk-brand-text shrink-0" />
+                      <p className="text-[10.5px] font-extrabold nk-brand-text flex-1 leading-snug">
+                        تم تحويل كلامك لنص — راجعه وعدّله لو محتاج واضغط إرسال
+                      </p>
+                      <button
+                        onClick={() => { setVoiceDraft(false); setInput(""); }}
+                        className="text-[10px] font-extrabold text-muted-foreground hover:text-foreground shrink-0"
+                      >
+                        إلغاء
+                      </button>
+                    </div>
+                  )}
                   <div className="flex items-end gap-1.5">
                     {hasVoice && (
                       <button
                         onClick={toggleMic}
-                        aria-label={listening ? "خلصت الكلام — حول وابعت" : "تسجيل صوتي"}
+                        disabled={micStarting}
+                        aria-label={micStarting ? "بطلب إذن المايك…" : listening ? "خلصت الكلام — حول النص وراجعه" : "تسجيل صوتي"}
                         className={cn(
                           "w-10 h-10 rounded-2xl grid place-items-center shrink-0 border transition",
                           listening
                             ? "bg-rose-600 text-white border-rose-600 animate-pulse"
-                            : transcribing
+                            : transcribing || micStarting
                               ? "nk-brand-bg text-white border-transparent"
-                              : "border-border bg-muted/50 text-muted-foreground",
+                              : "border-border bg-muted/50 text-muted-foreground hover:nk-brand-border",
                         )}
                       >
-                        {transcribing ? (
+                        {transcribing || micStarting ? (
                           <Loader2 className="w-4.5 h-4.5 animate-spin" />
                         ) : listening ? (
                           <MicOff className="w-4.5 h-4.5" />
@@ -805,15 +840,20 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
                       </button>
                     )}
                     <input
+                      ref={inputRef}
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
                       placeholder={
                         transcribing
                           ? "بحوّل صوتك لنص…"
-                          : listening
-                            ? "بتسمعك… اتكلم عادي وهيبعت لوحده لما تسكت"
-                            : "اكتب طلبك… مثال: مين غايب النهارده؟"
+                          : micStarting
+                            ? "بطلب إذن المايك… اسمح من المتصفح"
+                            : listening
+                              ? "بتسمعك… اتكلم عادي وهوقف لوحدي لما تسكت"
+                              : voiceDraft
+                                ? "ده كلامك المحوّل — راجعه وعدّله لو محتاج واضغط إرسال"
+                                : "اكتب طلبك… مثال: مين غايب النهارده؟"
                       }
                       disabled={running || !online}
                       className="flex-1 min-w-0 rounded-2xl border border-input bg-background px-3.5 py-2.5 text-sm font-bold outline-none focus:ring-2 nk-brand-ring disabled:opacity-50"
@@ -845,11 +885,12 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
    عرض عنصر شات واحد
 ============================================================ */
 function ItemView({
-  item, onAction, onRetry, onDecide, confirmBusy, onPick,
+  item, onAction, onRetry, onVoiceRetry, onDecide, confirmBusy, onPick,
 }: {
   item: ChatItem;
   onAction: CardActionHandler;
   onRetry: () => void;
+  onVoiceRetry?: () => void;
   onDecide: (d: "confirm" | "cancel") => void;
   confirmBusy: boolean;
   onPick?: (t: string) => void;
@@ -899,7 +940,10 @@ function ItemView({
   if (item.kind === "confirmation") {
     return <ConfirmationCard summary={item.summary} risk={item.risk} onDecide={onDecide} busy={confirmBusy} />;
   }
-  if (item.kind === "error") return <ErrorCard text={item.text} onRetry={item.retry ? onRetry : undefined} />;
+  if (item.kind === "error") {
+    const retryFn = item.voiceRetry && onVoiceRetry ? onVoiceRetry : item.retry ? onRetry : undefined;
+    return <ErrorCard text={item.text} onRetry={retryFn} retryLabel={item.voiceRetry ? "سجل تاني" : undefined} />;
+  }
   if (item.kind === "success") return <SuccessCard text={item.text} />;
   return null;
 }
