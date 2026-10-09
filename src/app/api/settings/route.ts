@@ -40,15 +40,15 @@ export const GET = handler(async () => {
       model: center?.agentLlmModel ?? "",
       hasKey: !!center?.agentLlmApiKey,
       keyTail: center?.agentLlmApiKey ? center.agentLlmApiKey.slice(-4) : "",
-      envConfigured: !!(process.env.AGENT_LLM_BASE_URL?.trim() && process.env.AGENT_LLM_MODEL?.trim()),
+      envConfigured: !!(process.env.AGENT_LLM_BASE_URL?.trim() && process.env.AGENT_LLM_MODEL?.trim()) || !!process.env.GROQ_API_KEY?.trim(),
     },
     // تحويل الصوت لنص (whisper) — نفس مفتاح العقل بيشتغل، الموديل قابل للتهيئة
     // (agentSttModel ممكن يكون لسه مش متزامن على الإنتاج — بنرجع فاضي بدل ما نكسر GET)
     agentStt: (() => {
       try {
-        return { model: (center as unknown as { agentSttModel?: string | null })?.agentSttModel ?? "", envConfigured: !!process.env.AGENT_STT_API_KEY?.trim() };
+        return { model: (center as unknown as { agentSttModel?: string | null })?.agentSttModel ?? "", envConfigured: !!(process.env.AGENT_STT_API_KEY?.trim() || process.env.GROQ_API_KEY?.trim()) };
       } catch {
-        return { model: "", envConfigured: !!process.env.AGENT_STT_API_KEY?.trim() };
+        return { model: "", envConfigured: !!(process.env.AGENT_STT_API_KEY?.trim() || process.env.GROQ_API_KEY?.trim()) };
       }
     })(),
   });

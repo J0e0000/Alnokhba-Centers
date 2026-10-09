@@ -19,6 +19,8 @@ export const GET = handler(async () => {
 
   const status = await getLLMStatus(user.centerId);
   const brainFirst = process.env.NK_AGENT_BRAIN_FIRST === "1";
+  // علامة النسخة المنشورة — بتأكد إن آخر بوش وصل فعلًا للإنتاج (وبيساعد في تشخيص الـ deploys)
+  const commit = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null;
 
   // توزيع المهمام على العقول — من تدقيق المهام نفسه (provider مخزّن لكل مهمة)
   let split: { provider: string; tasks: number }[] = [];
@@ -36,5 +38,5 @@ export const GET = handler(async () => {
     // جدول ناقص في بيئة قديمة — الحالة الأساسية تكفي
   }
 
-  return ok({ ...status, brainFirst, last7Days: split });
+  return ok({ ...status, brainFirst, commit, last7Days: split });
 });

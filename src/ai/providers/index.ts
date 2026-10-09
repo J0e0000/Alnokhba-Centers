@@ -10,6 +10,9 @@ import { db } from "@/lib/db";
    PROVIDER FACTORY — مصدر الحقيقة لاختيار الموديل (spec §1/§24)
    الأولوية:
    1) متغيرات البيئة AGENT_LLM_BASE_URL + AGENT_LLM_MODEL (للنشر الذاتي)
+   1.5) GROQ_API_KEY (الاسم القياسي للمفتاح على Vercel) — وصفة Groq المجربة
+        (gpt-oss-120b) لو مفيش BASE_URL/MODEL متظبطين. الاسم الدقيقي بيغني
+        عن إعادة إدخال المفتاح في كل قاعدة بيانات جديدة.
    2) إعداد السنتر من شاشة الإعدادات (OpenAI-compatible — أي موديل)
    3) ZAI المدمج (بيئة النشر الحالية لو متاح)
    4) مفيش → المخ الحتمي المدمج (orchestrator/fallback.ts) —
@@ -53,6 +56,15 @@ async function resolveLLM(centerId?: string): Promise<{ provider: LLMProvider | 
   if (primary) {
     const backup = providerFromEnv("AGENT_LLM_FALLBACK");
     return { provider: backup ? new FailoverProvider([primary, backup]) : primary, source: "env" };
+  }
+
+  // 1.5) GROQ_API_KEY — مفتاح Groq القياسي لوحده كفاية: بنكمل الباقي من الوصفة المجربة
+  //      (لو AGENT_LLM_BASE_URL/MODEL متظبطين من غير مفتاح بنستخدمهم زي ما هم)
+  const groqKey = process.env.GROQ_API_KEY?.trim() || "";
+  if (groqKey) {
+    const gBase = process.env.AGENT_LLM_BASE_URL?.trim() || "https://api.groq.com/openai/v1";
+    const gModel = process.env.AGENT_LLM_MODEL?.trim() || "openai/gpt-oss-120b";
+    return { provider: new OpenAICompatibleProvider(gBase, gModel, groqKey), source: "env" };
   }
 
   // 2) إعداد السنتر من شاشة الإعدادات (المدير بيوصل أي موديل متوافق مع OpenAI)
