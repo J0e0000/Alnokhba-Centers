@@ -117,28 +117,22 @@ register({
   name: "group.enroll_student",
   group: "groups",
   description: "سجّل طالب في مجموعة — بيفحص التكرار والسعة قبل التسجيل",
-  usageHint: "«سجل أحمد في Group B» — محتاج studentId و groupId (ييجوا من أدوات بحث قبلها)",
+  usageHint: "«سجل أحمد في Group B» — بيقبل studentId و groupId (من أدوات البحث قبلها) أو الأسماء مباشرة studentName و groupName (زي «كيمياء — A») — لو الاسم مطابق لأكتر من واحدة هيسأل",
   input: z.object({
-    studentId: z.string().min(1),
-    groupId: z.string().min(1),
-  }),
+    studentId: z.string().min(1).optional(),
+    studentName: z.string().min(1).max(120).optional(),
+    groupId: z.string().min(1).optional(),
+    groupName: z.string().min(1).max(120).optional(),
+  }).refine((v) => !!v.studentId || !!v.studentName, { message: "محتاج studentId أو studentName" })
+    .refine((v) => !!v.groupId || !!v.groupName, { message: "محتاج groupId أو groupName" }),
   risk: "MEDIUM",
   requiredPermission: "EDIT_STUDENT",
   permissionLabel: "تعديل بيانات طالب",
   async handler(args, ctx): Promise<ToolOutput> {
-    // ==== فحوص ما قبل التنفيذ (spec §32) ====
-    const student = await db.student.findFirst({
-      where: { id: args.studentId, centerId: ctx.centerId },
-      select: { id: true, name: true, code: true, status: true },
-    });
-    if (!student) throw new ToolError("NOT_FOUND", "الطالب ده مش موجود في السنتر.");
+    // ==== فحوص ما قبل التنفيذ (spec §32) — مع دعم الأسماء المباشرة (الطالب/المجموعة بالمرونة) ====
+    const { student, group } = await resolveEnrollRefs(args, ctx.centerId);
     if (student.status !== "ACTIVE") throw new ToolError("STATE", `الطالب ${student.name} مش نشط (${student.status}) — لازم يترجع نشط الأول.`);
 
-    const group = await db.group.findFirst({
-      where: { id: args.groupId, centerId: ctx.centerId, isActive: true },
-      select: { id: true, name: true, subject: { select: { name: true } }, _count: { select: { students: { where: { status: "ACTIVE" } } } } },
-    });
-    if (!group) throw new ToolError("NOT_FOUND", "المجموعة دي مش موجودة أو مش نشطة.");
     const existing = await db.studentGroup.findUnique({
       where: { studentId_groupId: { studentId: student.id, groupId: group.id } },
       select: { id: true, status: true },
@@ -164,15 +158,7 @@ register({
   },
   /** معاينة التأكيد — قراءة بس، صفر كتابة (spec §5) */
   async preview(args, ctx) {
-    const student = await db.student.findFirst({
-      where: { id: args.studentId, centerId: ctx.centerId },
-      select: { name: true, code: true },
-    });
-    const group = await db.group.findFirst({
-      where: { id: args.groupId, centerId: ctx.centerId },
-      select: { name: true, subject: { select: { name: true } } },
-    });
-    if (!student || !group) throw new ToolError("NOT_FOUND", "الطالب أو المجموعة مش موجودين في السنتر.");
+    const { student, group } = await resolveEnrollRefs(args, ctx.centerId);
     return {
       summary: `هسجل ${student.name} (كود ${student.code}) في مجموعة ${group.subject.name} — ${group.name}.`,
       details: { student: student.name, code: student.code, group: `${group.subject.name} — ${group.name}` },
@@ -180,17 +166,90 @@ register({
   },
   // ==== تحقق ما بعد التنفيذ من الداتابيز نفسها (spec §34) ====
   async verify(args, _output, ctx) {
+    const { student, group } = await resolveEnrollRefs(args, ctx.centerId);
     const reg = await db.studentGroup.findFirst({
-      where: { studentId: args.studentId, groupId: args.groupId, status: "ACTIVE" },
+      where: { studentId: student.id, groupId: group.id, status: "ACTIVE" },
       select: { id: true },
     });
     // centerId check عبر المجموعة
     if (!reg) return "التسجيل مظهرش في الداتابيز — حاول تاني.";
-    const g = await db.group.findUnique({ where: { id: args.groupId }, select: { centerId: true } });
-    if (!g || g.centerId !== ctx.centerId) return "المجموعة خارج سنترك — راجع السجل.";
+    if (group.centerId !== ctx.centerId) return "المجموعة خارج سنترك — راجع السجل.";
     return null;
   },
 });
+
+/**
+ * حل مراجع التسجيل بمرونة (spec P3): ID مباشر أو اسم — المطابقة الضبابية سيرفر-سايد،
+ * والتعدد بيرجع رسالة توضيح بالمترشحين (ممنوع التخمين — spec P5).
+ */
+async function resolveEnrollRefs(
+  args: { studentId?: string; studentName?: string; groupId?: string; groupName?: string },
+  centerId: string,
+): Promise<{ student: { id: string; name: string; code: string; status: string }; group: { id: string; name: string; centerId: string; subject: { name: string } } }> {
+  // ==== الطالب ====
+  let student: { id: string; name: string; code: string; status: string } | null = null;
+  if (args.studentId) {
+    student = await db.student.findFirst({
+      where: { id: args.studentId, centerId },
+      select: { id: true, name: true, code: true, status: true },
+    });
+  }
+  if (!student && args.studentName) {
+    const nq = normAr(args.studentName);
+    const cands = await db.student.findMany({
+      where: { centerId, status: "ACTIVE" },
+      select: { id: true, name: true, code: true, status: true },
+      take: 200,
+    });
+    const hits = cands.filter((s) => {
+      const ns = normAr(s.name);
+      return ns === nq || ns.includes(nq) || nq.includes(ns);
+    });
+    if (hits.length === 1) student = hits[0];
+    else if (hits.length > 1) {
+      throw new ToolError("VALIDATION", `«${args.studentName}» مطابق لأكتر من طالب — حدد بالظبط: ${hits.slice(0, 4).map((s) => `${s.name} (${s.code})`).join(" / ")}`);
+    }
+  }
+  if (!student) throw new ToolError("NOT_FOUND", `مفيش طالب مطابق لـ «${args.studentName ?? args.studentId ?? ""}» في السنتر.`);
+
+  // ==== المجموعة ====
+  let group: { id: string; name: string; centerId: string; subject: { name: string } } | null = null;
+  if (args.groupId) {
+    group = await db.group.findFirst({
+      where: { id: args.groupId, centerId, isActive: true },
+      select: { id: true, name: true, centerId: true, subject: { select: { name: true } } },
+    });
+  }
+  if (!group && args.groupName) {
+    const nq = normAr(args.groupName);
+    const cands = await db.group.findMany({
+      where: { centerId, isActive: true },
+      select: { id: true, name: true, centerId: true, subject: { select: { name: true } } },
+      take: 200,
+    });
+    const scored = cands
+      .map((g) => {
+        const hay = normAr(`${g.subject.name} ${g.name}`);
+        const hayName = normAr(g.name);
+        let score = 0;
+        if (hay === nq || hayName === nq) score += 6;
+        if (hay.includes(nq) || nq.includes(hay)) score += 4;
+        if (hayName.includes(nq) || nq.includes(hayName)) score += 3;
+        if (normAr(g.subject.name).includes(nq) || nq.includes(normAr(g.subject.name))) score += 2;
+        return { g, score };
+      })
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score);
+    if (scored.length === 1) group = scored[0].g;
+    else if (scored.length > 1 && scored[0].score > scored[1].score) group = scored[0].g;
+    else if (scored.length > 1) {
+      throw new ToolError("VALIDATION", `«${args.groupName}» مطابقة لأكتر من مجموعة — حدد بالظبط: ${scored.slice(0, 4).map((x) => `${x.g.subject.name} — ${x.g.name}`).join(" / ")}`);
+    }
+  }
+  if (!group) throw new ToolError("NOT_FOUND", `مفيش مجموعة مطابقة لـ «${args.groupName ?? args.groupId ?? ""}» أو مش نشطة.`);
+
+  return { student, group };
+}
 
 /* ================= مطابقة مادة/مرحلة/مدرس بالاسم ================= */
 

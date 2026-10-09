@@ -124,14 +124,37 @@ function extractName(text: string): string | null {
 }
 
 function extractGroupKey(text: string): string | null {
-  const m = text.match(/(?:مجموعة|group)\s+([\u0600-\u06FFa-zA-Z0-9]+)/i);
+  const m = text.match(/(?:مجموعة|group)\s+([\u0600-\u06FFa-zA-Z0-9_-]+)/i);
   return m ? m[1] : null;
 }
 
-/** اسم الحصة/المجموعة من الطلب — «حصة رياضيات» / «مجموعة فيزياء A» */
+/** اسم الحصة/المجموعة من الطلب — «حصة رياضيات» / «مجموعة فيزياء A» — والاسم الحصري بحرف -_ كمان */
 function extractSessionKey(text: string): string | null {
-  const m = text.match(/(?:حص[هة]|الحص[هة]|مجموع[هة]|المجموع[هة]|group|session)\s+([\u0600-\u06FFa-zA-Z0-9]{2,})/i);
+  const m = text.match(/(?:حص[هة]|الحص[هة]|مجموع[هة]|المجموع[هة]|group|session)\s+([\u0600-\u06FFa-zA-Z0-9_-]{2,})/i);
   return m ? m[1] : null;
+}
+
+/**
+ * تحويل الصيغ العامية/الإنجليزية البديلة لشكل قياسي قبل استخراج الأسماء (spec P2):
+ * «خلي أحمد حاضر» ← «أحمد حاضر» · «أحمد جه النهارده، سجله» ← «أحمد»
+ * «بص يا زكي، أحمد موجود، ظبط حضوره» ← «أحمد» · «mark ahmed as present» ← «ahmed»
+ * بيبقى no-op للصيغ القياسية («سجل حضور أحمد ومحمد في حصة رياضيات»).
+ */
+function normalizeMarkPhrases(s: string): string {
+  let x = s;
+  // علامات المخاطبة بزكي — «بص يا زكي،» / «اسمع يا زكي» / «يا زكي»
+  x = x.replace(/^\s*(?:بص|شوف|اسمع|سمعني|طب)\s+(?:يا\s+)?زكي\s*[،,]?\s*/i, " ");
+  x = x.replace(/^\s*(?:يا\s+)?زكي\s*[،,]?\s+/i, " ");
+  // الإنجليزية: «mark ahmed as present» / «mark ahmed and sara present» — بنرجع الأسماء بس
+  const enM = x.match(/^mark\s+([\p{L}\p{N}\s،,'’-]+?)\s+(?:as\s+)?(?:present|here)\s*[.!]?$/iu);
+  if (enM) return enM[1].trim();
+  // أفعال بادئة عامية — «خلي أحمد حاضر» / «اعمل أحمد حاضر»
+  x = x.replace(/^(?:خلي|خلّي|اعمل(?:لي)?)\s+/i, " ");
+  // أوامر بضمير/إحالة في الآخر — «سجله» / «سجلهم» / «ظبط حضوره» / «علم عليه»
+  x = x.replace(/[،,]?\s*(?:سجل(?:ه|ها|هم|وا)|ظبط\s+(?:ال)?حضور(?:ه|ها|هم)?|علم\s+علي(?:ه|ها|هم))\s*$/i, " ");
+  // جمل الحضور العامية — «جه النهارده» / «موجود،» / «واصل» / «دخل» / «حاضر،»
+  x = x.replace(/[,،]?\s*(?:جه|جاء|واصل(?:ه)?|دخل|موجود(?:ة)?|حاضر(?:ة)?|واصلة|دخلة)\s*(?:النهارده|النهاردة|اليوم)?\s*(?=[،,]|$)/gi, " ");
+  return x.replace(/\s+/g, " ").trim();
 }
 
 /**
@@ -142,6 +165,8 @@ function extractAttendanceNames(text: string): string | null {
   let s = text.replace(/\s+/g, " ").trim();
   // جزء الغايبين/المستثنين مش أسماء حضور — اتشال قبل أي استخراج
   s = s.replace(/\s*(?:—|-|،|,)?\s*(?:الغايبين|غايبين|ما ?عدا|إلا|الا|except)[\s\S]*$/i, " ");
+  // الصيغ العامية/الإنجليزية البديلة ← شكل قياسي (spec P2)
+  s = normalizeMarkPhrases(s);
   const m = s.match(/(?:الحضور|حضور|attendance|present)\s*[:：]?\s*(.+)$/i);
   if (m) {
     s = m[1];
@@ -151,7 +176,7 @@ function extractAttendanceNames(text: string): string | null {
   }
   // شيل الذيل: اليوم + الحصة/المجموعة + الكل/الباقي + كلمات الحالة
   s = s
-    .replace(/(?:في\s+)?(?:حص[هة]|مجموع[هة]|group|session)\s+[\u0600-\u06FFa-zA-Z0-9]+\s*/gi, " ")
+    .replace(/(?:في\s+)?(?:حص[هة]|مجموع[هة]|group|session)\s+[\u0600-\u06FFa-zA-Z0-9_-]+\s*/gi, " ")
     .replace(/(?:النهارده|النهاردة|اليوم|دلوقتي|بس)\s*$/i, "")
     .trim()
     .replace(/^(?:الكل|كلهم|الكله|الباقي|باقيهم|كل\s+المسجلين)\s*/i, "")
@@ -206,8 +231,10 @@ const RE = {
   collection: /كام (اتنصل|جمع|تحصيل)|التحصيل|ايراد|حصلنا|جمعنا|اتحصل|collections? (today|this week)|how much (collected|did we collect)/,
   tomorrowSessions: /بكره|بكرا|غدا|tomorrow/,
   openSession: /افتح (حصه|حضور|session)|اعمل حصه|ابدأ حضور|open (a )?session|start (a )?session/,
-  // تسجيل حضور بالأسماء — لازم فعل تسجيل/تعليم صريح عشان ميخبطش مع أسئلة الغياب
-  markAttendance: /سجل(لي)? (الحضور|حضور)|سجل .{0,30}(حاضرين|حضور)|الحضور(\s|:|$)|علم(لي)? (على|ان)|اكتب (الحضور|حضور)|سجل (الباقي|باقيهم|كلهم|الكله)|الغايبين.{0,40}(سجل|علم|الباقي|باقيهم)|ما عدا.{0,40}(سجل|علم|الباقي)|سجل الكل|mark (attendance|present|the rest|them)|take attendance|record attendance/,
+  // تسجيل حضور بالأسماء — لازم فعل تسجيل/تعليم صريح عشان ميخبطش مع أسئلة الغياب.
+  // صيغ عامية بديلة (spec P2): «خلي أحمد حاضر» / «ظبط حضوره» / «سجله» (ضمير متصل)
+  // وصيغ إنجليزية «mark ahmed as present» — كلها نفس النية
+  markAttendance: /سجل(لي)? (الحضور|حضور)|سجل .{0,30}(حاضرين|حضور)|الحضور(\s|:|$)|علم(لي)? (على|ان)|اكتب (الحضور|حضور)|سجل (الباقي|باقيهم|كلهم|الكله)|الغايبين.{0,40}(سجل|علم|الباقي|باقيهم)|ما عدا.{0,40}(سجل|علم|الباقي)|سجل الكل|mark (attendance|present|the rest|them)|take attendance|record attendance|خلي .{1,40}?حاضر|ظبط (ال)?حضور|سجل(ه|ها|هم|وا)( |$)|mark .{1,40}? (as )?(present|here)( |$)/,
   closeSession: /اقفل (الحصه|حصه|الحصة|الحضور|session|اليوم)|سكر (الحصه|حصه|الحصة)|قفل (الحصه|حصه|الحصة)|close (the |this )?(session|class)|end (the |this )?(session|class)/,
   greeting: /^(سلام|السلام عليكم|هاي|هلا|ازيك|عامل ايه|صباح|مساء|مرحبا|اهلا)(\s|$)|^(hi|hello|hey|good (morning|evening|afternoon))\b/,
   thanks: /(شكرا|متشكر|تسلم|ربنا يخليك|thanks|thank you|thx)/,
@@ -456,9 +483,11 @@ export function fallbackPlan(
     const retrySession = prev?.error && !RE.markAttendance.test(t) ? extractSessionKey(text) : null;
     if (prev?.error && !retrySession) return doneWith(prev, "محتاج توضيح — جرب تاني بعد ما تحدد.");
     const sessionKey = retrySession ?? extractSessionKey(intentText);
-    const names = extractAttendanceNames(intentText);
+    let names = extractAttendanceNames(intentText);
     const except = extractExceptNames(intentText);
     const markRest = /الباقي|باقيهم|كلهم|الكله|الكل|كل المسجلين|mark (the )?rest|everyone else|all (of )?them/.test(norm(intentText));
+    // «خلي الكل حاضر» — الاسم المستخرج هو نفسه الكل → بيتحول لتحضير معكوس بدل اسم غريب
+    if (names && /^(?:الكل|كلهم|الكله|الباقي|باقيهم|كل المسجلين|everyone|all)$/.test(norm(names))) names = null;
     if (!names && !markRest) {
       return { say: "تمام — مين اللي هسجل حضورهم؟ اكتب الأسماء مفصولة بـ «و» أو فاصلة.", need_info: { question: "إيه الأسماء؟" } };
     }

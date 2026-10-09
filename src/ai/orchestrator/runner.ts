@@ -268,6 +268,8 @@ async function agentLoop(opts: {
   const { user, taskId, ctx, clientCtx, emit } = opts;
   let iterations = opts.iterationOffset ?? 0;
   let toolCount = await db.agentToolExecution.count({ where: { taskId } });
+  // حماية اللوب: بصمة آخر استدعاء فاشل — نفس الأداة بنفس المدخلات تاني = مفيش تصحيح حاصل
+  let lastFailedSig: string | null = null;
 
   while (iterations < MAX_ITERATIONS) {
     iterations++;
@@ -391,6 +393,19 @@ async function agentLoop(opts: {
         emit({ type: "done", status: "FAILED" });
         return;
       }
+
+      // حماية اللوب الإجبارية (spec §38): نفس الأداة بنفس المدخلات اللي فشلت للتو
+      // = محاولة حرفية مكرّرة مش تصحيح — نوقف فورًا بالخطأ بدل ما نكربه لحد السقف
+      const callSig = `${turn.tool.name}:${JSON.stringify(turn.tool.args ?? {})}`;
+      if (callSig === lastFailedSig) {
+        const err = "الطلب ده وقع في نفس المشكلة مرتين بنفس المدخلات — محتاج تعديل منك. صحّح الطلب (مثلاً حدد الحصة بالظبط) وكمّل.";
+        await persistMessage(taskId, "assistant", "error", { text: err });
+        emit({ type: "message", id: "loop", kind: "error", text: err });
+        await db.agentTask.update({ where: { id: taskId }, data: { status: "FAILED", error: "repeated_failed_call" } });
+        emit({ type: "done", status: "FAILED" });
+        return;
+      }
+
       const result = await executeTool({
         toolName: turn.tool.name,
         rawArgs: turn.tool.args,
@@ -400,6 +415,7 @@ async function agentLoop(opts: {
         emit({ type: "done", status: "WAITING_CONFIRMATION" });
         return; // الحلقة بتكمل من confirmExecution بعد التأكيد
       }
+      lastFailedSig = result.ok ? null : callSig;
       continue; // النتيجة اتضافت للترانسكريبت — الموديل يكمل
     }
 
