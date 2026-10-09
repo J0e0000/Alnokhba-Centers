@@ -582,10 +582,13 @@ register({
     session: z.string().max(80).optional().describe("الحصة — مادة أو اسم مجموعة زي «رياضيات» أو «فيزياء A» (لو فيه حصة مفتوحة واحدة بس اسبها)"),
     sessionId: z.string().optional().describe("معرف الحصة لو معروف من خطوة سابقة"),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("الافتراضي النهاردة"),
-    marks: z.array(z.object({
-      name: z.string().min(1).max(80).describe("اسم الطالب زي ما قاله المستخدم"),
-      status: z.enum(["PRESENT", "LATE", "EXCUSED"]).default("PRESENT").describe("حاضر/متأخر/بعذر"),
-    })).max(60).default([]).describe("أسماء هتتسجل بالحالة دي (كل واحدة لوحدها)"),
+    marks: z.array(z.union([
+      z.string().min(1).max(80),
+      z.object({
+        name: z.string().min(1).max(80).describe("اسم الطالب زي ما قاله المستخدم"),
+        status: z.enum(["PRESENT", "LATE", "EXCUSED"]).default("PRESENT").describe("حاضر/متأخر/بعذر"),
+      }),
+    ])).max(60).default([]).describe("أسماء هتتسجل — نص بسيط (هيتحسب حاضر) أو كائن {name, status}"),
     namesText: z.string().max(400).optional().describe("نص حر لأسماء الحضور — «أحمد محمد ومحمود علي» — بيتجزّع ضد كشف الحصة كلهم PRESENT"),
     markRest: z.boolean().optional().describe("علّم باقي المسجلين اللي لسه محضروش (تحضير معكوس) — «سجل الباقي»"),
     except: z.array(z.string().min(1).max(80)).max(60).optional().describe("أسماء مستثناة من markRest — الغايبين، اسم لكل عنصر"),
@@ -746,7 +749,7 @@ register({
 ------------------------------------------------------------ */
 type MarkArgs = {
   session?: string; sessionId?: string; date?: string;
-  marks?: { name: string; status: "PRESENT" | "LATE" | "EXCUSED" }[];
+  marks?: (string | { name: string; status: "PRESENT" | "LATE" | "EXCUSED" })[];
   namesText?: string; markRest?: boolean; except?: string[]; exceptText?: string; note?: string;
 };
 
@@ -774,18 +777,19 @@ async function buildMarkPlan(args: MarkArgs, ctx: { centerId: string; user: { id
   const attendedIds = new Set(existing.map((e) => e.studentId));
 
   // ١) الأسماء المطلوب تسجيلها — من مصدرين:
-  //    marks (أسماء فردية بحالتها) + namesText (نص حر بيتجزّع ضد الكشف)
+  //    marks (أسماء فردية بحالتها — نص بسيط = حاضر) + namesText (نص حر بيتجزّع ضد الكشف)
+  const markEntries = (args.marks ?? []).map((m) => (typeof m === "string" ? { name: m, status: "PRESENT" as const } : m));
   type WantedMark = { student: RosterRow["student"]; status: "PRESENT" | "LATE" | "EXCUSED"; priceOverride: number | null };
   const wanted: WantedMark[] = [];
   const ambiguous: { name: string; candidates: string[] }[] = [];
   const unknown: string[] = [];
   const claimed = new Set<string>();
 
-  const indNames = (args.marks ?? []).map((m) => m.name);
+  const indNames = markEntries.map((m) => m.name);
   const ind = resolveNamesAgainstRoster(indNames, roster);
   for (const m of ind.matched) {
     claimed.add(m.student.id);
-    wanted.push({ student: m.student, status: args.marks!.find((x) => x.name === m.given)?.status ?? "PRESENT", priceOverride: m.priceOverride });
+    wanted.push({ student: m.student, status: markEntries.find((x) => x.name === m.given)?.status ?? "PRESENT", priceOverride: m.priceOverride });
   }
   ambiguous.push(...ind.ambiguous);
   unknown.push(...ind.unknown);
