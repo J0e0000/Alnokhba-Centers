@@ -385,3 +385,20 @@ Work Log:
 
 Stage Summary:
 - طبقة المزودين بقت صناديق: أي موديل OpenAI-compatible أو Anthropic من البيئة أو من إعدادات السنتر، مع failover تلقائي أساسي→احتياطي، وstatus endpoint بيوريك مين شغال فعليًا وبأي عدد مهمات. الوصفة المجانية جاهزة في ENV.example — ناقص بس المفاتيح من صاحب الحساب، ولو مفيش مفاتيخ زكي بيفضل شغال بالمدمج والمخ الحتمي.
+
+---
+Task ID: zaki-groq-live
+Agent: Super Z (main)
+Task: user provided Groq API key — "make zaki work and apply all you need" (توصيل المفتاح الحقيقي اللي كان ناقص من zaki-llm-package)
+
+Work Log:
+- تشخيص أولي: المفتاح من الساندبوكس بيرجع 403 Forbidden عري على كل الموديلات — السبب جهوي مش المفتاح: الـ egress بتاعنا HK (8.212.10.159) وGroq بتحظر المنطقة دي (المفتاح الغلط بيرجع 401 مش 403). OpenRouter متاح من هنا (200) كمرجع.
+- المسار الصح: المفتاح اتخزن في إعدادات السنتر على الإنتاج (PATCH /api/settings بـ agentLlmBaseUrl/Model/ApiKey — بيتخزن سيرفري والقراءة مقنّعة keyTail فقط) لأن مفيش Vercel CLI هنا لتظبيط env vars، والإنتاج بيرجع لـ center config لو env فاضي.
+- فشل أول من llm-test على الإنتاج: llm-empty-response مش 401/403 — الطلب وصل Groq فعلًا لكن gpt-oss-120b موديل reasoning بيحرق الـ maxTokens=20 بتوعة الاختبار كلها في تفكير داخلي قبل ما يكتب حرف. (404 على llama-3.1-8b-instant وllama-3.3-70b-versatile — اتشالوا من Groq في 2026؛ وصفة ENV.example الصح: gpt-oss-120b).
+- FIX: llm-test maxTokens 20→512 + رسالة عربية واضحة لحالة llm-empty-response. (الـ runner كان مظبوط من قبل بـ 2000 للسبب ده بالظبط.)
+- VERIFY محلي: tsc 0 · eslint نظيف · build ✓ · e2e_agent 43/43 (رنتين فاشلين كانوا rate-limit الـ auth — سويتشات أقل من 65 ثانية).
+- VERIFY إنتاج بعد النشر (e9ad949): llm-test بالمفتاح المخزن ✓ GROQ LIVE — model=openai/gpt-oss-120b latency=515ms sample="تمام" · status: source=center · طلب مفتوح حقيقي («ملخص وضع السنتر واقتراح أحسنها») مشى كامل بالموديل: task → اختار dashboard.get_today بنفسه → observation → ملخص مصري بأرقام حقيقية (10 حصص مفتوحة من أيام سابقة + تحصيل أسبوعي تحت المتوسط + طالبين رصيدهم واطي) → COMPLETED · split 7 أيام يسجل openai-compatible:openai/gpt-oss-120b = 1.
+- سكريبتات محفوظة: scripts/configure_groq_prod.sh (إعداد+تحقق إنتاج كامل) · test_groq_smoke.mjs / test_groq_direct.mjs (تشخيص المفتاح/الموديلات).
+
+Stage Summary:
+- زكي شغال فعليًا بعقل Groq المجاني (gpt-oss-120b) على الإنتاج: المفتاح في إعدادات السنتر (مقنّع)، الطلبات المفتوحة بتروح للموديل أول بأول، والمخ الحتمي شبكة أمان تحته. لو حابب بدّل الموديل: الإعدادات → زكي — العقل الذكي. بديل الـ env على Vercel (AGENT_LLM_*) بيتقدم على إعداد السنتر لو اتظبط يومًا. 429 من الطبقة المجانية بيسقط تلقائي على المخ من غير ما يبوظ تجربة المستخدم.
