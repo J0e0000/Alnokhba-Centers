@@ -22,8 +22,20 @@ export function LoginScreen({ onLogin }: { onLogin: (user: SessionUser) => void 
   // الصفحة مفتوحة جوه إطار مدمج (معاينة شات/ويب فيو)؟ — سفاري ومتصفحات صارمة بتمنع
   // كوكي الجلسة جوه الإطارات فبيحصل «دخول → خروج فوري»؛ الحل المضمون تبويب مستقل
   const [embedded, setEmbedded] = useState(false);
+  // وضع تجريبي مؤقت (Vercel من غير قاعدة بيانات)؟ — نحذّر صريح بدل «دخول وخروج» غامض
+  const [dbDemo, setDbDemo] = useState(false);
   useEffect(() => {
     try { setEmbedded(window.self !== window.top); } catch { setEmbedded(true); }
+  }, []);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/system/db-status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { mode?: string } | null) => {
+        if (alive && j?.mode === "demo") setDbDemo(true);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
   }, []);
 
   async function submit(e?: React.FormEvent) {
@@ -68,6 +80,22 @@ export function LoginScreen({ onLogin }: { onLogin: (user: SessionUser) => void 
         </div>
 
         {/* ===== تحذير الإطار المدمج ===== */}
+        {/* وضع تجريبي مؤقت — مفيش قاعدة بيانات مرتبطة (تحذير أحمر صريح بدل فشل غامض) */}
+        {dbDemo && (
+          <div className="mb-3 rounded-2xl border-2 border-red-300 bg-red-50 p-4 text-red-900">
+            <p className="flex items-center gap-2 text-sm font-extrabold">
+              <TriangleAlert className="w-4.5 h-4.5 shrink-0" />
+              وضع تجريبي مؤقت — مفيش قاعدة بيانات مرتبطة
+            </p>
+            <p className="mt-1.5 text-xs font-bold leading-relaxed">
+              الجلسات والبيانات مش بتتحفظ، وممكن تطلع من الحساب مع أي تحميل.
+              لو صاحب النظام: اربط قاعدة PostgreSQL عبر متغير DATABASE_URL في إعدادات
+              Vercel (Settings ← Environment Variables) وبعدها Redeploy —
+              الخطوات في docs/PRODUCTION-DB.md.
+            </p>
+          </div>
+        )}
+
         {embedded && (
           <div className="mb-3 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-amber-900">
             <p className="flex items-center gap-2 text-sm font-extrabold">

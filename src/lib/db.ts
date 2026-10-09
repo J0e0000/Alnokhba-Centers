@@ -51,6 +51,21 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
+/**
+ * وضع قاعدة البيانات الحالي — بيتكشف مرة واحدة لكل عملية:
+ * - postgres: DATABASE_URL حقيقي مرتبط (الإنتاج السليم — الكتابة بتتحفظ)
+ * - demo: على Vercel من غير DATABASE_URL → SQLite مؤقت لكل نسخة lambda:
+ *   الجلسات والبيانات بتضيع عشوائيًا بين النسخ («دخول وخروج فوري») —
+ *   وضع معروض للتنبيه بس، مش وضع تشغيل حقيقي.
+ * - local: تطوير محلي بـ SQLite — ده الوضع المقصود للتطوير.
+ */
+export function dbMode(): 'postgres' | 'demo' | 'local' {
+  const url = process.env.DATABASE_URL ?? ''
+  if (url.startsWith('postgres')) return 'postgres'
+  if (process.env.VERCEL === '1') return 'demo'
+  return 'local'
+}
+
 export const db =
   globalForPrisma.prisma ??
   new PrismaClient({
