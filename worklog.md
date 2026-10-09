@@ -365,3 +365,23 @@ Work Log:
 
 Stage Summary:
 - زكي بقى فعلاً «يستاهل موديل»: لما المدير يوصل أي موديل OpenAI-compatible (Qwen3/Llama 3.3/ALLaM/Jais من OpenRouter/Groq/Ollama) الطلبات المفتوحة بتروح له أول بأول، والمخ الحتمي بقى حارس أمان مش حاجز. الأدوات اتوسعت للجدول والتحصيل بأرقام حقيقية من الداتابيز، وكل طلب مش مفهوم بيتلوج بعلم unmapped عشان نعرف نجيب نوايا جديدة بإحصاء مش بتخمين. البروتوكول بقى JSON صارم مع تراجع آمن للسيرفرات القديمة.
+
+---
+Task ID: zaki-llm-package-integration
+Agent: Super Z (main)
+Task: user uploaded zaki-llm-package.zip (providers من برانش zaki-rebuild) — "how would this file help you improve zaki? and do you need something else to put the free api providers to make it fully functional"
+
+Work Log:
+- فحص المحتوى: providers من برانش zaki-rebuild — llm-provider/openai-compatible/zai-provider **متطابقين مع عندنا** (الباتش السابق كان مغطيهم) · الجديد فعليًا: anthropic-provider + failover-provider + index.ts محدّث (AGENT_LLM_FALLBACK_*) + ENV.example (وصفة المجانية: Groq gpt-oss-120b أساسي + NVIDIA nemotron احتياطي) + README_FOR_AGENT.
+- المراجعة قبل الدمج: failover = أول يرد يكسب مع تسجيل مين جاوب فعلًا · anthropic = Messages API بدون SDK مع system منفصل ودمج الأدوار المتتالية (شرط Anthropic) · index.ts الجديد بيحافظ 1:1 على منطق السنتر + الكاش + ZAI builtin — drop-in آمن.
+- دمج: النسخ الثلاثة اتعملت cp للمسارات الرسمية. الفرق الوحيد في resolveLLM: الخطوة 1 (env) بتبني بـ providerFromEnv(prefix) بيدعم PROVIDER=anthropic|openai-compatible + سلسلة FailoverProvider لو AGENT_LLM_FALLBACK_* موجود.
+- ثغرة من الـ README اتقفلت فورًا: maxTokens 1200 في runner كانت هتقطع ردود موديلات الـ reasoning (gpt-oss بتحرق output tokens في تفكير داخلي قبل الـ JSON) → 2000 مع تعليق.
+- /api/agent/status اتعملت (كانت مذكورة في README كخطوة تحقق بس مش موجودة): manager-only، getLLMStatus (المصدر+الموديل) + brainFirst + groupBy على agentTask لآخر 7 أيام لتوزيع llm/brain/fallback — بدون أي مفتاح.
+- درس تقني: smoke test لملفات server-only في plain node بيفشل (الپاكدج بيرمي في الـ index entry) — الحل npx tsx --conditions react-server · ودرس تاني: مسار tsconfig alias لـ server-only كان هيكسر حماية السيرفر/الكلاينت في البيلد كله — اتشال واتركب الپاكدج الرسمي devDependency بدل التلاعب بالـ alias.
+- smoke test محفوظ (scripts/test_providers_smoke.ts): 9 فحص — أول يكسب · احتياطي ياخد مكانه · الكل فاشل يرمي آخر خطأ · سلسلة فاضية مرفوضة · تحويل Anthropic (system/دمج/ترتيب/حقن user) · isAvailable للسلسلة. كله أخضر.
+- VERIFY: tsc 0 · eslint · build ✓ · e2e_agent 43/43 (الرنة الأولى فيها 3 فشل كان rate-limit من اختبار الـ status قبلها — التانية نظيفة) · status حي: builtin glm-4.6 · brainFirst=false · split 7 أيام: 79 llm / 43 brain / 5 fallback.
+- إيه اللي ناقص للتفعيل الكامل (سؤال المستخدم): المفاتيح الحقيقية فقط — الكود جاهز للـ env والـ settings tab. Groq (مجاني، console.groq.com) + NVIDIA (مجاني، build.nvidia.com) → Vercel env vars (Production+Preview) → redeploy → التحقق من /api/agent/status أو زرار جرب الاتصال. من غير مفاتيح: زكي شغال عادي بالـ builtin.
+- commit caa315c → push.
+
+Stage Summary:
+- طبقة المزودين بقت صناديق: أي موديل OpenAI-compatible أو Anthropic من البيئة أو من إعدادات السنتر، مع failover تلقائي أساسي→احتياطي، وstatus endpoint بيوريك مين شغال فعليًا وبأي عدد مهمات. الوصفة المجانية جاهزة في ENV.example — ناقص بس المفاتيح من صاحب الحساب، ولو مفيش مفاتيخ زكي بيفضل شغال بالمدمج والمخ الحتمي.
