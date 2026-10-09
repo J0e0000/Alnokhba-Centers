@@ -56,7 +56,9 @@ export const POST = handler(async (req: Request) => {
       return fail("خدمة التعرف على الصوت مشغولة دلوقتي (تجاوزنا حد الطلبات) — استنى دقيقة وجرب تاني.", 429);
     }
     if (/stt-all-providers-failed/.test(msg)) {
-      return fail("خدمة التعرف على الصوت مش متاحة دلوقتي — جرب تاني بعد لحظات أو اكتب طلبك.", 502);
+      // رمز تشخيص آمن (كود HTTP أو نوع الشبكة بس — من غير أي مفتاح أو جسم الرد) عشان الدعم يعرف مين اللي وقع
+      const code = msg.match(/groq-stt-(\d{3})/)?.[1] ?? (/groq: (TypeError|AbortError|FetchError)/.test(msg) ? "NET" : undefined);
+      return fail(`خدمة التعرف على الصوت مش متاحة دلوقتي — جرب تاني بعد لحظات أو اكتب طلبك.${code ? ` (رمز: STT-${code})` : ""}`, 502);
     }
     return fail("مقدرتش أحوّل التسجيل لنص — جرب تسجل تاني، ولو فضلت المشكلة اكتب طلبك.", 502);
   }
