@@ -561,3 +561,26 @@ Work Log:
 
 Stage Summary:
 - السبب الحقيقي لـ «signs me out immediately» على nine: النشر شغال من غير قاعدة بيانات خالص (وضع demo مؤقت بنسخ SQLite لكل lambda) — مش عيب كود في الدخول. الرابط الوحيد الناقص من المستخدم: Vercel ← nine ← Settings ← Environment Variables ← DATABASE_URL (Postgres/Neon) ← Redeploy؛ بعدها /api/system/db-status يقلب postgres والبانر يختفي، وساعتها أرحل البيانات وأتحقق end-to-end. مفتاح Groq: لازم يكون اسمه بالظبط GROQ_API_KEY (أو AGENT_LLM_*) — الاسم التاني مش بيتقري.
+
+---
+Task ID: nine-db-link-2
+Agent: Super Z (main)
+Task: user: «do what you can do to link the old alnokhba centers database to the new website / environment we made»
+
+Work Log:
+- Device-flow Vercel login من الساندبوكس اشتغل فعليًا (`vercel login` بيطلع رابط device code — المستخدم وافق على joussefsoliman87-6830 / scope youssefs-projects-d899e385).
+- projects ls: مفيش مشروع «alnokhba-centers-nine» في السكوب ده (inspect by URL فشل) → nine تابع لحساب Vercel تاني (غالبًا المرتبط بـ GitHub J0e0000).
+- `vercel storage list` كشف المخزن: **supabase-alnokhba-centers** (store_oRwE0iJLAiBxkgeM — متاح، غير متصل، اتعمل 29 Sep) + Nokhba Edu (uninstalled) + joussefsoliman87@gmail.com (available).
+- اتأكدت إن frontend-alfares (al-nokhbba.vercel.app) تطبيق Vite مختلف — مش تطبيقنا.
+- ربطت المخزن مؤقتًا بمشروع probe جديد (alnokhba-db-probe، production) وسحبت env → **POSTGRES_PRISMA_URL (pooler 6543 pgbouncer)** + POSTGRES_URL_NON_POOLING (5432 session).
+- probe للقاعدة (scripts/probe_old_db.ts — read-only بعميل pg مؤقت): **89/89 موديل موجود، صفر جداول ناقصة**، وبيانات إنتاج حقيقية: مركزا «النخبة» و«الأمل»، 26 مستخدم (manager/admin/reception/aca-*)، **998 حضور**، 5414 auditLog، 5123 sessionQRToken، 886 checkInAttempt، 293 studentTransaction، 221 agentMessage، 66 sessionInstance، 34 طالب، 45 مجموعة، امتحانات واشتراكات وbackupRun.
+- **ممنوع الترحيل من SQLite المحلي** — القاعدة القديمة فيها الداتا الحقيقية والـ SQLite المحلي فيه بقايا اختبارات (caps-test) — migrate_sqlite_to_postgres.ts لا يُشغَّل على الرابط ده.
+- E2E محلي على القاعدة القديمة (prisma generate من سكيما pg + next dev :3001): db-status={"mode":"postgres"}، login manager/nokhba123 = 200 (أ. أحمد محمود)، today/dashboard/sessions/settings كله 200 بداتا حقيقية، و**agent status: source=center model=openai/gpt-oss-120b** — مفتاح Groq لسه محفوظ في إعدادات السنتر في القاعدة القديمة (رجوع أوتوماتيكي بلا إعادة إدخال).
+- اتأكدت إن مفيش أي طريقة تقنية لضبط env على nine من هنا (الـ project في حساب تاني؛ vercel.json/environment المتاحة: env add/dashboard فقط) → شغّلت device-flow تاني (scripts/vercel_login2.log — user_code=PHNL-QBHB) + watcher (vercel_auth_watch2.sh → vercel_auth2_ok.log) في انتظار موافقة المستخدم بحساب nine.
+- اتعمل .gitignore لـ scripts/vc-probe/ (فيه .env.probe بسر القاعدة — ممنوع يتنشر). القيم محفوظة محليًا فقط.
+- cleanup: قتلّت dev :3001 وولّدت عميل SQLite الافتراضي تاني. مشروع alnokhba-db-probe والاتصال بالمخزن سيبتهم قائمين (مفيد للداشبورد).
+
+Stage Summary:
+- القاعدة القديمة موجودة وسليمة وبياناتها كاملة والسكيما متزامنة 100% مع الكود الحالي — جاهزة للربط فورًا.
+- الخطوة الوحيدة المتبقية: DATABASE_URL (قيمة POSTGRES_PRISMA_URL من Supabase pooler) في env لمشروع nine (dashboard أو device-flow بحساب nine) → إعادة نشر → db push أوتوماتيك (إضافي فقط) → التحقق على nine.
+- بعد الربط المتوقع تلقائيًا: الجلسات تثبت (نهاية «دخول وخروج فوري»)، الداتا الحقيقية، وعقل زكي + STT يرجعوا من إعدادات السنتر المخزنة.
