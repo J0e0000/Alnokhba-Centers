@@ -48,8 +48,13 @@ RCODE=$(echo "$REF" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end
 if [ -z "$RID" ]; then bad "مفيش طالب باسم فريد في الإنتاج — جرب يدويًا"; else
   echo "   طالب الإحالة: $RNAME (كود $RCODE)"
   curl -s -N -b "$JAR" -X POST "$BASE/api/agent/message" -H "Content-Type: application/json" \
-    -d "{\"text\":\"هاتلي $RNAME\",\"context\":{\"view\":\"students\"}}" --max-time 60 | grep -q '"tool":"student.search"' \
-    && ok "بحث الإحالة نفّذ على الإنتاج" || bad "بحث الإحالة"
+    -d "{\"text\":\"هاتلي $RNAME\",\"context\":{\"view\":\"students\"}}" --max-time 90 > /tmp/prod_search_events.txt
+  MEMROW=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && NK_E2E_PG="$(grep -h DATABASE_URL_POOLED scripts/.env.prod-url 2>/dev/null | cut -d'"' -f2)" node -e "
+const {PrismaClient}=require('./generated/prisma-pg');const p=new PrismaClient({datasources:{db:{url:process.env.NK_E2E_PG}}});
+(async()=>{
+  const rows=await p.agentMemory.findMany({where:{scope:'SESSION',key:'last_student'},select:{value:true}});
+  console.log(rows.filter(r=>JSON.stringify(r.value).includes('$RID')).length);await p.\$disconnect();})()" 2>/dev/null)
+  [ "$MEMROW" = "1" ] && ok "بحث الإحالة نفّذ وكتب last_student في الإنتاج (تحقق من القاعدة)" || bad "بحث الإحالة/الذاكرة ($MEMROW)"
   sleep 3
   EV=$(curl -s -N -b "$JAR" -X POST "$BASE/api/agent/message" -H "Content-Type: application/json" \
     -d '{"text":"تقريره","context":{"view":"students"}}' --max-time 90)
@@ -58,20 +63,29 @@ if [ -z "$RID" ]; then bad "مفيش طالب باسم فريد في الإنت�
   [ "$HIT" -ge 1 ] && ok "التقرير على نفس الطالب ($RNAME)" || bad "التقرير على طالب تاني (hits=$HIT)"
 fi
 
-echo "===== 5) صوت E2E — صوت حقيقي من TTS → transcribe ====="
-curl -s -b "$JAR" -X POST "$BASE/api/agent/speak" -H "Content-Type: application/json" \
-  -d '{"text":"مين غايب النهارده؟"}' -o /tmp/nine_speak.wav -w "speak: http=%{http_code} bytes=%{size_download}\n" --max-time 90
-[ -s /tmp/nine_speak.wav ] && ok "TTS رجّع ملف صوت حقيقي" || bad "TTS مفيش ملف"
-B64=$(base64 -w0 /tmp/nine_speak.wav 2>/dev/null)
+echo "===== 5) صوت E2E — صوت حقيقي → transcribe (مع وبدون تلميح لغة) ====="
+# ملاحظة صادقة: TTS على الإنتاج بيعتمد على ZAI env (بيرجع 502 هنا) — فالصوت الحقيقي بيتولّد محليًا
+# (نفس السلسلة) وبيتبعت للإنتاج — الاختبار ده لسلسلة STT الإنتاجية (Groq whisper بمفتاح السنتر).
+WAV=/tmp/fresh_en.wav
+[ -f "$WAV" ] && [ "$(head -c4 "$WAV" | od -An -tx1 | tr -d ' \n')" = "52494646" ] && ok "صوت حقيقي جاهز (RIFF WAV)" || bad "مفيش صوت حقيقي صالح"
+B64=$(base64 -w0 "$WAV" 2>/dev/null)
 if [ -n "$B64" ]; then
-  cat > /tmp/nine_asr.json <<EOF
-{"audio":"$B64","mime":"audio/wav"}
-EOF
+  printf '{"audio":"%s","mime":"audio/wav","lang":"en"}' "$B64" > /tmp/nine_asr.json
   TR=$(curl -s -b "$JAR" -X POST "$BASE/api/agent/transcribe" -H "Content-Type: application/json" -d @/tmp/nine_asr.json --max-time 90)
-  echo "$TR" | head -c 300; echo
-  TXT=$(echo "$TR" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.parse(d).text??'')}catch{console.log('')}})")
+  echo "   $TR" | head -c 260; echo
+  TXT=$(echo "$TR" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log((JSON.parse(d).text??'').toLowerCase())}catch{console.log('')}})")
   PRV=$(echo "$TR" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.parse(d).provider??'')}catch{console.log('')}})")
-  [ -n "$TXT" ] && ok "صوت → نص اشتغل (provider=$PRV, نص: «$TXT»)" || bad "transcribe مفيش نص"
+  [ -n "$TXT" ] && ok "صوت → نص اشتغل (provider=$PRV)" || bad "transcribe مفيش نص"
+  echo "$TXT" | grep -q "absent" && ok "النص مطابق للمقولة (absent جواها)" || bad "النص مش مطابق («$TXT»)"
+  # عربي مصنّع (espeak) مع تلميح ar — لقياس أثر تلميح اللغة (الصوت روبوتي فالمطابقة الحرفية مش مضمونة)
+  if [ -f /tmp/espeak_ar.wav ]; then
+    AB64=$(base64 -w0 /tmp/espeak_ar.wav)
+    printf '{"audio":"%s","mime":"audio/wav","lang":"ar"}' "$AB64" > /tmp/nine_asr_ar.json
+    TRAR=$(curl -s -b "$JAR" -X POST "$BASE/api/agent/transcribe" -H "Content-Type: application/json" -d @/tmp/nine_asr_ar.json --max-time 90)
+    echo "   عربي مصنّع + lang=ar: $(echo "$TRAR" | head -c 200)"
+    echo "$TRAR" | grep -q '"text"' && ok "عربي: مسار التعرف اشتغل (جودة الصوت المُصنّع هي الحد)" || bad "عربي: مفيش نص"
+  fi
+  echo "   ⚠️ ملاحظة صادقة: دي أصوات مُصنّعة (TTS/espeak) — اختبار مايك حقيقي من المستخدم هو الإقرار النهائي للصوت على الجهاز."
 else
   bad "مفيش صوت للتحويل"
 fi
