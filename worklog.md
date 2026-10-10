@@ -661,3 +661,23 @@ Stage Summary:
 - Accounts snapshot: 2 centers ACTIVE (النخبة، الأمل), 27 staff accounts (26 active + agent_teach_t deactivated), 27 real students (19 portal-capable at النخبة, 8 no-phone at الأمل).
 - REPORTED NOT TOUCHED (owner decisions): 20 stale OPEN sessions (closing creates financial settlements — manager should close in-app), probe ufs7gj CANCELLED (no flow impact), الأمل subscription EXPIRED since 2026-09-19 (payment PENDING — cannot fabricate PAID), النخبة renews 2026-10-19.
 - NEXT: implement uploaded MASTER PROMPT (Stage 3+): feature registry → plans/entitlements → RBAC → Platform Control Center → trusted-device dynamic QR (existing StaffQrToken/AttendanceDevice/capabilities infra to be extended, not duplicated).
+
+---
+Task ID: MASTER-ENT-1 (entitlement engine + trusted devices + smart agent gates)
+Agent: main (Super Z)
+Task: "Move to the next phase till it's a full working smart agent" — Master Prompt stages 3-6 implemented.
+
+Work Log:
+- Stage 2 audit: existing infra mapped — CenterCapability (8 keys), permissions.ts (24 perms), SubscriptionPlan (no features), device-lock (nk_did + pv + unique(sessionId,deviceId)), agent registry with permission+capability gates.
+- Stage 3 entitlement engine: src/lib/modules.ts (11 product modules: attendance/students/sessions/finance/exams/assignments/books/reports/ai_agent/communications/settings) + SubscriptionPlan.features JSON (null = full platform, zero regression) + src/lib/entitlements.ts (fail-safe precedence: platform > subscription > plan > center-override; maxStudents quota assert transactional; 10s sub cache + always-fresh override rows because Next.js per-route bundles duplicate module caches — invalidation alone is NOT reliable cross-route).
+- Stage 4 enforcement: 34 API handlers gated via requireModule; 19 agent tools tagged requiredModule — filtered from LLM catalog AND enforced in authorizeAndValidate (ToolError ENTITLEMENT, fail-closed); students POST quota inside $transaction; admin API set-plan-features + set-center-modules (audited + cache invalidation); /api/center/capabilities exposes modules+subscription; agent capabilities exposes module-filtered toolset.
+- Stage 5 Platform Control Center: AdminEntitlementsView (plan feature editors + centers×modules matrix with lock reasons) + shell nav "الأقسام والميزات" + manager ModulesTab in settings (disable included / plan ceiling displayed).
+- Stage 6 trusted devices: TrustedDeviceBinding model (studentId unique ACTIVE, sha256(deviceId+centerId) verifier, audited revoke with mandatory reason); trusted_devices capability (default OFF — zero regression); check-in gate section 9ج: evaluate bidirectional (student→device + device→student) → BIND after first successful attendance / neutral REJECT + risk flags IDENTITY_SWITCH_ATTEMPT + staff notify; recovery endpoint /api/attendance/trusted-devices (manager) + settings UI section with revoke dialog; RiskFlag union extended (+3 flags, weights).
+- EXTRA: completed dead batch-QR route (issueSessionQrBatch in session-qr.ts) — was untracked+broken (missing lib fn), now functional.
+- FALSE ALARM documented: "atchedStudentId" in check-in was a TERMINAL DISPLAY ARTIFACT — ANSI stripping ate the literal [m in "[matchedStudentId" (hex-dump verified: bytes 0x5b 0x6d present). File was always valid; incremental tsc cache deletion (tsconfig.tsbuildinfo) was precautionary.
+- VERIFY local: entitlements e2e 8/8 (modules exposed, disable→403 with Arabic reason, agent catalog filtered, re-enable→gate passed, invalid key 400) + trusted-devices e2e 10/10 (BIND/ALLOW/REJECT both directions, salted verifier, revoke→rebind, no secrets in list) + tsc src=0 + build ✓ + lint clean on changed files (3 pre-existing errors in untouched files).
+
+Stage Summary:
+- زكي بقى استحقاقي: أدواته بتتفلتر بالخطة/الاشتراك/السنتر قبل ما الموديل يشوفها + enforced ثانية عند التنفيذ — plan = سقف مفيش override يعدّيه.
+- ⚠️ DEPLOY BLOCKED: git push 0b8e9be landed on GitHub main (574d3c7..0b8e9be) but production alnokhba-centers-nine has NOT picked it up after 35+ min (modules=0 in capabilities probe). No GitHub Actions; Vercel CLI logged out; previous auth artifacts (.env.prod-url, vercel logs) vanished from sandbox (never committed — secrets safe). NEEDS: user to check Vercel dashboard build for this commit OR provide fresh VERCEL_TOKEN / run npx vercel login. Schema sync (TrustedDeviceBinding table + SubscriptionPlan.features) will apply automatically via vercel-build.sh db push on deploy — additive only.
+- REMAINING for full master prompt: RLS/database-layer enforcement review, Platform audit-history view for entitlement changes, student portal persistent device binding (public flow done), admin recovery impersonation already exists (support sessions).
