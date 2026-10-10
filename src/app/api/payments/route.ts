@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
+import { requireModule } from "@/lib/entitlements";
 import { requireCenterUser, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { toPiastres, toEGP, todayStr, cairoDateStr, cairoDayBounds } from "@/lib/normalize";
@@ -25,6 +26,7 @@ type PayBody = {
  */
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
+  await requireModule(user.centerId, "finance");
   const body = await readJson<PayBody>(req);
   const type = body.type === "REFUND" || body.type === "ADJUSTMENT" ? body.type : "PAYMENT";
 
@@ -182,6 +184,7 @@ export const POST = handler(async (req: Request) => {
 /** GET /api/payments?from=&to=&studentId=&method=&sessionId=&page= — payment history */
 export const GET = handler(async (req: Request) => {
   const user = await requireCenterUser();
+  await requireModule(user.centerId, "finance");
   const url = new URL(req.url);
   const from = url.searchParams.get("from");
   const to = url.searchParams.get("to");

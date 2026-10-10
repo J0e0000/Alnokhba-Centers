@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
+import { requireModule } from "@/lib/entitlements";
 import { requireCenterUser, ApiError } from "@/lib/auth";
 import { normalizeObjectiveQuestions } from "@/lib/exam";
 import { assertGroupInCenter } from "@/lib/quiz";
@@ -19,6 +20,7 @@ const VIOLATION_TYPES = ["TAB_HIDDEN", "PAGE_LEFT", "FULLSCREEN_EXIT", "FOCUS_LO
 
 export const GET = handler(async (req: Request) => {
   const user = await requireCenterUser();
+  await requireModule(user.centerId, "exams");
   const url = new URL(req.url);
   const groupId = url.searchParams.get("groupId") ?? undefined;
 
@@ -77,6 +79,7 @@ type CreateBody = {
 
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
+  await requireModule(user.centerId, "exams");
   const body = await readJson<CreateBody>(req);
 
   const groupId = String(body.groupId ?? "");

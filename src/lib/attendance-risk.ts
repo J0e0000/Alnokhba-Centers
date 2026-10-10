@@ -35,6 +35,10 @@ export const RISK_FLAGS = {
   DIFFERENT_NETWORK: "التسجيل من شبكة مختلفة عن شبكة القاعة المرجعية",
   MISSING_FINGERPRINT: "تسجيل من غير بصمة متصفح (متصفح قديم/محجوب) — قفل البصمة مش شغال عليه",
   FINGERPRINT_REUSED: "نفس بصمة المتصفح اتسجل بيه حضور قبل كده في الحصة (إنكوجنتو/مسح بيانات؟)",
+  // ===== الأجهزة الموثوقة (Master Prompt §10) =====
+  IDENTITY_SWITCH_ATTEMPT: "محاولة تسجيل حضور بهوية مختلفة عن ربط الجهاز الموثوق",
+  STUDENT_BOUND_TO_OTHER_DEVICE: "الطالب مربوط بجهاز موثوق تاني — المحاولة من جهاز جديد",
+  DEVICE_BOUND_TO_OTHER_STUDENT: "الجهاز مربوط بطالب تاني — محاولة تسجيل طالب تاني منه",
 } as const;
 
 export type RiskFlag = keyof typeof RISK_FLAGS;
@@ -42,6 +46,9 @@ export type RiskFlag = keyof typeof RISK_FLAGS;
 export type RiskAssessment = { score: number; flags: RiskFlag[] };
 
 const WEIGHTS: Record<RiskFlag, number> = {
+  IDENTITY_SWITCH_ATTEMPT: 85,
+  STUDENT_BOUND_TO_OTHER_DEVICE: 60,
+  DEVICE_BOUND_TO_OTHER_STUDENT: 80,
   DEVICE_REUSED: 30,
   MULTIPLE_STUDENTS_SAME_DEVICE: 50,
   RAPID_MULTI_STUDENT_ATTEMPTS: 40,

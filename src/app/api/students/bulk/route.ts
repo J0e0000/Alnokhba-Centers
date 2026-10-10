@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
+import { requireModule } from "@/lib/entitlements";
 import { requireCenterUser, canRegisterStudents, generateStudentCode, generateQrToken, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { normalizeDigits, validateEgyptianPhone } from "@/lib/normalize";
@@ -25,6 +26,7 @@ type RowError = { row: number; message: string };
  *  منع التكرار: داخل الدفعة (موبايل/اسم+موبايل ولي/كود) ومع الطلاب الموجودين. */
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
+  await requireModule(user.centerId, "students");
   if (!canRegisterStudents(user)) {
     throw new ApiError("مسموح للإضافة بس المدير أو موظف عنده صلاحية الإضافة.", 403);
   }

@@ -1,4 +1,5 @@
 import { handler, readJson, ok, fail } from "@/lib/api";
+import { requireModule } from "@/lib/entitlements";
 import { requireCenterUser, rateLimit } from "@/lib/auth";
 import { transcribeAudio } from "@/ai/providers/stt";
 
@@ -19,6 +20,7 @@ const MAX_AUDIO_BYTES = 8 * 1024 * 1024; // 8MB ≈ 8 دقايق WAV 16kHz مو�
 
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
+  await requireModule(user.centerId, "ai_agent");
   rateLimit(`agent-asr:${user.id}`, 30, 60_000);
 
   const body = await readJson<{ audio?: string; mime?: string; lang?: string }>(req);

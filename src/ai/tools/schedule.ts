@@ -16,6 +16,7 @@ const ymd = /^\d{4}-\d{2}-\d{2}$/;
 register({
   name: "schedule.get_day",
   group: "schedule",
+  requiredModule: "sessions",
   description: "حصص يوم محدد (مواعيد، مجموعة، مادة، مدرس، حالة الحصة) — لأي تاريخ مش النهاردة بس",
   usageHint: "«عندنا إيه بكرة؟» / «حصص يوم 2026-10-12» / «جدول الخميس» — حوّل اليوم لتاريخ YYYY-MM-DD من تاريخ النهاردة في السياق",
   input: z.object({

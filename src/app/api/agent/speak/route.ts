@@ -1,6 +1,7 @@
 import "server-only";
 import crypto from "crypto";
 import { handler, readJson, fail } from "@/lib/api";
+import { requireModule } from "@/lib/entitlements";
 import { requireCenterUser, rateLimit } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +52,7 @@ function clampForSpeech(text: string): string {
 
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
+  await requireModule(user.centerId, "ai_agent");
   rateLimit(`agent-tts:${user.id}`, 40, 60_000);
 
   const body = await readJson<{ text?: string }>(req);

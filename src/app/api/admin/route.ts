@@ -5,6 +5,9 @@ import { logAudit, AUDIT } from "@/lib/audit";
 import { todayStr, toPiastres } from "@/lib/normalize";
 import { pricingBreakdown, monthlyBillPiastres, PRICING } from "@/lib/pricing";
 import { recordSubEvent, GRACE_DAYS_DEFAULT, deriveSubStatus, EXPIRY_WARNING_DAYS } from "@/lib/subscription";
+import { MODULE_CATALOG, MODULE_KEYS, isModuleKey, moduleOverrideKey, type ModuleKey } from "@/lib/modules";
+import { invalidateEntitlements } from "@/lib/entitlements";
+import { invalidateCenterCapabilities } from "@/lib/center-capabilities";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +15,14 @@ export const dynamic = "force-dynamic";
 export const GET = handler(async () => {
   const user = await requireAdmin();
   const today = todayStr();
+
+  const moduleOverrideRows = await db.centerCapability.findMany({ where: { key: { startsWith: "module:" } } });
+  const moduleOverridesByCenter: Record<string, Record<string, boolean>> = {};
+  for (const r of moduleOverrideRows) {
+    const k = r.key.slice("module:".length);
+    if (!isModuleKey(k)) continue;
+    (moduleOverridesByCenter[r.centerId] ??= {})[k] = r.enabled;
+  }
 
   const [centers, plans, billings, recentLogs, teams, joinRequests, unreadNotifs] = await Promise.all([
     db.center.findMany({
@@ -92,7 +103,9 @@ export const GET = handler(async () => {
     joinRequests: joinRequests.map((r) => ({
       id: r.id, name: r.name, username: r.username, phone: r.phone, createdAt: r.createdAt,
     })),
-    plans: plans.map((p) => ({ id: p.id, name: p.name, pricePerStudent: p.pricePerStudent, maxStudents: p.maxStudents })),
+    plans: plans.map((p) => ({ id: p.id, name: p.name, pricePerStudent: p.pricePerStudent, maxStudents: p.maxStudents, features: p.features ? (JSON.parse(p.features) as string[]) : null })),
+    moduleCatalog: MODULE_KEYS.map((k) => ({ key: k, ...MODULE_CATALOG[k] })),
+    moduleOverrides: moduleOverridesByCenter,
     pricingRules: {
       baseMonthly: PRICING.baseMonthly,
       baseIncludedStudents: PRICING.baseIncludedStudents,
@@ -140,6 +153,8 @@ export const GET = handler(async () => {
                 graceUntil: sub.graceUntil,
                 lastRenewedAt: sub.lastRenewedAt,
                 cancelledAt: sub.cancelledAt,
+                // استحقاقات الخطة (Master Prompt §5) — features null = كل الأقسام
+                planFeatures: sub.plan.features ? (JSON.parse(sub.plan.features) as string[]) : null,
                 warningDays: EXPIRY_WARNING_DAYS,
               };
             })()
@@ -173,7 +188,8 @@ type AdminAction = {
   action?: "renew" | "set-plan" | "set-status" | "support-start"
     | "team-create" | "team-rename" | "team-set-status" | "team-add-member" | "team-remove-member" | "team-set-description"
     | "request-assign" | "request-reject"
-    | "sub-lifecycle" | "sub-events";
+    | "sub-lifecycle" | "sub-events"
+    | "set-plan-features" | "set-center-modules";
   centerId?: string; planId?: string; months?: number;
   status?: string; markPaid?: boolean;
   // support access
@@ -184,6 +200,10 @@ type AdminAction = {
   requestRole?: string;
   // subscription lifecycle
   op?: string; days?: number; note?: string;
+  // entitlements (Master Prompt §5)
+  features?: string[]; // plan features — null/undefined معناها «الخطة الكاملة»
+  clearFeatures?: boolean; // رجّع الخطة لكل الأقسام
+  modules?: Array<{ key?: string; enabled?: boolean }>;
 };
 
 /** POST /api/admin — renew / plan / status / support access / teams */
@@ -365,6 +385,72 @@ export const POST = handler(async (req: Request) => {
       after: { status },
     });
     return ok({ ok: true, status });
+  }
+
+  // =================== استحقاقات الأقسام (Master Prompt §3/§5) ===================
+  // ملاحظة أمنية: الأكشنز دي للأدمن (منصة) بس — مدير السنتر ميعرفش يفتح قسم
+  // مستثنى من خطته (override السنتر بيطفي بس — التقييم في entitlements.ts).
+  if (body.action === "set-plan-features") {
+    const plan = await db.subscriptionPlan.findUnique({ where: { id: String(body.planId ?? "") } });
+    if (!plan) throw new ApiError("الخطة دي مش موجودة.", 404);
+    if (body.clearFeatures) {
+      // الخطة الكاملة — كل الأقسام
+      await db.subscriptionPlan.update({ where: { id: plan.id }, data: { features: null } });
+    } else {
+      const feats = Array.isArray(body.features) ? body.features : [];
+      if (!feats.length) throw new ApiError("اختار قسم واحد على الأقل — أو استخدم «الخطة الكاملة».", 400);
+      for (const f of feats) if (!isModuleKey(f)) throw new ApiError(`قسم مش معروف: ${f}.`, 400);
+      await db.subscriptionPlan.update({
+        where: { id: plan.id },
+        data: { features: JSON.stringify(MODULE_KEYS.filter((k) => feats.includes(k))) },
+      });
+    }
+    // إلغاء كاش الاستحقاق لكل السنترات على الخطة دي + تدقيق
+    const affected = await db.subscription.findMany({ where: { planId: plan.id }, select: { centerId: true } });
+    for (const a of affected) invalidateEntitlements(a.centerId);
+    await logAudit({
+      user,
+      action: "PLAN_FEATURES_CHANGED",
+      entity: "SUBSCRIPTION_PLAN",
+      entityId: plan.id,
+      before: { features: plan.features },
+      after: { features: body.clearFeatures ? null : JSON.stringify(body.features ?? []) },
+      reason: body.reason ?? "تعديل ميزات الخطة",
+    });
+    return ok({ ok: true, affectedCenters: affected.length });
+  }
+
+  if (body.action === "set-center-modules") {
+    const updates = Array.isArray(body.modules) ? body.modules : [];
+    if (!updates.length) throw new ApiError("مفيش تغييرات — حدد الأقسام.", 400);
+    const before = await db.centerCapability.findMany({ where: { centerId: center.id, key: { startsWith: "module:" } } });
+    for (const u of updates) {
+      const key = String(u.key ?? "");
+      if (!isModuleKey(key)) throw new ApiError(`قسم مش معروف: ${key}.`, 400);
+      const okey = moduleOverrideKey(key as ModuleKey);
+      if (u.enabled === true) {
+        // إزالة override (القسم يرجع لحكم الخطة/الافتراضي)
+        await db.centerCapability.deleteMany({ where: { centerId: center.id, key: okey } });
+      } else {
+        await db.centerCapability.upsert({
+          where: { centerId_key: { centerId: center.id, key: okey } },
+          create: { centerId: center.id, key: okey, enabled: false },
+          update: { enabled: false },
+        });
+      }
+    }
+    invalidateEntitlements(center.id);
+    invalidateCenterCapabilities(center.id);
+    await logAudit({
+      user: { ...user, centerId: center.id },
+      action: "CENTER_MODULES_CHANGED",
+      entity: "CENTER",
+      entityId: center.id,
+      before: { overrides: before.map((b) => ({ key: b.key, enabled: b.enabled })) },
+      after: { updates },
+      reason: body.reason ?? "تعديل أقسام السنتر من لوحة المنصة",
+    });
+    return ok({ ok: true });
   }
 
   // =================== دورة حياة الاشتراك (spec §7) ===================

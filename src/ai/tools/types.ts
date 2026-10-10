@@ -68,6 +68,8 @@ export type ToolDef<TArgs = Record<string, unknown>> = {
   permissionLabel?: string;
   /** مفتاح قدرة سنتر مطلوب (لو مفيش → الأداة مقفولة للسنتر ده) */
   requiredCapability?: { key: string; config?: string; label: string };
+  /** قسم منتج مطلوب (Master Prompt §5) — الاستحقاق من الخطة/الاشتراك/إعدادات السنتر */
+  requiredModule?: import("@/lib/modules").ModuleKey;
   handler: (args: TArgs, ctx: ToolContext) => Promise<ToolOutput>;
   /** معاينة التأكيد — بدون أي side effects (ممنوع تلمس الداتابيز كتابة هنا).
    *  بتبني نص «هعمل إيه بالظبط» + تفاصيل المتأثرين عشان كارت التأكيد. */
@@ -78,7 +80,7 @@ export type ToolDef<TArgs = Record<string, unknown>> = {
 
 /** أخطاء منظمة بتفهمها الـ orchestrator */
 export class ToolError extends Error {
-  code: "VALIDATION" | "PERMISSION" | "CAPABILITY" | "NOT_FOUND" | "STATE" | "FAILED";
+  code: "VALIDATION" | "PERMISSION" | "CAPABILITY" | "ENTITLEMENT" | "NOT_FOUND" | "STATE" | "FAILED";
   constructor(code: ToolError["code"], message: string) {
     super(message);
     this.code = code;

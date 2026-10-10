@@ -6,7 +6,7 @@ import {
   Calculator, BarChart3, Settings, LogOut, MoreHorizontal, ChevronLeft,
   Building2, BadgeCheck, Receipt, MonitorCog, Activity, GraduationCap, Menu, BookOpen, MessageSquareText,
   ShieldAlert, UserCog, DatabaseBackup, LifeBuoy, Sparkles, ClipboardCheck, UserPlus, ClipboardList,
-  FileCheck2, NotebookPen, DoorClosed, CalendarClock,
+  FileCheck2, NotebookPen, DoorClosed, CalendarClock, Grid3x3,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -505,13 +505,14 @@ export function CenterShell({
 
 // ============================= Admin shell =============================
 
-export type AdminViewId = "centers" | "subscriptions" | "analytics" | "students" | "billing" | "system" | "monitor" | "teams" | "backups" | "requests";
+export type AdminViewId = "centers" | "subscriptions" | "analytics" | "students" | "billing" | "system" | "monitor" | "teams" | "backups" | "requests" | "entitlements";
 
 export const ADMIN_NAV: { id: AdminViewId; label: string; icon: ReactNode }[] = [
   { id: "centers", label: "السناتر", icon: <Building2 className="w-5 h-5" /> },
   { id: "analytics", label: "تحليلات المنصة", icon: <Activity className="w-5 h-5" /> },
   { id: "requests", label: "طلبات الانضمام", icon: <UserPlus className="w-5 h-5" /> },
   { id: "subscriptions", label: "الاشتراكات", icon: <BadgeCheck className="w-5 h-5" /> },
+  { id: "entitlements", label: "الأقسام والميزات", icon: <Grid3x3 className="w-5 h-5" /> },
   { id: "students", label: "الطلاب", icon: <GraduationCap className="w-5 h-5" /> },
   { id: "billing", label: "الفوترة", icon: <Receipt className="w-5 h-5" /> },
   { id: "teams", label: "الفرق", icon: <UserCog className="w-5 h-5" /> },

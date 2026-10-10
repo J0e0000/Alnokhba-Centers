@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
+import { requireModule } from "@/lib/entitlements";
 import { requireManager, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { toPiastres, todayStr } from "@/lib/normalize";
@@ -11,6 +12,7 @@ export const dynamic = "force-dynamic";
 /** GET /api/accounting?section=expenses|cash|settlements|journal — المدير بس (بيانات مالية حساسة) */
 export const GET = handler(async (req: Request) => {
   const user = await requireManager();
+  await requireModule(user.centerId, "finance");
   const section = new URL(req.url).searchParams.get("section") ?? "all";
   const today = todayStr();
 
@@ -96,6 +98,7 @@ type ActionBody = {
 /** POST /api/accounting — manager actions */
 export const POST = handler(async (req: Request) => {
   const user = await requireManager();
+  await requireModule(user.centerId, "finance");
   const body = await readJson<ActionBody>(req);
   const today = todayStr();
 

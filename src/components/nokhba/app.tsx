@@ -35,7 +35,7 @@ import { CommandPalette } from "./command-palette";
 import {
   AdminCentersView, AdminSubscriptionsView, AdminStudentsView,
   AdminBillingView, AdminSystemView, AdminMonitorView, AdminTeamsView, AdminBackupsView,
-  AdminRequestsView, AdminAnalyticsView,
+  AdminRequestsView, AdminAnalyticsView, AdminEntitlementsView,
 } from "./admin";
 import type { AdminData } from "./admin";
 
@@ -356,6 +356,7 @@ function AdminPortalShell({ user, onLogout, view, setView }: {
           {view === "analytics" && <AdminAnalyticsView />}
           {view === "requests" && <AdminRequestsView data={data} reload={reload} />}
           {view === "subscriptions" && <AdminSubscriptionsView data={data} reload={reload} />}
+          {view === "entitlements" && <AdminEntitlementsView data={data} reload={reload} />}
           {view === "students" && <AdminStudentsView data={data} />}
           {view === "billing" && <AdminBillingView data={data} />}
           {view === "teams" && <AdminTeamsView data={data} reload={reload} />}

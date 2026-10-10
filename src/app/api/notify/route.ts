@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
+import { requireModule } from "@/lib/entitlements";
 import { requireCenterUser, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { toEGP, cleanRaw } from "@/lib/normalize";
@@ -29,6 +30,7 @@ const METHOD_AR: Record<string, string> = { CASH: "كاش", VODAFONE: "محفظ�
 /** POST /api/notify — prepare a notification attempt, returns message + wa.me URL */
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
+  await requireModule(user.centerId, "communications");
   const body = await readJson<NotifyBody>(req);
 
   const student = await db.student.findFirst({ where: { id: String(body.studentId ?? ""), centerId: user.centerId } });

@@ -5,12 +5,13 @@ import { toast } from "sonner";
 import {
   Palette, MessageCircle, Users, ScrollText, Loader2, Save, Plus, Pencil, Trash2,
   ShieldCheck, Eye, Upload, Variable, Smartphone, SlidersHorizontal, ScanLine,
-  Sparkles, PlugZap, KeyRound, Trash,
+  Sparkles, PlugZap, KeyRound, Trash, Grid3x3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, applyCenterBranding, darkenForAA, BRAND_DEFAULTS, type SessionUser } from "./lib";
 import { PageHeader, Chip, Loading, SectionCard, EmptyState } from "./shared";
 import { AttendanceTab } from "./settings-attendance";
+import { ModulesTab } from "./settings-modules";
 import { Field, inputCls } from "./students";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
@@ -262,6 +263,7 @@ function readableOn(bg: string | null | undefined): string {
 const TABS = [
   { id: "branding", label: "هوية السنتر", icon: <Palette className="w-4 h-4" /> },
   { id: "attendance", label: "الحضور", icon: <ScanLine className="w-4 h-4" /> },
+  { id: "modules", label: "أقسام المنتج", icon: <Grid3x3 className="w-4 h-4" /> },
   { id: "whatsapp", label: "قوالب واتساب", icon: <MessageCircle className="w-4 h-4" /> },
   { id: "staff", label: "الموظفين", icon: <Users className="w-4 h-4" /> },
   { id: "agent", label: "زكي — العقل الذكي", icon: <Sparkles className="w-4 h-4" /> },
@@ -290,6 +292,7 @@ export function SettingsView({ user, onBrandingChanged }: { user: SessionUser; o
 
       {tab === "branding" && <BrandingTab user={user} onBrandingChanged={onBrandingChanged} />}
       {tab === "attendance" && <AttendanceTab />}
+      {tab === "modules" && user.role === "MANAGER" && <ModulesTab />}
       {tab === "whatsapp" && <WhatsAppTab />}
       {tab === "staff" && <StaffTab />}
       {tab === "agent" && user.role === "MANAGER" && <AgentBrainTab />}

@@ -18,6 +18,7 @@ const ymd = /^\d{4}-\d{2}-\d{2}$/;
 register({
   name: "finance.get_collection",
   group: "finance",
+  requiredModule: "finance",
   description: "إجمالي التحصيل (المدفوعات المستلمة) في فترة — يوم أو من تاريخ لتاريخ",
   usageHint: "«حصّلنا كام النهاردة؟» / «تحصيل الأسبوع» / «إيراد من 2026-10-01 لـ 2026-10-07» — لو من غير تواريخ يبقى النهاردة",
   input: z.object({
@@ -65,6 +66,7 @@ register({
 register({
   name: "finance.record_payment",
   group: "finance",
+  requiredModule: "finance",
   description: "سجّل دفعة فلوس لطالب (كاش/فودافون/انستاباي) — بإيصال رسمي متسلسل وتحديث رصيد",
   usageHint: "«سجل دفعة 50 جنيه لأحمد» / «استلمت 200 من كود 99002 فودافون» — محتاج الطالب والمبلغ",
   input: z.object({

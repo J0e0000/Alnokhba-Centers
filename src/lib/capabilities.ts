@@ -17,7 +17,8 @@ export type CapabilityKey =
   | "staff_qr_checkin"       // حضور الموظفين بمسح QR شاشة المركز
   | "fingerprint"            // حضور ببصمة (عتاد خارجي — اختياري)
   | "late_checkin"           // السماح بتسجيل حضور "متأخر"
-  | "teacher_auto_attendance"; // حضور المدرس تلقائي عند بدء الحصة
+  | "teacher_auto_attendance" // حضور المدرس تلقائي عند بدء الحصة
+  | "trusted_devices";       // ربط جهاز موثوق بطالب (Master Prompt §10) — افتراضي مقفول
 
 export type CapabilityGroup = "students" | "staff";
 
@@ -86,6 +87,13 @@ export const CAPABILITY_CATALOG: Record<CapabilityKey, CapabilityMeta> = {
     group: "staff",
     defaultEnabled: true,
     methods: ["SESSION_START"],
+  },
+  trusted_devices: {
+    label: "الأجهزة الموثوقة (قفل جهاز الطالب)",
+    desc: "طالب واحد = جهاز واحد موثوق. أول حضور ناجح بيربط موبايل الطالب بحسابه — ومحاولات التسجيل من جهاز تاني بتترفض وتتنبه للإدارة. الاسترجاع من إعدادات الحضور.",
+    group: "students",
+    defaultEnabled: false,
+    methods: ["DYNAMIC_QR", "STATIC_QR"],
   },
 };
 

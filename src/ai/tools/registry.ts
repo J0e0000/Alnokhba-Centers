@@ -34,18 +34,27 @@ export function toolCatalogForPrompt(tools: ToolDef[] = allTools()): string {
       const args = argsSummary(t.input);
       const perm = t.requiredPermission ? ` | صلاحية: ${t.permissionLabel ?? t.requiredPermission}` : "";
       const cap = t.requiredCapability ? ` | قدرة سنتر: ${t.requiredCapability.label}` : "";
+      const mod = t.requiredModule ? ` | قسم: ${t.requiredModule}` : "";
       const risk = t.risk === "LOW" ? "قراءة" : t.risk === "MEDIUM" ? "تعديل (محتاج تأكيد)" : "حساس (تأكيد إلزامي)";
-      return `- ${t.name} — ${t.description}${t.usageHint ? `\n  امتى تستخدمها: ${t.usageHint}` : ""}\n  خطورة: ${risk}${perm}${cap}\n  المدخلات (JSON Schema): ${args}`;
+      return `- ${t.name} — ${t.description}${t.usageHint ? `\n  امتى تستخدمها: ${t.usageHint}` : ""}\n  خطورة: ${risk}${perm}${cap}${mod}\n  المدخلات (JSON Schema): ${args}`;
     })
     .join("\n");
 }
 
-/** الأدوات اللي المستخدم ده فعلًا يقدر ينفذها (صلاحية + قدرة سنتر) —
+/** الأدوات اللي المستخدم ده فعلًا يقدر ينفذها (استحقاق القسم + صلاحية + قدرة سنتر) —
  *  الموديل بيشوف دول بس، فمبيقترحش أدوات هتتحجب. التفويض الحقيقي لسه في authorizeAndValidate. */
 export async function availableToolsFor(ctx: ToolContext): Promise<ToolDef[]> {
   let caps: Awaited<ReturnType<typeof import("@/lib/center-capabilities")["getCenterCapabilities"]>> | null = null;
+  let mods: Awaited<ReturnType<typeof import("@/lib/entitlements")["getEffectiveModules"]>> | null = null;
   const out: ToolDef[] = [];
   for (const t of allTools()) {
+    if (t.requiredModule) {
+      try {
+        const m = await import("@/lib/entitlements");
+        mods ??= await m.getEffectiveModules(ctx.centerId);
+        if (!mods.modules[t.requiredModule]?.enabled) continue;
+      } catch { continue; } // فشل تقييم الاستحقاق → الأداة مقفولة (fail-safe)
+    }
     if (t.requiredPermission && !hasPermission(ctx.user, t.requiredPermission)) continue;
     if (t.requiredCapability) {
       try {
@@ -98,14 +107,24 @@ export async function authorizeAndValidate(
     const detail = first?.message ? `: ${first.message}` : "";
     throw new ToolError("VALIDATION", `مدخلات الأداة ${tool.name} مش مظبوطة${path}${detail} — راجع شكل المدخلات المطلوب في الكتالوج وصلّحها.`);
   }
-  // 2) صلاحية الحساب (نظام الصلاحيات الرسمي للنخبة)
+  // 2) استحقاق القسم (خطة الاشتراك/حالة السنتر/إعدادات السنتر) — قبل الصلاحية
+  //    لأن القسم المقفول معناه إن الصلاحية نفسها مش هتفيد (Master Prompt §5 precedence)
+  if (tool.requiredModule) {
+    const { requireModule } = await import("@/lib/entitlements");
+    try {
+      await requireModule(ctx.centerId, tool.requiredModule);
+    } catch (e) {
+      throw new ToolError("ENTITLEMENT", e instanceof Error ? e.message : "القسم مقفول للاشتراك الحالي.");
+    }
+  }
+  // 3) صلاحية الحساب (نظام الصلاحيات الرسمي للنخبة)
   if (tool.requiredPermission && !hasPermission(ctx.user, tool.requiredPermission)) {
     throw new ToolError(
       "PERMISSION",
       `ممعكش صلاحية «${tool.permissionLabel ?? tool.requiredPermission}» — العملية دي محتاجة صلاحية من الإدارة.`,
     );
   }
-  // 3) قدرة السنتر (لو القدرة مقفولة للسنتر → الأداة مقفولة)
+  // 4) قدرة السنتر (لو القدرة مقفولة للسنتر → الأداة مقفولة)
   if (tool.requiredCapability) {
     const { getCenterCapabilities, capabilityBool } = await import("@/lib/center-capabilities");
     const caps = await getCenterCapabilities(ctx.centerId);
