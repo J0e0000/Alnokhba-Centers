@@ -87,14 +87,16 @@ function base64ToBlob(base64: string, mime: string): Blob {
   return new Blob([new Uint8Array(buf)], { type: mime || "audio/wav" });
 }
 
-/** Groq / OpenAI-compatible — multipart /audio/transcriptions (مش translation) */
-async function transcribeGroq(cfg: GroqConfig, base64: string, mime: string): Promise<SttResult> {
+/** Groq / OpenAI-compatible — multipart /audio/transcriptions (مش translation)
+ *  lang: تلميح اختياري (ar/en/...) — بيرفع الدقة مع الكلام القصير؛ بدونِه whisper بيعمل كشف لغة تلقائي */
+async function transcribeGroq(cfg: GroqConfig, base64: string, mime: string, lang?: string | null): Promise<SttResult> {
   const form = new FormData();
   form.append("file", base64ToBlob(base64, mime), "audio.wav");
   form.append("model", cfg.model);
   form.append("response_format", "json");
   form.append("temperature", "0");
   form.append("prompt", sttPrompt());
+  if (lang) form.append("language", lang);
 
   const res = await fetch(`${cfg.baseUrl.replace(/\/+$/, "")}/audio/transcriptions`, {
     method: "POST",
@@ -135,6 +137,7 @@ export async function transcribeAudio(
   base64: string,
   mime: string,
   centerId?: string,
+  lang?: string | null,
 ): Promise<SttResult> {
   const attempts: string[] = [];
 
@@ -142,7 +145,7 @@ export async function transcribeAudio(
     const cfg = await groqConfig(centerId);
     if (cfg) {
       try {
-        return await transcribeGroq(cfg, base64, mime);
+        return await transcribeGroq(cfg, base64, mime, lang);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         attempts.push(`groq: ${msg.slice(0, 140)}`);
