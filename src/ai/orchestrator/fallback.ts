@@ -22,6 +22,8 @@ export type Observation = { tool: string; summary?: string; error?: string; data
 
 export type FallbackCtx = {
   selectedStudent?: { id: string; name: string };
+  /** آخر طالب اتكلمنا عنه (ذاكرة محادثة منظمة) — مرجع الضمير لما الشاشة فاضية */
+  lastStudent?: { id: string; name: string; code?: string };
   /** هدف المهمة الأصلي — عشان اختيارات المستخدم («رياضيات — Group B») تكمل المهمة */
   goal?: string;
 };
@@ -65,9 +67,10 @@ function methodOf(text: string): "CASH" | "VODAFONE" | "INSTAPAY" | null {
   return null;
 }
 
-/** اسم الطالب من طلب دفعة — «لأحمد محمد» / «لـ أحمد» / «من أحمد» / «لحساب أحمد» */
+/** اسم الطالب من طلب دفعة — «لأحمد محمد» / «لـ أحمد» / «من أحمد» / «لحساب أحمد»
+ *  الحرف بيتطلب قبل مسافة أو بداية النص — عشان «ل» جوه «سجل» ما تلتقطش اللي بعدها كاسم */
 function extractPaymentName(text: string): string | null {
-  const m = text.match(/(?:لحساب|لـ|لأ|لا|ل|من)\s*([\u0600-\u06FFa-zA-Z]{2,}(?:\s+[\u0600-\u06FFa-zA-Z]{2,}){0,3})/);
+  const m = text.match(/(?:^|\s)(?:لحساب|لـ|ل|من)\s*([\u0600-\u06FFa-zA-Z]{2,}(?:\s+[\u0600-\u06FFa-zA-Z]{2,}){0,3})/);
   if (!m) return null;
   const stop = ["جنيه", "ج", "كاش", "فودافون", "انستا", "انستاباي", "النهارده", "اليوم", "دفعه", "حساب"];
   const words = m[1].split(/\s+/)
@@ -111,6 +114,18 @@ function pickGroup(list: GroupRow[], t: string): GroupRow | null {
     .filter((x) => x.hit > 0)
     .sort((a, b) => b.hit - a.hit);
   return scored[0]?.g ?? null;
+}
+
+/**
+ * مرجع الضمير من نتايج المهمة نفسها: آخر بحث/ملف/تقرير طلّع طالب واحد بالظبط.
+ * (لو طلّع أكتر من واحد — متعادلة — منرجعش لحد منهم، بنتسأل المستخدم)
+ */
+function singleStudentOf(obs: Observation[]): StudentRow | null {
+  for (const tool of ["student.search", "student.get", "reports.get_student_report"]) {
+    const rows = studentsOf(obsOf(obs, tool));
+    if (rows.length === 1) return rows[0];
+  }
+  return null;
 }
 
 function extractName(text: string): string | null {
@@ -184,6 +199,8 @@ function extractAttendanceNames(text: string): string | null {
     .replace(/[،,:،\s]+$/, "")
     .replace(/\s+(?:حضور|الحضور|حاضرين?|حاضر|present)\s*$/i, "")
     .trim();
+  // «سجل حضور» bare — اللي فاضل كلمة الحضور نفسها: مفيش أسماء (المرجع بيتحدد من السياق/الضمير)
+  if (/^(?:الحضور|حضور|حاضر(?:ين)?|present|attendance)$/i.test(s)) return null;
   return s.length >= 2 ? s : null;
 }
 
@@ -215,7 +232,7 @@ const doneWith = (o?: Observation, fallback?: string): AgentTurn =>
 const RE = {
   // التسجيل في مجموعة لازم يكون فيه «في مجموعة» صريح — عشان «سجل دفعة» متلخبطش معه
   enroll: /سجل .{1,50}?(?:في|فى) مجموعه|سجل في مجموعه|ضيف .{1,50}?(?:في مجموعه|لمجموعه)|حط .{1,50}? في مجموعه|enroll|register .{1,40} (?:to|in)|add .{1,50} to (?:a |the )?(group|جراب)/,
-  payRecord: /سجل دفعه|دفعه (جديده|من|لـ|ل)|استلمت|قبضت|سجل (مبلغ|فلوس|حساب|كاش)|دفع (لي|ليا|لى)|record (a )?payment|payment (from|for)|got (a )?payment/,
+  payRecord: /سجل دفعه|سجل دفعته|سجل دفعتها|دفعه (جديده|من|لـ|ل)|استلمت|قبضت|سجل (مبلغ|فلوس|حساب|كاش)|دفع (لي|ليا|لى)|دفعته|دفعتها|record (a )?payment|payment (from|for)|got (a )?payment/,
   newStudent: /طالب جديد|ضيف طالب|اضف طالب|سجل طالب جديد|new student|add (a )?student/,
   createGroup: /اعمل (مجموعه|جرروب)|ضيف مجموعه|اضف مجموعه|انشاء مجموعه|انشى مجموعه|مجموعه جديده|create (a )?(new )?group|new group/,
   report: /تقرير|report|ملف الطالب|معلومات عن|نبذه عن|how is .* doing/,
@@ -344,7 +361,8 @@ export function fallbackPlan(
         tool: { name: "student.get", args: { code: codeM[1] } },
       };
     }
-    const name = extractPaymentName(intentText) ?? ctx.selectedStudent?.name ?? null;
+    // الضمير: «سجل دفعته» — الاسم من الشاشة ← ذاكرة المحادثة ← نتيجة بحث وحيدة في المهمة
+    const name = extractPaymentName(intentText) ?? ctx.selectedStudent?.name ?? ctx.lastStudent?.name ?? singleStudentOf(observations)?.name ?? null;
     if (name && !srcObs) {
       return {
         say: `هبحث عن «${name}» الأول وبعدها أسجل الدفعة.`,
@@ -358,7 +376,8 @@ export function fallbackPlan(
   /* ================= تسجيل طالب في مجموعة — pipeline بحالة ================= */
   if (isEnroll) {
     const intentText = RE.enroll.test(t) ? text : (ctx.goal ?? text);
-    const name = extractName(intentText) ?? ctx.selectedStudent?.name ?? null;
+    // الضمير: «سجلّه في مجموعة B» — الشاشة ← ذاكرة المحادثة ← نتيجة بحث وحيدة
+    const name = extractName(intentText) ?? ctx.selectedStudent?.name ?? ctx.lastStudent?.name ?? singleStudentOf(observations)?.name ?? null;
     if (!name && !searchObs) return { say: "تمام — مين الطالب اللي هسجله؟", need_info: { question: "مين الطالب؟" } };
 
     const enrollObs = obsOf(observations, "group.enroll_student");
@@ -442,11 +461,12 @@ export function fallbackPlan(
     // التقرير نفسه اتنفذ؟ اقفل بالملخص (حماية من اللوب)
     const reportObs = obsOf(observations, "reports.get_student_report");
     if (reportObs) return doneWith(reportObs, "خلصت — التقرير جاهز فوق.");
-    // ضمير → الطالب المفتوح على الشاشة («تقريره/ملفه/الطالب ده») — من غير \b (مش بيشتغل مع العربي)
-    if (ctx.selectedStudent && /((تقرير|ملف|حالة)ها?|هو|بتاعها?|الطالب ده|ده|دا|his|him|her)(\s|$)/i.test(t) && !extractName(intentText) && !searchObs) {
+    // ضمير → الطالب المفتوح على الشاشة أو آخر طالب اتكلمنا عنه («تقريره/ملفه/الطالب ده») — من غير \b (مش بيشتغل مع العربي)
+    const repRef = ctx.selectedStudent ?? ctx.lastStudent ?? singleStudentOf(observations);
+    if (repRef && /((تقرير|ملف|حالة)ها?|هو|بتاعها?|الطالب ده|ده|دا|his|him|her)(\s|$)/i.test(t) && !extractName(intentText) && !searchObs) {
       return {
-        say: `هعمل تقرير سريع لـ ${ctx.selectedStudent.name}.`,
-        tool: { name: "reports.get_student_report", args: { studentId: ctx.selectedStudent.id } },
+        say: `هعمل تقرير سريع لـ ${repRef.name}.`,
+        tool: { name: "reports.get_student_report", args: { studentId: repRef.id } },
       };
     }
     const students = studentsOf(searchObs);
@@ -489,6 +509,23 @@ export function fallbackPlan(
     // «خلي الكل حاضر» — الاسم المستخرج هو نفسه الكل → بيتحول لتحضير معكوس بدل اسم غريب
     if (names && /^(?:الكل|كلهم|الكله|الباقي|باقيهم|كل المسجلين|everyone|all)$/.test(norm(names))) names = null;
     if (!names && !markRest) {
+      // ضمير/إحالة من غير اسم («سجل حضوره» / «ظبط حضوره» / «سجل حضور» والطالب معروف):
+      // الشاشة ← آخر طالب اتكلمنا عنه (ذاكرة محادثة) ← نتيجة بحث/تقرير وحيدة في المهمة.
+      // الكارت التأكيد بيعرض الاسم محلول والطالب هو اللي بيمضي أخيرًا — فالخطأ بيتمنع مش بيتم.
+      const ref = ctx.selectedStudent ?? ctx.lastStudent ?? singleStudentOf(observations);
+      if (ref) {
+        return {
+          say: `هسجل حضور ${ref.name} — جايبلك كارت التأكيد.`,
+          plan: ["أحدد الطالب من السياق", "أعرض التأكيد بالاسم محلول", "أسجل (بتأكيدك)"],
+          tool: {
+            name: "attendance.mark_names",
+            args: {
+              namesText: ref.name,
+              ...(sessionKey ? { session: sessionKey } : {}),
+            },
+          },
+        };
+      }
       return { say: "تمام — مين اللي هسجل حضورهم؟ اكتب الأسماء مفصولة بـ «و» أو فاصلة.", need_info: { question: "إيه الأسماء؟" } };
     }
     return {

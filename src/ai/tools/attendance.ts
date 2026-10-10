@@ -367,7 +367,7 @@ function egp(piastres: number): string {
    أو الحصة المفتوحة الوحيدة النهاردة تلقائيًا (فهم نية المدرّس)
 ------------------------------------------------------------ */
 async function resolveOpenSession(
-  args: { sessionId?: string; session?: string; date?: string },
+  args: { sessionId?: string; session?: string; date?: string; names?: string[] },
   ctx: { centerId: string },
 ) {
   const date = args.date || todayStr();
@@ -399,6 +399,36 @@ async function resolveOpenSession(
         : `مفيش حصص مفتوحة بتاريخ ${date}.`,
     );
   }
+
+  // تفضيل كشف الطالب: لو الطلب فيه أسماء — الحصة اللي كشفها فيه المطابقة بتتكسب
+  // حتى لو فيه حصص مفتوحة تانية («سجل حضوره» والإحالة لطالب في مجموعة تانية).
+  // أكتر من كشف فيه المطابقة = سؤال صريح (ممنوع تخمين). مفيش مطابقة = السلوك العادي
+  // (الخطأ بعد كده هيوضح كشف الحصة اللي اتختارت بالأسماء اللي فيه).
+  if (args.names?.length && !args.session) {
+    const tokens = [...new Set(args.names.flatMap((n) => normAr(n).split(" ")).filter((w) => w.length >= 3))];
+    if (tokens.length) {
+      const rosters = await Promise.all(
+        open.map(async (s) =>
+          s.groupId
+            ? (await db.studentGroup.findMany({
+                where: { groupId: s.groupId, status: "ACTIVE" },
+                select: { student: { select: { name: true } } },
+              })).map((r) => normAr(r.student.name))
+            : [],
+        ),
+      );
+      const hitIdx = rosters
+        .map((names, i) => ({ i, hit: names.some((rn) => rn.length >= 3 && tokens.some((tk) => rn.includes(tk) || tk.includes(rn))) }))
+        .filter((x) => x.hit)
+        .map((x) => x.i);
+      if (hitIdx.length === 1) return open[hitIdx[0]];
+      if (hitIdx.length > 1) {
+        const opts = hitIdx.slice(0, 5).map((i) => sessionLabel(open[i]));
+        throw new ToolError("VALIDATION", `الطالب مسجل في أكتر من حصة مفتوحة — سجّل في أنهي واحدة؟ ${opts.join(" / ")}`);
+      }
+    }
+  }
+
   if (open.length === 1 && !args.session) return open[0];
 
   const q = args.session ? normAr(args.session) : "";
@@ -767,7 +797,15 @@ type MarkArgs = {
 };
 
 async function buildMarkPlan(args: MarkArgs, ctx: { centerId: string; user: { id: string } }) {
-  const session = await resolveOpenSession(args, ctx);
+  // تلميح الأسماء قبل حل الحصة — عشان الحصة تتخت من كشف الطالب نفسه (مش أي حصة مفتوحة)
+  const nameHint = [
+    ...(args.marks ?? []).map((m) => (typeof m === "string" ? m : m.name)),
+    ...(args.namesText ? [args.namesText] : []),
+  ];
+  const session = await resolveOpenSession(
+    nameHint.length ? { ...args, names: nameHint } : args,
+    ctx,
+  );
   // الحضور المفتوح (بدون كشف) — التسجيل من الـ QR بس، زي الـ API الرسمي بالظبط
   if (session.studentSource === "OPEN" || !session.groupId) {
     throw new ToolError("STATE", "الحصة دي حضور مفتوح (من غير كشف) — الحضور بيتسجل من الـ QR بس بالاسم والكود، والتحضير بالأسماء مش منطبق عليها.");

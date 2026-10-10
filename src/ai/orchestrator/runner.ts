@@ -10,6 +10,7 @@ import { getTool, authorizeAndValidate, availableToolsFor } from "../tools";
 import { ToolError, CONFIRM_POLICY, type ToolOutput, type AgentCard } from "../tools/types";
 import { fallbackPlan, fallbackUnknown, type AgentTurn } from "./fallback";
 import { getBudgetState, persistLlmUsage } from "../usage";
+import { setLastStudent } from "../memory/memory";
 import { z } from "zod";
 
 /* ============================================================
@@ -233,6 +234,29 @@ async function executeTool(opts: {
       user, action: AUDIT.AGENT_TOOL_EXECUTED, entity: "AGENT_TOOL", entityId: executionId,
       after: { tool: tool.name, status: verifyNote ? "VERIFY_FAILED" : "SUCCEEDED", taskId, summary: output.summary },
     });
+    // ذاكرة المحادثة: آخر طالب اتحسم فعلًا (نتيجة بحث وحيدة / ملف / تقرير) —
+    // عشان «سجل حضوره» أو «تقريره» بعدها في مهمة تانية يشاروا على نفس الطالب.
+    // فشل الذاكرة مينفعش يكسر أداة نجحت — كله محمي.
+    if (!verifyNote) {
+      try {
+        const d = output.data as
+          | { student?: { id?: string; name?: string; code?: string }; students?: { id: string; name: string; code: string }[] }
+          | undefined;
+        const one =
+          d?.student?.id && d.student.name
+            ? d.student
+            : d?.students?.length === 1
+              ? d.students[0]
+              : null;
+        if (one?.id && one.name) {
+          await setLastStudent(user.id, {
+            id: one.id, name: one.name, code: one.code ?? "—", centerId: user.centerId,
+          });
+        }
+      } catch {
+        /* الذاكرة اختيارية */
+      }
+    }
     emit({
       type: "step", index: stepIndex, tool: tool.name, label,
       status: verifyNote ? "failed" : "ok",
@@ -317,7 +341,7 @@ async function agentLoop(opts: {
     // ردود جاهزة (تحية/شكر/رفض أمني)، متابعة وسط مهمة، أو طلب قصير وواضح (≤ 6 كلمات).
     // أي طلب أطول/أحر بيروح للموديل الأول، والمخ الحتمي بيبقى شبكة الأمان لو الموديل فشل.
     // NK_AGENT_BRAIN_FIRST=1 بيرجّع الترتيب القديم بالكامل.
-    const brainPlan = fallbackPlan(userText, { selectedStudent: ctx.selectedStudent, goal: taskGoal }, observations);
+    const brainPlan = fallbackPlan(userText, { selectedStudent: ctx.selectedStudent, lastStudent: ctx.lastStudent, goal: taskGoal }, observations);
     const llm = budgetExceeded ? null : await getLLM(user.centerId);
     // مهمة بدأها الموديل بتكمل بالموديل ما دام متوصل — المخ مبيسبقهاش عشان ميخطفهاش في النص؛
     // بس لو الموديل مش متوصل أصلًا (اتشال من الإعدادات/شبكة واقعة) المخ يرجع يشتغل عادي.
