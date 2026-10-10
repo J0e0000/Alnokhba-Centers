@@ -13,6 +13,7 @@ import { ToolError, type ToolOutput } from "./types";
 register({
   name: "reports.get_student_report",
   group: "reports",
+  requiredModule: "reports",
   description: "تقرير طالب: نسبة حضوره، آخر غياباته، رصيده، وآخر كويزاته",
   usageHint: "«اعمللي تقرير عن أحمد» — محتاج studentId (من أداة بحث قبلها) أو كوده",
   input: z.object({

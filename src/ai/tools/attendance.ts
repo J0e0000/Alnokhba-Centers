@@ -35,6 +35,7 @@ function sessionCard(label: string, data: { sessionId: string; date: string; sta
 register({
   name: "attendance.start_session",
   group: "attendance",
+  requiredModule: "attendance",
   description: "افتح حصة حضور (session) من سلوت الجدول أو مجموعة — وبتسجل المدرس حاضر تلقائيًا لو الميزة شغالة",
   usageHint: "«افتح حضور حصة Math» / «افتح Session للمجموعة الحالية» — محتاج scheduleId أو groupId (+ المواعيد لو مجموعة)",
   input: z.object({
@@ -203,6 +204,7 @@ register({
 register({
   name: "attendance.get",
   group: "attendance",
+  requiredModule: "attendance",
   description: "بيانات حضور: الطلبة الغايبين النهاردة، أو الغياب المتكرر، أو إحصاء حضور مجموعة",
   usageHint: "«مين غاب النهارده؟» / «اللي غابوا أكتر من 3 مرات» / «حضور مجموعة كذا إزاي؟»",
   input: z.object({
@@ -619,6 +621,7 @@ const MARK_STATUS_LABEL: Record<string, string> = { PRESENT: "حاضر", LATE: "
 register({
   name: "attendance.mark_names",
   group: "attendance",
+  requiredModule: "attendance",
   description: "سجّل حضور بالأسماء في حصة مفتوحة: حاضر/متأخر/بعذر، أو علّم كل المسجلين وحدد الغايبين — بنفس قواعد التحميل الرسمية (الاعتذار ببلاش، الباقي بيتحمّل سعر الحصة)",
   usageHint: "«سجل حضور أحمد ومحمد في حصة رياضيات» / «الحضور: أحمد، محمد — الغايبين عمر وسالم، سجّل الباقي» / «سجل الكل ما عدا عمر» — الأسماء بالكلام العادي والأداة بتحلها ضد كشف الحصة",
   input: z.object({
@@ -952,6 +955,7 @@ async function buildMarkPlan(args: MarkArgs, ctx: { centerId: string; user: { id
 register({
   name: "attendance.close_session",
   group: "attendance",
+  requiredModule: "attendance",
   description: "اقفل حصة مفتوحة — بيجمع الحضور والإيراد ونصيب المدرس ويسجل المستحقات، وبعدها مينفعش تعديل حضور غير من المدير",
   usageHint: "«اقفل حصة رياضيات» / «اقفل الحصة» — لو فيه حصة مفتوحة واحدة بس هتتقفل هي",
   input: z.object({

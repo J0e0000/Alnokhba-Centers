@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
+import { requireModule } from "@/lib/entitlements";
 import { requireCenterUser, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { normalizeDigits, validateOptionalPhone } from "@/lib/normalize";
@@ -106,6 +107,7 @@ type PatchBody = {
 /** PATCH /api/students/[id] — update profile / registrations */
 export const PATCH = handler(async (req: Request, ctx: Ctx) => {
   const user = await requireCenterUser();
+  await requireModule(user.centerId, "students");
   const { id } = await ctx.params;
   const body = await readJson<PatchBody>(req);
 

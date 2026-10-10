@@ -69,6 +69,7 @@ export async function resolveGroupFlexible(q: string, centerId: string): Promise
 register({
   name: "group.list",
   group: "groups",
+  requiredModule: "students",
   description: "المجموعات النشطة في السنتر مع عدد الطلبة والمادة والمدرس",
   usageHint: "لما المستخدم يسأل «إيه المجموعات اللي عندي؟» أو محتاج يختار مجموعة",
   input: z.object({
@@ -116,6 +117,7 @@ register({
 register({
   name: "group.enroll_student",
   group: "groups",
+  requiredModule: "students",
   description: "سجّل طالب في مجموعة — بيفحص التكرار والسعة قبل التسجيل",
   usageHint: "«سجل أحمد في Group B» — بيقبل studentId و groupId (من أدوات البحث قبلها) أو الأسماء مباشرة studentName و groupName (زي «كيمياء — A») — لو الاسم مطابق لأكتر من واحدة هيسأل",
   input: z.object({
@@ -305,6 +307,7 @@ async function nextSectionName(subjectId: string, gradeId: string, centerId: str
 register({
   name: "group.create",
   group: "groups",
+  requiredModule: "students",
   description: "أنشئ مجموعة جديدة: مادة + مرحلة + سعر الحصة، ولو ذكرت مدرس تتسلم له — الاسم بيتولد أوتوماتيك (A/B/C) لو مش محدد",
   usageHint: "«اعمل مجموعة رياضيات للصف الأول الثانوي بسعر 60» — المادة والمرحلة والسعر مطلوبين والمدرس اختياري (بالاسم مش بالـ id)",
   input: z.object({
@@ -382,6 +385,7 @@ register({
 register({
   name: "group.update",
   group: "groups",
+  requiredModule: "students",
   description: "عدّل مجموعة موجودة: الاسم أو المدرس أو سعر الحصة أو نسبة المدرس أو القاعة أو تفعيل/إيقاف",
   usageHint: "«غيّر سعر مجموعة رياضيات B لـ 70» / «وقف مجموعة الفيزياء A» — حدد المجموعة بالاسم/المادة وقيمة واحدة على الأقل للتغيير",
   input: z.object({

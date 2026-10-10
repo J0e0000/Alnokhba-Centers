@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
+import { requireModule } from "@/lib/entitlements";
 import { requireCenterUser, ApiError } from "@/lib/auth";
 import { normalizeObjectiveQuestions } from "@/lib/exam";
 import { assertGroupInCenter } from "@/lib/quiz";
@@ -17,6 +18,7 @@ export const dynamic = "force-dynamic";
 
 export const GET = handler(async (req: Request) => {
   const user = await requireCenterUser();
+  await requireModule(user.centerId, "assignments");
   const url = new URL(req.url);
   const groupId = url.searchParams.get("groupId") ?? undefined;
 
@@ -63,6 +65,7 @@ type CreateBody = {
 
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
+  await requireModule(user.centerId, "assignments");
   const body = await readJson<CreateBody>(req);
 
   const groupId = String(body.groupId ?? "");

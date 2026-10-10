@@ -10,6 +10,7 @@ import { logAudit, AUDIT } from "@/lib/audit";
 import { effectivePrice } from "@/lib/finance";
 import { notifyStudentsAttendance } from "@/lib/notify";
 import { notifyStaff } from "@/lib/staff-notify";
+import { evaluateTrustedDevice, bindTrustedDevice, touchTrustedDevice } from "@/lib/trusted-devices";
 
 export const dynamic = "force-dynamic";
 
@@ -451,6 +452,37 @@ export const POST = handler(async (req: Request) => {
 
   // (إشارات الخطورة والمخاطر اتنقلوا قبل الأقفال — Task R: قراءة موحدة بالتوازي)
 
+  // ===== 9ج) الجهاز الموثوق (Master Prompt §10) — لما القدرة مفعّلة:
+  // طالب واحد = جهاز موثوق واحد. الربط في الاتجاهين (طالب→جهاز + جهاز→طالب)
+  // يمنع تبديل الهوية من أي طرف — الرفض محايد (مفيش اتهام) + حدث أمني + تنبيه إدارة.
+  let trustedAction: "ALLOW" | "BIND" | null = null;
+  if (!isOpen && matchedStudentId && await hasCapability(qr.centerId, "trusted_devices")) {
+    const verdict = await evaluateTrustedDevice(qr.centerId, matchedStudentId, deviceId);
+    if (verdict.action === "REJECT") {
+      await attempt({
+        centerId: qr.centerId, sessionId: session.id, outcome: "TRUSTED_DEVICE_REJECTED",
+        studentId: matchedStudentId, studentCode: code, studentName: rawName || null,
+        riskScore: 85, riskFlags: ["IDENTITY_SWITCH_ATTEMPT", verdict.reason],
+      });
+      await logAudit({
+        user: { id: matchedStudentId, name: matchedStudent!.name, centerId: qr.centerId },
+        action: AUDIT.SUSPICIOUS_ACTIVITY, entity: "TRUSTED_DEVICE", entityId: session.id,
+        reason: `محاولة حضور من جهاز مش موثوق (${verdict.reason}) — الجهاز الموثوق مقفول عليه`,
+        after: { studentCode: matchedStudent!.code, ip, deviceTail: deviceId.slice(-6) },
+      }).catch(() => {});
+      void notifyStaff(qr.centerId, {
+        type: "ATTENDANCE", title: "⚠️ محاولة حضور من جهاز غير موثوق",
+        body: `${matchedStudent!.name} (كود ${matchedStudent!.code}) حاول يسجّل حضور في ${sessionLabel} من جهاز مش مربوط بحسابه — اترفض. لو موبايله اتغير، اعملوا استرجاع من إعدادات الحضور.`,
+        link: "today", refId: session.id,
+      }).catch(() => {});
+      return ok({
+        ok: false, reason: "DEVICE_BINDING",
+        message: "تسجيل الحضور من الجهاز ده مش متاح للحساب ده — كل طالب بيسجّل من جهازه الموثوق بس. لو موبايلك اتغير، كلّم الاستقبال يعيدوا ربط جهازك.",
+      });
+    }
+    trustedAction = verdict.action === "BIND" ? "BIND" : "ALLOW";
+  }
+
   // ===== 10) الإدخال الذري — القواعد النهائية محفوظة في الداتابيز نفسها (spec §8/§11):
   // unique(sessionId, deviceId) + unique(sessionId, deviceFingerprint) + unique(sessionId, attendanceCode)
   // + unique(sessionId, studentId) — أي سباق متزامن الداتابيز هيحكم فيه النهائي =====
@@ -588,6 +620,19 @@ export const POST = handler(async (req: Request) => {
       }).catch(() => {});
     }
     // الحضور المفتوح: مفيش إشعارات لكل طالب (فصل كامل = سبام) — العداد الحي على شاشة الحصة كفاية
+  }
+
+  // الربط/اللمسة للجهاز الموثوق — بعد نجاح الحضور بس (Master Prompt §10)
+  if (trustedAction === "BIND" && matchedStudentId) {
+    await bindTrustedDevice(qr.centerId, matchedStudentId, deviceId);
+    await logAudit({
+      user: { id: matchedStudentId, name: displayName, centerId: qr.centerId },
+      action: "TRUSTED_DEVICE_BOUND", entity: "TRUSTED_DEVICE", entityId: matchedStudentId,
+      reason: "ربط جهاز موثوق بعد أول حضور ناجح — طالب واحد = جهاز واحد",
+      after: { deviceTail: deviceId.slice(-6), session: sessionLabel },
+    }).catch(() => {});
+  } else if (trustedAction === "ALLOW" && matchedStudentId) {
+    tailTasks.push(touchTrustedDevice(qr.centerId, matchedStudentId, deviceId).catch(() => {}));
   }
 
   // ===== 12) سجل المحاولة (للوحة النشاط المشبوه) — مستقل → في نفس الدفعة المتوازية =====

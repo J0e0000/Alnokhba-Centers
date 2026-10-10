@@ -6,6 +6,7 @@ import {
   Building2, BadgeCheck, GraduationCap, Receipt, MonitorCog, Activity,
   MoreHorizontal, RefreshCcw, AlertTriangle, Users, CalendarDays, Wallet, Loader2,
   UserCog, HardDriveDownload, DatabaseBackup, ShieldCheck, LifeBuoy, UserPlus, UserMinus, ArchiveRestore, FileSpreadsheet, Download, Eye,
+  Grid3x3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, fmt, fmtE, formatDateAR, darkenForAA, STUDENT_STATUS } from "./lib";
@@ -14,6 +15,8 @@ import { PRICING, pricingBreakdown } from "@/lib/pricing";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 
 type PricingInfo = {
   students: number; baseMonthly: number; baseIncludedStudents: number;
@@ -36,7 +39,9 @@ export type AdminData = {
   totals: { centers: number; activeCenters: number; totalActiveStudents: number; platformRevenue: number; expiringSoon: number };
   unreadNotifs?: number;
   joinRequests: { id: string; name: string; username: string; phone: string | null; createdAt: string }[];
-  plans: { id: string; name: string; pricePerStudent: number; maxStudents: number | null }[];
+  plans: { id: string; name: string; pricePerStudent: number; maxStudents: number | null; features: string[] | null }[];
+  moduleCatalog: { key: string; label: string; desc: string; group: string }[];
+  moduleOverrides: Record<string, Record<string, boolean>>;
   pricingRules: {
     baseMonthly: number; baseIncludedStudents: number; hardLimitStudents: number;
     tiers: { from: number; to: number; unit: number; label: string }[];
@@ -54,6 +59,7 @@ export type AdminData = {
       effectiveStatus?: string; daysLeft?: number; expiringSoon?: boolean; renewalDue?: boolean;
       trialEndsAt?: string | null; graceUntil?: string | null;
       lastRenewedAt?: string | null; cancelledAt?: string | null; warningDays?: number;
+      planFeatures?: string[] | null;
     } | null;
   }[];
   billings: { id: string; centerName: string; students: number; pricePerStudent: number; amount: number; periodStart: string; periodEnd: string; status: string; createdAt: string }[];
@@ -590,6 +596,173 @@ export function AdminBillingView({ data }: { data: AdminData | null }) {
             ))}
           </ul>
         )}
+      </SectionCard>
+    </div>
+  );
+}
+
+/* ============================================================
+   لوحة الأقسام والميزات (Platform Control Center — Master Prompt §3/§8)
+   - الخطة = قالب ميزات (features) — بنعدّلها من هنا (مدقّق + مُسجّل في التدقيق)
+   - ماتريكس السنترات: الحالة الفعلية لكل قسم + override السنتر
+   - السيرفر هو الحكم — الشاشة دي عرض/إدارة، التقييم في entitlements.ts
+============================================================ */
+const LOCK_WHY: Record<string, string> = {
+  platform: "المركز مش مفعّل",
+  subscription: "الاشتراك منتهي",
+  plan: "مش مشمول في الخطة",
+  center: "متقفل من السنتر",
+};
+
+function PlanFeaturesEditor({ plan, catalog, reload }: { plan: AdminData["plans"][number]; catalog: AdminData["moduleCatalog"]; reload: () => void }) {
+  const [sel, setSel] = useState<Set<string>>(() => new Set(plan.features ?? catalog.map((c) => c.key)));
+  const [busy, setBusy] = useState(false);
+  const isFull = plan.features === null;
+
+  async function save(clear: boolean) {
+    setBusy(true);
+    try {
+      await api("/api/admin", {
+        method: "POST",
+        body: clear
+          ? { action: "set-plan-features", planId: plan.id, clearFeatures: true, reason: "إرجاع الخطة الكاملة" }
+          : { action: "set-plan-features", planId: plan.id, features: [...sel], reason: "تعديل ميزات الخطة" },
+      });
+      toast.success(clear ? `«${plan.name}» بقت خطة كاملة — كل الأقسام مفتوحة.` : `اتحفظت ميزات «${plan.name}».`);
+      reload();
+    } catch { /* toast */ } finally { setBusy(false); }
+  }
+
+  return (
+    <div className={cn("rounded-2xl border-2 p-4", isFull ? "nk-brand-border nk-brand-bg-soft" : "border-border bg-card")}>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h3 className="font-extrabold text-lg">{plan.name}</h3>
+          <p className="nk-num font-extrabold text-2xl mt-0.5">{fmt(plan.pricePerStudent)} <span className="text-xs font-bold opacity-70">ج / طالب / شهر</span></p>
+          <p className="text-xs text-muted-foreground font-bold mt-0.5">
+            {plan.maxStudents ? `حد أقصى ${plan.maxStudents} طالب` : "بدون حد للطلاب"}
+            {" · "}{isFull ? "الخطة الكاملة" : `${plan.features?.length ?? 0} قسم مشمول`}
+          </p>
+        </div>
+      </div>
+      <div className="grid gap-2 mt-3 sm:grid-cols-2">
+        {catalog.map((m) => {
+          const checked = isFull || sel.has(m.key);
+          return (
+            <label key={m.key} className={cn("flex items-start gap-2 rounded-xl border p-2.5 cursor-pointer transition-colors",
+              checked ? "border-emerald-300 bg-emerald-50/60 dark:bg-emerald-950/30" : "border-border opacity-70")}>
+              <Checkbox
+                checked={checked}
+                disabled={isFull || busy}
+                onCheckedChange={(v) => {
+                  const next = new Set(sel);
+                  if (v) next.add(m.key); else next.delete(m.key);
+                  setSel(next);
+                }}
+                className="mt-0.5"
+              />
+              <span className="text-xs leading-tight">
+                <span className="font-extrabold block">{m.label}</span>
+                <span className="text-muted-foreground font-semibold line-clamp-2">{m.desc}</span>
+              </span>
+            </label>
+          );
+        })}
+      </div>
+      <div className="flex gap-2 mt-3">
+        <Button size="sm" disabled={busy || isFull || sel.size === 0} onClick={() => save(false)}>حفظ الميزات</Button>
+        <Button size="sm" variant="outline" disabled={busy || isFull} onClick={() => save(true)}>الخطة الكاملة</Button>
+        {isFull && <span className="text-[11px] text-muted-foreground font-bold self-center">كل الأقسام مفتوحة — قالب غير محدود</span>}
+      </div>
+    </div>
+  );
+}
+
+export function AdminEntitlementsView({ data, reload }: { data: AdminData | null; reload: () => void }) {
+  if (!data) return <Loading />;
+
+  // الحالة الفعلية للعرض (التقييم الرسمي سيرفري) — نفس ترتيب الأسبقية
+  function effectiveModule(center: AdminData["centers"][number], mkey: string): { on: boolean; why: string } {
+    if (center.status !== "ACTIVE") return { on: false, why: LOCK_WHY.platform };
+    const sub = center.subscription;
+    if (sub && (sub.effectiveStatus === "EXPIRED" || sub.effectiveStatus === "CANCELLED")) {
+      if (mkey !== "reports" && mkey !== "settings") return { on: false, why: LOCK_WHY.subscription };
+    }
+    if (sub?.planFeatures && !sub.planFeatures.includes(mkey)) return { on: false, why: LOCK_WHY.plan };
+    const ov = data?.moduleOverrides?.[center.id]?.[mkey];
+    if (ov === false) return { on: false, why: LOCK_WHY.center };
+    return { on: true, why: "" };
+  }
+
+  async function toggleCenterModule(centerId: string, mkey: string, enable: boolean) {
+    try {
+      await api("/api/admin", {
+        method: "POST",
+        body: { action: "set-center-modules", centerId, modules: [{ key: mkey, enabled: enable }], reason: enable ? "إزالة قفل القسم" : "قفل قسم من لوحة المنصة" },
+      });
+      toast.success(enable ? "القسم رجع لحكم الخطة." : "اتقفل القسم للسنتر ده.");
+      reload();
+    } catch { /* toast */ }
+  }
+
+  return (
+    <div className="space-y-4">
+      <PageHeader title="الأقسام والميزات" subtitle="تحكم المنصة الكامل: ميزات كل خطة تجارياً، وقفل أقسام سنتر معين، والسيرفر هو اللي بيفرض كل قرار" />
+      <SectionCard title="ميزات الخطط (قوالب تجارية)" icon={<MonitorCog className="w-4 h-4" />}>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {data.plans.map((p) => <PlanFeaturesEditor key={p.id} plan={p} catalog={data.moduleCatalog} reload={reload} />)}
+        </div>
+        <p className="text-[11px] text-muted-foreground font-semibold mt-3">
+          الخطة سقف — مدير السنتر يقدر يقفل قسم مشمول بس، وميقدرش يفتح قسم مستثنى. التغيير بيتسجل في سجل التدقيق باسمك.
+        </p>
+      </SectionCard>
+
+      <SectionCard title="ماتريكس السنترات × الأقسام" icon={<Grid3x3 className="w-4 h-4" />}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs min-w-[720px]">
+            <thead>
+              <tr className="text-muted-foreground">
+                <th className="text-right font-extrabold p-2">السنتر</th>
+                {data.moduleCatalog.map((m) => (
+                  <th key={m.key} className="p-2 font-extrabold text-center whitespace-nowrap">{m.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {data.centers.map((c) => (
+                <tr key={c.id} className="border-t">
+                  <td className="p-2 font-extrabold whitespace-nowrap">
+                    {c.name}
+                    {c.status !== "ACTIVE" && <span className="text-rose-600 font-black"> (موقوف)</span>}
+                  </td>
+                  {data.moduleCatalog.map((m) => {
+                    const st = effectiveModule(c, m.key);
+                    const isCenterLock = st.why === LOCK_WHY.center;
+                    return (
+                      <td key={m.key} className="p-1.5 text-center">
+                        {st.on ? (
+                          <span className="inline-block rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 px-2 py-0.5 font-extrabold">مفتوح</span>
+                        ) : (
+                          <button
+                            className={cn("inline-block rounded-full px-2 py-0.5 font-extrabold",
+                              isCenterLock ? "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 cursor-pointer hover:opacity-80" : "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 cursor-help")}
+                            title={isCenterLock ? "اضغط لفك القفل (يرجع لحكم الخطة)" : st.why}
+                            onClick={isCenterLock ? () => toggleCenterModule(c.id, m.key, true) : undefined}
+                          >
+                            {st.why}
+                          </button>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-[11px] text-muted-foreground font-semibold mt-2">
+          مفتوح = القسم شغال للسنتر · قفل سنتر (أصفر) = اضغط لفكّه · الأقفال الحمراء من الخطة/الاشتراك/المنصة ومش بتتعدي من هنا.
+        </p>
       </SectionCard>
     </div>
   );

@@ -5,6 +5,8 @@ import { logAudit, AUDIT } from "@/lib/audit";
 import { getCenterCapabilities, invalidateCenterCapabilities, capabilityNumber } from "@/lib/center-capabilities";
 import { clearPeekCache } from "@/lib/peek-cache";
 import { CAPABILITY_CATALOG, defaultCapabilityConfig, isCapabilityKey } from "@/lib/capabilities";
+import { getEffectiveModules, invalidateEntitlements } from "@/lib/entitlements";
+import { isModuleKey, moduleOverrideKey, MODULE_CATALOG } from "@/lib/modules";
 
 export const dynamic = "force-dynamic";
 
@@ -15,15 +17,21 @@ export const dynamic = "force-dynamic";
 export const GET = handler(async () => {
   const user = await requireCenterUser();
   const caps = await getCenterCapabilities(user.centerId);
+  const ent = await getEffectiveModules(user.centerId);
   return ok({
     capabilities: caps,
     catalog: CAPABILITY_CATALOG,
     canManage: user.role === "MANAGER",
+    // أقسام المنتج الفعلية (استحقاق الخطة/الاشتراك/السنتر) — Master Prompt §8
+    modules: ent.modules,
+    moduleCatalog: MODULE_CATALOG,
+    subscription: ent.subscription,
   });
 });
 
 type PatchBody = {
   capabilities?: Array<{ key?: string; enabled?: boolean; config?: Record<string, unknown> }>;
+  modules?: Array<{ key?: string; enabled?: boolean }>;
 };
 
 /**
@@ -34,7 +42,8 @@ export const PATCH = handler(async (req: Request) => {
   const user = await requireManager();
   const body = await readJson<PatchBody>(req);
   const updates = Array.isArray(body.capabilities) ? body.capabilities : [];
-  if (!updates.length) throw new ApiError("مفيش تغييرات — حدّد الميزات اللي هتتعدل.");
+  const moduleUpdatesEarly = Array.isArray(body.modules) ? body.modules : [];
+  if (!updates.length && !moduleUpdatesEarly.length) throw new ApiError("مفيش تغييرات — حدّد الميزات اللي هتتعدل.");
 
   const before = await getCenterCapabilities(user.centerId);
   const after: Record<string, { enabled: boolean; config: Record<string, unknown> }> = {};
@@ -90,5 +99,39 @@ export const PATCH = handler(async (req: Request) => {
   });
 
   const caps = await getCenterCapabilities(user.centerId);
-  return ok({ capabilities: caps });
+
+  // أقسام المنتج (modules) — المدير يقدر يقفل قسم مشمول، أو يرجّع override —
+  // ميعرفش يفتح قسم مستثنى من الخطة (السقف عند الخطة — التقييم سيرفري)
+  const moduleUpdates = moduleUpdatesEarly;
+  const moduleAfter: Record<string, boolean> = {};
+  for (const u of moduleUpdates) {
+    const key = String(u.key ?? "");
+    if (!isModuleKey(key)) throw new ApiError(`قسم مش معروف: ${key}.`, 400);
+    const okey = moduleOverrideKey(key);
+    if (u.enabled === true) {
+      await db.centerCapability.deleteMany({ where: { centerId: user.centerId, key: okey } });
+      moduleAfter[key] = true; // رجع لحكم الخطة/الافتراضي
+    } else {
+      await db.centerCapability.upsert({
+        where: { centerId_key: { centerId: user.centerId, key: okey } },
+        create: { centerId: user.centerId, key: okey, enabled: false },
+        update: { enabled: false },
+      });
+      moduleAfter[key] = false;
+    }
+  }
+  if (moduleUpdates.length) invalidateEntitlements(user.centerId);
+
+  if (moduleUpdates.length) {
+    await logAudit({
+      user,
+      action: "CENTER_MODULES_UPDATED",
+      entity: "CENTER",
+      entityId: user.centerId,
+      after: moduleAfter,
+      reason: "تحديث أقسام المنتج (استحقاقات الخطة)",
+    });
+  }
+
+  return ok({ capabilities: caps, modules: moduleAfter });
 });

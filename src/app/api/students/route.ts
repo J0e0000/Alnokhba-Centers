@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
+import { requireModule } from "@/lib/entitlements";
+import { assertStudentQuotaTx } from "@/lib/entitlements";
 import { requireCenterUser, canRegisterStudents, generateStudentCode, generateQrToken, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { cleanRaw, normalizeDigits, validateEgyptianPhone, toPiastres } from "@/lib/normalize";
@@ -84,6 +86,7 @@ type CreateBody = {
 /** POST /api/students — register new student with smart validation */
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
+  await requireModule(user.centerId, "students");
   if (!canRegisterStudents(user)) {
     throw new ApiError("مسموح للإضافة بس المدير أو موظف عنده صلاحية الإضافة.", 403);
   }
@@ -143,6 +146,8 @@ export const POST = handler(async (req: Request) => {
   }
 
   const student = await db.$transaction(async (tx) => {
+    // حصة الطلاب من الخطة (Master Prompt §5) — جوه الـ transaction لمنع السباق
+    await assertStudentQuotaTx(tx, user.centerId);
     const st = await tx.student.create({
       data: {
         centerId: user.centerId,

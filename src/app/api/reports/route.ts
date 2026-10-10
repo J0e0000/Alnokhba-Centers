@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, handler } from "@/lib/api";
+import { requireModule } from "@/lib/entitlements";
 import { requireCenterUser } from "@/lib/auth";
 import { todayStr, cairoDateStr, cairoDayBounds } from "@/lib/normalize";
 
@@ -28,6 +29,7 @@ function inCairoRange(d: Date, from: string, to: string): boolean {
 /** GET /api/reports?type=&from=&to=&groupId=&subjectId=&teacherId=&studentId=&export=csv */
 export const GET = handler(async (req: Request) => {
   const user = await requireCenterUser();
+  await requireModule(user.centerId, "reports");
   const centerId = user.centerId;
   const url = new URL(req.url);
   const type = url.searchParams.get("type") ?? "daily";

@@ -31,6 +31,7 @@ const studentCard = (s: {
 register({
   name: "student.search",
   group: "students",
+  requiredModule: "students",
   description: "دور على طالب بالاسم أو الكود أو رقم الموبايل — بيرجع قايمة مطابقة",
   usageHint: "لما المستخدم يسأل عن طالب بالاسم أو يقصد طالب معين («هاتلي أحمد»)",
   input: z.object({
@@ -81,6 +82,7 @@ register({
 register({
   name: "student.get",
   group: "students",
+  requiredModule: "students",
   description: "ملف طالب كامل: البيانات + مجموعاته + رصيده + ملخص حضوره",
   usageHint: "لما يكون عندك id أو كود الطالب وعايز تفاصيله",
   input: z.object({
@@ -150,6 +152,7 @@ register({
 register({
   name: "student.create",
   group: "students",
+  requiredModule: "students",
   description: "سجّل طالب جديد في السنتر: اسم كامل + موبايل + ولي أمر + المرحلة — ولو ذكرت مجموعة يسجل فيها فورًا. الكود بيتولد أوتوماتيك",
   usageHint: "«ضيف طالب اسمه أحمد محمد علي موبايل 01012345678 ولي أمره أحمد والتليفون 01098765432 في المرحلة الأول الثانوي» — لو المجموعة مش متحدد اسأل أو سيبه من غير",
   input: z.object({
@@ -261,6 +264,7 @@ register({
 register({
   name: "student.update",
   group: "students",
+  requiredModule: "students",
   description: "عدّل بيانات طالب: الموبايل أو موبايل ولي الأمر أو المدرسة أو الملاحظات — أو وقف/شغّل الطالب (إيقاف محتاج صلاحية أرشفة)",
   usageHint: "«غير رقم أحمد لـ 01011122233» / «وقف الطالب 99002» — حدد الطالب بالاسم أو الكود والقيمة الجديدة",
   input: z.object({

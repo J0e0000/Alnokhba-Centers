@@ -70,6 +70,59 @@ export async function issueSessionQr(opts: {
   return { token: row.token, expiresAt: row.expiresAt.toISOString(), rotated: old.length > 0 };
 }
 
+/** إعدادات الدفعات (batch) — توليد أكواد متعددة تموت مع بعض في نهاية الدفعة */
+export const QR_BATCH_DEFAULT_COUNT = 10;
+export const QR_BATCH_SLOT_SECONDS = 5;
+
+/** توليد دفعة أكواد QR متحركة: N كود كلهم نشطين بتنتهي مع بعض في نهاية الدفعة —
+ *  الشاشة بتفل بينهم كل slotSeconds، فأي سكرين شوت بيمسك كود واحد بيموت مع الدفعة.
+ *  كل دفعة جديدة بتقفل اللي قبلها بهامش QR_ROTATE_GRACE_MS (نفس عقد التدوير). */
+export async function issueSessionQrBatch(opts: {
+  scope: SessionQrScope;
+  sessionId: string;
+  centerId: string | null;
+  createdById: string;
+  createdByName: string;
+  count: number;
+  ttlMs?: number;
+}): Promise<{ codes: { token: string; expiresAt: string }[]; batchExpiresAt: string; deactivated: number }> {
+  const count = Math.max(2, Math.min(20, Math.round(opts.count)));
+  const ttl = Math.max(
+    10_000,
+    Math.min(10 * 60_000, opts.ttlMs ?? count * QR_BATCH_SLOT_SECONDS * 1000 + 5_000),
+  );
+  // قفل أي توكن نشط قديم لنفس الحصة (نفس عقد issueSessionQr)
+  const old = await db.sessionQRToken.findMany({
+    where: { sessionId: opts.sessionId, scope: opts.scope, isActive: true },
+    select: { id: true },
+  });
+  if (old.length) {
+    await db.sessionQRToken.updateMany({
+      where: { id: { in: old.map((o) => o.id) } },
+      data: { isActive: false, expiresAt: new Date() },
+    });
+  }
+  const expiresAt = new Date(Date.now() + ttl);
+  const codes: { token: string; expiresAt: string }[] = [];
+  for (let i = 0; i < count; i++) {
+    const token = randomBytes(20).toString("hex");
+    const row = await db.sessionQRToken.create({
+      data: {
+        scope: opts.scope,
+        sessionId: opts.sessionId,
+        centerId: opts.centerId,
+        token,
+        isActive: true,
+        expiresAt,
+        createdById: opts.createdById,
+        createdByName: opts.createdByName,
+      },
+    });
+    codes.push({ token: row.token, expiresAt: row.expiresAt.toISOString() });
+  }
+  return { codes, batchExpiresAt: expiresAt.toISOString(), deactivated: old.length };
+}
+
 /** توليد كود السلوت الحالي (الموديل الجديد) — كود واحد لكل نداء، بيكمل شغال
  *  مدة السلوت + هامش شبكة صغير وبعده بيموت لوحده (اللي قبله بيموت قبله).
  *  أكتر من شاشة عرض في نفس اللحظة = عادي: كل كود بيعيش عمره القصير بنفسه. */

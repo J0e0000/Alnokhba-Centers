@@ -85,6 +85,7 @@ model Center {
   attendanceDevices AttendanceDevice[]
   staffQrTokens    StaffQrToken[]
   fingerprintEnrollments FingerprintEnrollment[]
+  trustedDeviceBindings TrustedDeviceBinding[]
   subscriptionEvents SubscriptionEvent[]
   backupRuns       BackupRun[]
   undoEntries      UndoEntry[]
@@ -279,11 +280,38 @@ model Student {
   quizAttempts QuizAttempt[]
   examAttempts ExamAttempt[]
   assignmentSubmissions AssignmentSubmission[]
+  trustedDevice TrustedDeviceBinding?
 
   @@unique([centerId, code])
   @@index([centerId, name])
   @@index([centerId, status])
   @@index([centerId, phone])
+}
+
+// ============================= TRUSTED DEVICE BINDING (Master Prompt §10) =============================
+// ربط جهاز موثوق بطالب — واحد نشط لكل طالب في السنتر. القاعدة:
+//   - الطالب اللي سجّل جهازه ميعرفش يبدّل الهوية من واجهة الحضور العادية
+//   - الجهاز بيتربط بعد أول حضور ناجح مُتحقق منه بس (مش من محاولة فاشلة)
+//   - الفصل/الاسترجاع عمل إداري مُدقّق بس_recovery — مفيش تنصيب صامت
+// بنخزن hash(deviceId + centerId) مش القيمة الخام — تسريب dump مبيديش هوية
+model TrustedDeviceBinding {
+  id            String    @id @default(cuid())
+  centerId      String
+  studentId     String    @unique // طالب واحد = جهاز موثوق واحد نشط
+  deviceId      String
+  deviceHash    String // sha256(deviceId + centerId) — verifier
+  boundAt       DateTime  @default(now())
+  lastUsedAt    DateTime?
+  status        String    @default("ACTIVE") // ACTIVE | REVOKED
+  revokedAt     DateTime?
+  revokedById   String?
+  revokedByName String?
+  revokeReason  String?
+  center        Center    @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  student       Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([centerId, status])
+  @@index([deviceId])
 }
 
 model StudentGroup {
@@ -866,6 +894,9 @@ model SubscriptionPlan {
   name            String // Starter | Professional | Enterprise
   pricePerStudent Int // piastres / student / month
   maxStudents     Int? // null = unlimited
+  // Master Prompt §5 — خطة كقالب ميزات: JSON array من مفاتيح الأقسام (module keys)
+  // null = كل أقسام المنتج مفتوحة (توافق عكسي كامل — المراكز القديمة صفر تراجع)
+  features        String?
   isActive        Boolean @default(true)
   subscriptions   Subscription[]
 }

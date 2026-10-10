@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Fingerprint, QrCode, ScanLine, UserRound, Users, MonitorSmartphone,
-  RefreshCcw, Plus, Copy, CheckCircle2, Clock, Loader2, ExternalLink, Trash2, Timer, ShieldCheck,
+  RefreshCcw, Plus, Copy, CheckCircle2, Clock, Loader2, ExternalLink, Trash2, Timer, ShieldCheck, Smartphone,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,7 @@ import {
 ============================================================ */
 
 type Device = { id: string; name: string; kind: string; active: boolean; lastSeenAt: string | null; createdAt: string };
+type TrustedDevice = { id: string; studentId?: string; studentName: string; studentCode: string; studentStatus?: string | null; boundAt: string; lastUsedAt: string | null; status: string; revokedAt: string | null; revokedByName: string | null; revokeReason: string | null; deviceTail: string };
 type StaffEvent = { id: string; name: string; role: string | null; method: string; methodLabel: string; status: string; occurredAt: string; today: boolean; sessionLabel: string | null };
 
 export function AttendanceTab() {
@@ -37,6 +38,10 @@ export function AttendanceTab() {
   const [newDeviceName, setNewDeviceName] = useState("");
   const [addingDevice, setAddingDevice] = useState(false);
   const [shownKey, setShownKey] = useState<{ name: string; key: string } | null>(null);
+  const [trusted, setTrusted] = useState<TrustedDevice[] | null>(null);
+  const [revokeFor, setRevokeFor] = useState<TrustedDevice | null>(null);
+  const [revokeReason, setRevokeReason] = useState("");
+  const [revoking, setRevoking] = useState(false);
 
   const load = useCallback(() => {
     api<{ capabilities: CapabilityMap }>("/api/center/capabilities", { silent: true })
@@ -47,6 +52,9 @@ export function AttendanceTab() {
       .catch(() => {});
     api<{ events: StaffEvent[] }>("/api/attendance/staff-events?days=2", { silent: true })
       .then((d) => setEvents(d.events))
+      .catch(() => {});
+    api<{ devices: TrustedDevice[] }>("/api/attendance/trusted-devices", { silent: true })
+      .then((d) => setTrusted(d.devices))
       .catch(() => {});
   }, []);
 
@@ -87,6 +95,20 @@ export function AttendanceTab() {
       await api("/api/attendance/staff-qr/device", { method: "PATCH", body: { id: d.id, active: !d.active }, silent: true });
       api<{ devices: Device[] }>("/api/attendance/staff-qr/device", { silent: true }).then((x) => setDevices(x.devices)).catch(() => {});
     } catch { /* toast */ }
+  }
+
+  async function revokeTrusted() {
+    if (!revokeFor) return;
+    if (revokeReason.trim().length < 3) { toast.error("اكتب سبب السحب (3 حروف على الأقل) — العملية دي متدقيقة باسمك."); return; }
+    setRevoking(true);
+    try {
+      const res = await api<{ message: string }>("/api/attendance/trusted-devices", {
+        method: "DELETE", body: { studentId: revokeFor.studentId, reason: revokeReason }, silent: true,
+      });
+      toast.success(res.message ?? "اتسحب الجهاز الموثوق.");
+      setRevokeFor(null); setRevokeReason("");
+      api<{ devices: TrustedDevice[] }>("/api/attendance/trusted-devices", { silent: true }).then((d) => setTrusted(d.devices)).catch(() => {});
+    } catch { /* toast */ } finally { setRevoking(false); }
   }
 
   const studentCaps = CAPABILITY_KEYS.filter((k) => CAPABILITY_CATALOG[k].group === "students");
@@ -197,6 +219,68 @@ export function AttendanceTab() {
       </SectionCard>
 
       {/* ============ مفتاح الجهاز (مرة واحدة) ============ */}
+      {/* ============ الأجهزة الموثوقة (استرجاع إداري) ============ */}
+      {caps.trusted_devices.enabled && trusted && trusted.length > 0 && (
+        <SectionCard
+          title="الأجهزة الموثوقة — ربط الطلاب بموبايلاتهم"
+          icon={<Smartphone className="w-4 h-4 nk-brand-text" />}
+          action={<InfoIcon text="الطالب المربوط بجهاز ميسجّلش من جهاز تاني. لو الطالب غيّر موبايله: اسحب الربط من هنا (بسبب موثّق) — وأول حضور ناجح بعده هيربط الجهاز الجديد تلقائيًا." />}
+        >
+          <div className="space-y-2">
+            {trusted.map((t) => (
+              <div key={t.id} className={cn("flex items-center justify-between gap-2 rounded-xl border p-3", t.status === "ACTIVE" ? "border-border bg-card" : "border-border/50 bg-muted/30 opacity-70")}>
+                <div className="min-w-0">
+                  <p className="font-extrabold text-[13px]">
+                    {t.studentName} <span className="nk-num text-muted-foreground text-[11px]">({t.studentCode})</span>
+                    {t.status !== "ACTIVE" && <span className="text-rose-600 text-[11px] font-black"> — مسحوب</span>}
+                  </p>
+                  <p className="text-[10.5px] font-bold text-muted-foreground mt-0.5">
+                    ارتبط {new Date(t.boundAt).toLocaleDateString("ar-EG")}
+                    {t.lastUsedAt ? ` · آخر استخدام ${new Date(t.lastUsedAt).toLocaleDateString("ar-EG")}` : " · لسه ما استخدمش"}
+                    {t.revokedByName ? ` · سحبه ${t.revokedByName}` : ""}
+                  </p>
+                </div>
+                {t.status === "ACTIVE" && (
+                  <button
+                    onClick={() => setRevokeFor(t)}
+                    className="shrink-0 rounded-xl border-2 border-rose-200 text-rose-700 bg-rose-50 dark:bg-rose-950/30 dark:border-rose-900 px-3 py-1.5 text-[11px] font-extrabold hover:bg-rose-100 dark:hover:bg-rose-900/50"
+                  >
+                    سحب الجهاز
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {revokeFor && (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-black/55 p-4" role="dialog" aria-modal="true">
+          <div className="nk-card rounded-3xl p-6 w-full max-w-sm space-y-3">
+            <h3 className="font-extrabold text-base">سحب جهاز {revokeFor.studentName}</h3>
+            <p className="text-xs font-bold text-muted-foreground leading-relaxed">
+              بعد السحب، الطالب يقدر يربط موبايله الجديد من أول حضور ناجح. العملية بتتسجل في سجل العمليات باسمك وسببك.
+            </p>
+            <textarea
+              value={revokeReason}
+              onChange={(e) => setRevokeReason(e.target.value)}
+              placeholder="السبب (إلزامي) — مثال: الطالب غير موبايله"
+              className="w-full rounded-xl border-2 border-border bg-card p-3 text-sm font-bold min-h-20"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => { setRevokeFor(null); setRevokeReason(""); }} className="rounded-xl border-2 border-border bg-card font-extrabold text-sm py-2.5">إلغاء</button>
+              <button
+                disabled={revoking}
+                onClick={revokeTrusted}
+                className="rounded-xl bg-rose-600 text-white font-extrabold text-sm py-2.5 shadow active:scale-95 disabled:opacity-50"
+              >
+                {revoking ? "بيسحب…" : "تأكيد السحب"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {shownKey && (
         <div className="fixed inset-0 z-[80] grid place-items-center bg-black/55 p-4" role="dialog" aria-modal="true">
           <div className="nk-card rounded-3xl p-6 w-full max-w-sm space-y-4 text-center">
@@ -313,6 +397,7 @@ const CAP_ICONS: Record<CapabilityKey, React.ReactNode> = {
   fingerprint: <Fingerprint className="w-4 h-4" />,
   late_checkin: <Clock className="w-4 h-4" />,
   teacher_auto_attendance: <ShieldCheck className="w-4 h-4" />,
+  trusted_devices: <Smartphone className="w-4 h-4" />,
 };
 
 /** حقل رقمي بحفظ عند التغيير */

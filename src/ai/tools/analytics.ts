@@ -40,6 +40,7 @@ function fmtJ(piastres: number): string {
 register({
   name: "reports.analyze",
   group: "reports",
+  requiredModule: "reports",
   description:
     "تحليل أداء السنتر لأي فترة (يوم/أسبوع/شهر) بالمقارنة مع الفترة اللي قبلها: الحضور والغياب، أكتر المجموعات غيابًا، التحصيل وتغيره، الحصص اللي لسه مفتوحة، والطلبة المحتاجين متابعة",
   usageHint:

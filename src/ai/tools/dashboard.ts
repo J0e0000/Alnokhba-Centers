@@ -15,6 +15,7 @@ import { todayStr } from "@/lib/normalize";
 register({
   name: "dashboard.get_today",
   group: "dashboard",
+  requiredModule: "sessions",
   description: "ملخص النهاردة: حصص اليوم وحالتها، الحضور، التحصيل، وأهم ملاحظات التحليل",
   usageHint: "«إيه اللي حصل النهارده؟» / «إيه أهم حاجة محتاجة متابعة؟» / «وريني الملخص»",
   input: z.object({

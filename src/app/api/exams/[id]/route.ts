@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
+import { requireModule } from "@/lib/entitlements";
 import { requireCenterUser, requireManager, ApiError } from "@/lib/auth";
 import { normalizeObjectiveQuestions, gradeObjectiveAttempt } from "@/lib/exam";
 import { logAudit, AUDIT } from "@/lib/audit";
@@ -40,6 +41,7 @@ async function getExam(centerId: string, id: string) {
 
 export const GET = handler(async (_req: Request, ctx: RouteCtx) => {
   const user = await requireCenterUser();
+  await requireModule(user.centerId, "exams");
   const { id } = await ctx.params;
   const exam = await getExam(user.centerId, id);
   return ok({
@@ -83,6 +85,7 @@ type PatchBody = {
 
 export const PATCH = handler(async (req: Request, ctx: RouteCtx) => {
   const user = await requireCenterUser();
+  await requireModule(user.centerId, "exams");
   const { id } = await ctx.params;
   const body = await readJson<PatchBody>(req);
   const exam = await getExam(user.centerId, id);
@@ -226,6 +229,7 @@ export const PATCH = handler(async (req: Request, ctx: RouteCtx) => {
 
 export const DELETE = handler(async (_req: Request, ctx: RouteCtx) => {
   const user = await requireCenterUser();
+  await requireModule(user.centerId, "exams");
   const { id } = await ctx.params;
   const exam = await getExam(user.centerId, id);
   if (exam.status !== "DRAFT" || exam.attempts.length > 0) {
