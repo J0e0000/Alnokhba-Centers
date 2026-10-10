@@ -422,9 +422,17 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
     setState("TRANSCRIBING");
     try {
       const { base64 } = await sess.stop();
+      // تلميح لغة التعرف: آخر نص مستخدم متاح (كتابة أو رسالة) — عربي افتراضيًا (المنتج عربي-أولًا)،
+      // وإنجليزي لو آخر نص لاتيني خالص. بيرفع دقة whisper مع التسجيلات القصيرة.
+      let lastText = input;
+      for (let i = items.length - 1; i >= 0; i--) {
+        const it = items[i];
+        if (it.kind === "user") { lastText = it.text || input; break; }
+      }
+      const voiceLang = /[\u0600-\u06FF]/.test(lastText) || !/[a-zA-Z]/.test(lastText) ? "ar" : "en";
       const d = await api<{ text: string; provider?: string; model?: string }>("/api/agent/transcribe", {
         method: "POST",
-        body: { audio: base64 },
+        body: { audio: base64, lang: voiceLang },
         silent: true,
       });
       const text = String(d.text ?? "").trim();

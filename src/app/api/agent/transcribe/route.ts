@@ -21,7 +21,7 @@ export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
   rateLimit(`agent-asr:${user.id}`, 30, 60_000);
 
-  const body = await readJson<{ audio?: string; mime?: string }>(req);
+  const body = await readJson<{ audio?: string; mime?: string; lang?: string }>(req);
   const audio = String(body.audio ?? "").trim();
   if (!audio) return fail("مفيش صوت مبعت — سجل تاني.", 400);
 
@@ -45,8 +45,13 @@ export const POST = handler(async (req: Request) => {
     return fail("صيغة الملف مش صوت — سجل من المايك تاني.", 415);
   }
 
+  // تلميح اللغة (اختياري): كود ISO قصير بس — بيرفع دقة whisper مع الكلام المصري
+  // (بدونه الكشف التلقائي بيغلط في التسجيلات القصيرة). أي حاجة تانية = auto (بدون تلميح).
+  const langRaw = String(body.lang ?? "").trim().toLowerCase();
+  const lang = /^[a-z]{2}$/.test(langRaw) ? langRaw : null;
+
   try {
-    const r = await transcribeAudio(base64, mime, user.centerId);
+    const r = await transcribeAudio(base64, mime, user.centerId, lang);
     return ok({ text: r.text, provider: r.provider, model: r.model });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
