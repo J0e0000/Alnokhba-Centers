@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles, X, Send, Mic, MicOff, Maximize2, Minimize2, History, CircleHelp,
   BrainCircuit, Loader2, WifiOff, GraduationCap, ListChecks, Lightbulb,
-  Volume2, VolumeX,
+  Volume2, VolumeX, ThumbsUp, ThumbsDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "./lib";
@@ -882,6 +882,41 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
 }
 
 /* ============================================================
+   تقييم رد زكي (§8 حلقة التحسين) — إبهامين صغيرين، هادي وفوق تشوش
+   الفشل صامت — التقييم اختياري ومش لازم يعطل أي حاجة
+============================================================ */
+function FeedbackThumbs({ messageId }: { messageId: string }) {
+  const [sent, setSent] = useState<"UP" | "DOWN" | null>(null);
+  const rate = (v: "UP" | "DOWN") => {
+    if (sent) return;
+    setSent(v);
+    void fetch("/api/agent/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messageId, feedback: v }),
+    }).catch(() => { /* صامت */ });
+  };
+  return (
+    <div className="flex items-center gap-1 opacity-60 hover:opacity-100 transition" aria-label="تقييم الرد">
+      <button
+        onClick={() => rate("UP")}
+        aria-label="رد مفيد"
+        className={cn("rounded-full p-1 transition active:scale-90", sent === "UP" ? "text-emerald-600 bg-emerald-500/10" : "text-muted-foreground")}
+      >
+        <ThumbsUp className="w-3 h-3" />
+      </button>
+      <button
+        onClick={() => rate("DOWN")}
+        aria-label="رد مش مفيد"
+        className={cn("rounded-full p-1 transition active:scale-90", sent === "DOWN" ? "text-red-600 bg-red-500/10" : "text-muted-foreground")}
+      >
+        <ThumbsDown className="w-3 h-3" />
+      </button>
+    </div>
+  );
+}
+
+/* ============================================================
    عرض عنصر شات واحد
 ============================================================ */
 function ItemView({
@@ -905,6 +940,8 @@ function ItemView({
     );
   }
   if (item.kind === "agent") {
+    // التقييم بس على رسايل ليها id حقيقي من السيرفر (cuid من غير شرطات) — عشان يوصل للرسالة الصحيحة
+    const isServerId = !item.id.includes("-");
     return (
       <div className="space-y-2">
         {item.plan && <PlanCard plan={item.plan} />}
@@ -913,6 +950,7 @@ function ItemView({
             {item.text}
           </div>
         )}
+        {item.text && isServerId && <FeedbackThumbs messageId={item.id} />}
         {item.options?.length ? (
           <div className="flex flex-wrap gap-1.5 pt-0.5">
             {item.options.map((opt, i) => (

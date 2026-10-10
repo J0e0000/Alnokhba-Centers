@@ -53,7 +53,8 @@ def main() -> int:
     #    العميل المولّد ميفشّلش كل query بتعمل full-row select (زي GET /api/settings).
     #    لإعادة تفعيل العمود: اعمل db push يدوي (docs/PRODUCTION-DB.md) وشيل السطر من تحت.
     PENDING_COLUMNS = [
-        "agentSttModel",  # STT model setting — pending production DB sync
+        # (فاضية دلوقتي) — agentSttModel اتزامنت مع الإنتاج فعليًا (db push جلسة 5432)
+        # وسّب فيها عمود لو حصل drift تاني بدل ما العميل يكسر full-row selects
     ]
     removed = []
     for col in PENDING_COLUMNS:

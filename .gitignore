@@ -52,3 +52,4 @@ db/custom.db-shm
 
 # Vercel probe sandbox (device-flow link + pulled prod env values — never commit)
 scripts/vc-probe/
+.env.prod-url
