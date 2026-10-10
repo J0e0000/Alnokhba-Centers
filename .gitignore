@@ -49,3 +49,6 @@ generated/
 # SQLite WAL side files (local dev — merged via wal_checkpoint before commit)
 db/custom.db-wal
 db/custom.db-shm
+
+# Vercel probe sandbox (device-flow link + pulled prod env values — never commit)
+scripts/vc-probe/
