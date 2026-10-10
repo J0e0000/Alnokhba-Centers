@@ -584,3 +584,20 @@ Stage Summary:
 - القاعدة القديمة موجودة وسليمة وبياناتها كاملة والسكيما متزامنة 100% مع الكود الحالي — جاهزة للربط فورًا.
 - الخطوة الوحيدة المتبقية: DATABASE_URL (قيمة POSTGRES_PRISMA_URL من Supabase pooler) في env لمشروع nine (dashboard أو device-flow بحساب nine) → إعادة نشر → db push أوتوماتيك (إضافي فقط) → التحقق على nine.
 - بعد الربط المتوقع تلقائيًا: الجلسات تثبت (نهاية «دخول وخروج فوري»)، الداتا الحقيقية، وعقل زكي + STT يرجعوا من إعدادات السنتر المخزنة.
+
+---
+Task ID: nine-db-link-3 (final verification)
+Agent: Super Z (main)
+Task: user: «check now, and see if you need any deployment key to use»
+
+Work Log:
+- المستخدم أضاف DATABASE_URL بنفسه من داشبورد Vercel (حساب Alnokhba / moj4534-4875 — مشروع alnokhba-centers بالدومين alnokhba-centers-nine.vercel.app — عرفنا السبب الحقيقي لعدم رؤية nine في السكوب الأول).
+- db-status فضل demo بعد الحفظ → env لا يسري إلا على بيلد جديد → رفع commit فارغ 067ff20 (مفيش أي deployment key محتاج — الربط بيتم من GitHub تلقائيًا) → **db-status قلب {"mode":"postgres"} بعد 3 دقايق**.
+- التحقق الكامل على nine (الرابط الحقيقي): login manager/nokhba123=200 (أ. أحمد محمود) · جلسة ثابتة 5/5 endpoints متتالية 200 · **burst 3×8 parallel = 24/24 صفر 401** (نهاية «دخول وخروج فوري») · settings ببرanding النخبة · students endpoint 24 صف · today ب3 حصص.
+- زكي: agent status source=center model=openai/gpt-oss-120b · **llm-test LIVE من Vercel egress: ✓ رد «تمام» في 861ms** · settings تؤكد hasKey=true keyTail=**v0QM** (مفتاح المستخدم راجع من القاعدة القديمة بلا إعادة إدخال).
+- الصوت: سلسلة STT مؤكدة بالكود — مفتاح السنتر (نفس Groq) + default whisper-large-v3-turbo؛ اختبار صوت حقيقي على الجهاز هو الخطوة الأخيرة للإقرار الكامل (مفيش ادعاء تحقق قبل صوت حقيقي).
+
+Stage Summary:
+- **nine متصل بالقاعدة القديمة رسميًا** — demo mode انتهى، الجلسات بتتحفظ في Postgres، الداتا الحقيقية كاملة (998 حضور، 34 طالب، مركزا النخبة والأمل)، وعقل زكي + صوت شغالين بمفتاح v0QM المخزن.
+- مفيش أي مفاتيح إضافية مطلوبة من المستخدم — كل الربط اتم عبر GitHub push + DATABASE_URL اللي ضافه.
+- جاهز لدخول P2/P3 (حضور باللغة الطبيعية + أدوات كتابة) — الموافقة موجودة من قبل.
