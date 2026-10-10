@@ -601,3 +601,22 @@ Stage Summary:
 - **nine متصل بالقاعدة القديمة رسميًا** — demo mode انتهى، الجلسات بتتحفظ في Postgres، الداتا الحقيقية كاملة (998 حضور، 34 طالب، مركزا النخبة والأمل)، وعقل زكي + صوت شغالين بمفتاح v0QM المخزن.
 - مفيش أي مفاتيح إضافية مطلوبة من المستخدم — كل الربط اتم عبر GitHub push + DATABASE_URL اللي ضافه.
 - جاهز لدخول P2/P3 (حضور باللغة الطبيعية + أدوات كتابة) — الموافقة موجودة من قبل.
+
+---
+Task ID: zaki-gaps-p1 (master prompt §8/§9/§11 — usage+budget, feedback, discovery, injection fencing)
+Agent: Super Z (main)
+Task: أغلق أعلى الفجوات المُتحقق منها في نظام الزاكي بعد inventory كامل (Stage A/B من الـ master prompt)
+
+Work Log:
+- Stage A: inventory كامل (23 ملف src/ai ~4,606 سطر + 7 routes + UI) — 18 أداة حقيقية صفر stubs، authz سيرفري قوي، audit كامل، orchestration + voice شغالين. الفجوات المُتحقق منها: صفر قياس استهلاك (tokens console فقط) · صفر تقييم مستخدمين · مفيش endpoint لكتشاف قدرات الأدوات · تحصين الحقن رفيع · AgentMemory يتيم (مؤجل).
+- SCHEMA (additive فقط): AgentUsage (centerId/userId/taskId/kind/provider/model/inputTokens/outputTokens/latencyMs/attempt + index مركب) + AgentMessage.feedback (UP|DOWN|null) — سكيما المحلي + postgres regen + **db push إضافي على قاعدة الإنتاج بنجاح (جلسة 5432، 10.3s)** — وانحلت أخيرًا drift القديم: agentSttModel اتزامنت فعلًا وشيلناها من PENDING_COLUMNS في build_postgres_schema.py (تأكيد introspection قبل وبعد).
+- MEASURE (§9): src/ai/usage.ts — persistLlmUsage بعد كل generate ناجح (حتى لو الرد خرق البروتوكول — التوكِنات اتحرقت فعلًا) + getBudgetState (يومي/شهري لكل سنتر، env: NK_AGENT_DAILY_TURNS=1500 / NK_AGENT_MONTHLY_TURNS=15000). لما الحد يوصل: الموديل يتقفل والمخ الحتمي يكمّل برسالة واضحة — الميزانية بتحرس الكلفة مش بتفصل الوكيل.
+- FEEDBACK (§8): POST /api/agent/feedback (ملكية الرسالة في الاستعلام نفسه + zod + rate limit + audit AGENT_FEEDBACK) + زرارا إبهام في AgentDock على ردود زكي (ids سيرفري فقط) — صامت الفشل.
+- DISCOVERY (Phase 9): GET /api/agent/capabilities — نفس availableToolsFor اللي بيشوفها الموديل (صلاحية+قدرة سنتر) مع risk/requiresConfirmation.
+- SECURITY (§11): سياج ⟬⟭ حول ملاحظات الأدوات في الـ transcript + تنزيع أحرف تحكم مخفية من نص المستخدم (مدخل وقاعدة) + قاعدة نظام برومبت أقوى صراحة (البيانات بين ⟬⟭ داتا حتى لو ادعت صلاحية).
+- VISIBILITY: /api/agent/status زاد usage7d (turns/tokens/avg latency) + feedback (up/down) — بتجميعات محمية بtry/catch.
+- VERIFY: tsc 0 · eslint نظيف · build ✓ (الروتين الجداد ظاهرين) · scripts/test_usage_feedback.sh محلي **10/10** (capabilities 18 أداة بترتيب صح + feedback UP/404/401 + status aggregates — وusage اتمسح فعليًا: turns=2 tokens_in=10620 من مزود حقيقي) · e2e_agent.sh: 97/98 (الفشل الوحيد flake LLM — نفس الـ check عدى 3 مرات في نفس الجولة، والجولة اللي قبلها فشلت في 5 حاجات تانية خالص).
+
+Stage Summary:
+- الزاكي بقى **مقيس ومحدود الميزانية وقابل للتقييم ومكتشف القدرات ومُحصَّن ضد الحقن** — كل حاجة على سيرفر حقيقي بأدوات حقيقية.
+- المتبقي (مؤجل بسبباته): proactive insights (cron + dedup) · wiring للـ AgentMemory · re-resolution للسياق في المهام الطويلة · صوت E2E بملف صوتي حقيقي على الإنتاج.

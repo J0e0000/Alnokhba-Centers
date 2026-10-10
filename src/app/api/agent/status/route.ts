@@ -38,5 +38,33 @@ export const GET = handler(async () => {
     // جدول ناقص في بيئة قديمة — الحالة الأساسية تكفي
   }
 
-  return ok({ ...status, brainFirst, commit, last7Days: split });
+  // استهلاك الموديل (§9) + تقييمات المستخدمين (§8) — أرقام حقيقية للمدير
+  let usage: { turns: number; inputTokens: number; outputTokens: number; avgLatencyMs: number | null } | null = null;
+  let feedback: { up: number; down: number } | null = null;
+  try {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const agg = await db.agentUsage.aggregate({
+      where: { centerId: user.centerId, kind: "llm_turn", createdAt: { gte: since } },
+      _count: true, _sum: { inputTokens: true, outputTokens: true }, _avg: { latencyMs: true },
+    });
+    usage = {
+      turns: agg._count,
+      inputTokens: agg._sum.inputTokens ?? 0,
+      outputTokens: agg._sum.outputTokens ?? 0,
+      avgLatencyMs: agg._avg.latencyMs != null ? Math.round(agg._avg.latencyMs) : null,
+    };
+    const fb = await db.agentMessage.groupBy({
+      by: ["feedback"],
+      where: { feedback: { not: null }, createdAt: { gte: since }, task: { centerId: user.centerId } },
+      _count: true,
+    });
+    feedback = {
+      up: fb.find((r) => r.feedback === "UP")?._count ?? 0,
+      down: fb.find((r) => r.feedback === "DOWN")?._count ?? 0,
+    };
+  } catch {
+    // بيئة من غير الجداول الجديدة — الحالة الأساسية تكفي
+  }
+
+  return ok({ ...status, brainFirst, commit, last7Days: split, usage, feedback });
 });

@@ -59,6 +59,7 @@ model Center {
   templates    WhatsAppTemplate[]
   auditLogs    AuditLog[]
   agentTasks   AgentTask[]
+  agentUsages  AgentUsage[]
   books        Book[]
   subscription Subscription?
   txns         CenterTransaction[]
@@ -1891,6 +1892,8 @@ model AgentMessage {
   // kind: text | plan | cards | confirmation | result | error | observation
   kind      String   @default("text")
   content   Json // {text} أو {plan:[...]} أو {cards:[...]} أو ملاحظة الأداة
+  // تقييم المستخدم للرد (§8 حلقة التحسين): UP | DOWN — باقي null
+  feedback  String?
   createdAt DateTime @default(now())
   task      AgentTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
@@ -1935,6 +1938,28 @@ model AgentConfirmation {
 
   @@index([taskId])
   @@index([status])
+}
+
+// استهلاك الوكيل (§9 قياس + ميزانية): صف لكل نداء LLM فعلي —
+// التوكِنات من تقرير المزود نفسه (مش تقدير)، والمخ الحتمي بيبقى مجاني ومش بيتسجل هنا.
+model AgentUsage {
+  id           String   @id @default(cuid())
+  centerId     String
+  userId       String
+  taskId       String?
+  // kind: llm_turn | (مستقبلًا: stt | tts)
+  kind         String   @default("llm_turn")
+  provider     String
+  model        String
+  inputTokens  Int?
+  outputTokens Int?
+  latencyMs    Int?
+  attempt      Int      @default(1) // 1 أول محاولة — 2 تصحيح البروتوكول
+  createdAt    DateTime @default(now())
+  center       Center   @relation(fields: [centerId], references: [id])
+
+  @@index([centerId, createdAt])
+  @@index([userId, createdAt])
 }
 
 model AgentMemory {

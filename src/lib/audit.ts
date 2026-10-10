@@ -156,4 +156,5 @@ export const AUDIT = {
   AGENT_TOOL_BLOCKED: "حجب أداة عن الوكيل (صلاحية)",
   AGENT_CONFIRMATION_GRANTED: "تأكيد عملية الوكيل",
   AGENT_CONFIRMATION_CANCELLED: "إلغاء تأكيد عملية الوكيل",
+  AGENT_FEEDBACK: "تقييم رد الوكيل",
 } as const;
