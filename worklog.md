@@ -643,3 +643,21 @@ Stage Summary:
 - الإنتاج متحقق منه 11/11 probe (قراءة فقط) — ونظام الصوت: STT الإنتاجي مُتحقق بصوت حقيقي (إنجليزي مطابق 100%)، العربي الحقيقي مستني اختبار مايك المستخدم، وTTS على Vercel محتاج ZAI env (فجوة معلنة).
 - أداة تحليل الأداء (reports.analyze) متحقق منها زي ما هي: حتمية بالكامل + صلاحيات + e2e — مفيش شغل عليها محتاج.
 - Stage G: تقرير التحقق النهائي PDF (11 صفحة: غلاف Crystal Blue + فهرس + 10 فصول) — كل رقم مربوط بدليل (فحوص/اختبارات/probes) والفجوات معلنة صراحة — download/ALNOKHBA-Autonomous-AI-System-Verification-Report.pdf + مصدر الغلاف HTML — pdf_qa PASS كامل (meta.brand/font.check/toc.check/pages.clean/pdf_qa).
+
+---
+Task ID: PROD-MODE-1 (accounts audit + test-mode→product-mode)
+Agent: main (Super Z)
+Task: "start and then give me all the accounts present in the server (change the server from test mode to full product mode)" + new MASTER PROMPT uploaded (feature entitlements / platform access control / trusted-device dynamic QR) — Stage 1 audit started.
+
+Work Log:
+- Stage A: located prod credentials at scripts/.env.prod-url (pooled 6543 + session 5432, Supabase eu-west-2). Production nine URL confirmed {"mode":"postgres"}.
+- READ-ONLY audits: prod_audit_accounts.ts (centers/users/students), prod_subscription_check.ts, prod_test_residue.ts, prod_residue_deps.ts, prod_residue_deep.ts.
+- Found test residue: 4 QA groups "اختبار آلي QA — يمكن حذفه" (2 active), 7 ARCHIVED test students "اختبار آلي — تجاهله" (1 att + 1-2 txns each), 3 QA sessions (attendance 100% test-students), 1 OPEN probe session (0 att), staff agent_teach_t ACTIVE, 20 stale OPEN real-group sessions, probe ufs7gj CANCELLED w/ 11 null-studentId attendance.
+- Cleanup via scripts/prod_test_cleanup.ts (backup-first JSON → assertions → single tx → AuditLog entry "TEST_DATA_CLEANUP"): deleted 7 test students, 4 QA groups, 4 sessions, 7 attendance, 10 txns, 7 memberships; agent_teach_t → isActive=false (reversible). Backup: backups/prod-test-cleanup-1791651936470.json.
+- POST-VERIFY: tStudents=0 qaGroups=0 openProbes=0 agentActive=false realStudents=27. Production health: db-status postgres, admin+manager login 200.
+
+Stage Summary:
+- SERVER IS NOW FULL PRODUCT MODE (zero test residue, audit-logged, recoverable backup).
+- Accounts snapshot: 2 centers ACTIVE (النخبة، الأمل), 27 staff accounts (26 active + agent_teach_t deactivated), 27 real students (19 portal-capable at النخبة, 8 no-phone at الأمل).
+- REPORTED NOT TOUCHED (owner decisions): 20 stale OPEN sessions (closing creates financial settlements — manager should close in-app), probe ufs7gj CANCELLED (no flow impact), الأمل subscription EXPIRED since 2026-09-19 (payment PENDING — cannot fabricate PAID), النخبة renews 2026-10-19.
+- NEXT: implement uploaded MASTER PROMPT (Stage 3+): feature registry → plans/entitlements → RBAC → Platform Control Center → trusted-device dynamic QR (existing StaffQrToken/AttendanceDevice/capabilities infra to be extended, not duplicated).
