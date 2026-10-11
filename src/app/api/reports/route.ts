@@ -29,7 +29,7 @@ function inCairoRange(d: Date, from: string, to: string): boolean {
 /** GET /api/reports?type=&from=&to=&groupId=&subjectId=&teacherId=&studentId=&export=csv */
 export const GET = handler(async (req: Request) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "reports");
+  await requireModule(user.centerId, "reports", user);
   const centerId = user.centerId;
   const url = new URL(req.url);
   const type = url.searchParams.get("type") ?? "daily";

@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
  */
 export const GET = handler(async (req: Request) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "exams");
+  await requireModule(user.centerId, "exams", user);
   const url = new URL(req.url);
   const groupId = url.searchParams.get("groupId") ?? undefined;
 
@@ -60,7 +60,7 @@ type CreateBody = {
 
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "exams");
+  await requireModule(user.centerId, "exams", user);
   const body = await readJson<CreateBody>(req);
 
   const groupId = String(body.groupId ?? "");

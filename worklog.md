@@ -704,3 +704,25 @@ Stage Summary:
 - Production outage RESOLVED + root cause eliminated (schema drift detector + fail-safe reads + session-pooler DDL).
 - Zaki works for platform admin, answers in one line, and no longer leaks internals. 19 tools live.
 - Local @prisma/client left sqlite-flavored (local dev); Vercel build regenerates postgres on deploy (unchanged behavior).
+
+---
+Task ID: USER-PERMS-ZAKI-1 (per-user permissions/features editing + smarter Zaki)
+Agent: main (Super Z)
+Task: "Make the admin able to edit the permissions and features for each and every user not just seeing them, also make zaki reply in a smarter way and be able to handle more problems and orders (tell me if you need any other api keys)"
+
+Work Log:
+- SCHEMA (additive): User.modules String? (JSON {grants:{finance:false,...}}) — per-user product-module restrictions; schema.postgres.prisma regenerated (build_postgres_schema.py) + local push. Vercel build script auto-syncs prod (session-pooler DDL path from PROD-OUTAGE-1).
+- ENTITLEMENTS: parseUserModuleGrants (false-only, true ignored — user can never open above plan/center ceiling) + applyUserModuleGrants (pure) + getEffectiveModulesForUser + requireModule(centerId, key, user?) — user-level lock 403 "القسم ده متقفل لحسابك من إدارة السنتر"; managers exempt from account-level locks (same as permissions). ALL 35 requireModule call sites now pass user (18 route files + agent registry).
+- AGENT GATING: availableToolsFor filters by getEffectiveModulesForUser (locked module → its tools vanish from LLM catalog) + new ToolDef.requiredRole ("MANAGER") filtered in catalog AND enforced in authorizeAndValidate.
+- STAFF API: GET returns resolved permissions (full 24 catalog) + effective modules + raw grants per staff; PATCH accepts permissions for ANY role (receptionist AND teacher) and modules:{key:false|true} (false=lock, true=restore inherit); manager target rejected.
+- ADMIN API: GET users payload now includes permissions+modules+moduleGrants per user; POST actions set-user-permissions / set-user-modules / set-user-status (audited, MANAGER + academia targets rejected). Platform admin edits every center user directly — no support-impersonation needed.
+- CLIENT: /api/center/capabilities returns userModules (per requesting user) — shell nav hides locked views (VIEW_TO_MODULE map); shared editors component (user-editors.tsx): full 24-permission grouped editor (filters, direct→request pairing) + per-user module toggles (center-locked shown disabled); used by manager settings StaffTab (both roles now) and admin console center-detail staff list (صلاحيات/أقسام buttons).
+- PERMISSION CATALOG split: src/lib/permission-catalog.ts (shared client+server source of truth — 24 perms, groups, RECEPTIONIST_DEFAULT, DIRECT_TO_REQUEST, buildGrantsFromResolved); permissions.ts re-exports (API unchanged).
+- ZAKI +9 TOOLS (20→28): finance.record_expense (manager, HIGH, undoable) · approvals.list (manager, LOW) · approvals.decide (manager, HIGH — approve executes refund/adjustment/session-cancel/student-archive/registration-cancel with same conditional-claim pattern as API) · books.sell_book (stock guard in tx + journal) · students.set_status archive/activate (ARCHIVE_STUDENT perm) · announcements.send (audience ALL/GROUP via resolveAnnouncementAudience + push) · exams.list · audit.recent (manager) · subscription.status (manager). All: module gate + role/permission gate + audit + confirm previews for HIGH.
+- SMARTER: system prompt "ذكاء تنفيذي" section (multi-intent splitting, read tool data before asking, fix-args-then-retry, natural chains like approvals.list→decide, no invented numbers) + MAX_ITERATIONS 8→10, MAX_TOOLS 10→14.
+- VERIFY local: NEW scripts/e2e_user_permissions.sh 36/36 (staff full-catalog grants for teacher incl. real payments POST 403→200, finance module lock → 403 user-specific message + tools hidden + userModules False, admin 3 actions round-trip incl. deactivate→401→restore, manager/academia targets rejected, 28 tools + 9 new + role/module filtering per persona) · regressions: e2e_agent 103/0/1skip (fixed stale >24h enrollment fixture), e2e_capabilities 37/37, e2e_entitlements 8/8, tabs_security 25/25 (open-session fixture reseeded), e2e_qr_slot 15/15, e2e_notifications 7/7, e2e_device_lock 33/33 = 264 automated checks green · tsc src 0 · eslint clean on changed files (3 pre-existing errors in untouched files) · next build ✓.
+- Dev server restart required mid-testing: regenerated prisma client wasn't picked up (Unknown argument `modules`) — restarted process, all green after.
+
+Stage Summary:
+- Admin (platform) AND manager can now EDIT (not just view) the full 24-permission catalog + per-user feature (module) access for every receptionist/teacher — enforced server-side at API + agent-tool level, reflected in the UI nav, all audited.
+- Zaki grew from 20 to 28 real tools covering expenses, approvals decisions, book sales, student status, announcements, exams, audit trail, subscription — with the executive-intelligence prompt upgrade for multi-step orders.

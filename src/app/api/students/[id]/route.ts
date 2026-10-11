@@ -107,7 +107,7 @@ type PatchBody = {
 /** PATCH /api/students/[id] — update profile / registrations */
 export const PATCH = handler(async (req: Request, ctx: Ctx) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "students");
+  await requireModule(user.centerId, "students", user);
   const { id } = await ctx.params;
   const body = await readJson<PatchBody>(req);
 

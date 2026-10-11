@@ -6,7 +6,8 @@ import { todayStr, toPiastres } from "@/lib/normalize";
 import { pricingBreakdown, monthlyBillPiastres, PRICING } from "@/lib/pricing";
 import { recordSubEvent, GRACE_DAYS_DEFAULT, deriveSubStatus, EXPIRY_WARNING_DAYS } from "@/lib/subscription";
 import { MODULE_CATALOG, MODULE_KEYS, isModuleKey, moduleOverrideKey, type ModuleKey } from "@/lib/modules";
-import { invalidateEntitlements, planFeaturesList, safePlanFeaturesRaw } from "@/lib/entitlements";
+import { invalidateEntitlements, planFeaturesList, safePlanFeaturesRaw, parseUserModuleGrants } from "@/lib/entitlements";
+import { PERMISSION_CATALOG, resolvePermissions, type PermissionId } from "@/lib/permissions";
 import { invalidateCenterCapabilities } from "@/lib/center-capabilities";
 
 export const dynamic = "force-dynamic";
@@ -79,13 +80,20 @@ export const GET = handler(async () => {
     db.staffNotification.count({ where: { userId: user.id, readAt: null } }),
   ]);
 
-  // موظفي كل سنتر — لزرار «دعم فني» (بدون أي بيانات سرية)
+  // موظفي كل سنتر — لزرار «دعم فني» + محرر الصلاحيات والأقسام لكل حساب (بدون أي بيانات سرية)
   const users = await db.user.findMany({
     where: { centerId: { not: null } },
-    select: { id: true, name: true, username: true, role: true, isActive: true, centerId: true },
+    select: { id: true, name: true, username: true, role: true, isActive: true, centerId: true, permissions: true, modules: true },
     orderBy: { centerId: "asc" },
   });
   const centerNameById = new Map(centers.map((c) => [c.id, c.name]));
+  // الصلاحيات المحسومة + الأقسام الفعلية لكل حساب (لعرضها في محرر الأدمن) — pure على حالة كل سنتر
+  const { getEffectiveModules, applyUserModuleGrants, parseUserModuleGrants } = await import("@/lib/entitlements");
+  const centerModulesById = new Map<string, Awaited<ReturnType<typeof getEffectiveModules>>["modules"]>();
+  await Promise.all(centers.map(async (c) => {
+    const { modules } = await getEffectiveModules(c.id);
+    centerModulesById.set(c.id, modules);
+  }));
 
   // ميزات الخطط الفعلية — قراءة آمنة (null = خطة كاملة لو السكيما لسه متزامتش)
   const planIds = [...new Set(centers.map((c) => c.subscription?.planId).filter((x): x is string => !!x))];
@@ -194,10 +202,17 @@ export const GET = handler(async () => {
       id: l.id, userName: l.userName, action: l.action, reason: l.reason,
       createdAt: l.createdAt, centerId: l.centerId,
     })),
-    users: users.map((u) => ({
-      id: u.id, name: u.name, username: u.username, role: u.role,
-      isActive: u.isActive, centerId: u.centerId, centerName: centerNameById.get(u.centerId ?? "") ?? "—",
-    })),
+    users: users.map((u) => {
+      const cm = u.centerId ? centerModulesById.get(u.centerId) : undefined;
+      return {
+        id: u.id, name: u.name, username: u.username, role: u.role,
+        isActive: u.isActive, centerId: u.centerId, centerName: centerNameById.get(u.centerId ?? "") ?? "—",
+        // محرر الصلاحيات/الأقسام في لوحة الأدمن — نفس نظام المدير بالظبط
+        permissions: [...resolvePermissions(u)].sort(),
+        modules: cm ? applyUserModuleGrants(cm, u.role, u.modules) : null,
+        moduleGrants: parseUserModuleGrants(u.modules),
+      };
+    }),
     teams: teams.map((t) => ({
       id: t.id, name: t.name, description: t.description, isActive: t.isActive, createdAt: t.createdAt,
       members: t.members.map((m) => ({
@@ -213,7 +228,8 @@ type AdminAction = {
     | "team-create" | "team-rename" | "team-set-status" | "team-add-member" | "team-remove-member" | "team-set-description"
     | "request-assign" | "request-reject"
     | "sub-lifecycle" | "sub-events"
-    | "set-plan-features" | "set-center-modules";
+    | "set-plan-features" | "set-center-modules"
+    | "set-user-permissions" | "set-user-modules" | "set-user-status";
   centerId?: string; planId?: string; months?: number;
   status?: string; markPaid?: boolean;
   // support access
@@ -227,7 +243,10 @@ type AdminAction = {
   // entitlements (Master Prompt §5)
   features?: string[]; // plan features — null/undefined معناها «الخطة الكاملة»
   clearFeatures?: boolean; // رجّع الخطة لكل الأقسام
-  modules?: Array<{ key?: string; enabled?: boolean }>;
+  modules?: Array<{ key?: string; enabled?: boolean }> | Record<string, boolean>; // set-center-modules قوايم — set-user-modules خريطة
+  // تحرير حساب موظف من لوحة الأدمن (لكل حساب — مش عرض بس)
+  permissions?: Record<string, boolean>; // أي صلاحية من الكتالوج
+  userStatus?: boolean; // isActive للحساب
 };
 
 /** POST /api/admin — renew / plan / status / support access / teams */
@@ -309,6 +328,63 @@ export const POST = handler(async (req: Request) => {
   if (body.action?.startsWith("team-")) {
     const teamAction = body.action as "team-create" | "team-rename" | "team-set-status" | "team-add-member" | "team-remove-member" | "team-set-description";
     return teamActions(teamAction, body, user);
+  }
+
+  // =================== تحرير حساب موظف من لوحة الأدمن (لكل حساب) ===================
+  // نفس قواعد /api/staff بالظبط — بس من لوحة المنصة (كل حاجة مُدفوعة في سجل العمليات)
+  if (body.action === "set-user-permissions" || body.action === "set-user-modules" || body.action === "set-user-status") {
+    const target = await db.user.findUnique({ where: { id: String(body.targetUserId ?? "") } });
+    if (!target || !target.centerId) throw new ApiError("الحساب ده مش موجود أو ملوش سنتر.", 404);
+    if (target.role === "MANAGER") {
+      throw new ApiError("حساب المدير بيتحكم من مدير السنتر نفسه — صلاحيات المدير كاملة دايمًا.", 400);
+    }
+    if (target.scope === "academia") throw new ApiError("الحساب ده من نظام أكاديميا — بيتحكم من هناك.", 400);
+
+    const data: Record<string, unknown> = {};
+
+    if (body.action === "set-user-permissions") {
+      const perms = body.permissions;
+      if (!perms || typeof perms !== "object") throw new ApiError("مفيش صلاحيات في الطلب.");
+      const validKeys = (Object.keys(perms) as PermissionId[]).filter((k) => k in PERMISSION_CATALOG);
+      if (validKeys.length === 0) throw new ApiError("مفيش صلاحيات معروفة في الطلب.");
+      const current = JSON.parse(target.permissions ?? "{}") as { grants?: Record<string, boolean> };
+      const grants: Record<string, boolean> = current.grants ?? {};
+      for (const k of validKeys) grants[k] = perms[k] === true;
+      data.permissions = JSON.stringify({ grants });
+      if ("ADD_STUDENT" in perms) data.canAddStudents = perms.ADD_STUDENT === true;
+    }
+
+    if (body.action === "set-user-modules") {
+      const mods = body.modules as Record<string, boolean> | undefined;
+      if (!mods || typeof mods !== "object") throw new ApiError("مفيش أقسام في الطلب.");
+      const keys = Object.keys(mods).filter(isModuleKey);
+      if (keys.length === 0) throw new ApiError("مفيش أقسام معروفة في الطلب.");
+      const current = parseUserModuleGrants(target.modules);
+      for (const k of keys as ModuleKey[]) {
+        if (mods[k] === false) current[k] = false;
+        else delete current[k];
+      }
+      data.modules = Object.keys(current).length ? JSON.stringify({ grants: current }) : null;
+    }
+
+    if (body.action === "set-user-status") {
+      data.isActive = body.userStatus === true;
+      if (target.id === user.id) throw new ApiError("مينفعش تقفل حسابك بنفسك.");
+    }
+
+    const targetCenterName = (await db.center.findUnique({ where: { id: target.centerId }, select: { name: true } }))?.name ?? "";
+    await db.user.update({ where: { id: target.id }, data: data as never });
+    const actionLabel =
+      body.action === "set-user-permissions" ? "تعديل صلاحيات حساب" :
+      body.action === "set-user-modules" ? "تعديل أقسام حساب" : "تغيير حالة حساب";
+    await logAudit({
+      user: { ...user, centerId: target.centerId },
+      action: actionLabel, entity: "USER", entityId: target.id,
+      before: { name: target.name, username: target.username, role: target.role, permissions: target.permissions, modules: target.modules, isActive: target.isActive },
+      after: { ...data, name: target.name, username: target.username, role: target.role },
+      reason: `من لوحة المنصة — ${target.name} (${targetCenterName})`,
+    });
+    return ok({ ok: true, action: body.action });
   }
 
   const center = await db.center.findUnique({ where: { id: String(body.centerId ?? "") } });

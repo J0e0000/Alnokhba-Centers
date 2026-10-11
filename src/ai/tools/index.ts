@@ -7,6 +7,7 @@ import "./analytics";
 import "./dashboard";
 import "./schedule";
 import "./finance";
+import "./operations";
 import { allTools } from "./registry";
 
 /* ============================================================

@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { PermissionsEditorDialog, StaffModulesEditorDialog, type EditorStaff } from "./user-editors";
 
 type PricingInfo = {
   students: number; baseMonthly: number; baseIncludedStudents: number;
@@ -64,7 +65,12 @@ export type AdminData = {
   }[];
   billings: { id: string; centerName: string; students: number; pricePerStudent: number; amount: number; periodStart: string; periodEnd: string; status: string; createdAt: string }[];
   recentLogs: { id: string; userName: string; action: string; reason: string | null; createdAt: string; centerId: string | null }[];
-  users: { id: string; name: string; username: string; role: string; isActive: boolean; centerId: string; centerName: string }[];
+  users: {
+    id: string; name: string; username: string; role: string; isActive: boolean; centerId: string; centerName: string;
+    permissions?: string[];
+    modules?: Record<string, { enabled: boolean; lockedBy?: string }> | null;
+    moduleGrants?: Record<string, boolean>;
+  }[];
   teams: {
     id: string; name: string; description: string | null; isActive: boolean; createdAt: string;
     members: { id: string; userId: string; name: string; username: string; role: string; centerName: string }[];
@@ -76,6 +82,23 @@ export function AdminCentersView({ data, reload }: { data: AdminData | null; rel
   const [supportFor, setSupportFor] = useState<AdminData["users"][number] | null>(null);
   const [supportReason, setSupportReason] = useState("");
   const [supportBusy, setSupportBusy] = useState(false);
+  const [permFor, setPermFor] = useState<EditorStaff | null>(null);
+  const [modsFor, setModsFor] = useState<EditorStaff | null>(null);
+
+  // تحرير حساب من لوحة المنصة — نفس قواعد المدير بالظبط (مُدفوع في سجل العمليات)
+  async function adminUserEdit(action: "set-user-permissions" | "set-user-modules", payload: Record<string, boolean>) {
+    const target = action === "set-user-permissions" ? permFor : modsFor;
+    if (!target) return;
+    try {
+      await api("/api/admin", {
+        method: "POST",
+        body: { action, targetUserId: target.id, ...(action === "set-user-permissions" ? { permissions: payload } : { modules: payload }) },
+      });
+      toast.success("تم حفظ التعديل — ومسجل في سجل العمليات.");
+      setPermFor(null); setModsFor(null);
+      reload();
+    } catch { /* toast */ }
+  }
 
   async function startSupport() {
     if (!supportFor) return;
@@ -207,9 +230,37 @@ export function AdminCentersView({ data, reload }: { data: AdminData | null; rel
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold truncate">{u.name}</p>
                       <p className="text-[11px] text-muted-foreground font-semibold">
-                        {u.role === "MANAGER" ? "مدير" : "استقبال"} · @{u.username} {!u.isActive && "· موقوف"}
+                        {u.role === "MANAGER" ? "مدير" : u.role === "TEACHER" ? "مدرس" : "استقبال"} · @{u.username} {!u.isActive && "· موقوف"}
                       </p>
                     </div>
+                    {u.role !== "MANAGER" && (
+                      <>
+                        <button
+                          onClick={() => setPermFor({
+                            id: u.id, name: u.name, role: u.role,
+                            permissions: u.permissions ?? [],
+                            moduleGrants: u.moduleGrants ?? {},
+                            centerModules: Object.fromEntries(Object.entries(u.modules ?? {}).map(([k, v]) => [k, { enabled: v.enabled }])),
+                          })}
+                          title="تعديل صلاحيات الحساب"
+                          className="shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-extrabold bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 flex items-center gap-1"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5" /> صلاحيات
+                        </button>
+                        <button
+                          onClick={() => setModsFor({
+                            id: u.id, name: u.name, role: u.role,
+                            permissions: u.permissions ?? [],
+                            moduleGrants: u.moduleGrants ?? {},
+                            centerModules: Object.fromEntries(Object.entries(u.modules ?? {}).map(([k, v]) => [k, { enabled: v.enabled }])),
+                          })}
+                          title="تعديل الأقسام والميزات للحساب"
+                          className="shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-extrabold bg-muted border border-border text-muted-foreground hover:bg-muted/70 flex items-center gap-1"
+                        >
+                          <Grid3x3 className="w-3.5 h-3.5" /> أقسام
+                        </button>
+                      </>
+                    )}
                     {u.isActive && (
                       <button
                         onClick={() => { setSupportFor(u); setSupportReason(""); }}
@@ -262,6 +313,22 @@ export function AdminCentersView({ data, reload }: { data: AdminData | null; rel
             </div>
           </DialogContent>
         </Dialog>
+      )}
+
+      {permFor && (
+        <PermissionsEditorDialog
+          staff={permFor}
+          onClose={() => setPermFor(null)}
+          onSaved={(grants) => adminUserEdit("set-user-permissions", grants)}
+        />
+      )}
+
+      {modsFor && (
+        <StaffModulesEditorDialog
+          staff={modsFor}
+          onClose={() => setModsFor(null)}
+          onSaved={(modules) => adminUserEdit("set-user-modules", modules)}
+        />
       )}
     </div>
   );

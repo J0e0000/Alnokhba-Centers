@@ -109,6 +109,10 @@ model User {
   // صلاحيات حساسة دقيقة يتحكم فيها المدير (JSON { REFUND_PAYMENT: true, ... })
   // null = افتراضي الدور. الصلاحيات دي فوق الافتراضي — بتقرأها resolvePermissions()
   permissions     String?
+  // أقسام المنتج على مستوى المستخدم (JSON { grants: { finance: false, ... } }) —
+  // null = وراثة السنتر بالكامل. الـ false بيحجب القسم للحساب ده بس —
+  // الـ true عمره ما بيفتح قسم مقفول من الخطة/الاشتراك/السنتر (fail-safe — تقييم في entitlements.ts)
+  modules         String?
   // ALNOKHBA ACADEMIA — product scope + granular academia permission overrides
   scope           String   @default("centers") // "centers" | "academia"
   acaPermissions  String? // JSON { "grades.edit": true, ... } — overrides for academia RBAC

@@ -26,7 +26,7 @@ type RowError = { row: number; message: string };
  *  منع التكرار: داخل الدفعة (موبايل/اسم+موبايل ولي/كود) ومع الطلاب الموجودين. */
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "students");
+  await requireModule(user.centerId, "students", user);
   if (!canRegisterStudents(user)) {
     throw new ApiError("مسموح للإضافة بس المدير أو موظف عنده صلاحية الإضافة.", 403);
   }

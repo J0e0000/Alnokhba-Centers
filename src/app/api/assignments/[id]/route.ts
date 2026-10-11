@@ -34,7 +34,7 @@ async function getAssignment(centerId: string, id: string) {
 
 export const GET = handler(async (_req: Request, ctx: RouteCtx) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "assignments");
+  await requireModule(user.centerId, "assignments", user);
   const { id } = await ctx.params;
   const a = await getAssignment(user.centerId, id);
   return ok({
@@ -68,7 +68,7 @@ type PatchBody = {
 
 export const PATCH = handler(async (req: Request, ctx: RouteCtx) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "assignments");
+  await requireModule(user.centerId, "assignments", user);
   const { id } = await ctx.params;
   const body = await readJson<PatchBody>(req);
   const a = await getAssignment(user.centerId, id);
@@ -165,7 +165,7 @@ export const PATCH = handler(async (req: Request, ctx: RouteCtx) => {
 
 export const DELETE = handler(async (_req: Request, ctx: RouteCtx) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "assignments");
+  await requireModule(user.centerId, "assignments", user);
   const { id } = await ctx.params;
   const a = await getAssignment(user.centerId, id);
   const submittedCount = a.submissions.filter((s) => s.submittedAt).length;

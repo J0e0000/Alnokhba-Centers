@@ -63,6 +63,8 @@ export function App() {
   const [addNewStudent, setAddNewStudent] = useState(false);
   const [adminView, setAdminView] = useState<AdminViewId>("centers");
   const [caps, setCaps] = useState<CapabilityMap | null>(null);
+  // أقسام المنتج الفعلية *للحساب ده* — الشيل بيخفي الشاشات المقفولة (والسيرفر بيفرضها على الـ API)
+  const [userModules, setUserModules] = useState<Record<string, { enabled: boolean }> | null>(null);
 
   useEffect(() => {
     api<{ user: SessionUser | null }>("/api/auth", { silent: true })
@@ -84,8 +86,8 @@ export function App() {
   useEffect(() => {
     if (!user?.centerId) return;
     const load = () => {
-      api<{ capabilities: CapabilityMap }>("/api/center/capabilities", { silent: true })
-        .then((d) => setCaps(d.capabilities))
+      api<{ capabilities: CapabilityMap; userModules?: Record<string, { enabled: boolean }> }>("/api/center/capabilities", { silent: true })
+        .then((d) => { setCaps(d.capabilities); setUserModules(d.userModules ?? null); })
         .catch(() => {});
     };
     load();
@@ -312,7 +314,7 @@ export function App() {
   return (
     <CapsProvider value={caps}>
       <PrintProvider>
-        <CenterShell user={user} onLogout={onLogout} view={view} setView={(v) => { setView(v); setStudentId(null); setSessionId(null); }}>
+        <CenterShell user={user} onLogout={onLogout} view={view} userModules={userModules} setView={(v) => { setView(v); setStudentId(null); setSessionId(null); }}>
           {/* شريط النجاح الدائم — تحت الهيدر على طول، مبيختفيش لوحده */}
           <div className="mb-3">
             <SuccessBarHost />

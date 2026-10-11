@@ -4,31 +4,40 @@ import { requireManager, hashPassword, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { cleanRaw, validateOptionalPhone } from "@/lib/normalize";
 import { PERMISSION_CATALOG, resolvePermissions, type PermissionId } from "@/lib/permissions";
+import { getEffectiveModules, applyUserModuleGrants, parseUserModuleGrants } from "@/lib/entitlements";
+import { isModuleKey, MODULE_KEYS, type ModuleKey } from "@/lib/modules";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/staff — center staff list + صلاحيات كل واحد المحسومة */
+/** GET /api/staff — center staff list + صلاحيات كل واحد المحسومة + أقسامه الفعلية */
 export const GET = handler(async () => {
   const user = await requireManager();
   const staff = await db.user.findMany({
     where: { centerId: user.centerId },
-    select: { id: true, name: true, username: true, role: true, canAddStudents: true, isActive: true, createdAt: true, permissions: true, phone: true },
+    select: { id: true, name: true, username: true, role: true, canAddStudents: true, isActive: true, createdAt: true, permissions: true, modules: true, phone: true },
     orderBy: { createdAt: "asc" },
   });
+  // حالة أقسام السنتر مرة واحدة — وقيود كل موظف بتتطبق محليًا (pure) من غير استعلامات متكررة
+  const { modules: centerModules } = await getEffectiveModules(user.centerId);
   return ok({
     staff: staff.map((s) => ({
       id: s.id, name: s.name, username: s.username, role: s.role,
       canAddStudents: s.canAddStudents, isActive: s.isActive, createdAt: s.createdAt,
       phone: s.phone,
       permissions: [...resolvePermissions(s)].sort(),
+      // الأقسام الفعلية للحساب (سنتر + قيود الحساب) + القيود الخام للعرض في المحرر
+      modules: applyUserModuleGrants(centerModules, s.role, s.modules),
+      moduleGrants: parseUserModuleGrants(s.modules),
     })),
+    centerModules,
   });
 });
 
 type StaffBody = {
   id?: string; name?: string; username?: string; password?: string;
   role?: string; canAddStudents?: boolean; isActive?: boolean; phone?: string;
-  permissions?: Record<string, boolean>; // صلاحيات حساسة: تفعيل/تعطيل فوق الافتراضي
+  permissions?: Record<string, boolean>; // أي صلاحية من الكتالوج: تفعيل/تعطيل فوق الافتراضي
+  modules?: Record<string, boolean>; // أقسام المنتج للحساب: false = مقفول له، true = رجّع وراثة السنتر
 };
 
 /** POST /api/staff — add staff (manager) */
@@ -95,7 +104,7 @@ export const PATCH = handler(async (req: Request) => {
     data.role = body.role;
   }
 
-  // ===== الصلاحيات الحساسة الدقيقة (المدير بيتحكم فيها لكل موظف) =====
+  // ===== الصلاحيات الدقيقة (المدير بيتحكم فيها لكل موظف — الكتالوج كامل لأي دور غير المدير) =====
   if (body.permissions !== undefined && body.permissions !== null && typeof body.permissions === "object") {
     if (target.role === "MANAGER") throw new ApiError("المدير معاه كل الصلاحيات دايمًا — مفيش حاجة تتعدي.");
     // المفتاح لازم يكون من الكتالوج بس — ممنوع مفاتيح غريبة
@@ -109,10 +118,23 @@ export const PATCH = handler(async (req: Request) => {
     if ("ADD_STUDENT" in body.permissions) data.canAddStudents = body.permissions.ADD_STUDENT === true;
   }
 
+  // ===== أقسام المنتج على مستوى الحساب (ميزات لكل موظف — فوق حالة السنتر) =====
+  if (body.modules !== undefined && body.modules !== null && typeof body.modules === "object") {
+    if (target.role === "MANAGER") throw new ApiError("مينفعش تقفل أقسام عن المدير — قيود الأقسام على الحسابات بس.");
+    const keys = Object.keys(body.modules).filter(isModuleKey);
+    if (keys.length === 0) throw new ApiError("مفيش أقسام معروفة في الطلب.");
+    const current = parseUserModuleGrants(target.modules);
+    for (const k of keys as ModuleKey[]) {
+      if (body.modules[k] === false) current[k] = false; // قفل للحساب ده
+      else delete current[k]; // true/أي قيمة تانية = رجّع وراثة السنتر
+    }
+    data.modules = Object.keys(current).length ? JSON.stringify({ grants: current }) : null;
+  }
+
   await db.user.update({ where: { id: target.id }, data: data as never });
   await logAudit({
     user, action: AUDIT.STAFF_UPDATED, entity: "USER", entityId: target.id,
-    before: { role: target.role, canAddStudents: target.canAddStudents, isActive: target.isActive, permissions: target.permissions },
+    before: { role: target.role, canAddStudents: target.canAddStudents, isActive: target.isActive, permissions: target.permissions, modules: target.modules },
     after: data,
   });
   return ok({ ok: true, permissions: data.permissions ? [...resolvePermissions({ ...target, ...data } as { role: string; permissions?: string | null; canAddStudents?: boolean })].sort() : undefined });

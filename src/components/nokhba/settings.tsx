@@ -15,6 +15,10 @@ import { ModulesTab } from "./settings-modules";
 import { Field, inputCls } from "./students";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import {
+  PERMISSION_IDS, buildGrantsFromResolved,
+} from "@/lib/permission-catalog";
+import { PermissionsEditorDialog, StaffModulesEditorDialog, type EditorStaff } from "./user-editors";
 
 /* ============================================================
    تنبيهات الواتساب (opt-in) — المدير بيفعّل نوع التنبيه وحد الرصيد
@@ -580,12 +584,25 @@ function WhatsAppTab() {
 // ============================= STAFF =============================
 
 function StaffTab() {
-  const [staff, setStaff] = useState<{ id: string; name: string; username: string; role: string; canAddStudents: boolean; isActive: boolean; permissions?: string[]; phone?: string | null }[]>([]);
+  const [staff, setStaff] = useState<{
+    id: string; name: string; username: string; role: string; canAddStudents: boolean; isActive: boolean;
+    permissions?: string[]; phone?: string | null;
+    modules?: Record<string, { enabled: boolean; lockedBy?: string }>;
+    moduleGrants?: Record<string, boolean>;
+  }[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
-  const [permFor, setPermFor] = useState<{ id: string; name: string; permissions: string[] } | null>(null);
+  const [permFor, setPermFor] = useState<EditorStaff | null>(null);
+  const [modsFor, setModsFor] = useState<EditorStaff | null>(null);
 
-  const load = () => api<{ staff: typeof staff }>("/api/staff").then((d) => { setStaff(d.staff); setLoading(false); }).catch(() => setLoading(false));
+  const toEditor = (s: (typeof staff)[number]): EditorStaff => ({
+    id: s.id, name: s.name, role: s.role,
+    permissions: s.permissions ?? [],
+    moduleGrants: s.moduleGrants ?? {},
+    centerModules: Object.fromEntries(Object.entries(s.modules ?? {}).map(([k, v]) => [k, { enabled: v.enabled }])),
+  });
+
+  const load = () => api<{ staff: typeof staff; centerModules: Record<string, { enabled: boolean }> }>("/api/staff").then((d) => { setStaff(d.staff); setLoading(false); }).catch(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
   async function patch(id: string, body: Record<string, unknown>) {
@@ -615,32 +632,31 @@ function StaffTab() {
                   {s.role === "MANAGER" ? "مدير" : s.role === "TEACHER" ? "مدرس" : s.isActive ? "موظف استقبال" : "موقوف"}
                 </Chip>
               </div>
-              {s.role === "RECEPTIONIST" && (
+              {s.role !== "MANAGER" && (
                 <>
-                  {/* الصلاحيات الممنوحة زيادة عن الافتراضي */}
-                  {s.permissions && s.permissions.filter((p) => SENSITIVE_PERMS.some((x) => x.id === p && x.direct)).length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {s.permissions.filter((p) => {
-                        const meta = SENSITIVE_PERMS.find((x) => x.id === p);
-                        return meta && meta.direct;
-                      }).map((p) => (
-                        <Chip key={p} className="bg-amber-50 border-amber-200 text-amber-700 text-[10px]">
-                          {SENSITIVE_PERMS.find((x) => x.id === p)?.label ?? p}
-                        </Chip>
-                      ))}
-                    </div>
+                  {/* الصلاحيات الممنوحة زيادة عن الافتراضي (ملخص سريع) */}
+                  {s.permissions && s.permissions.length > 0 && (
+                    <p className="text-[11px] font-bold text-muted-foreground">
+                      صلاحياته: {s.permissions.length} صلاحية من {PERMISSION_IDS.length}
+                    </p>
                   )}
-                  <div className="flex gap-2">
-                    <button onClick={() => setPermFor({ id: s.id, name: s.name, permissions: s.permissions ?? [] })}
-                      className="flex-1 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 font-extrabold px-3 py-2 text-xs flex items-center justify-center gap-1.5 transition">
-                      <ShieldCheck className="w-3.5 h-3.5" /> الصلاحيات الحساسة
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={() => setPermFor(toEditor(s))}
+                      className="rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 font-extrabold px-3 py-2 text-xs flex items-center justify-center gap-1.5 transition">
+                      <ShieldCheck className="w-3.5 h-3.5" /> الصلاحيات
+                    </button>
+                    <button onClick={() => setModsFor(toEditor(s))}
+                      className="rounded-xl border border-border bg-card hover:bg-muted/50 font-extrabold px-3 py-2 text-xs flex items-center justify-center gap-1.5 transition">
+                      <Grid3x3 className="w-3.5 h-3.5" /> الأقسام والميزات
                     </button>
                   </div>
-                  <label className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-3.5 py-2.5 cursor-pointer">
-                    <span className="text-xs font-bold">يسمح له يضيف طلاب جدد</span>
-                    <input type="checkbox" className="w-5 h-5 accent-[var(--c-primary)]" checked={s.canAddStudents}
-                      onChange={(e) => patch(s.id, { permissions: { ...permOverridesFrom(s.permissions), ADD_STUDENT: e.target.checked } })} />
-                  </label>
+                  {s.role === "RECEPTIONIST" && (
+                    <label className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-3.5 py-2.5 cursor-pointer">
+                      <span className="text-xs font-bold">يسمح له يضيف طلاب جدد</span>
+                      <input type="checkbox" className="w-5 h-5 accent-[var(--c-primary)]" checked={s.canAddStudents}
+                        onChange={(e) => patch(s.id, { permissions: { ...grantsPlusAdd(s.permissions), ADD_STUDENT: e.target.checked } })} />
+                    </label>
+                  )}
                   <div className="flex gap-2">
                     <button onClick={() => patch(s.id, { isActive: !s.isActive })}
                       className={cn("flex-1 rounded-xl border px-3 py-2 text-xs font-extrabold",
@@ -666,7 +682,7 @@ function StaffTab() {
       )}
 
       {permFor && (
-        <PermissionsDialog
+        <PermissionsEditorDialog
           staff={permFor}
           onClose={() => setPermFor(null)}
           onSaved={async (grants) => {
@@ -675,111 +691,24 @@ function StaffTab() {
           }}
         />
       )}
+
+      {modsFor && (
+        <StaffModulesEditorDialog
+          staff={modsFor}
+          onClose={() => setModsFor(null)}
+          onSaved={async (modules) => {
+            await patch(modsFor.id, { modules });
+            setModsFor(null);
+          }}
+        />
+      )}
     </div>
   );
 }
 
-/** الصلاحيات الحساسة اللي المدير بيتحكم فيها — نسخة العميل من كتالوج السيرفر */
-const SENSITIVE_PERMS: { id: string; label: string; desc: string; direct: boolean }[] = [
-  { id: "REFUND_PAYMENT", label: "استرداد فوري", desc: "ينفّذ استرداد فلوس من غير انتظار موافقة", direct: true },
-  { id: "REQUEST_REFUND", label: "طلب استرداد", desc: "يبعت طلب استرداد للمدير يقرره", direct: false },
-  { id: "ADJUST_BALANCE", label: "تسوية فورية", desc: "ينفّذ تسوية رصيد من غير موافقة", direct: true },
-  { id: "REQUEST_ADJUSTMENT", label: "طلب تسوية", desc: "يبعت طلب تسوية رصيد للمدير", direct: false },
-  { id: "CANCEL_SESSION", label: "إلغاء حصة فوري", desc: "يلغي حصة من غير انتظار موافقة", direct: true },
-  { id: "REQUEST_SESSION_CANCELLATION", label: "طلب إلغاء حصة", desc: "يبعت طلب إلغاء حصة للمدير", direct: false },
-  { id: "ARCHIVE_STUDENT", label: "أرشفة طالب فوري", desc: "يؤرشف طالب من غير موافقة", direct: true },
-  { id: "REQUEST_STUDENT_CANCEL", label: "طلب أرشفة طالب", desc: "يبعت طلب أرشفة طالب للمدير", direct: false },
-  { id: "CANCEL_SUBSCRIPTION", label: "إلغاء تسجيل فوري", desc: "يشيل تسجيل طالب من مجموعة فورًا", direct: true },
-  { id: "REQUEST_CANCELLATION", label: "طلب إلغاء تسجيل", desc: "يبعت طلب إلغاء تسجيل للمدير", direct: false },
-  { id: "EXPORT_REPORTS", label: "تصدير التقارير", desc: "ينزّل تقارير CSV/Excel", direct: true },
-];
-
-/** يبني grants من قائمة صلاحيات محسومة (للتعديل التدريجي) */
-function permOverridesFrom(perms?: string[]): Record<string, boolean> {
-  // الافتراضي للاستقبال: كل الطلبات مفتوحة — نثبّت الوضع الحالي بس للحساس
-  const defaults = new Set(["REQUEST_REFUND", "REQUEST_ADJUSTMENT", "REQUEST_SESSION_CANCELLATION", "REQUEST_STUDENT_CANCEL", "REQUEST_CANCELLATION"]);
-  const grants: Record<string, boolean> = {};
-  for (const p of perms ?? []) {
-    if (SENSITIVE_PERMS.some((x) => x.id === p)) grants[p] = true;
-  }
-  for (const p of defaults) {
-    if (!(perms ?? []).includes(p)) grants[p] = false; // مقفولة صراحة
-  }
-  return grants;
-}
-
-function PermissionsDialog({ staff, onClose, onSaved }: {
-  staff: { id: string; name: string; permissions: string[] };
-  onClose: () => void; onSaved: (grants: Record<string, boolean>) => Promise<void>;
-}) {
-  const [grants, setGrants] = useState<Record<string, boolean>>(() => permOverridesFrom(staff.permissions));
-  const [busy, setBusy] = useState(false);
-
-  function toggle(id: string, val: boolean) {
-    setGrants((g) => ({ ...g, [id]: val }));
-    // لو منحناه تنفيذ مباشر → سيب له حق الطلب شغال (مش منطقي يقدر ينفّذ ومش يقدر يطلب)
-    if (val && (id === "REFUND_PAYMENT" || id === "ADJUST_BALANCE" || id === "CANCEL_SESSION" || id === "ARCHIVE_STUDENT" || id === "CANCEL_SUBSCRIPTION")) {
-      const requestPair: Record<string, string> = {
-        REFUND_PAYMENT: "REQUEST_REFUND",
-        ADJUST_BALANCE: "REQUEST_ADJUSTMENT",
-        CANCEL_SESSION: "REQUEST_SESSION_CANCELLATION",
-        ARCHIVE_STUDENT: "REQUEST_STUDENT_CANCEL",
-        CANCEL_SUBSCRIPTION: "REQUEST_CANCELLATION",
-      };
-      setGrants((g) => ({ ...g, [requestPair[id]]: true }));
-    }
-  }
-
-  return (
-    <Dialog open onOpenChange={(o) => !o && !busy && onClose()}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto nk-scroll">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 nk-brand-text" /> صلاحيات {staff.name} الحساسة
-          </DialogTitle>
-          <DialogDescription>
-            الفحص بيحصل على السيرفر في كل الحالات — إخفاء الزرار من الموظف مش أمان، الأمان هو الصلاحية نفسها.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-2">
-          {SENSITIVE_PERMS.map((p) => {
-            const on = grants[p.id] === true;
-            return (
-              <label key={p.id} className={cn(
-                "flex items-start justify-between gap-3 rounded-xl border-2 px-3.5 py-2.5 cursor-pointer transition",
-                on ? "border-amber-200 bg-amber-50" : "border-border bg-card hover:bg-muted/40",
-              )}>
-                <span className="min-w-0">
-                  <span className="block text-[13px] font-extrabold">{p.label}</span>
-                  <span className="block text-[11px] font-bold text-muted-foreground leading-relaxed">{p.desc}</span>
-                </span>
-                <input
-                  type="checkbox"
-                  className="w-5 h-5 accent-amber-600 mt-0.5 shrink-0"
-                  checked={on}
-                  onChange={(e) => toggle(p.id, e.target.checked)}
-                />
-              </label>
-            );
-          })}
-        </div>
-        <p className="text-[11px] text-muted-foreground font-semibold leading-relaxed bg-muted/50 rounded-xl p-3">
-          الصلاحيات المباشرة بتخلي الموظف ينفّذ من غير انتظار — "طلب موافقة" معناها بيبعتلك الطلب وانت تقرر.
-          كل تغيير بيتسجل في سجل العمليات، وكل طلب موافقة بيعدي عليك الأول.
-        </p>
-        <div className="flex gap-2">
-          <button
-            onClick={async () => { setBusy(true); await onSaved(grants); setBusy(false); }}
-            disabled={busy}
-            className="flex-1 nk-brand-bg text-white font-extrabold rounded-xl py-3.5 disabled:opacity-60 flex items-center justify-center gap-2 text-sm"
-          >
-            {busy ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : <ShieldCheck className="w-4.5 h-4.5" />} حفظ الصلاحيات
-          </button>
-          <button onClick={onClose} disabled={busy} className="rounded-xl border border-border bg-card font-bold px-5">إلغاء</button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+/** grants قايمة صريحة للصلاحيات كلها + ADD_STUDENT منفصلة */
+function grantsPlusAdd(resolved?: string[]): Record<string, boolean> {
+  return buildGrantsFromResolved(resolved ?? [], "RECEPTIONIST");
 }
 
 function AddStaffDialog({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {

@@ -186,8 +186,15 @@ export async function getEffectiveModules(centerId: string): Promise<{ modules: 
   return { modules, subscription };
 }
 
-/** بوابة إلزامية — 403 برسالة عربية واضحة لما القسم مقفول */
-export async function requireModule(centerId: string, key: ModuleKey): Promise<void> {
+/** بوابة إلزامية — 403 برسالة عربية واضحة لما القسم مقفول.
+ *  user (اختياري): لو اتبعت، تقييم قفل القسم على مستوى *الحساب* كمان
+ *  (User.modules grants — الإدارة بتقدر تقفل قسم لموظف معين من غير ما تقفله للسنتر كله).
+ *  المدير مستثنى من قيود الحساب (زي نظام الصلاحيات بالظبط) — قيود السنتر بتطبق عليه عادي. */
+export async function requireModule(
+  centerId: string,
+  key: ModuleKey,
+  user?: { id: string; role: string; modules?: string | null },
+): Promise<void> {
   const { modules } = await getEffectiveModules(centerId);
   const st = modules[key];
   if (st && !st.enabled) {
@@ -199,6 +206,67 @@ export async function requireModule(centerId: string, key: ModuleKey): Promise<v
     };
     throw new ApiError(`${MODULE_CATALOG[key].label}: ${why[st.lockedBy ?? "center"]}.`, 403);
   }
+  // قفل على مستوى الحساب — بس لو القسم مفتوح للسنتر أصلًا (الرسالة أدق)
+  if (user && user.role !== "MANAGER") {
+    const grants = parseUserModuleGrants(user.modules);
+    if (grants[key] === false) {
+      throw new ApiError(`${MODULE_CATALOG[key].label}: القسم ده متقفل لحسابك من إدارة السنتر.`, 403);
+    }
+  }
+}
+
+/* ============================================================
+   قيود الأقسام على مستوى الحساب (User.modules)
+   ------------------------------------------------------------
+   - التخزين: JSON { grants: { finance: false, books: false } } —
+     الفروقات عن حالة السنتر بس. مفيش قيمة true ليها معنى:
+     الحساب ميعرفش يفتح قسم مقفول من الخطة/الاشتراك/السنتر (fail-safe).
+   - null/JSON تالف = وراثة السنتر بالكامل (صفر تراجع للحسابات القديمة).
+============================================================ */
+
+export type UserModuleGrants = Partial<Record<ModuleKey, boolean>>;
+
+export function parseUserModuleGrants(raw: string | null | undefined): UserModuleGrants {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as { grants?: Record<string, unknown> } | null;
+    const grants = parsed?.grants;
+    if (!grants || typeof grants !== "object") return {};
+    const out: UserModuleGrants = {};
+    for (const [k, v] of Object.entries(grants)) {
+      if (isModuleKey(k) && v === false) out[k] = false; // الـ true متُتجاهَل — مفيش فتح فوق السقف
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/** حالة الأقسام *لحساب معين* — حالة السنتر + قيود الحساب فوقها.
+ *  المستخدمة في: /api/center/capabilities (تكييف الواجهة) + فلترة أدوات زكي + شاشات الإدارة. */
+export async function getEffectiveModulesForUser(
+  centerId: string,
+  user: { id: string; role: string; modules?: string | null },
+): Promise<ModuleMap> {
+  const { modules } = await getEffectiveModules(centerId);
+  return applyUserModuleGrants(modules, user.role, user.modules);
+}
+
+/** تطبيق قيود الحساب على خطة أقسام محسومة (pure — بدون داتابيز) — للاستخدام في القوايم والعرض */
+export function applyUserModuleGrants(
+  modules: ModuleMap,
+  role: string,
+  rawModules: string | null | undefined,
+): ModuleMap {
+  if (role === "MANAGER") return modules; // المدير شايف السنتر زي ما هو
+  const grants = parseUserModuleGrants(rawModules);
+  const out = { ...modules };
+  for (const key of MODULE_KEYS) {
+    if (grants[key] === false && out[key].enabled) {
+      out[key] = { enabled: false, lockedBy: "center" }; // lockedBy=center: مفيش leak إن ده قفل شخصي — الرسالة بتتحدد في requireModule
+    }
+  }
+  return out;
 }
 
 /** حصة الطلاب (maxStudents) — تتنادى جوه transaction إنشاء الطالب عشان منع السباق */

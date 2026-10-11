@@ -107,21 +107,50 @@ export function tabOfView(view: ViewId, role: "MANAGER" | "RECEPTIONIST" | "TEAC
   return tabsForRole(role).find((t) => t.subs.includes(view)) ?? null;
 }
 
+/** خريطة الشاشة ← قسم المنتج المسؤول عنها — عشان إخفاء الأقسام المقفولة للحساب */
+export const VIEW_TO_MODULE: Partial<Record<ViewId, import("@/lib/modules").ModuleKey>> = {
+  scan: "attendance",
+  payments: "finance",
+  accounting: "finance",
+  students: "students",
+  groups: "students",
+  schedule: "sessions",
+  quizzes: "exams",
+  exams: "exams",
+  assignments: "assignments",
+  books: "books",
+  messages: "communications",
+  reports: "reports",
+  settings: "settings",
+};
+
 export function CenterShell({
   user,
   onLogout,
   children,
   view,
   setView,
+  userModules,
 }: {
   user: SessionUser;
   onLogout: () => void;
   children: ReactNode;
   view: ViewId;
   setView: (v: ViewId) => void;
+  /** أقسام المنتج الفعلية للحساب (سنتر + قيود الحساب) — null قبل التحميل = مفيش فلترة */
+  userModules?: Record<string, { enabled: boolean }> | null;
 }) {
   const role = user.role === "MANAGER" ? "MANAGER" : user.role === "TEACHER" ? "TEACHER" : "RECEPTIONIST";
-  const tabs = useMemo(() => tabsForRole(role), [role]);
+  const tabs = useMemo(() => {
+    const base = tabsForRole(role);
+    if (!userModules) return base; // قبل تحميل الأقسام — متفلترش (مفيش وميض)
+    return base
+      .map((t) => ({ ...t, subs: t.subs.filter((v) => {
+        const mod = VIEW_TO_MODULE[v];
+        return !mod || userModules[mod]?.enabled !== false;
+      }) }))
+      .filter((t) => t.subs.length > 0);
+  }, [role, userModules]);
   const activeTab = useMemo(() => tabOfView(view, role), [view, role]);
   const center = user.center!;
   const [moreOpen, setMoreOpen] = useState(false);

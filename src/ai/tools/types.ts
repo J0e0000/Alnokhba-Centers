@@ -70,6 +70,8 @@ export type ToolDef<TArgs = Record<string, unknown>> = {
   requiredCapability?: { key: string; config?: string; label: string };
   /** قسم منتج مطلوب (Master Prompt §5) — الاستحقاق من الخطة/الاشتراك/إعدادات السنتر */
   requiredModule?: import("@/lib/modules").ModuleKey;
+  /** دور إلزامي (مثلاً «مدير السنتر») — الأداة مش بتظهر في كتالوج غيره ومتفحصة عند التنفيذ */
+  requiredRole?: "MANAGER";
   handler: (args: TArgs, ctx: ToolContext) => Promise<ToolOutput>;
   /** معاينة التأكيد — بدون أي side effects (ممنوع تلمس الداتابيز كتابة هنا).
    *  بتبني نص «هعمل إيه بالظبط» + تفاصيل المتأثرين عشان كارت التأكيد. */
