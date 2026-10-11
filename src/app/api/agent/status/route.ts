@@ -1,21 +1,31 @@
 import { handler, ok } from "@/lib/api";
-import { requireManager, rateLimit } from "@/lib/auth";
+import { requireUser, rateLimit } from "@/lib/auth";
 import { getLLMStatus } from "@/ai/providers";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 /* ============================================================
-   GET /api/agent/status — حالة عقل زكي (manager، بدون أي مفاتيح)
-   بيرجع: مصدر الموديل النشط (env|center|builtin|fallback) + اسمه
-   + ترتيب العقول الحالي (الموديل الأول ولا المخ الأول)
-   + توزيع المهمام الأخيرة على العقول (llm/brain/fallback) لآخر 7 أيام —
-   عشان المدير يشوف العقل اللي بيشغل زكي فعلًا بالأرقام.
+   GET /api/agent/status — حالة عقل زكي (بدون أي مفاتيح)
+   - مدير/موظف سنتر: الحالة الكاملة + استهلاك + تقييمات.
+   - أدمن المنصة (من غير جلسة دعم): status مبسّط + platform=true —
+     مش غلط 403 — عشان لوحة زكي متقولش «مش قادر أوصل للسيرفر».
 ============================================================ */
 
 export const GET = handler(async () => {
-  const user = await requireManager();
+  const user = await requireUser();
   rateLimit(`agent-status:${user.id}`, 30, 60_000);
+
+  // أدمن المنصة من غير سنتر — الحالة الأساسية بس (مفيش استعلامات سنتر)
+  if (!user.centerId) {
+    return ok({
+      source: "builtin" as const,
+      brainFirst: process.env.NK_AGENT_BRAIN_FIRST === "1",
+      commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
+      last7Days: [], usage: null, feedback: null,
+      platform: true,
+    });
+  }
 
   const status = await getLLMStatus(user.centerId);
   const brainFirst = process.env.NK_AGENT_BRAIN_FIRST === "1";
@@ -66,5 +76,5 @@ export const GET = handler(async () => {
     // بيئة من غير الجداول الجديدة — الحالة الأساسية تكفي
   }
 
-  return ok({ ...status, brainFirst, commit, last7Days: split, usage, feedback });
+  return ok({ ...status, brainFirst, commit, last7Days: split, usage, feedback, platform: false });
 });

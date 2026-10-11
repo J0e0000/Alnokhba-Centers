@@ -53,6 +53,40 @@ export function invalidateEntitlements(centerId?: string): void {
   else entCache.clear();
 }
 
+/**
+ * قراءة آمنة لعمود features في الخطة — حماية من انفصام السكيما (schema drift):
+ * لو الكود منشر والعمود لسه متضافش في الداتابيز (db push فشل في البيلد)،
+ * أي select عادي للعمود بيرمي P2022 وبيقوّع *كل* الراوتس اللي بتقرا الاستحقاق.
+ * هنا: بنرجّع null («الخطة الكاملة») + سجل خطأ صريح — حالة الاشتراك والمركز
+ * لسه بيتقفلوا عادي، فمفيش أي فجوة أمنية — ده فتح باب التوافق مش باب الأمان.
+ * بترجع النص الخام (JSON string) أو null عشان المتنين يستخدموها.
+ */
+export async function safePlanFeaturesRaw(planId: string | null | undefined): Promise<string | null> {
+  if (!planId) return null;
+  try {
+    const row = await db.subscriptionPlan.findUnique({ where: { id: planId }, select: { features: true } });
+    return row?.features ?? null;
+  } catch (e) {
+    console.error(
+      "[entitlements] plan.features read failed (schema drift? db push pending) — treating plan as FULL:",
+      e instanceof Error ? e.message : e,
+    );
+    return null;
+  }
+}
+
+/** قائمة مفاتيح الأقسام لخطة (parsed آمن) — null = الخطة الكاملة. للعرض في لوحة الأدمن. */
+export async function planFeaturesList(planId: string | null | undefined): Promise<string[] | null> {
+  const raw = await safePlanFeaturesRaw(planId);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((k): k is string => typeof k === "string") : null;
+  } catch {
+    return null;
+  }
+}
+
 function parsePlanFeatures(raw: string | null): ModuleKey[] | null {
   if (!raw) return null;
   try {
@@ -69,9 +103,15 @@ function parsePlanFeatures(raw: string | null): ModuleKey[] | null {
 }
 
 export async function getSubscriptionState(centerId: string): Promise<SubscriptionState> {
+  // select صريح من غير features — العمود بيتقري بعيدًا عبر safePlanFeaturesRaw
+  // عشان انفصام السكيما ميوقعش كل الراوتس (شوف التعليق هناك).
   const sub = await db.subscription.findUnique({
     where: { centerId },
-    include: { plan: true },
+    select: {
+      status: true, renewalDate: true, trialEndsAt: true, graceUntil: true,
+      planId: true, paymentStatus: true,
+      plan: { select: { name: true, maxStudents: true } },
+    },
   });
   if (!sub) {
     return {
@@ -91,9 +131,9 @@ export async function getSubscriptionState(centerId: string): Promise<Subscripti
     status: sub.status,
     effective: derived.effective,
     planId: sub.planId,
-    planName: sub.plan.name,
-    planFeatures: parsePlanFeatures(sub.plan.features),
-    maxStudents: sub.plan.maxStudents,
+    planName: sub.plan?.name ?? null,
+    planFeatures: parsePlanFeatures(await safePlanFeaturesRaw(sub.planId)),
+    maxStudents: sub.plan?.maxStudents ?? null,
     renewalDate: sub.renewalDate,
     daysLeft: derived.daysLeft,
     paymentStatus: sub.paymentStatus,

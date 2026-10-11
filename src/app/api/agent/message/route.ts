@@ -1,6 +1,6 @@
 import { handler, readJson } from "@/lib/api";
 import { requireModule } from "@/lib/entitlements";
-import { requireCenterUser, rateLimit } from "@/lib/auth";
+import { requireUser, rateLimit } from "@/lib/auth";
 import { runAgentMessage } from "@/ai/orchestrator/runner";
 import type { AgentEvent } from "@/ai/orchestrator/runner";
 
@@ -15,8 +15,32 @@ export const maxDuration = 120;
 ============================================================ */
 
 export const POST = handler(async (req: Request) => {
-  const user = await requireCenterUser();
+  const user = await requireUser();
+  if (!user.centerId) {
+    // أدمن المنصة من غير جلسة دعم — زكي شغال جوه السنترات بس.
+    // رد سريع واضح (من غير LLM ولا تكلفة) بدل 403 غامق بيتقري «مش قادر أوصل للسيرفر».
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const emit = (e: AgentEvent) => {
+          try { controller.enqueue(encoder.encode(`data: ${JSON.stringify(e)}\n\n`)); } catch { /* closed */ }
+        };
+        emit({ type: "message", id: `platform-${Date.now()}`, kind: "agent", text: "أنا شغال جوه السنترات بس — افتح «دعم فني» لسنتر معين من لوحة الأدمن وهكلمك هناك عادي." });
+        emit({ type: "done", status: "COMPLETED" });
+        controller.close();
+      },
+    });
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
+      },
+    });
+  }
   await requireModule(user.centerId, "ai_agent");
+  const cu = user as Parameters<typeof runAgentMessage>[0]["user"];
   rateLimit(`agent-msg:${user.id}`, 20, 60_000);
   const body = await readJson<{
     text?: string;
@@ -34,7 +58,7 @@ export const POST = handler(async (req: Request) => {
       };
       try {
         await runAgentMessage({
-          user,
+          user: cu,
           text: String(body.text ?? ""),
           clientCtx: body.context ?? {},
           taskId: body.taskId ? String(body.taskId) : undefined,

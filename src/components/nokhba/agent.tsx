@@ -339,7 +339,16 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
         body: JSON.stringify(body),
         signal: ctrl.signal,
       });
-      if (!res.ok || !res.body) throw new Error(`agent-http-${res.status}`);
+      if (!res.ok || !res.body) {
+        // السيرفر غالبًا بيبعت رسالة عربية واضحة (صلاحية/اشتراك/...) — نعرضها بدل
+        // رسالة «مش قادر أوصل للسيرفر» المضللة اللي خاصة بفشل الشبكة بس.
+        let serverMsg = "";
+        try {
+          const j = (await res.json()) as { error?: unknown };
+          if (j && typeof j.error === "string" && j.error.trim()) serverMsg = j.error.trim();
+        } catch { /* مفيش JSON — فشل شبكة/بوابة */ }
+        throw new Error(serverMsg || `agent-http-${res.status}`);
+      }
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = "";
@@ -358,7 +367,10 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
     } catch (e) {
       if ((e as Error).name !== "AbortError") {
         setRunning(false);
-        push({ id: crypto.randomUUID(), kind: "error", text: "مش قادر أوصل للسيرفر — شوف اتصالك وجرب تاني.", retry: true });
+        const m = (e as Error).message ?? "";
+        // رسالة السيرفر الواضحة تُعرض زي ما هي — «مش قادر أوصل» لفشل الشبكة بس
+        const isServerMsg = m && !m.startsWith("agent-http-");
+        push({ id: crypto.randomUUID(), kind: "error", text: isServerMsg ? m : "مش قادر أوصل للسيرفر — شوف اتصالك وجرب تاني.", retry: true });
       }
     } finally {
       abortRef.current = null;
