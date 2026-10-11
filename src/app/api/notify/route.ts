@@ -30,7 +30,7 @@ const METHOD_AR: Record<string, string> = { CASH: "كاش", VODAFONE: "محفظ�
 /** POST /api/notify — prepare a notification attempt, returns message + wa.me URL */
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "communications");
+  await requireModule(user.centerId, "communications", user);
   const body = await readJson<NotifyBody>(req);
 
   const student = await db.student.findFirst({ where: { id: String(body.studentId ?? ""), centerId: user.centerId } });

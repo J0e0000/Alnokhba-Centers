@@ -52,7 +52,7 @@ function clampForSpeech(text: string): string {
 
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "ai_agent");
+  await requireModule(user.centerId, "ai_agent", user);
   rateLimit(`agent-tts:${user.id}`, 40, 60_000);
 
   const body = await readJson<{ text?: string }>(req);

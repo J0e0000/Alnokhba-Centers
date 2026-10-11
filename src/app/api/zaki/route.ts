@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
  */
 export const GET = handler(async () => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "ai_agent");
+  await requireModule(user.centerId, "ai_agent", user);
   rateLimit(`zaki:${user.id}`, 30, 60_000);
   const result = await runZakiRules(user.centerId);
   return ok({ ...result, questions: ZAKI_QUESTIONS });
@@ -19,7 +19,7 @@ export const GET = handler(async () => {
 
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "ai_agent");
+  await requireModule(user.centerId, "ai_agent", user);
   rateLimit(`zaki-q:${user.id}`, 60, 60_000);
   const body = await readJson<{ q?: string }>(req);
   const answer = await answerZaki(user.centerId, String(body.q ?? ""));

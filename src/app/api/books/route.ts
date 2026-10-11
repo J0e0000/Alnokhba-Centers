@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
  *  ?report=sales&from=YYYY-MM-DD&to=YYYY-MM-DD — تقرير مبيعات ربحي */
 export const GET = handler(async (req: Request) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "books");
+  await requireModule(user.centerId, "books", user);
   const url = new URL(req.url);
 
   if (url.searchParams.get("report") === "sales") {
@@ -129,7 +129,7 @@ type BookBody = {
 /** POST /api/books — add a book to inventory (manager) */
 export const POST = handler(async (req: Request) => {
   const user = await requireManager();
-  await requireModule(user.centerId, "books");
+  await requireModule(user.centerId, "books", user);
   const body = await readJson<BookBody>(req);
 
   const name = normalizeDigits(String(body.name ?? "")).replace(/\s+/g, " ").trim();
@@ -190,7 +190,7 @@ export const POST = handler(async (req: Request) => {
 /** PATCH /api/books — edit book (price/name/grade/subject/notes) or restock (manager) */
 export const PATCH = handler(async (req: Request) => {
   const user = await requireManager();
-  await requireModule(user.centerId, "books");
+  await requireModule(user.centerId, "books", user);
   const body = await readJson<BookBody & { addStock?: number }>(req);
 
   const book = await db.book.findFirst({ where: { id: String(body.id ?? ""), centerId: user.centerId, isActive: true } });
@@ -266,7 +266,7 @@ export const PATCH = handler(async (req: Request) => {
 /** DELETE /api/books?id= — soft delete (manager); blocked if book has sales history */
 export const DELETE = handler(async (req: Request) => {
   const user = await requireManager();
-  await requireModule(user.centerId, "books");
+  await requireModule(user.centerId, "books", user);
   const id = new URL(req.url).searchParams.get("id") ?? "";
   const book = await db.book.findFirst({ where: { id, centerId: user.centerId, isActive: true } });
   if (!book) throw new ApiError("الكتاب ده مش موجود.", 404);
@@ -297,7 +297,7 @@ type SaleBody = {
  *  idemKey: لو نفس المفتاح اتبعت قبل كده، ترجّع نفس البيعة من غير ما تخصم مخزون تاني */
 export const PUT = handler(async (req: Request) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "books");
+  await requireModule(user.centerId, "books", user);
   const body = await readJson<SaleBody>(req);
 
   // ---- idempotency: نفس المفتاح = نفس البيعة ----

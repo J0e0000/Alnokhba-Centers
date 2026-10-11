@@ -26,7 +26,7 @@ type PayBody = {
  */
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "finance");
+  await requireModule(user.centerId, "finance", user);
   const body = await readJson<PayBody>(req);
   const type = body.type === "REFUND" || body.type === "ADJUSTMENT" ? body.type : "PAYMENT";
 
@@ -184,7 +184,7 @@ export const POST = handler(async (req: Request) => {
 /** GET /api/payments?from=&to=&studentId=&method=&sessionId=&page= — payment history */
 export const GET = handler(async (req: Request) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "finance");
+  await requireModule(user.centerId, "finance", user);
   const url = new URL(req.url);
   const from = url.searchParams.get("from");
   const to = url.searchParams.get("to");

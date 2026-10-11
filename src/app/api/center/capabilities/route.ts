@@ -5,7 +5,7 @@ import { logAudit, AUDIT } from "@/lib/audit";
 import { getCenterCapabilities, invalidateCenterCapabilities, capabilityNumber } from "@/lib/center-capabilities";
 import { clearPeekCache } from "@/lib/peek-cache";
 import { CAPABILITY_CATALOG, defaultCapabilityConfig, isCapabilityKey } from "@/lib/capabilities";
-import { getEffectiveModules, invalidateEntitlements } from "@/lib/entitlements";
+import { getEffectiveModules, getEffectiveModulesForUser, invalidateEntitlements } from "@/lib/entitlements";
 import { isModuleKey, moduleOverrideKey, MODULE_CATALOG } from "@/lib/modules";
 
 export const dynamic = "force-dynamic";
@@ -18,12 +18,17 @@ export const GET = handler(async () => {
   const user = await requireCenterUser();
   const caps = await getCenterCapabilities(user.centerId);
   const ent = await getEffectiveModules(user.centerId);
+  // أقسام المنتج *للحساب ده* — قيود الحساب (User.modules) بتطبق فوق حالة السنتر
+  // (المدير شايف السنتر زي ما هو — قيود الحساب مش بتنطبق عليه)
+  const userModules = await getEffectiveModulesForUser(user.centerId, user);
   return ok({
     capabilities: caps,
     catalog: CAPABILITY_CATALOG,
     canManage: user.role === "MANAGER",
-    // أقسام المنتج الفعلية (استحقاق الخطة/الاشتراك/السنتر) — Master Prompt §8
+    // أقسام المنتج الفعلية للسنتر (استحقاق الخطة/الاشتراك/السنتر) — Master Prompt §8
     modules: ent.modules,
+    // أقسام المنتج الفعلية *للحساب ده* — الواجهة بتتكيف بيها (شيل/hiding على مستوى الموظف)
+    userModules,
     moduleCatalog: MODULE_CATALOG,
     subscription: ent.subscription,
   });

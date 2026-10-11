@@ -41,7 +41,7 @@ async function getExam(centerId: string, id: string) {
 
 export const GET = handler(async (_req: Request, ctx: RouteCtx) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "exams");
+  await requireModule(user.centerId, "exams", user);
   const { id } = await ctx.params;
   const exam = await getExam(user.centerId, id);
   return ok({
@@ -85,7 +85,7 @@ type PatchBody = {
 
 export const PATCH = handler(async (req: Request, ctx: RouteCtx) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "exams");
+  await requireModule(user.centerId, "exams", user);
   const { id } = await ctx.params;
   const body = await readJson<PatchBody>(req);
   const exam = await getExam(user.centerId, id);
@@ -229,7 +229,7 @@ export const PATCH = handler(async (req: Request, ctx: RouteCtx) => {
 
 export const DELETE = handler(async (_req: Request, ctx: RouteCtx) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "exams");
+  await requireModule(user.centerId, "exams", user);
   const { id } = await ctx.params;
   const exam = await getExam(user.centerId, id);
   if (exam.status !== "DRAFT" || exam.attempts.length > 0) {

@@ -20,7 +20,7 @@ const VIOLATION_TYPES = ["TAB_HIDDEN", "PAGE_LEFT", "FULLSCREEN_EXIT", "FOCUS_LO
 
 export const GET = handler(async (req: Request) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "exams");
+  await requireModule(user.centerId, "exams", user);
   const url = new URL(req.url);
   const groupId = url.searchParams.get("groupId") ?? undefined;
 
@@ -79,7 +79,7 @@ type CreateBody = {
 
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "exams");
+  await requireModule(user.centerId, "exams", user);
   const body = await readJson<CreateBody>(req);
 
   const groupId = String(body.groupId ?? "");

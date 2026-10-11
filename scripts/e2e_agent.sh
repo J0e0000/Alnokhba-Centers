@@ -142,7 +142,7 @@ has '"students"'
 
 # =============================================================
 echo "===== 3) كتابة بتأكيد: التسجيل (توضيح → تأكيد → تنفيذ → تحقق) ====="
-dbq "p.studentGroup.deleteMany({where:{groupId:'$GID',createdAt:{gte:new Date(Date.now()-86400000)}}})" >/dev/null
+dbq "p.studentGroup.deleteMany({where:{groupId:'$GID',studentId:'$SID'}})" >/dev/null
 sleep 0.5
 
 enroll_flow "سجل $SNAME_FULL في مجموعة $GSUBJ"

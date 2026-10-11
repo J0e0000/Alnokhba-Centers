@@ -34,7 +34,7 @@ async function getQuiz(centerId: string, id: string) {
 
 export const GET = handler(async (_req: Request, ctx: RouteCtx) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "exams");
+  await requireModule(user.centerId, "exams", user);
   const { id } = await ctx.params;
   const quiz = await getQuiz(user.centerId, id);
   return ok({ quiz });
@@ -42,7 +42,7 @@ export const GET = handler(async (_req: Request, ctx: RouteCtx) => {
 
 export const PATCH = handler(async (req: Request, ctx: RouteCtx) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "exams");
+  await requireModule(user.centerId, "exams", user);
   const { id } = await ctx.params;
   const body = await readJson<{
     action?: string;
@@ -153,7 +153,7 @@ export const PATCH = handler(async (req: Request, ctx: RouteCtx) => {
 
 export const DELETE = handler(async (_req: Request, ctx: RouteCtx) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "exams");
+  await requireModule(user.centerId, "exams", user);
   const { id } = await ctx.params;
   const quiz = await getQuiz(user.centerId, id);
   if (quiz.status !== "DRAFT") throw new ApiError("مينفعش تمسح كويز منشور — اقفله بدل المسح.", 400);

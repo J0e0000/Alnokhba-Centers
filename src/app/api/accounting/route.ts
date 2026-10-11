@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 /** GET /api/accounting?section=expenses|cash|settlements|journal — المدير بس (بيانات مالية حساسة) */
 export const GET = handler(async (req: Request) => {
   const user = await requireManager();
-  await requireModule(user.centerId, "finance");
+  await requireModule(user.centerId, "finance", user);
   const section = new URL(req.url).searchParams.get("section") ?? "all";
   const today = todayStr();
 
@@ -98,7 +98,7 @@ type ActionBody = {
 /** POST /api/accounting — manager actions */
 export const POST = handler(async (req: Request) => {
   const user = await requireManager();
-  await requireModule(user.centerId, "finance");
+  await requireModule(user.centerId, "finance", user);
   const body = await readJson<ActionBody>(req);
   const today = todayStr();
 

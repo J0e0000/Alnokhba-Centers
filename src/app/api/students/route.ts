@@ -86,7 +86,7 @@ type CreateBody = {
 /** POST /api/students — register new student with smart validation */
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
-  await requireModule(user.centerId, "students");
+  await requireModule(user.centerId, "students", user);
   if (!canRegisterStudents(user)) {
     throw new ApiError("مسموح للإضافة بس المدير أو موظف عنده صلاحية الإضافة.", 403);
   }

@@ -75,6 +75,9 @@ export type SessionUser = {
   canAddStudents: boolean;
   // الصلاحيات الدقيقة المحسومة (للواجهات + لفحوص السيرفر في كل مكان)
   permissions: PermissionId[];
+  // قيود أقسام المنتج على مستوى الحساب (JSON خام { grants: { finance: false } } — null = وراثة السنتر)
+  // التقييم سيرفري في entitlements.ts — القفل يطبق على API وأدوات زكي والواجهة
+  modules: string | null;
   // per-user receipt preferences (auto-print after payment)
   autoPrintReceipt: boolean;
   receiptFormat: "THERMAL" | "A4";
@@ -308,6 +311,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     centerId: u.centerId,
     canAddStudents: u.canAddStudents,
     permissions: permissionsForClient(u),
+    modules: u.modules ?? null,
     autoPrintReceipt: u.autoPrintReceipt,
     receiptFormat: (u.receiptFormat === "A4" ? "A4" : "THERMAL") as SessionUser["receiptFormat"],
     center: (u as { center: SessionUser["center"] }).center ?? null,

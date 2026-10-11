@@ -51,10 +51,12 @@ export async function availableToolsFor(ctx: ToolContext): Promise<ToolDef[]> {
     if (t.requiredModule) {
       try {
         const m = await import("@/lib/entitlements");
-        mods ??= await m.getEffectiveModules(ctx.centerId);
+        // استحقاق القسم *للحساب ده* — قفل القسم على مستوى المستخدم بيخفي الأداة من الكتالوج كمان
+        mods ??= { modules: await m.getEffectiveModulesForUser(ctx.centerId, ctx.user) } as Awaited<ReturnType<typeof m.getEffectiveModules>>;
         if (!mods.modules[t.requiredModule]?.enabled) continue;
       } catch { continue; } // فشل تقييم الاستحقاق → الأداة مقفولة (fail-safe)
     }
+    if (t.requiredRole && ctx.user.role !== t.requiredRole) continue;
     if (t.requiredPermission && !hasPermission(ctx.user, t.requiredPermission)) continue;
     if (t.requiredCapability) {
       try {
@@ -112,12 +114,16 @@ export async function authorizeAndValidate(
   if (tool.requiredModule) {
     const { requireModule } = await import("@/lib/entitlements");
     try {
-      await requireModule(ctx.centerId, tool.requiredModule);
+      // قفل القسم على مستوى الحساب كمان (User.modules) — أدوات زكي بتخضع لنفس قواعد API السنتر
+      await requireModule(ctx.centerId, tool.requiredModule, ctx.user);
     } catch (e) {
       throw new ToolError("ENTITLEMENT", e instanceof Error ? e.message : "القسم مقفول للاشتراك الحالي.");
     }
   }
   // 3) صلاحية الحساب (نظام الصلاحيات الرسمي للنخبة)
+  if (tool.requiredRole && ctx.user.role !== tool.requiredRole) {
+    throw new ToolError("PERMISSION", `العملية دي لمدير السنتر بس — حسابك (${ctx.user.role}) ميعرفش ينفذها.`);
+  }
   if (tool.requiredPermission && !hasPermission(ctx.user, tool.requiredPermission)) {
     throw new ToolError(
       "PERMISSION",

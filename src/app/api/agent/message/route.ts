@@ -39,7 +39,7 @@ export const POST = handler(async (req: Request) => {
       },
     });
   }
-  await requireModule(user.centerId, "ai_agent");
+  await requireModule(user.centerId, "ai_agent", user);
   const cu = user as Parameters<typeof runAgentMessage>[0]["user"];
   rateLimit(`agent-msg:${user.id}`, 20, 60_000);
   const body = await readJson<{
