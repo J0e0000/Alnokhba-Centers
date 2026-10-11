@@ -6,7 +6,7 @@ import { todayStr, toPiastres } from "@/lib/normalize";
 import { pricingBreakdown, monthlyBillPiastres, PRICING } from "@/lib/pricing";
 import { recordSubEvent, GRACE_DAYS_DEFAULT, deriveSubStatus, EXPIRY_WARNING_DAYS } from "@/lib/subscription";
 import { MODULE_CATALOG, MODULE_KEYS, isModuleKey, moduleOverrideKey, type ModuleKey } from "@/lib/modules";
-import { invalidateEntitlements } from "@/lib/entitlements";
+import { invalidateEntitlements, planFeaturesList, safePlanFeaturesRaw } from "@/lib/entitlements";
 import { invalidateCenterCapabilities } from "@/lib/center-capabilities";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +27,15 @@ export const GET = handler(async () => {
   const [centers, plans, billings, recentLogs, teams, joinRequests, unreadNotifs] = await Promise.all([
     db.center.findMany({
       include: {
-        subscription: { include: { plan: true } },
+        // select صريح من غير features — انفصام السكيما ميوقعش لوحة الأدمن كلها
+        subscription: {
+          select: {
+            id: true, planId: true, status: true, pricePerStudent: true, renewalDate: true,
+            paymentStatus: true, billingPeriod: true, trialEndsAt: true, graceUntil: true,
+            lastRenewedAt: true, cancelledAt: true,
+            plan: { select: { id: true, name: true, maxStudents: true } },
+          },
+        },
         _count: {
           select: {
             students: { where: { status: "ACTIVE" } },
@@ -38,7 +46,18 @@ export const GET = handler(async () => {
       },
       orderBy: { createdAt: "asc" },
     }),
-    db.subscriptionPlan.findMany({ where: { isActive: true }, orderBy: { pricePerStudent: "asc" } }),
+    // قراءة آمنة للخطط — لو عمود features لسه متزامتش (db push معلّق) نرجّع القايمة من غير ميزات
+    db.subscriptionPlan
+      .findMany({ where: { isActive: true }, orderBy: { pricePerStudent: "asc" } })
+      .then((rows) => rows.map((p) => ({ id: p.id, name: p.name, pricePerStudent: p.pricePerStudent, maxStudents: p.maxStudents, features: p.features ?? null })))
+      .catch(async (e) => {
+        console.error("[admin] plans read failed (schema drift?) — fallback without features:", e instanceof Error ? e.message : e);
+        const rows = await db.subscriptionPlan.findMany({
+          where: { isActive: true }, orderBy: { pricePerStudent: "asc" },
+          select: { id: true, name: true, pricePerStudent: true, maxStudents: true },
+        });
+        return rows.map((p) => ({ ...p, features: null }));
+      }),
     db.platformBilling.findMany({ orderBy: { createdAt: "desc" }, take: 30, include: { center: { select: { name: true } } } }),
     db.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 25 }),
     db.team.findMany({
@@ -67,6 +86,11 @@ export const GET = handler(async () => {
     orderBy: { centerId: "asc" },
   });
   const centerNameById = new Map(centers.map((c) => [c.id, c.name]));
+
+  // ميزات الخطط الفعلية — قراءة آمنة (null = خطة كاملة لو السكيما لسه متزامتش)
+  const planIds = [...new Set(centers.map((c) => c.subscription?.planId).filter((x): x is string => !!x))];
+  const featureLists = await Promise.all(planIds.map((id) => planFeaturesList(id)));
+  const featuresByPlan = new Map<string, string[] | null>(planIds.map((id, i) => [id, featureLists[i]]));
 
   // Per-center activity stats (last 30 days)
   const since = today.slice(0, 8) + "01";
@@ -154,7 +178,7 @@ export const GET = handler(async () => {
                 lastRenewedAt: sub.lastRenewedAt,
                 cancelledAt: sub.cancelledAt,
                 // استحقاقات الخطة (Master Prompt §5) — features null = كل الأقسام
-                planFeatures: sub.plan.features ? (JSON.parse(sub.plan.features) as string[]) : null,
+                planFeatures: featuresByPlan.get(sub.planId) ?? null,
                 warningDays: EXPIRY_WARNING_DAYS,
               };
             })()
@@ -291,7 +315,7 @@ export const POST = handler(async (req: Request) => {
   if (!center) throw new ApiError("السنتر ده مش موجود.", 404);
 
   if (body.action === "renew") {
-    const sub = await db.subscription.findUnique({ where: { centerId: center.id }, include: { plan: true } });
+    const sub = await db.subscription.findUnique({ where: { centerId: center.id } });
     if (!sub) throw new ApiError("السنتر ده ملوش اشتراك.", 404);
 
     // الفوترة على كل الطلاب المسجلين غير الأرشيف — بتسعير شرائح النخبة
@@ -348,7 +372,10 @@ export const POST = handler(async (req: Request) => {
   }
 
   if (body.action === "set-plan") {
-    const plan = await db.subscriptionPlan.findUnique({ where: { id: String(body.planId ?? "") } });
+    const plan = await db.subscriptionPlan.findUnique({
+      where: { id: String(body.planId ?? "") },
+      select: { id: true, name: true, pricePerStudent: true },
+    });
     if (!plan) throw new ApiError("الخطة دي مش موجودة.", 404);
     const sub = await db.subscription.findUnique({ where: { centerId: center.id } });
     if (!sub) throw new ApiError("السنتر ده ملوش اشتراك.", 404);
@@ -391,19 +418,29 @@ export const POST = handler(async (req: Request) => {
   // ملاحظة أمنية: الأكشنز دي للأدمن (منصة) بس — مدير السنتر ميعرفش يفتح قسم
   // مستثنى من خطته (override السنتر بيطفي بس — التقييم في entitlements.ts).
   if (body.action === "set-plan-features") {
-    const plan = await db.subscriptionPlan.findUnique({ where: { id: String(body.planId ?? "") } });
-    if (!plan) throw new ApiError("الخطة دي مش موجودة.", 404);
-    if (body.clearFeatures) {
-      // الخطة الكاملة — كل الأقسام
-      await db.subscriptionPlan.update({ where: { id: plan.id }, data: { features: null } });
-    } else {
-      const feats = Array.isArray(body.features) ? body.features : [];
-      if (!feats.length) throw new ApiError("اختار قسم واحد على الأقل — أو استخدم «الخطة الكاملة».", 400);
-      for (const f of feats) if (!isModuleKey(f)) throw new ApiError(`قسم مش معروف: ${f}.`, 400);
-      await db.subscriptionPlan.update({
-        where: { id: plan.id },
-        data: { features: JSON.stringify(MODULE_KEYS.filter((k) => feats.includes(k))) },
-      });
+    // قراءة آمنة لعمود features — لو السكيما لسه متزامتش نقول بوضوح بدل 500 صامت
+    const planId = String(body.planId ?? "");
+    const beforeRaw = await safePlanFeaturesRaw(planId);
+    if (beforeRaw === null && planId && !(await db.subscriptionPlan.findUnique({ where: { id: planId }, select: { id: true } }))) {
+      throw new ApiError("الخطة دي مش موجودة.", 404);
+    }
+    const plan = { id: planId, features: beforeRaw };
+    try {
+      if (body.clearFeatures) {
+        // الخطة الكاملة — كل الأقسام
+        await db.subscriptionPlan.update({ where: { id: plan.id }, data: { features: null } });
+      } else {
+        const feats = Array.isArray(body.features) ? body.features : [];
+        if (!feats.length) throw new ApiError("اختار قسم واحد على الأقل — أو استخدم «الخطة الكاملة».", 400);
+        for (const f of feats) if (!isModuleKey(f)) throw new ApiError(`قسم مش معروف: ${f}.`, 400);
+        await db.subscriptionPlan.update({
+          where: { id: plan.id },
+          data: { features: JSON.stringify(MODULE_KEYS.filter((k) => feats.includes(k))) },
+        });
+      }
+    } catch (e) {
+      if (e instanceof ApiError) throw e;
+      throw new ApiError("تعديل ميزات الخطة محتاج مزامنة قاعدة البيانات الأول — جرب تاني بعد إعادة النشر.", 503);
     }
     // إلغاء كاش الاستحقاق لكل السنترات على الخطة دي + تدقيق
     const affected = await db.subscription.findMany({ where: { planId: plan.id }, select: { centerId: true } });

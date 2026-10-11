@@ -37,7 +37,8 @@ export const GET = handler(async () => {
     expectedCash(centerId, today),
     db.subscription.findUnique({
       where: { centerId },
-      include: { plan: true },
+      // select صريح من غير features — انفصام السكيما (db push معلّق) ميوقعش الداشبورد
+      select: { status: true, renewalDate: true, pricePerStudent: true, plan: { select: { name: true } } },
     }),
     // Weekly-schedule slots for today (planned sessions not opened yet)
     db.scheduleSlot.findMany({

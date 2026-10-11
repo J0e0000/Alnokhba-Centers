@@ -21,13 +21,24 @@ case "$DATABASE_URL" in
     echo "── Prisma: PostgreSQL detected — generating client from schema.postgres.prisma"
     npx prisma generate --schema=prisma/schema.postgres.prisma
 
-    echo "── Prisma: schema sync (db push — additive only, 120s guard)"
-    if timeout 120 npx prisma db push --schema=prisma/schema.postgres.prisma --skip-generate; then
+    echo "── Prisma: schema sync (db push — additive only, 3 attempts × 180s)"
+    # الانفصام ده حصل فعلًا: بوش واحد فشل والكود انشر بيه → كل راوتس الاستحقاق 500.
+    # 3 محاولات مع مهلة أطول عشان DDL عبر الـ pooler بيميل يعلق على البارد.
+    push_ok=0
+    for attempt in 1 2 3; do
+      if timeout 180 npx prisma db push --schema=prisma/schema.postgres.prisma --skip-generate; then
+        push_ok=1
+        break
+      fi
+      echo "── db push: attempt $attempt failed — retrying in 15s"
+      sleep 15
+    done
+    if [ "$push_ok" = "1" ]; then
       echo "── db push: schema in sync ✓"
     else
-      echo "── db push: skipped/failed (build continues)."
-      echo "   The deployed client still matches the repo schema; sync the tables"
-      echo "   manually via the session pooler — see docs/PRODUCTION-DB.md."
+      echo "── db push: FAILED after 3 attempts (build continues)."
+      echo "   Sync manually via the SESSION pooler — see docs/PRODUCTION-DB.md."
+      echo "   NOTE: entitlement reads fail-safe to full-plan mode until synced."
     fi
     ;;
   *)

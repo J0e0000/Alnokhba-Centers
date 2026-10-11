@@ -1,5 +1,5 @@
 import { handler, ok } from "@/lib/api";
-import { requireCenterUser, rateLimit } from "@/lib/auth";
+import { requireUser, rateLimit, type SessionUser } from "@/lib/auth";
 import { availableToolsFor } from "@/ai/tools";
 import { CONFIRM_POLICY } from "@/ai/tools/types";
 import { getEffectiveModules } from "@/lib/entitlements";
@@ -12,14 +12,22 @@ export const dynamic = "force-dynamic";
    (استحقاق القسم + صلاحية + قدرة سنتر) — نفس الفلترة اللي بيشوفها
    الموديل سيرفري. الواجهة والتكاملات المستقبلية بتبني على ده بدل
    كتالوج ثابت — القسم المقفول أدواته بتختفي من كتالوج زكي نفسه.
+   أدمن المنصة (من غير جلسة دعم): قايمة فاضية + platform=true —
+   مش 403، عشان الواجهة تعرف تتصرف بذكاء.
 ============================================================ */
 
 export const GET = handler(async () => {
-  const user = await requireCenterUser();
+  const user = await requireUser();
   rateLimit(`agent-caps:${user.id}`, 30, 60_000);
 
-  const tools = await availableToolsFor({ user, centerId: user.centerId });
-  const ent = await getEffectiveModules(user.centerId);
+  // أدمن من غير سنتر — مفيش أدوات سنتر تشتغل (الأدوات كلها محصورة بسنتر)
+  if (!user.centerId) {
+    return ok({ tools: [], modules: {}, subscription: null, platform: true });
+  }
+
+  const cu = user as SessionUser & { centerId: string };
+  const tools = await availableToolsFor({ user: cu, centerId: cu.centerId });
+  const ent = await getEffectiveModules(cu.centerId);
   return ok({
     tools: tools.map((t) => ({
       name: t.name,
@@ -33,5 +41,6 @@ export const GET = handler(async () => {
     })),
     modules: ent.modules,
     subscription: ent.subscription,
+    platform: false,
   });
 });
