@@ -23,10 +23,20 @@ case "$DATABASE_URL" in
 
     echo "── Prisma: schema sync (db push — additive only, 3 attempts × 180s)"
     # الانفصام ده حصل فعلًا: بوش واحد فشل والكود انشر بيه → كل راوتس الاستحقاق 500.
-    # 3 محاولات مع مهلة أطول عشان DDL عبر الـ pooler بيميل يعلق على البارد.
+    # سبب الفشل المزمن: DDL عبر transaction-pooler (6543/pgbouncer) بيميل يعلق —
+    # الحل: مشتقة رابط الجلسة (5432) من رابط الـ pooler (نفس المستخدم/الباسورد
+    # على Supabase — البورت بس بيتغير) وندفع السكيما عن طريقه (زي الـ manual sync
+    # اللي نجح قبل كده). لو الرابط مش pooler على 6543، السطر ده بيبقى no-op.
+    PUSH_URL="$DATABASE_URL"
+    case "$PUSH_URL" in
+      *:6543/*)
+        PUSH_URL=$(printf '%s' "$DATABASE_URL" | sed 's/:6543\//:5432\//')
+        echo "── db push: using SESSION pooler (5432) for DDL instead of transaction pooler"
+        ;;
+    esac
     push_ok=0
     for attempt in 1 2 3; do
-      if timeout 180 npx prisma db push --schema=prisma/schema.postgres.prisma --skip-generate; then
+      if DATABASE_URL="$PUSH_URL" timeout 180 npx prisma db push --schema=prisma/schema.postgres.prisma --skip-generate; then
         push_ok=1
         break
       fi
