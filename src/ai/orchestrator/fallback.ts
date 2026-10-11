@@ -711,34 +711,17 @@ export function fallbackPlan(
 }
 
 /** رد الوكيل لما الفول باك ميعرفش الطلب — بيقول الحقيقة ويقترح (spec §40/Phase 9).
- *  الاقتراحات بتتولد من الأدوات اللي متاحة فعلًا للحساب ده (usageHint أمثلة) —
- *  مش كتالوج ثابت — فالمستخدم مش بيشوف حاجات هتتحجب بصلاحياته.
- *  لو مفيش أدوات متمررة → كتالوج افتراضي مضغوط. */
-export function fallbackUnknown(text: string, tools?: { name: string; usageHint?: string }[]): AgentTurn {
+ *  الاقتراحات ثابتة بصياغة **مستخدم** («سجل حضور أحمد...») — ممنوع نعرض usageHints
+ *  الأداة للمستخدم: هي تعليمات موجّهة للموديل («لما المستخدم يسأل...») وعرضها
+ *  تسريب داخلي بيتعارض مع قاعدة «متكلمش عن الأدوات» (§15).
+ *  الاستثناء الوحيد: نتائج أداة نجحت — بيتردّ عليها في الـ runner قبل نداء الدالة دي. */
+export function fallbackUnknown(text: string, _tools?: { name: string; usageHint?: string }[]): AgentTurn {
   const ar = hasAr(text);
   const staticAr =
     "الطلب ده مش من الحاجات اللي أقدر أعملها بالظبط. أقدر أساعدك في:\n• «سجل حضور أحمد ومحمد» · «الغايبين عمر وسالم — سجل الباقي» · «مين غايب النهارده؟»\n• «افتح حصة رياضيات» · «اقفل الحصة» · «ملخص النهاردة» · «عندنا إيه بكرة؟»\n• «سجل دفعة 50 جنيه لأحمد» · «حصّلنا كام النهارده؟»\n• «اعمل مجموعة رياضيات للصف الأول الثانوي بسعر 60» · «ضيف طالب جديد»\n• «هاتلي أحمد» · «تقرير أحمد» · «سجل أحمد في مجموعة B»\nولو الصيغة مختلفة، المدير يقدر يوصلني بموديل ذكي من الإعدادات ← «زكي — العقل الذكي» وأندهم أي طلب بالكلام العادي.";
   const staticEn =
     "I can't map this request yet. I can help with: opening sessions, today's absentees and summary, recording payments, creating groups and students, search and reports. A manager can also connect a smart model from Settings → Zaki Brain so I understand any phrasing.";
 
-  if (tools?.length) {
-    // أمثلة حقيقية من الكتالوج الفعلي — أول مثال من usageHint لكل أداة (مكركبش)
-    const examples: string[] = [];
-    for (const t of tools) {
-      if (!t.usageHint) continue;
-      const first = t.usageHint.split(" / ")[0]?.trim().replace(/[«»"]/g, "");
-      if (first && !examples.some((e) => e === first)) examples.push(first);
-      if (examples.length >= 9) break;
-    }
-    if (examples.length) {
-      const lines = examples.map((e) => `• «${e}»`).join("\n");
-      return {
-        say: ar
-          ? `الطلب ده مش من الحاجات اللي أقدر أعملها بالظبط بدورك الحالي. اللي أقدر أعمله دلوقتي:\n${lines}\nولو محتاج صيغة مختلفة، قولني بطريقتك — ولو الطلب محتاج صلاحية أعلى، هقولك بصراحة.`
-          : `I can't map this request yet. Here's what I can actually do right now:\n${lines}\nJust ask in your own words — and if something needs higher permissions, I'll say so honestly.`,
-        done: true,
-      };
-    }
-  }
+  void _tools; // مُتجاهَلة عمدًا — شوف التعليق فوق
   return { say: ar ? staticAr : staticEn, done: true };
 }

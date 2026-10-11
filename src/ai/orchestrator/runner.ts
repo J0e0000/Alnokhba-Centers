@@ -411,9 +411,16 @@ async function agentLoop(opts: {
         // الموديل مقفول بالميزانية والمخ الحتمي مش عارف الطلب — رد صادق بالسبب
         turn = { say: "وصلنا الحد اليومي لاستخدام الموديل الذكي فمش هقدر أنفذ الطلب ده بالظبط دلوقتي. جرب تاني بكرة، أو كلم المدير يزوّد الحد (NK_AGENT_DAILY_TURNS).", done: true };
       } else {
-        // الاقتراحات من الأدوات المتاحة فعلًا للحساب ده (spec Phase 9) — مش كتالوج ثابت
-        const availTools = await availableToolsFor({ user, centerId: user.centerId, taskId }).catch(() => []);
-        turn = fallbackUnknown(userText, availTools.map((t) => ({ name: t.name, usageHint: t.usageHint })));
+        // آخر ملاحظة أداة نجحت والموديل خرق البروتوكول بعدها؟ → ردّ بنتيجتها مباشرة
+        // (ناتج حقيقي قصير بدل «مش قادر أعملها» المضللة — الأداة اشتغلت فعلًا)
+        const lastObs = observations[observations.length - 1];
+        if (lastObs && lastObs.summary && !lastObs.error) {
+          turn = { say: lastObs.summary, done: true };
+        } else {
+          // الاقتراحات من الأدوات المتاحة فعلًا للحساب ده (spec Phase 9) — مش كتالوج ثابت
+          const availTools = await availableToolsFor({ user, centerId: user.centerId, taskId }).catch(() => []);
+          turn = fallbackUnknown(userText, availTools.map((t) => ({ name: t.name, usageHint: t.usageHint })));
+        }
       }
     }
     if (provider !== "llm" && taskRow?.provider !== provider) {
