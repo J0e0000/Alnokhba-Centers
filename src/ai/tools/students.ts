@@ -80,6 +80,30 @@ register({
 });
 
 register({
+  name: "student.count",
+  group: "students",
+  requiredModule: "students",
+  description: "عدد الطلاب في السنتر (الإجمالي والنشطين وغير النشطين) + عدد المجموعات — للأسئلة زي «كام طالب عندنا»",
+  usageHint: "لما المستخدم يسأل عن عدد/عدد الطلاب أو حجم السنتر — مش بحث عن طالب معين",
+  input: z.object({}),
+  risk: "LOW",
+  requiredPermission: "SEARCH_STUDENTS",
+  permissionLabel: "البحث عن الطلاب",
+  async handler(_args, ctx): Promise<ToolOutput> {
+    const [total, active, inactive, groups] = await Promise.all([
+      db.student.count({ where: { centerId: ctx.centerId, status: { not: "ARCHIVED" } } }),
+      db.student.count({ where: { centerId: ctx.centerId, status: "ACTIVE" } }),
+      db.student.count({ where: { centerId: ctx.centerId, status: { notIn: ["ACTIVE", "ARCHIVED"] } } }),
+      db.group.count({ where: { centerId: ctx.centerId, isActive: true } }),
+    ]);
+    return {
+      summary: `عندك ${total} طالب مسجل (${active} نشط${inactive ? ` و${inactive} موقوف` : ""}) في ${groups} مجموعة.`,
+      data: { total, active, inactive, groups },
+    };
+  },
+});
+
+register({
   name: "student.get",
   group: "students",
   requiredModule: "students",
