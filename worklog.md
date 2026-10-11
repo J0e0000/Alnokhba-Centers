@@ -726,3 +726,20 @@ Work Log:
 Stage Summary:
 - Admin (platform) AND manager can now EDIT (not just view) the full 24-permission catalog + per-user feature (module) access for every receptionist/teacher — enforced server-side at API + agent-tool level, reflected in the UI nav, all audited.
 - Zaki grew from 20 to 28 real tools covering expenses, approvals decisions, book sales, student status, announcements, exams, audit trail, subscription — with the executive-intelligence prompt upgrade for multi-step orders.
+
+---
+Task ID: USER-PERMS-ZAKI-1 (continued — prod deploy + fallback brain)
+Agent: main (Super Z)
+Task: deploy verification + close the fallback-brain gap found by live probe
+
+Work Log:
+- DEPLOY e33964e → Vercel: userModules marker live, User.modules column synced (capabilities 200 — would 500 on drift), admin payload 6 users all with permissions+moduleGrants, 28 tools live.
+- LIVE PROBE found gap: «في طلبات مستنية قرار؟» fell to deterministic brain which didn't know the new tools → added 4 read-only intents (approvalsList / subscriptionStatus / auditRecent / examsList) with the standard prev-observation doneWith pattern.
+- PROD probes 10/10 (scripts/prod_user_perms_probe.sh): grant→verify→revoke round-trip on deactivated agent_teach_t (audited both ways), 9 new tools, staff fields, audit trail.
+- Live LLM probe: «اشتراكنا لحد امتى؟» → subscription.status → "الخطة: Professional — التجديد 2026-10-19 (باقي 9 يوم). الحالة: ACTIVE." COMPLETED.
+- Post-deploy live probe: approvals intent → approvals.list executed → "مفيش طلبات مستنية قرار — كله تمام." COMPLETED (brain path).
+- Regression re-run after fallback change: e2e_agent 103/0/1skip ALL GREEN (middle-run 3 fails were documented 429 LLM flakes, clean pass on rerun).
+- API keys answer (no keys needed for what shipped): GROQ_API_KEY live on Vercel (LLM+STT), ZAI builtin = failover, voice-out = server TTS + browser speechSynthesis fallback. OPTIONAL upgrades: ANTHROPIC_API_KEY (or any OpenAI-compatible) via AGENT_LLM_PROVIDER/MODEL/API_KEY + AGENT_LLM_FALLBACK_* for a stronger brain with automatic failover — providers already coded.
+
+Stage Summary:
+- Production: admin edits full permissions + per-user features for every user from the console; manager same from settings; Zaki 28 tools + smarter prompt + brain fallback covers new reads; 264+ automated checks + 10/10 prod probes green.
