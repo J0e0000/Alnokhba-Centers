@@ -681,3 +681,26 @@ Stage Summary:
 - زكي بقى استحقاقي: أدواته بتتفلتر بالخطة/الاشتراك/السنتر قبل ما الموديل يشوفها + enforced ثانية عند التنفيذ — plan = سقف مفيش override يعدّيه.
 - ⚠️ DEPLOY BLOCKED: git push 0b8e9be landed on GitHub main (574d3c7..0b8e9be) but production alnokhba-centers-nine has NOT picked it up after 35+ min (modules=0 in capabilities probe). No GitHub Actions; Vercel CLI logged out; previous auth artifacts (.env.prod-url, vercel logs) vanished from sandbox (never committed — secrets safe). NEEDS: user to check Vercel dashboard build for this commit OR provide fresh VERCEL_TOKEN / run npx vercel login. Schema sync (TrustedDeviceBinding table + SubscriptionPlan.features) will apply automatically via vercel-build.sh db push on deploy — additive only.
 - REMAINING for full master prompt: RLS/database-layer enforcement review, Platform audit-history view for entitlement changes, student portal persistent device binding (public flow done), admin recovery impersonation already exists (support sessions).
+
+---
+Task ID: PROD-OUTAGE-1 (admin errors + agent unreachable + shorter answers)
+Agent: main (Super Z)
+Task: "the admin account has so many errors and not loading pages, also the ai tells me it can't reach out for the server (make it answer shorter answers)"
+
+Work Log:
+- DIAGNOSIS (prod probes): deploy of 0b8e9be WAS live but SubscriptionPlan.features + TrustedDeviceBinding were NEVER synced to prod DB (vercel-build db push failed silently, build continues by design) → every route reading subscription.plan 500'd (P2022): /api/admin, dashboard, reports, payments, books, exams, center/capabilities, agent/capabilities, agent/message → admin console dead + Zaki "مش قادر أوصل للسيرفر".
+- FIX 1 fail-safe entitlements: safePlanFeaturesRaw/planFeaturesList (P2022 → null = full plan, console.error); getSubscriptionState explicit select without features; admin GET plans fallback select + centers select-safe + planFeatures via safe reader; renew/set-plan select-safe; set-plan-features → clear 503 message on drift; dashboard select-safe.
+- FIX 2 platform-admin agent: agent/status + agent/capabilities → requireUser + platform:true (no more 403); agent/message → short SSE guidance ("افتح دعم فني لسنتر") without LLM cost; during support impersonation admin already acts as center user (unchanged).
+- FIX 3 agent UI honesty: runSSE surfaces server Arabic error verbatim; generic "can't reach" only for real network failures.
+- FIX 4 brevity: system prompt قاعدة الاختصار (say ≤ 2 lines / ~25 words, no preamble, details only on explicit request) + done-rule one line.
+- FIX 5 schema sync root cause: vercel-build.sh db push now derives SESSION pooler 5432 URL from the 6543 pooled URL (same Supabase creds) + 3 attempts × 180s — DDL over transaction pooler was the chronic failure. RESULT: features column + TrustedDeviceBinding now SYNCED on prod (verified via sysdiag probe).
+- FIX 6 sysdiag: admin-gated (was public!) + postgres schema-drift probe (planColumns/tables/featuresSynced/trustedDevicesSynced) — remote drift detector.
+- FIX 7 agent quality (found by live probe): student.count tool added ("كام طالب عندنا؟" was looping student.search 8× then FAILING); runner protocol-fallback now answers with the last successful tool result summary instead of a "can't do" list; fallbackUnknown no longer leaks model-facing usageHints to users (spec §15 violation).
+- VERIFY: tsc src=0, eslint clean, build ✓ (×4 deploys); prod: ad1fb8a → 446171e (schema synced) → 7973dfb (count tool) → f2565d8 (fallback fix) all healthy; final live checks: admin /api/admin 200, dashboard 200, admin agent platform:true + guidance, manager capabilities 11 modules (plan "Professional"), 19 tools, and "كام طالب عندنا؟" → "هجيب لك عدد الطلاب." → student.count ok → "عندك 19 طالب مسجل (19 نشط) في 5 مجموعة." DONE COMPLETED — one short line.
+- Note: local .env.prod-url credentials vanished with sandbox reset — schema synced via build-time session-pooler derivation instead (no secrets needed in sandbox).
+- Note: commit push revealed remote was still at 0b8e9be (ff85e05 worklog commit only local) — ad1fb8a carried both.
+
+Stage Summary:
+- Production outage RESOLVED + root cause eliminated (schema drift detector + fail-safe reads + session-pooler DDL).
+- Zaki works for platform admin, answers in one line, and no longer leaks internals. 19 tools live.
+- Local @prisma/client left sqlite-flavored (local dev); Vercel build regenerates postgres on deploy (unchanged behavior).
