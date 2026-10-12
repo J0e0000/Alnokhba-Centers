@@ -16,6 +16,9 @@ import {
   type AgentCard, type StepItem, type CardActionHandler,
 } from "./agent-cards";
 import { ZakiInsightsPanel } from "./zaki";
+import { ZakiRobot } from "@/components/zaki/zaki-robot";
+import { useZakiRobotState } from "@/components/zaki/use-zaki-robot-state";
+import { ZAKI_STATE_AR, ZAKI_STATE_DOT } from "@/components/zaki/zaki-status";
 import { prepareSpeechText } from "@/lib/speech-text";
 
 /* ============================================================
@@ -174,6 +177,9 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
   const [transcribing, setTranscribing] = useState(false);
   const [micStarting, setMicStarting] = useState(false);
   const [voiceDraft, setVoiceDraft] = useState(false); // نص صوتي مستني مراجعة المستخدم قبل الإرسال
+  const [speaking, setSpeaking] = useState(false); // صوت زكي شغال دلوقتي فعلًا (TTS حقيقي)
+  const [successTick, setSuccessTick] = useState(0); // عدّاد النجاح المؤكد — للروبوت
+  const [failureTick, setFailureTick] = useState(0); // عدّاد الفشل المؤكد — للروبوت
 
   const taskIdRef = useRef<string | null>(null);
   const lastUserText = useRef<string>("");
@@ -207,6 +213,7 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
     try { window.speechSynthesis?.cancel(); } catch { /* صامت */ }
     try { speakAudioRef.current?.pause(); } catch { /* صامت */ }
     speakAudioRef.current = null;
+    setSpeaking(false);
   }, []);
 
   const browserSpeak = useCallback((clean: string) => {
@@ -220,6 +227,9 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
       u.lang = ar?.lang ?? "ar-EG";
       u.rate = 1.05;
       u.pitch = 1;
+      u.onstart = () => setSpeaking(true);
+      u.onend = () => setSpeaking(false);
+      u.onerror = () => setSpeaking(false);
       window.speechSynthesis.speak(u);
     } catch { /* صامت — الصوت إضافة مش شرط */ }
   }, []);
@@ -250,8 +260,10 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
         audio.onended = () => {
           URL.revokeObjectURL(url);
           if (speakAudioRef.current === audio) speakAudioRef.current = null;
+          setSpeaking(false);
         };
         await audio.play();
+        setSpeaking(true);
       })
       .catch(() => browserSpeak(clean)); // فول باك — صوت المتصفح لو فيه عربي
   }, [browserSpeak]);
@@ -323,11 +335,15 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
       case "done":
         setRunning(false);
         setState(e.status === "COMPLETED" ? "COMPLETED" : e.status === "FAILED" ? "FAILED" : e.status === "WAITING_CONFIRMATION" ? "WAITING_CONFIRMATION" : "IDLE");
+        // إشارات مؤكدة للروبوت — النجاح/الفشل بس لما يحصل فعلًا
+        if (e.status === "COMPLETED") setSuccessTick((v) => v + 1);
+        else if (e.status === "FAILED") setFailureTick((v) => v + 1);
         // الرد الصوتي — آخر رسالة من زكي (النتيجة النهائية أو السؤال) — مفيش ترديد للخطوات
         if (ttsOn && e.status !== "FAILED" && lastAgentTextRef.current) speak(lastAgentTextRef.current);
         break;
       case "error":
         setRunning(false);
+        setFailureTick((v) => v + 1);
         push({ id: crypto.randomUUID(), kind: "error", text: e.message ?? "خطأ غير متوقع.", retry: true });
         break;
     }
@@ -372,6 +388,7 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
     } catch (e) {
       if ((e as Error).name !== "AbortError") {
         setRunning(false);
+        setFailureTick((v) => v + 1); // فشل شبكة مؤكد — الروبوت بيعرضه مؤقتًا
         const m = (e as Error).message ?? "";
         // رسالة السيرفر الواضحة تُعرض زي ما هي — «مش قادر أوصل» لفشل الشبكة بس
         const isServerMsg = m && !m.startsWith("agent-http-");
@@ -645,21 +662,34 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
 
   const stateLabel = STATE_LABEL[state];
 
+  // حالة الروبوت — محوّلة من إشارات الوكيل الحقيقية فقط (بدون اختراع حالات)
+  const robotState = useZakiRobotState({
+    agentState: state,
+    running,
+    listening,
+    transcribing,
+    speaking,
+    successTick,
+    failureTick,
+  });
+
   return (
     <>
-      {/* الزرار العائم — زكي */}
+      {/* الزرار العائم — شخصية زكي الحية بتعكس الحالة الحقيقية (64–80px) */}
       <motion.button
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 0.6, type: "spring", stiffness: 260, damping: 18 }}
         onClick={() => { setOpen(true); showTutorialOnOpen(); }}
-        aria-label="افتح زكي — وكيل النخبة الذكي"
+        aria-label={`افتح زكي — وكيل النخبة الذكي. ${ZAKI_STATE_AR[robotState]}`}
         className={cn(
-          "fixed bottom-[5.4rem] md:bottom-6 end-4 z-[70] rounded-full shadow-lg text-white",
-          "w-13 h-13 md:w-14 md:h-14 p-3.5 flex items-center justify-center nk-brand-grad",
+          "fixed bottom-[5.4rem] md:bottom-6 end-4 z-[70] rounded-full flex items-center justify-center",
+          "w-[4.25rem] h-[4.25rem] md:w-[4.75rem] md:h-[4.75rem] drop-shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
         )}
       >
-        <Sparkles className={cn("w-6 h-6", running && "animate-pulse")} />
+        <ZakiRobot state={robotState} size={68} ariaHidden interactive={!running} />
+        {/* نقطة الحالة — الوضع مش معتمد على الحركة وحدها */}
+        <span aria-hidden="true" className={cn("absolute bottom-0 end-0 w-3.5 h-3.5 rounded-full border-2 border-background", ZAKI_STATE_DOT[robotState])} />
       </motion.button>
 
       {/* ملاحظات زكي الحتمية (نفس لوحة القواعد القديمة) */}
@@ -683,9 +713,7 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
             <div className="nk-card rounded-3xl shadow-2xl border border-border overflow-hidden flex flex-col h-full min-h-0">
               {/* الهيدر */}
               <div className="nk-brand-grad text-white p-3.5 flex items-center gap-2.5 shrink-0">
-                <div className="w-10 h-10 rounded-2xl bg-white/15 grid place-items-center shrink-0 backdrop-blur">
-                  <Sparkles className="w-5.5 h-5.5" />
-                </div>
+                <ZakiRobot state={robotState} size={46} antenna={false} interactive={false} floorShadow={false} ariaHidden className="drop-shadow-md" />
                 <div className="min-w-0 flex-1">
                   <p className="font-black leading-tight">زكي — وكيل النخبة</p>
                   <p className="text-[10.5px] font-bold text-white/85 flex items-center gap-1">
@@ -756,10 +784,10 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
                     {items.length === 0 ? (
                       <div className="space-y-4 py-2">
                         <div className="text-center space-y-1.5">
-                          <div className="w-14 h-14 mx-auto rounded-3xl nk-brand-grad text-white grid place-items-center shadow-lg">
-                            <Sparkles className="w-7 h-7" />
+                          <div className="mx-auto w-fit">
+                            <ZakiRobot state={robotState} size={112} ariaLabel="زكي — مساعدك الذكي" />
                           </div>
-                          <p className="font-black text-base mt-2">أنا زكي</p>
+                          <p className="font-black text-base">أنا زكي</p>
                           <p className="text-xs font-bold text-muted-foreground leading-relaxed max-w-[26ch] mx-auto">
                             قولّي عايز تعمل إيه — هفهم الطلب وأساعدك تنفذه جوه النظام.
                           </p>
