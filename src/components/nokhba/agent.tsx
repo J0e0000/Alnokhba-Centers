@@ -16,6 +16,7 @@ import {
   type AgentCard, type StepItem, type CardActionHandler,
 } from "./agent-cards";
 import { ZakiInsightsPanel } from "./zaki";
+import { prepareSpeechText } from "@/lib/speech-text";
 
 /* ============================================================
    ZAKI AGENT — واجهة الوكيل الذكي (spec §10/§12/§18/§29/§35-§43)
@@ -224,11 +225,15 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
   }, []);
 
   const speak = useCallback((text: string) => {
-    const clean = text
-      .replace(/[*_#`>•—–…]/g, " ")
-      .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, " ")
-      .replace(/\s+/g, " ")
-      .trim();
+    // تحضير النطق (أرقام/سعات/تواريخ/فلوس بالحروف العربي) — نفس التحضير على السيرفر
+    // (idempotent) عشان فول باك المتصفح كمان ينطق صح، والسيرفر لو طبّقه تاني مفيش فرق.
+    const clean = prepareSpeechText(
+      text
+        .replace(/[*_#`>•—–…]/g, " ")
+        .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, " ")
+        .replace(/\s+/g, " ")
+        .trim(),
+    );
     if (!clean) return;
     fetch("/api/agent/speak", {
       method: "POST",
