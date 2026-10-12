@@ -781,3 +781,25 @@ Work Log:
 
 Stage Summary:
 - Loop dead on prod (3 layers + deterministic brain ownership of bare names). Voice fully wired: prepared Arabic text + Groq Fahad voice chain + honest fallbacks; the only remaining blocker is TTS model access on the provider account — one key/enablement away.
+
+---
+Task ID: ZAKI-CHARACTER-1
+Agent: main (Super Z)
+Task: MASTER PROMPT — implement Zaki AI robot character (robot-heads) in the real assistant + visual prototype, branch-isolated, no production deploy
+
+Work Log:
+- Repo audit: target = local working copy of github.com/J0e0000/Alnokhba-Centers (main @ 2d570d5, npm, Next 16.1.1 / React 19, existing real Zaki agent in src/components/nokhba/agent.tsx with SSE state machine IDLE/UNDERSTANDING/…/COMPLETED/FAILED + TTS + server mic).
+- robot-heads@0.3.0 verified on npm (MIT, 2D canvas, peer react>=18 → React 19 OK, ESM+CJS+d.ts) then installed; API from dist/index.d.ts (RobotHead props: shape/state/size/color/trimColor/screenColor/speed/paused/interactive/antenna/floorShadow/seed).
+- Branch feat/zaki-robot-character created; all work isolated there.
+- src/components/zaki/zaki-status.ts — typed honest mapping (real events only; searching/sleeping never emitted; EXECUTING/VERIFYING→working, other running→thinking, listening only real mic, speaking only real TTS playback) + AR labels + status-dot colors.
+- src/components/zaki/zaki-robot.tsx — ZakiRobot: lazy import (separate chunk), brand variants navy/blue/teal from official brand sheet, Suspense fallback + ErrorBoundary static tile, aria pass-through.
+- src/components/zaki/use-zaki-robot-state.ts — transient happy 2.4s / error 2.8s → idle; cleared on new request; React-19 set-state-in-effect lint clean via render-derivation pattern.
+- agent.tsx integration: launcher = live 68px robot + status dot (aria-label carries state), header 46px robot, welcome 112px robot; speaking tracked from server-audio onended + browser-utterance onstart/onend/onerror; success/failure ticks only from done(COMPLETED/FAILED), error SSE, network failure. Old Sparkles launcher/header/welcome tiles replaced; status text/icons unchanged.
+- /zaki-preview (src/app/zaki-preview/page.tsx + components/zaki/zaki-preview.tsx): "Zaki Visual Prototype — Demo Only" — 9-state switcher (production-mapped states marked green), shapes, size/speed sliders, 3 brand variants, paused/interactive/antenna/shadow toggles, useSyncExternalStore reduced-motion notice, demo scenarios (success/failure/voice) driving a demo robot + labeled demo chat. noindex metadata + PRIVATE_PATHS robots disallow. No nav link, no data, no backend calls.
+- Tests: scripts/test_zaki_robot_state.ts 21/21 (tsx) incl. "searching never emitted", "happy only after confirmation", overlap/cancel rules.
+- VERIFY: tsc --noEmit src/ = 0 errors (pre-existing failures only in examples/ + scripts/); eslint changed files clean (fixed 4 react-hooks/set-state-in-effect); next build green (/zaki-preview static; robot chunk 32KB raw / 12.6KB gzip lazy); Turbopack warnings = 2 pre-existing sysdiag ones.
+- Browser E2E (agent-browser on dev:3000): preview desktop+mobile screenshots ok; state switch live via aria-labels; demo voice scenario sequence listening→working→speaking→happy→idle verified; real login (manager) → launcher/header/welcome robots render; real message sent → launcher sampled "زكي بيفكر → زكي بينفذ → زكي مبسوط — تمام → زكي جاهز" with task "خلصت"; keyboard Enter opens panel; mobile 390px launcher 68px on-screen no collision; console clean except pre-existing print.tsx script-tag warning (present on main).
+- GIT: commit 90e3f34 pushed to origin/feat/zaki-robot-character ✓. PR creation blocked: token 403 "Resource not accessible by personal access token" (no PR-write scope) — user opens PR/merges via compare URL: github.com/J0e0000/Alnokhba-Centers/compare/main...feat/zaki-robot-character. main NOT touched → production not deployed (per MASTER PROMPT).
+
+Stage Summary:
+- Zaki now has a real visual character: live launcher robot reflecting true agent states (thinking/working/speaking/listening/happy/error), on-brand square navy design, accessible + reduced-motion safe, 12.6KB gzip lazy chunk. Visual prototype at /zaki-preview for identity evaluation. All checks green; branch pushed; PR blocked only by token scope (one-click compare URL provided).
