@@ -77,36 +77,40 @@ export const POST = handler(async (req: Request) => {
   }
 
   // ==== المحرك ١: Groq PlayAI TTS — صوت عربي أصلي (لو فيه مفتاح) ====
+  // العربي بيتولّى بموديل playai-tts-arabic (أصوات Fahad/Nour) — بنجربه الأول،
+  // وبعده playai-tts العادي (لو الحساب بيدعمه) — وAGENT_TTS_MODEL بيعديهم كلهم.
   const ttsKey = process.env.AGENT_TTS_API_KEY?.trim() || process.env.GROQ_API_KEY?.trim() || "";
+  const ttsModels = process.env.AGENT_TTS_MODEL?.trim()
+    ? [process.env.AGENT_TTS_MODEL.trim()]
+    : ["playai-tts-arabic", "playai-tts"];
   // بعد 429 من Groq بنستنى دقيقة قبل ما نرجع له — الزيارة الجاية بتروح ZAI على طول
-  let groqBlocked = false;
   if (ttsKey && Date.now() >= groqCooldownUntil) {
-    groqBlocked = true;
-    try {
-      const base = process.env.AGENT_TTS_BASE_URL?.trim() || "https://api.groq.com/openai/v1";
-      const model = process.env.AGENT_TTS_MODEL?.trim() || "playai-tts";
-      const voice = process.env.AGENT_TTS_VOICE?.trim() || "Fahad-PlayAI";
-      const r = await fetch(`${base}/audio/speech`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${ttsKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model, voice, input: clean, response_format: "wav" }),
-      });
-      if (!r.ok) throw new Error(`groq-tts-${r.status}`);
-      const ab = await r.arrayBuffer();
-      const audio = Buffer.from(new Uint8Array(ab));
-      if (audio.length < 100) throw new Error("tts-empty-audio");
-      cachePut(key, audio);
-      return new Response(new Uint8Array(audio), {
-        headers: { "Content-Type": "audio/wav", "Cache-Control": "no-store", "X-Speak-Cache": "miss", "X-TTS-Engine": "groq" },
-      });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      console.error("[agent:speak] groq tts failed:", msg.slice(0, 200));
-      if (/\b429\b|rate limit/i.test(msg)) groqCooldownUntil = Date.now() + 60_000;
-      // مش بنفشل الطلب — بننزل للمحرك التاني
+    for (const ttsModel of ttsModels) {
+      try {
+        const base = process.env.AGENT_TTS_BASE_URL?.trim() || "https://api.groq.com/openai/v1";
+        const voice = process.env.AGENT_TTS_VOICE?.trim() || (ttsModel.includes("arabic") ? "Fahad-PlayAI" : "Cherry-PlayAI");
+        const r = await fetch(`${base}/audio/speech`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${ttsKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ model: ttsModel, voice, input: clean, response_format: "wav" }),
+        });
+        if (!r.ok) throw new Error(`groq-tts-${r.status}`);
+        const ab = await r.arrayBuffer();
+        const audio = Buffer.from(new Uint8Array(ab));
+        if (audio.length < 100) throw new Error("tts-empty-audio");
+        cachePut(key, audio);
+        return new Response(new Uint8Array(audio), {
+          headers: { "Content-Type": "audio/wav", "Cache-Control": "no-store", "X-Speak-Cache": "miss", "X-TTS-Engine": `groq:${ttsModel}` },
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error("[agent:speak] groq tts failed:", ttsModel, msg.slice(0, 200));
+        if (/\b429\b|rate limit/i.test(msg)) { groqCooldownUntil = Date.now() + 60_000; break; }
+        // 400/403 على موديل معين = نجرب الموديل اللي بعده
+        continue;
+      }
     }
   }
-  void groqBlocked;
 
   try {
     const ZAI = (await import("z-ai-web-dev-sdk")).default;

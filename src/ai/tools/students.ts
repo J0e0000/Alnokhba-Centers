@@ -71,7 +71,7 @@ register({
         groups: s.registrations.map((g) => `${g.group.subject.name} — ${g.group.name}`),
       }));
       return {
-        summary: `لقيت ${rows.length} ${rows.length === 1 ? "طالب" : "طلبة"} مطابقين لـ «${args.q}».`,
+        summary: `لقيت ${rows.length === 1 ? "طالب واحد" : `${rows.length} طلبة`} مطابق لـ «${args.q}».`,
         data: { matches: rows.length, q: args.q, students: rows.map((s) => ({ id: s.id, name: s.name, code: s.code, status: s.status, groups: s.registrations.map((g) => g.group.name) })) },
         cards,
       };
