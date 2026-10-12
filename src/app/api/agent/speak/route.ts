@@ -4,6 +4,7 @@ import { handler, readJson, fail } from "@/lib/api";
 import { requireModule } from "@/lib/entitlements";
 import { requireCenterUser, rateLimit } from "@/lib/auth";
 import { prepareSpeechText } from "@/lib/speech-text";
+import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -77,9 +78,26 @@ export const POST = handler(async (req: Request) => {
   }
 
   // ==== المحرك ١: Groq PlayAI TTS — صوت عربي أصلي (لو فيه مفتاح) ====
+  // سلسلة المفتاح زي STT بالظبط: env AGENT_TTS_API_KEY ← env GROQ_API_KEY ← مفتاح العقل
+  // بتاع السنتر (agentLlmApiKey — نفس حساب Groq الشغال للـ LLM على الإنتاج).
   // العربي بيتولّى بموديل playai-tts-arabic (أصوات Fahad/Nour) — بنجربه الأول،
   // وبعده playai-tts العادي (لو الحساب بيدعمه) — وAGENT_TTS_MODEL بيعديهم كلهم.
-  const ttsKey = process.env.AGENT_TTS_API_KEY?.trim() || process.env.GROQ_API_KEY?.trim() || "";
+  let ttsKey = process.env.AGENT_TTS_API_KEY?.trim() || process.env.GROQ_API_KEY?.trim() || "";
+  let ttsBase = process.env.AGENT_TTS_BASE_URL?.trim() || "";
+  if (!ttsKey) {
+    try {
+      const center = await db.center.findUnique({
+        where: { id: user.centerId },
+        select: { agentLlmBaseUrl: true, agentLlmApiKey: true },
+      });
+      if (center?.agentLlmApiKey?.trim()) {
+        ttsKey = center.agentLlmApiKey.trim();
+        // لو العقل متوصل بـ Groq رسمي — نستخدم نفس الـ base؛ غير كده موديلات playai بتشتغل على Groq الرسمي بس
+        const cb = center.agentLlmBaseUrl?.trim() ?? "";
+        if (/api\.groq\.com/i.test(cb)) ttsBase = ttsBase || cb;
+      }
+    } catch { /* مفيش مفتاح سنتر — نكمل ZAI */ }
+  }
   const ttsModels = process.env.AGENT_TTS_MODEL?.trim()
     ? [process.env.AGENT_TTS_MODEL.trim()]
     : ["playai-tts-arabic", "playai-tts"];
@@ -87,7 +105,7 @@ export const POST = handler(async (req: Request) => {
   if (ttsKey && Date.now() >= groqCooldownUntil) {
     for (const ttsModel of ttsModels) {
       try {
-        const base = process.env.AGENT_TTS_BASE_URL?.trim() || "https://api.groq.com/openai/v1";
+        const base = ttsBase || "https://api.groq.com/openai/v1";
         const voice = process.env.AGENT_TTS_VOICE?.trim() || (ttsModel.includes("arabic") ? "Fahad-PlayAI" : "Cherry-PlayAI");
         const r = await fetch(`${base}/audio/speech`, {
           method: "POST",
