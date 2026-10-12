@@ -763,3 +763,21 @@ Work Log:
 
 Stage Summary:
 - Zaki's student-finding loop is dead at three layers (search never 0s on orthography variants anymore; even if 0, one honest ask instead of 10 blind retries; identical successful calls can't repeat). Voice: native Arabic Groq voice + full Arabic number/time/date normalization. All local suites green; prod awaiting the stuck 8c3ed67 deployment.
+
+---
+Task ID: ZAKI-LOOP-VOICE-1 (continued — prod deploy verification)
+Agent: main (Super Z)
+Task: deploy 8c3ed67..4f8c5c1 and verify live on production
+
+Work Log:
+- Deploy timeline: 8c3ed67 (loop+voice) stuck ~65 min on Vercel, went live only after the worklog push (df4813a) re-triggered; then 4b77f95 (arabic model chain + grammar) and 4f8c5c1 (center-key chain) landed in ~5-10 min each.
+- PROD VERIFIED LIVE (manager login, real SSE):
+  • «دور على احمد» → student.search ok → «لقيت 2 طلبة مطابق لـ «احمد»» → COMPLETED — one search, one line (was 10 identical searches → robotic failure).
+  • «هاتلي كريم اشرف» (bare hamza) → «لقيت 1 طالب واحد مطابق» ✓ (grammar marker confirms 4b77f95).
+  • «شركس الخيالي» (unknown name, previously → hallucinated attendance intents on prod) → ONE search → honest «مفيش طالب مطابق… — جرب الاسم الكامل أو الكود (5 أرقام) أو رقم الموبايل» → COMPLETED.
+- VOICE on prod: server TTS still 502 — root cause isolated: (1) ZAI TTS has no SDK credentials on Vercel (server TTS never worked on prod; clients silently fell back to browser speechSynthesis — the actual source of the bad Arabic pronunciation the user reported); (2) playai-tts/playai-tts-arabic rejected with the available keys — center's working Groq key (llm-test: openai/gpt-oss-120b ✓) is now wired into the speak route key-chain (4f8c5c1) but TTS models still reject → the Groq account behind it does not have playai TTS models provisioned. Client fallback now speaks the PREPARED text (numbers/times/dates/currency in Arabic words) so browser-voice pronunciation improved even without server TTS.
+- FINAL VERIFY: unit 30/30, e2e_zaki_search 13/13 (one transient LLM flake on rerun, clean pass), agent 103/0/1skip, voice 8/0, tsc 0, eslint clean, build ✓.
+- ACTION NEEDED (answers user's standing "tell me if you need any other api keys"): to get the native Arabic voice out loud, EITHER enable playai-tts-arabic on their Groq account (console → models — may require enabling/new key) OR provide an ElevenLabs key (ELEVENLABS_API_KEY — best Arabic quality) — the speak chain is ready for either; everything else already runs on existing keys.
+
+Stage Summary:
+- Loop dead on prod (3 layers + deterministic brain ownership of bare names). Voice fully wired: prepared Arabic text + Groq Fahad voice chain + honest fallbacks; the only remaining blocker is TTS model access on the provider account — one key/enablement away.
