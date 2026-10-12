@@ -11,6 +11,7 @@ import { ToolError, CONFIRM_POLICY, type ToolOutput, type AgentCard } from "../t
 import { fallbackPlan, fallbackUnknown, type AgentTurn } from "./fallback";
 import { getBudgetState, persistLlmUsage } from "../usage";
 import { setLastStudent } from "../memory/memory";
+import { normalizeAr } from "@/lib/arabic";
 import { z } from "zod";
 
 /* ============================================================
@@ -298,8 +299,12 @@ async function agentLoop(opts: {
   const { user, taskId, ctx, clientCtx, emit } = opts;
   let iterations = opts.iterationOffset ?? 0;
   let toolCount = await db.agentToolExecution.count({ where: { taskId } });
-  // حماية اللوب: بصمة آخر استدعاء فاشل — نفس الأداة بنفس المدخلات تاني = مفيش تصحيح حاصل
-  let lastFailedSig: string | null = null;
+  // حماية اللوب: ذاكرة كل الاستدعاءات الفاشلة في المهمة (مش آخر واحد بس) —
+  // نفس الأداة بنفس المدخلات تاني = تكرار أعمى، بنقف نسأل المستخدم بدل ما نكربه للسقف.
+  const failedSigs = new Map<string, number>();
+  let lastFailErr: string | null = null;
+  // ونجاح مكرر بنفس المدخلات كمان دايرة: النتيجة قدامنا بالفعل — مفيش سبب نعيدها
+  const executedSigs = new Set<string>();
 
   // ميزانية الموديل (§9): لما الحد اليومي/الشهري للسنتر يوصل — الموديل بيتقفل
   // والمخ الحتمي بيكمل شغل. النظام الأساسي غير الذكي بيفضل شغال — الميزانية
@@ -434,6 +439,25 @@ async function agentLoop(opts: {
       ...(turn.need_info ? { need_info: turn.need_info } : {}),
     });
     if (turn.need_info) {
+      // حماية لوب الأسئلة: نفس السؤال اتسأل قبل كده في المهمة دي؟ الموديل لفّ في دايرة —
+      // ممنوع نسأل تاني، نقفل بتوضيح صريح إن الإجابة الناقصة هي المطلوب.
+      const priorMsgs = await db.agentMessage.findMany({
+        where: { taskId, role: "assistant", id: { not: msgId } },
+        select: { content: true },
+      });
+      const thisQ = normalizeAr(turn.need_info.question);
+      const alreadyAsked = priorMsgs.some((m) => {
+        const ni = (m.content as { need_info?: { question?: string } } | null)?.need_info?.question;
+        return !!ni && normalizeAr(ni) === thisQ;
+      });
+      if (alreadyAsked) {
+        const closing = `مازلت محتاج: ${turn.need_info.question} — لو كتبتها ومش وصلتني صح، اكتبها بطريقة أبسط أو بالكود مباشرة.`;
+        const closeId = await persistMessage(taskId, "assistant", "result", { text: closing });
+        emit({ type: "message", id: closeId, kind: "text", text: closing });
+        await db.agentTask.update({ where: { id: taskId }, data: { status: "COMPLETED", result: { provider, staleQuestion: true } } });
+        emit({ type: "done", status: "COMPLETED" });
+        return;
+      }
       // سؤال توضيح + اقتراحات قابلة للضغط (spec §30: [اختار المجموعة])
       emit({ type: "message", id: msgId, kind: "question", text: turn.need_info.question, options: turn.need_info.options });
       await db.agentTask.update({ where: { id: taskId }, data: { status: "ACTIVE" } });
@@ -455,15 +479,66 @@ async function agentLoop(opts: {
         return;
       }
 
-      // حماية اللوب الإجبارية (spec §38): نفس الأداة بنفس المدخلات اللي فشلت للتو
-      // = محاولة حرفية مكرّرة مش تصحيح — نوقف فورًا بالخطأ بدل ما نكربه لحد السقف
+      // حمايات اللوب الإجبارية (spec §38) — بتشتغل قبل أي تنفيذ:
       const callSig = `${turn.tool.name}:${JSON.stringify(turn.tool.args ?? {})}`;
-      if (callSig === lastFailedSig) {
-        const err = "الطلب ده وقع في نفس المشكلة مرتين بنفس المدخلات — محتاج تعديل منك. صحّح الطلب (مثلاً حدد الحصة بالظبط) وكمّل.";
-        await persistMessage(taskId, "assistant", "error", { text: err });
-        emit({ type: "message", id: "loop", kind: "error", text: err });
-        await db.agentTask.update({ where: { id: taskId }, data: { status: "FAILED", error: "repeated_failed_call" } });
-        emit({ type: "done", status: "FAILED" });
+
+      /** إغلاق بمعلومة ناقصة بدل تكرار — الوكيل بيسأل المستخدم كمثل حقيقي مش ماشينة */
+      const askAndStop = async (question: string): Promise<void> => {
+        const qId = await persistMessage(taskId, "assistant", "text", { text: question, need_info: { question } });
+        emit({ type: "message", id: qId, kind: "question", text: question });
+        await db.agentTask.update({ where: { id: taskId }, data: { status: "ACTIVE" } });
+        emit({ type: "done", status: "ACTIVE" });
+      };
+
+      /** إغلاق نهائي بخطأ مايتصلحش من المستخدم (صلاحية/اشتراك) — نصيحة واضحة بدل سؤال فاضي */
+      const closeWithError = async (msg: string): Promise<void> => {
+        const cId = await persistMessage(taskId, "assistant", "result", { text: msg });
+        emit({ type: "message", id: cId, kind: "text", text: msg });
+        await db.agentTask.update({ where: { id: taskId }, data: { status: "COMPLETED", result: { blocked: true } } });
+        emit({ type: "done", status: "COMPLETED" });
+      };
+
+      // ١) نفس الأداة بنفس المدخلات الفاشلة (حتى لو مش ورا بعض) = تكرار أعمى —
+      //    لو الخطأ صلاحية/اشتراك مالوش علاج من المستخدم → نقفل بنصيحة؛
+      //    غير كده نسأل التفصيل الناقص بدل ما نكربه للسقف.
+      if (failedSigs.has(callSig)) {
+        const permLike = /صلاحية|مقفول|الاشتراك|من إدارة|الإدارة/.test(lastFailErr ?? "");
+        if (permLike) {
+          await closeWithError(`${lastFailErr} — لو محتاجها فعلاً، مدير السنتر هو اللي يديك الصلاحية دي من شاشة الموظفين.`);
+        } else {
+          await askAndStop(
+            lastFailErr
+              ? `${lastFailErr} — وده نفس الطلب اللي فشل قبل كده. اكتب التفاصيل أدق (كود أو رقم أو اسم كامل) وأنا أكمل.`
+              : "الطلب ده فشل بنفس الشكل قبل كده — اكتب التفاصيل أدق وأنا أكمل.",
+          );
+        }
+        return;
+      }
+
+      // ٢) بحث عن طالب طلع فاضي بنفس النص مرتين؟ صياغة جديدة لنفس الاسم مبتصلحش —
+      //    نطلب المعرف الدقيق (كود/موبايل) بدل نية تالتة على نفس الاسم.
+      if (turn.tool.name === "student.search") {
+        const proposedQ = normalizeAr(String((turn.tool.args as Record<string, unknown> | undefined)?.q ?? ""));
+        const prevEmptyQs = observations
+          .filter((o) => o.tool === "student.search" && o.data?.matches === 0)
+          .map((o) => normalizeAr(String(o.data?.q ?? "")));
+        if (proposedQ && prevEmptyQs.includes(proposedQ)) {
+          await askAndStop("البحث مطلعش نتايج لنفس الاسم — اكتب الكود (5 أرقام) أو رقم الموبايل أو الاسم الكامل زي ما هو مسجل بالظبط.");
+          return;
+        }
+      }
+
+      // ٣) نفس الأداة بنفس المدخلات اللي نجحت قبل كده في المهمة = دايرة حقيقية —
+      //    النتيجة موجودة بالفعل في المحادثة؛ نقفل بآخر نتيجة بدل ما نعيدها تاني.
+      if (executedSigs.has(callSig)) {
+        const lastObs = observations[observations.length - 1];
+        const closing = lastObs?.summary
+          ? `${lastObs.summary} — دي آخر نتيجة، موجودة فوق. لو عايز حاجة تانية قولي.`
+          : "الطلب ده اتنفذ قبل كده في المهمة دي — النتيجة فوق. لو عايز حاجة تانية قولي.";
+        const closeId = await persistMessage(taskId, "assistant", "result", { text: closing });
+        emit({ type: "message", id: closeId, kind: "text", text: closing });
+        await db.agentTask.update({ where: { id: taskId }, data: { status: "COMPLETED", result: { repeatedCall: true } } });
+        emit({ type: "done", status: "COMPLETED" });
         return;
       }
 
@@ -476,7 +551,12 @@ async function agentLoop(opts: {
         emit({ type: "done", status: "WAITING_CONFIRMATION" });
         return; // الحلقة بتكمل من confirmExecution بعد التأكيد
       }
-      lastFailedSig = result.ok ? null : callSig;
+      if (!result.ok) {
+        failedSigs.set(callSig, (failedSigs.get(callSig) ?? 0) + 1);
+        lastFailErr = result.error ?? lastFailErr;
+      } else {
+        executedSigs.add(callSig);
+      }
       continue; // النتيجة اتضافت للترانسكريبت — الموديل يكمل
     }
 
@@ -514,8 +594,21 @@ async function agentLoop(opts: {
     return;
   }
 
-  // عدد دورات زاد — نقفل بأمان
-  const err = "المهمة دي طويلة عليّا دلوقتي — قسّمها لطلبات أصغر.";
+  // عدد دورات زاد — نقفل بآخر نتيجة حقيقية بدل رسالة جافة، ولو اتنفذت أداة ناجحة المهمة completed مش failed
+  const lastObsRow = await db.agentMessage.findFirst({
+    where: { taskId, role: "tool" }, orderBy: { createdAt: "desc" }, select: { content: true },
+  });
+  const lastObs = lastObsRow?.content as { summary?: string; error?: string } | undefined;
+  const toolsSucceeded = await db.agentToolExecution.count({ where: { taskId, status: "SUCCEEDED" } });
+  if (toolsSucceeded > 0 && lastObs?.summary) {
+    const closing = `${lastObs.summary} — وده اللي وصلتله. لو عايز تكمل الباقي قولي.`;
+    const closeId = await persistMessage(taskId, "assistant", "result", { text: closing });
+    emit({ type: "message", id: closeId, kind: "text", text: closing });
+    await db.agentTask.update({ where: { id: taskId }, data: { status: "COMPLETED", result: { iterationsCapped: true } } });
+    emit({ type: "done", status: "COMPLETED" });
+    return;
+  }
+  const err = "معرفتش أخلص الطلب ده — جرب صياغة أبسط أو قسّمه لطلبات أصغر.";
   await persistMessage(taskId, "assistant", "error", { text: err });
   emit({ type: "message", id: "loop", kind: "error", text: err });
   await db.agentTask.update({ where: { id: taskId }, data: { status: "FAILED", error: "max_iterations" } });

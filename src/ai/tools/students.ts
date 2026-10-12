@@ -4,6 +4,7 @@ import { z } from "zod";
 import { register } from "./registry";
 import { ToolError, type ToolOutput, type AgentCard } from "./types";
 import { normalizeDigits } from "@/lib/normalize";
+import { nameMatchScore } from "@/lib/arabic";
 import { generateStudentCode, generateQrToken } from "@/lib/auth";
 import { validateEgyptianPhone } from "@/lib/normalize";
 import { PRICING } from "@/lib/pricing";
@@ -44,38 +45,83 @@ register({
   async handler(args, ctx): Promise<ToolOutput> {
     const q = normalizeDigits(args.q.trim());
     const limit = args.limit ?? 8;
-    const codeOnly = /^\d{5}$/.test(q);
-    const students = await db.student.findMany({
-      where: {
-        centerId: ctx.centerId,
-        OR: [
-          { name: { contains: q } },
-          { code: codeOnly ? q : { contains: q } },
-          { phone: { contains: q } },
-          { parentPhone: { contains: q } },
-        ],
-      },
-      select: {
-        id: true, name: true, code: true, status: true, phone: true,
-        grade: { select: { name: true } },
-        registrations: { where: { status: "ACTIVE" }, select: { group: { select: { name: true, subject: { select: { name: true } } } } } },
-      },
-      orderBy: { name: "asc" },
-      take: limit,
-    });
-    if (!students.length) {
-      return { summary: `مفيش طالب مطابق لـ «${args.q}» في سنترك.`, data: { matches: 0 } };
-    }
-    const cards: AgentCard[] = students.map((s) => studentCard({
-      id: s.id, name: s.name, code: s.code, status: s.status, phone: s.phone,
-      gradeName: s.grade?.name ?? null,
-      groups: s.registrations.map((g) => `${g.group.subject.name} — ${g.group.name}`),
-    }));
-    return {
-      summary: `لقيت ${students.length} ${students.length === 1 ? "طالب" : "طلبة"} مطابقين لـ «${args.q}».`,
-      data: { matches: students.length, q: args.q, students: students.map((s) => ({ id: s.id, name: s.name, code: s.code, status: s.status, groups: s.registrations.map((g) => g.group.name) })) },
-      cards,
+
+    /** نفس select الكامل — بيتهيّأ للنتايج النهائية بس */
+    type SearchRow = {
+      id: string; name: string; code: string; status: string; phone: string | null;
+      grade: { name: string } | null;
+      registrations: { group: { name: string; subject: { name: string } } }[];
     };
+    const fullSelect = {
+      id: true, name: true, code: true, status: true, phone: true,
+      grade: { select: { name: true } },
+      registrations: { where: { status: "ACTIVE" }, select: { group: { select: { name: true, subject: { select: { name: true } } } } } },
+    } as const;
+    const toOutput = (students: SearchRow[]): ToolOutput => {
+      const rows = students;
+      if (!rows.length) {
+        return {
+          summary: `مفيش طالب مطابق لـ «${args.q}» في سنترك — جرب الاسم الكامل أو الكود (5 أرقام) أو رقم الموبايل.`,
+          data: { matches: 0, q: args.q },
+        };
+      }
+      const cards: AgentCard[] = rows.map((s) => studentCard({
+        id: s.id, name: s.name, code: s.code, status: s.status, phone: s.phone,
+        gradeName: s.grade?.name ?? null,
+        groups: s.registrations.map((g) => `${g.group.subject.name} — ${g.group.name}`),
+      }));
+      return {
+        summary: `لقيت ${rows.length} ${rows.length === 1 ? "طالب" : "طلبة"} مطابقين لـ «${args.q}».`,
+        data: { matches: rows.length, q: args.q, students: rows.map((s) => ({ id: s.id, name: s.name, code: s.code, status: s.status, groups: s.registrations.map((g) => g.group.name) })) },
+        cards,
+      };
+    };
+
+    // أرقام بس = كود أو تليفون — مطابقة قاعدة بيانات مباشرة (دقيقة)
+    if (/^\d+$/.test(q)) {
+      const codeOnly = /^\d{5}$/.test(q);
+      const students = await db.student.findMany({
+        where: {
+          centerId: ctx.centerId,
+          OR: [
+            { code: codeOnly ? q : { contains: q } },
+            { phone: { contains: q } },
+            { parentPhone: { contains: q } },
+          ],
+        },
+        select: fullSelect,
+        orderBy: { code: "asc" },
+        take: limit,
+      });
+      return toOutput(students);
+    }
+
+    // نص = مطابقة مطبّعة في الذاكرة: بتغلف فروق الكتابة العربية
+    // (احمد/أحمد · مريمه/مريم · على/علي · تشكيل) اللي بتخلي contains يرجع فاضي — ده كان سبب لوب البحث.
+    const candidates = await db.student.findMany({
+      where: { centerId: ctx.centerId },
+      select: { id: true, name: true, code: true, phone: true, parentPhone: true },
+      orderBy: { name: "asc" },
+      take: 1000,
+    });
+    const scored = candidates
+      .map((s) => ({
+        s,
+        score: Math.max(nameMatchScore(q, s.name), nameMatchScore(q, s.code)),
+      }))
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score || a.s.name.localeCompare(b.s.name, "ar"))
+      .slice(0, limit);
+    if (!scored.length) return toOutput([]);
+    const hydrated = await db.student.findMany({
+      where: { centerId: ctx.centerId, id: { in: scored.map((x) => x.s.id) } },
+      select: fullSelect,
+      orderBy: { name: "asc" },
+    });
+    // نحافظ على ترتيب الدرجات بعد الـ hydration
+    const order = new Map(scored.map((x, i) => [x.s.id, i]));
+    hydrated.sort((a, b) => (order.get(a.id) ?? 99) - (order.get(b.id) ?? 99));
+    return toOutput(hydrated);
   },
 });
 
@@ -370,25 +416,40 @@ register({
   },
 });
 
-/** مطابقة طالب مرنة: كود 5 أرقام exact، وإلا بحث بالاسم — أكتر من واحد = خطأ بالخيارات */
+/**
+ * مطابقة طالب مرنة: كود 5 أرقام exact، وإلا بحث مطبّع في الذاكرة (نفس محرك student.search).
+ * بتحل فروق الكتابة العربية (احمد/أحمد · مريمه/مريم · على/علي · تشكيل) — وبتدور بالكود أو التليفون كمان.
+ * أكتر من مرشح بنفس الدرجة = خطأ بالخيارات (بدل تخمين غلط في أدوات الكتابة).
+ */
 export async function resolveStudentFlexible(q: string, centerId: string): Promise<{ id: string; name: string; code: string }> {
   const nq = normalizeDigits(q.trim());
   if (/^\d{5}$/.test(nq)) {
     const byCode = await db.student.findUnique({ where: { centerId_code: { centerId, code: nq } }, select: { id: true, name: true, code: true } });
     if (byCode) return byCode;
   }
-  const token = nq.replace(/\s+/g, " ").split(" ").filter(Boolean)[0] ?? nq;
-  const matches = await db.student.findMany({
-    where: { centerId, OR: [{ name: { contains: token } }, { name: { contains: q.trim() } }] },
-    select: { id: true, name: true, code: true },
-    orderBy: { name: "asc" }, take: 6,
+  const rows = await db.student.findMany({
+    where: { centerId },
+    select: { id: true, name: true, code: true, phone: true, parentPhone: true },
+    orderBy: { name: "asc" },
+    take: 1000,
   });
-  if (!matches.length) throw new ToolError("NOT_FOUND", `مفيش طالب مطابق لـ «${q}» في سنترك.`);
-  if (matches.length > 1) {
-    // لو الاسم الكامل مطابق لواحد بالظبط — خده
-    const exact = matches.find((m) => m.name.replace(/\s+/g, " ").trim() === q.replace(/\s+/g, " ").trim());
-    if (exact) return exact;
-    throw new ToolError("VALIDATION", `في أكتر من طالب اسمه زي «${q}» — حدد بالكود: ${matches.slice(0, 4).map((m) => `${m.name} (${m.code})`).join(" / ")}`);
+  const scored = rows
+    .map((s) => ({
+      s: { id: s.id, name: s.name, code: s.code },
+      score: Math.max(
+        nameMatchScore(nq, s.name),
+        nameMatchScore(nq, s.code),
+        nameMatchScore(nq, s.phone ?? ""),
+        nameMatchScore(nq, s.parentPhone ?? ""),
+      ),
+    }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score || a.s.name.localeCompare(b.s.name, "ar"));
+  if (!scored.length) throw new ToolError("NOT_FOUND", `مفيش طالب مطابق لـ «${q}» في سنترك — جرب الاسم الكامل أو الكود (5 أرقام).`);
+  const best = scored[0];
+  // تعادل حقيقي (مش تطابق حرفي) → اسأل بدل ما تخمّن
+  if (best.score < 100 && scored.length > 1 && scored[1].score === best.score) {
+    throw new ToolError("VALIDATION", `في أكتر من طالب مطابق لـ «${q}» — حدد بالكود: ${scored.slice(0, 4).map((m) => `${m.s.name} (${m.s.code})`).join(" / ")}`);
   }
-  return matches[0];
+  return best.s;
 }
