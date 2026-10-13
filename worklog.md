@@ -803,3 +803,25 @@ Work Log:
 
 Stage Summary:
 - Zaki now has a real visual character: live launcher robot reflecting true agent states (thinking/working/speaking/listening/happy/error), on-brand square navy design, accessible + reduced-motion safe, 12.6KB gzip lazy chunk. Visual prototype at /zaki-preview for identity evaluation. All checks green; branch pushed; PR blocked only by token scope (one-click compare URL provided).
+
+---
+Task ID: ZAKI-HIDE-STORAGE-1
+Agent: main (Super Z)
+Task: "حط فكرة اننا نخفي ذكي عشان ميبقاش عائق و نشغله وقت ما نحتاجه" + ALNOKHBA Storage Recovery / Performance / DB Scalability mission + Vercel Storage Forensics
+
+Work Log:
+- ZAKI HIDE/SHOW (agent.tsx): EyeOff button in panel header hides the floating launcher entirely; 32px discreet corner tab appears (mobile: bottom-[4.75rem] above bottom nav — collision found & fixed via browser box measurement; desktop: bottom-1.5), click restores + opens panel; Ctrl+Shift+Z emergency restore; nk-agent-hidden persisted in localStorage (hydration like ttsOn, no SSR mismatch); running/WAITING_CONFIRMATION shows status dot on the tab so hidden tasks stay visible. A11y: aria-label carries ZAKI_STATE_AR. VERIFIED in browser (manager login): hide→tab→restore→reload persistence→shortcut→RTL→390px & 1440px boxes. tsc src 0, eslint clean.
+- STORAGE FORENSICS (local evidence, no Vercel credentials in sandbox):
+  • Baseline build: .next/standalone = 306MB; breakdown node_modules 150M (prisma 58M, sharp/@img 33M, typescript 20M, next 18M) + sandbox junk traced in: skills/ 61M, db/custom.db 28M, backups/ 27M, scripts/ 14M.
+  • Trace forensics: sysdiag readdirSync(process.cwd()) pulls whole root into its function trace (nft resolves readdir at build time); instrumentation.ts (SQLite-era backup scheduler) dynamically imports lib/backup → pulls backups/*, db/client chain; locally generated .prisma client references file:./db/custom.db → 28MB traced (postgres-generated client on Vercel does NOT reference it — verified reasoning, not a Vercel leak).
+  • FIXES (reversible, functionality-preserving): next.config.ts outputFileTracingExcludes (db/*.db, scripts media, skills/backups/upload/download/examples, node_modules/typescript — nothing reads typescript at runtime; sharp KEPT because local next/image optimizer needs it and Vercel platform behavior unverifiable from here); .vercelignore + db/custom.db + scripts/*.pdf/png/jpg (source archive diet AND removes custom.db from Vercel build context); instrumentation.ts postgres guard (return early on DATABASE_URL postgres* — kills per-cold-start failed backup attempts + log noise on serverless; SQLite local behavior unchanged, verified: scheduler logs present locally, absent under postgres env).
+  • AFTER: standalone 210MB (-96MB, -31.4%); node_modules 131M. Vercel-real per-deployment savings: typescript -20MB + scripts media ~-8MB traced + custom.db removed from build context; function bundles × ~41 API routes compound these numbers.
+  • Standalone smoke test: server.js boots, /login 200, /api/system/db-status {"mode":"local"}, scheduler active on sqlite (1 backup log line) = guard correct.
+  • ROOT-CAUSE RANKING for the ~10.14GB dashboard figure (UNVERIFIED without dashboard): (1) deployment accumulation — every deployment carries ~131MB traced node_modules + server code; Vercel retains all deployments until retention configured; (2) per-function duplication across ~41 API functions (prisma+runtime in each); (3) traced junk (now reduced); (4) automated/UUID commit pushes creating frequent prod builds; (5) possible metric delay — needs dashboard check.
+  • DELIVERED TOOLS: scripts/prod_db_scale_audit.ts (100% read-only pg audit: table/index sizes, unused indexes, seq scans, cache hit, bloat, connections, pg_stat_statements slow queries, FK-without-index finder — runs with scripts/.env.prod-url or DATABASE_URL_AUDIT) + scripts/loadtest_k6.js (staged k6 plan: login→browse/search→attendance reads→reports, thresholds p95<2.5s, no fake prod writes; execution BLOCKED: no staging URL/credentials).
+- GIT: branch feat/zaki-hide-storage-1, commit 2bcaace pushed to origin. main NOT touched → no production deployment triggered (branch preview only, per mission rule 9). Pre-existing local modifications (bun.lock, next-env.d.ts) left untouched.
+- BLOCKED (cloud-side, no Vercel/DB credentials in sandbox): usage dashboard verification, retention policy change, preview URL confirmation, DB audit execution, load test execution.
+
+Stage Summary:
+- Zaki can now be hidden completely (tiny corner tab brings it back + Ctrl+Shift+Z) — browser-verified on desktop+mobile.
+- Storage: measured -31.4% standalone locally; root causes ranked with evidence; safe reversible fixes committed on branch; DB audit + load test tooling ready-to-run. Cloud verification = BLOCKED pending dashboard access (exact steps provided in report).
