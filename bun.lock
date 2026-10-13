@@ -54,6 +54,7 @@
         "react-hook-form": "^7.60.0",
         "react-resizable-panels": "^3.0.3",
         "recharts": "^2.15.4",
+        "robot-heads": "^0.3.0",
         "sonner": "^2.0.6",
         "tailwind-merge": "^3.3.1",
         "tailwindcss-animate": "^1.0.7",
@@ -1246,6 +1247,8 @@
     "reusify": ["reusify@1.1.0", "https://registry.npmjs.com/reusify/-/reusify-1.1.0.tgz", {}, "sha512-g6QUff04oZpHs0eG5p83rFLhHeV00ug/Yf9nZM6fLeUrPguBTkTQOdpAWWspMh55TZfVQDPaN3NQJfbVRAxdIw=="],
 
     "rimraf": ["rimraf@2.7.1", "", { "dependencies": { "glob": "^7.1.3" }, "bin": { "rimraf": "./bin.js" } }, "sha512-uWjbaKIK3T1OSVptzX7Nl6PvQ3qAGtKEtVRjRuazjfL3Bx5eI409VZSqgND+4UNnmzLVdPj9FqFJNPqBZFve4w=="],
+
+    "robot-heads": ["robot-heads@0.3.0", "", { "peerDependencies": { "react": ">=18.0.0" } }, "sha512-JXGMp7Xl8jBl10T8JhBEaUrhtGpv/oqCs7CJEKCFDjhpv4DXplN/opMQslgQVcAi6I1s/0S3aAt5cJ/s7GfyaQ=="],
 
     "run-parallel": ["run-parallel@1.2.0", "https://registry.npmjs.com/run-parallel/-/run-parallel-1.2.0.tgz", { "dependencies": { "queue-microtask": "^1.2.2" } }, "sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA=="],
 

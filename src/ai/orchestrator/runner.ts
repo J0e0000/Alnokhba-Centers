@@ -374,8 +374,10 @@ async function agentLoop(opts: {
             ? messages
             : [...messages, { role: "user" as const, content: "ردّك السابق مش مطابق للبروتوكول — رد JSON واحد بس بالشكل المطلوب بالظبط." }];
           // maxTokens 2000: موديلات الـ reasoning (زي gpt-oss على Groq) بتستهلك من الـ output
-          // في تفكير داخلي قبل الـ JSON — 1200 كانت بتقطع الرد في النص (البروتوكول بيفشل)
-          const res = await llm.generate(msgs2, { temperature: 0.2, maxTokens: 2000, json: true });
+          // في تفكير داخلي قبل الـ JSON — 1200 كانت بتقطع الرد في النص (البروتوكول بيفشل).
+          // reasoningEffort low: بيقصّل التفكير الداخلي — رد أسرع وبروتوكول أثبت،
+          // والمزود اللي ميفهمش الباراميتر بينزلّه طبقة تلقائيًا من غير ما نكسر حاجة.
+          const res = await llm.generate(msgs2, { temperature: 0.2, maxTokens: 2000, json: true, reasoningEffort: "low" });
           // قياس الاستهلاك (§9): التوكِنات اتحرقت فعلًا حتى لو الرد خرق البروتوكول — بيتسجل دايمًا
           await persistLlmUsage({
             centerId: user.centerId, userId: user.id, taskId,

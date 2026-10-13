@@ -23,6 +23,10 @@ export type LLMGenerateOptions = {
   timeoutMs?: number;
   /** اطلب JSON صارم من الموديل (response_format) — المزود اللي مش بيدعمه بيتجاهله */
   json?: boolean;
+  /** جهد التفكير للموديلات الـ reasoning (زي gpt-oss على Groq) — «low» بيقلل التفكير
+   *  الداخلي المخفي: رد أسرع وبروتوكول JSON أقل ما بيتقطع. المزود اللي مبيتعرفش
+   *  على الباراميتر بيرفضه بـ 400 والطبقة بتسقطه تلقائيًا. */
+  reasoningEffort?: "minimal" | "low" | "medium" | "high";
 };
 
 export type LLMGenerateResult = {

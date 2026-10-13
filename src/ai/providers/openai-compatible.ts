@@ -14,8 +14,9 @@ import type { LLMGenerateOptions, LLMGenerateResult, LLMMessage, LLMProvider } f
 export class OpenAICompatibleProvider implements LLMProvider {
   readonly name = "openai-compatible";
   readonly model: string;
-  private baseUrl: string;
-  private apiKey: string;
+  /** ظاهرة للقراءة بس — عشان طبقة الـ failover تقارن المزودات (المفتاح مش بيرجع للعميل أبدًا) */
+  readonly baseUrl: string;
+  readonly apiKey: string;
 
   constructor(baseUrl: string, model: string, apiKey = "") {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
@@ -31,7 +32,19 @@ export class OpenAICompatibleProvider implements LLMProvider {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), opts?.timeoutMs ?? 60_000);
     try {
-      const send = (withJson: boolean) =>
+      // طبقات البراميترات: السيرفرات المختلفة بتقبل حاجات مختلفة — لو رفضت الطلب بـ 400
+      // بنسقط الطبقة الأغنى (reasoning_effort ثم json) ونجرب تاني. الموديلات اللي بتفهمهم
+      // (زي gpt-oss على Groq) بياخدهم من أول مرة — والباقي مبيتكسرش.
+      type Layer = { json: boolean; effort: boolean };
+      const layers: Layer[] = [];
+      for (const l of [
+        { json: !!opts?.json, effort: !!opts?.reasoningEffort },
+        { json: !!opts?.json, effort: false },
+        { json: false, effort: false },
+      ]) {
+        if (!layers.some((x) => x.json === l.json && x.effort === l.effort)) layers.push(l);
+      }
+      const send = (layer: Layer) =>
         fetch(`${this.baseUrl}/chat/completions`, {
           method: "POST",
           signal: controller.signal,
@@ -44,12 +57,13 @@ export class OpenAICompatibleProvider implements LLMProvider {
             messages,
             temperature: opts?.temperature ?? 0.2,
             max_tokens: opts?.maxTokens ?? 1500,
-            ...(withJson ? { response_format: { type: "json_object" } } : {}),
+            ...(layer.effort && opts?.reasoningEffort ? { reasoning_effort: opts.reasoningEffort } : {}),
+            ...(layer.json ? { response_format: { type: "json_object" } } : {}),
           }),
         });
-      // JSON mode: بعض السيرفرات (Ollama/vLLM القديمة) بترفضه بـ 400 — نعيد من غيره مرة واحدة
-      let res = await send(!!opts?.json);
-      if (!res.ok && res.status === 400 && opts?.json) res = await send(false);
+      // نجرّب الطبقات بالترتيب — 400 بس هو اللي بينزل طبقة (أخطاء الشبكة/5xx بتفشل فورًا)
+      let res = await send(layers[0]);
+      for (let i = 1; i < layers.length && res.status === 400; i++) res = await send(layers[i]);
       if (!res.ok) throw new Error(`llm-http-${res.status}`);
       const data = (await res.json()) as {
         choices?: { message?: { content?: string } }[];
