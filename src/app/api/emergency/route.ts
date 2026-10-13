@@ -142,7 +142,7 @@ export const GET = handler(async (req: Request) => {
   ]);
   if (!center) throw new ApiError("السنتر مش موجود.", 404);
 
-  const balances = await manyBalances(students.map((s) => s.id));
+  const balances = await manyBalances(user.centerId, students.map((s) => s.id));
   const groupById = new Map(groups.map((g) => [g.id, g]));
 
   // ===== صفوف الأسبوع: سلوة الجدول × 7 أيام + أي حصص فعلية موجودة =====

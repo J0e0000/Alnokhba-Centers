@@ -16,13 +16,15 @@ export async function studentBalance(studentId: string): Promise<number> {
   return agg._sum.amount ?? 0;
 }
 
-export async function manyBalances(studentIds: string[]): Promise<Map<string, number>> {
+export async function manyBalances(centerId: string, studentIds: string[]): Promise<Map<string, number>> {
   const map = new Map<string, number>();
   if (studentIds.length === 0) return map;
+  // PERF: centerId مطلوب عشان يستخدم الفهرس المركب (centerId, studentId)
+  // من غيره الـ groupBy بيعمل scan على جدول الحركات كله.
   const grouped = await db.studentTransaction.groupBy({
     by: ["studentId"],
     _sum: { amount: true },
-    where: { studentId: { in: studentIds } },
+    where: { centerId, studentId: { in: studentIds } },
   });
   for (const g of grouped) map.set(g.studentId, g._sum.amount ?? 0);
   return map;

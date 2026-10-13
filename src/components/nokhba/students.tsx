@@ -7,7 +7,7 @@ import {
   CheckSquare, Square, Printer, XCircle, Layers, MessageSquareText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { api, fmt, normalizeDigits, STUDENT_STATUS, type SessionUser } from "./lib";
+import { api, fmt, normalizeDigits, prefetchApi, STUDENT_STATUS, type SessionUser } from "./lib";
 import { PageHeader, Chip, BalanceChip, EmptyState, Loading, CardsSkeleton } from "./shared";
 import { ContactActions } from "./contact-actions";
 import { StudentSearchBar } from "./student-search";
@@ -183,6 +183,7 @@ export function StudentsView({ user, openNew, onOpenNewConsumed, onOpenProfile }
               <div
                 key={s.id}
                 onClick={() => selectMode ? toggleSel(s.id) : onOpenProfile(s.id)}
+                onPointerEnter={() => void prefetchApi(`/api/students/${s.id}`)}
                 className={cn(
                   "nk-card rounded-2xl p-4 text-start transition flex flex-col gap-2.5 cursor-pointer relative",
                   selectMode && isSel ? "ring-2 ring-[var(--c-primary)] shadow-md" : "hover:shadow-md active:scale-[0.99]"

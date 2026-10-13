@@ -80,14 +80,23 @@ export const GET = handler(async () => {
     }
   }
   // 2) مجموعة جدولها شغال ومفيش حصة اتولدت ليها آخر 10 أيام
+  // PERF: كانت N+1 (count لكل مجموعة — حتى 40 استعلام متسلسل = ثواني) →
+  // استعلام groupBy واحد بفهرس (groupId, date) — جولة DB واحدة بدل 40.
   const today = todayStr();
   const since10 = new Date(Date.now() - 10 * 86400000).toISOString().slice(0, 10);
-  const activeGroupIds = [...new Set(slots.map((s) => s.groupId))];
-  for (const gid of activeGroupIds.slice(0, 40)) {
+  const activeGroupIds = [...new Set(slots.map((s) => s.groupId))].slice(0, 40);
+  const sessionCounts = activeGroupIds.length
+    ? await db.sessionInstance.groupBy({
+        by: ["groupId"],
+        _count: { _all: true },
+        where: { centerId: user.centerId, groupId: { in: activeGroupIds }, date: { gte: since10 } },
+      })
+    : [];
+  const counted = new Map(sessionCounts.map((g) => [g.groupId, g._count._all]));
+  for (const gid of activeGroupIds) {
     const g = groups.find((x) => x.id === gid);
     if (!g) continue;
-    const cnt = await db.sessionInstance.count({ where: { centerId: user.centerId, groupId: gid, date: { gte: since10 } } });
-    if (cnt === 0) {
+    if ((counted.get(gid) ?? 0) === 0) {
       conflicts.push({
         type: "GAP",
         label: `مجموعة ${g.subject.name} — ${g.name} واقفة`,

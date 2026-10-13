@@ -54,7 +54,7 @@ export const GET = handler(async (req: Request) => {
     }),
   ]);
 
-  const balances = await manyBalances(students.map((s) => s.id));
+  const balances = await manyBalances(user.centerId, students.map((s) => s.id));
 
   return ok({
     total,

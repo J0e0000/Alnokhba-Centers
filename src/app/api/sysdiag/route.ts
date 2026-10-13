@@ -63,6 +63,20 @@ export async function GET() {
     schema = { error: (e as Error).message }
   }
 
+  // PERF probe: زمن استعلام حقيقي من جوه الـ lambda (يحدد لو الـ DB قريب من iad1 ولا بعيد)
+  let dbPing: unknown = null
+  try {
+    const t: number[] = []
+    for (let i = 0; i < 4; i++) {
+      const s = Date.now()
+      await db.$queryRawUnsafe('SELECT 1')
+      t.push(Date.now() - s)
+    }
+    dbPing = { seqMs: t, avgMs: Math.round(t.reduce((a, b) => a + b, 0) / t.length) }
+  } catch (e) {
+    dbPing = { error: (e as Error).message }
+  }
+
   return NextResponse.json({
     cwd: process.cwd(),
     vercelEnv: process.env.VERCEL_ENV || null,
@@ -75,5 +89,6 @@ export async function GET() {
     lsDb,
     lsRoot: fs.readdirSync(process.cwd()).slice(0, 50),
     schema,
+    dbPing,
   })
 }

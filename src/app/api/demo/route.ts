@@ -99,7 +99,7 @@ export const GET = handler(async () => {
   const centerId = user.centerId!;
 
   const students = await findDemoStudents(centerId);
-  const balances = await manyBalances(students.map((s) => s.id));
+  const balances = await manyBalances(centerId, students.map((s) => s.id));
 
   const groups = await db.group.findMany({
     where: { centerId, name: { startsWith: DEMO_GROUP_PREFIX } },
@@ -340,7 +340,7 @@ export const POST = handler(async () => {
   }
 
   /* ---------- 6) النتيجة + الرصيد الحالي ---------- */
-  const balances = await manyBalances(students.map((s) => s.id));
+  const balances = await manyBalances(centerId, students.map((s) => s.id));
 
   await logAudit({
     user,
