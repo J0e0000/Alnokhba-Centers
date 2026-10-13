@@ -825,3 +825,26 @@ Work Log:
 Stage Summary:
 - Zaki can now be hidden completely (tiny corner tab brings it back + Ctrl+Shift+Z) — browser-verified on desktop+mobile.
 - Storage: measured -31.4% standalone locally; root causes ranked with evidence; safe reversible fixes committed on branch; DB audit + load test tooling ready-to-run. Cloud verification = BLOCKED pending dashboard access (exact steps provided in report).
+
+---
+Task ID: ZAKI-HIDE-STORAGE-1 (continued — cloud verification + retention cleanup via Vercel token)
+Agent: main (Super Z)
+Task: "start" + Vercel token — measure REAL storage (10.14GB approximate, may be less), verify preview, execute retention cleanup, root-cause the deployment-storage bloat.
+
+Work Log:
+- TOKEN: vcp_* saved to scripts/.vercel-token (chmod 600) + .gitignore entries (.vercel-token, **/.vercel-token) committed. NEVER printed/logged. Verified: GET /v2/user → moj4534-4875 (OWNER), team alnokhba (team_w8PxkM7uGzBh1Dh5rbqAoHki), plan HOBBY.
+- PROJECT: alnokhba-centers (prj_Z5WHaJnlKq894WWFv5tQBblWa74b) — only project. Region iad1. Remote cache ON but artifacts usage EMPTY. Blob/managed-postgres/redis/data_cache usage ALL EMPTY → deployment storage is the ONLY consumer.
+- INVENTORY (v6 API, full pagination): 39 deployments, ALL READY (0 errored/canceled), Oct 9 19:12 → Oct 13 11:35 (5 days). 37 production (main) + 2 previews. Builds usage per day: 14/10/8/5/2 = 39 builds — matches inventory 1:1. Churn driver: UUID auto-commits (environment auto-committer) + feature pushes.
+- HOBBY LIMITATION: /v1/usage → 403 plan_upgrade_required (Pro/Enterprise only); /v2/usage has no deployment-storage type. Dashboard number NOT API-readable on Hobby → exact GB unverifiable from here; computed estimate from inventory × locally-measured per-deployment traced size (~176-210MB Vercel-real) ≈ 6.9-8.2GB — consistent with user's "10.14 approximate, may be less".
+- LIVE PROOF via prod sysdiag (admin session, read-only): lambda /var/task contains db/custom.db (28MB SQLite dev db TRACKED IN GIT — `git ls-files` confirmed) + docs/, README.md, bun.lock (sysdiag readdirSync root-pull). commit=5ca65cc, featuresSynced=True, trustedDevicesSynced=True → schema healthy.
+- RETENTION: team/project defaultExpirationSettings = 30 days + deploymentsToKeep:10, but NOT enforced (39 existed) → manual cleanup required.
+- CLEANUP (scripts/vercel_cleanup.py — dry-run then --execute): KEPT latest 2 production (live 5ca65cc + rollback eb539cf) + newest preview per branch. DELETED 35/35, zero failures. Then deleted 3 superseded previews (9f64312 featureless, robot-character merged, ac82881 superseded). FINAL: 3 deployments (2 prod + 1 preview 8ef13e5). Freed ≈ 36 × 176-210MB ≈ 6.3-7.6GB. Every deleted sha lives in origin/main history → rebuildable (reversibility path documented).
+- PROD HEALTH after cleanup: /api/system/db-status → 200 {"mode":"postgres"} (0.55s); sysdiag 200 unchanged. Zero downtime.
+- GIT FORENSICS: origin/main=5ca65cc; local main was 4 ahead (9f64312 UUID, 2bcaace FEATURE, c098c20+ac82881 UUID) — feature commit NEVER pushed (worklog claim was stale; origin/branch was at 9f64312 = preview built WITHOUT the feature). Pushed ac82881 then 8ef13e5 to feat/zaki-hide-storage-1. Auto-committer races: 2 commits landed on local main instead of branch — recovered by pushing exact SHA `8ef13e5:refs/heads/feat/zaki-hide-storage-1` (lesson: use explicit refspec).
+- NEW VERIFIED PREVIEW: 8ef13e5 → https://alnokhba-centers-r1srafa4o-alnokhba.vercel.app (READY, dpl_DVBcgw2BLED8GWEveE9eEtPsaDWH) — contains zaki-hide feature + tracing excludes + untracked custom.db. SSO-protected (ssoProtection=all_except_custom_domains; no API bypass on Hobby) → owner opens with Vercel login.
+- PERMANENT FIX pushed to branch: db/custom.db UNTRACKED (git rm --cached, 28MB out of build context — was deployed into EVERY lambda, verified live) + gitignored. Combined with 2bcaace excludes (typescript 20MB + db/*.db + scripts media): ≈ -48MB/deployment (~23-27%) going forward.
+- DB SCALE AUDIT: BLOCKED — DATABASE_URL env is type=sensitive (API never returns value, correct security) + scripts/.env.prod-url gone from sandbox. Sysdiag substitute gives schema health only. Run path when owner pastes pooled URL: scripts/prod_db_scale_audit.ts (100% read-only).
+- LOAD TEST: BLOCKED (no staging env; prod writes forbidden by mission rules). scripts/loadtest_k6.js ready.
+
+Stage Summary:
+- Deployment storage root cause VERIFIED with live evidence: 39 builds/5 days × ~176-210MB each, none ever deleted; per-deployment bloat (custom.db 28MB confirmed inside prod lambda; typescript 20MB) compounding it. Cleanup 39→3 deployments (≈6.3-7.6GB freed, dashboard metric may lag hours). Clean preview 8ef13e5 live with all fixes. Remaining: owner merges branch → production (approval required), DB audit needs pooled URL, k6 needs staging.
