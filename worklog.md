@@ -848,3 +848,23 @@ Work Log:
 
 Stage Summary:
 - Deployment storage root cause VERIFIED with live evidence: 39 builds/5 days × ~176-210MB each, none ever deleted; per-deployment bloat (custom.db 28MB confirmed inside prod lambda; typescript 20MB) compounding it. Cleanup 39→3 deployments (≈6.3-7.6GB freed, dashboard metric may lag hours). Clean preview 8ef13e5 live with all fixes. Remaining: owner merges branch → production (approval required), DB audit needs pooled URL, k6 needs staging.
+
+---
+Task ID: PERF-PRODUCT-1 (owner approved: merge + speed the platform "product not demo")
+Agent: main (Super Z)
+Task: "اعمل ده" (approved production merge) + "سرّع الموقع في الاستخدام — اختيار طالب/حصة/كل حاجة أسرع + نفذ كل اللي شايفه هيفيد".
+
+Work Log:
+- APPROVED DEPLOY: pushed 8ef13e5 → origin/main (explicit refspec) → production READY. CLOSED-LOOP VERIFIED via sysdiag: commit=8ef13e5, **db/custom.db GONE from lambda** (exists all false, lsDb ENOENT — the db dir itself no longer exists in /var/task), schema featuresSynced/trustedDevicesSynced still True. Permanent fix proven live.
+- BASELINE (prod, warm=2nd call, measured from Egypt): students 2.67-2.70s · schedule 4.42-4.45s · today/dashboard ~0.95-0.97s · auth 2.72s.
+- CODE FINDINGS: (1) /api/schedule GET ran N+1 — up to 40 sequential sessionInstance.count() for the GAP-conflict check (healthy center = full 40 awaits) → root of the 4.4s; (2) manyBalances groupBy where {studentId in} without centerId → couldn't use (centerId,studentId) composite index; (3) client api() had zero caching → every tab switch re-fetched.
+- FIXES (commits 3264e3c + 42e7369, both on main): schedule GAP check → single sessionInstance.groupBy (1 round instead of ≤40); manyBalances(centerId, ids) + all 5 call sites updated; client lib.ts: GET micro-cache 30s whitelist (13 heavy list endpoints), structuredClone on read, inflight dedup, bust-all on ANY write (zero staleness), prefetchApi + onPointerEnter prefetch wired in shell tabs/sub-tabs (9 views) + student rows (profile endpoint); sysdiag dbPing (4×SELECT 1 timed) + dbRegion (pooler host region only, no credentials). Local verify: tsc src 0, eslint clean, next build ✓, seeded local db (scripts/seed_perf_test.cjs idempotent) → schedule (7 days, GAP conflict detected via new groupBy), students (balance 3000 ✓ composite index path), today/dashboard 200.
+- FIRST DEPLOY RESULT (3264e3c @ iad1): schedule 4.45→2.97s (N+1 fix visible) but warm floor stayed ~1s+ → dbPing probe: **384ms per SELECT 1 inside the lambda** (stable 384-387 ×4).
+- ROOT CAUSE #2: dbRegion probe → **Supabase DB in eu-west-2 (London) while functions ran in iad1 (Virginia)** — transatlantic roundtrip on every query of every request.
+- FIX: PATCH /v9/projects → serverlessFunctionRegion iad1→lhr1 (London — same region as DB AND closer to Egyptian users) + production redeploy via POST /v13/deployments {name, deploymentId, target}. One-setting reversible.
+- FINAL MEASURED (prod, warm, from Egypt incl. network RTT): dbPing **384→14ms (-96%)** · students **2.70→0.59s (-78%)** · schedule **4.45→0.32s (-93%)** · today **0.97→0.29s (-70%)** · dashboard **0.96→0.29s (-70%)** · auth **2.72→0.42s (-85%)** · cold try1s collapsed too (students 3.0→0.61s) thanks to 25% smaller lambdas + no transatlantic ping. Perceived selection speed for users: instant on tab switches (30s cache) + hover-prefetched student profiles.
+- CLEANUP: session accumulated 8 deployments → deleted 6 → **2 remain** (live lhr1 build dpl_C4yiLpc + rollback dpl_F5QUc, same sha 42e7369). Prod health final: db-status 200 in 0.44s.
+- NOTE: token file vanished mid-session (sandbox cleanup) — recreated from chat context, chmod 600, gitignore already committed. Auto-committer landed 1 benign UUID commit (7c6b83c: worklog+inventory JSON) which rode along to main.
+
+Stage Summary:
+- Platform moved from demo-feel to product-feel: root causes of slow interactive use were (1) N+1 in schedule, (2) unusable composite index in balances, (3) NO client caching/prefetch, (4) **DB in London vs functions in Virginia (384ms per query!)**. All four fixed and measured: -70% to -96% across every hot endpoint, verified with before/after numbers on real production. Deployments at 2, prod healthy, everything reversible. Backlog remaining (needs owner inputs): DB scale audit (pooled URL), k6 load test (staging), RLS/database-layer enforcement review, platform audit-history view, student portal persistent device binding.
