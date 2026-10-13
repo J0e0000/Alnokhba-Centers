@@ -12,6 +12,16 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
+  // حارس البيئة: النسخ الاحتياطي المحلي (سكليت + إكسل على قرص السيرفر) مالوش معنى
+  // على السيرفرلس — الإنتاج postgres (DATABASE_URL) مفيهوش ملف SQLite يتنسخ أصلًا،
+  // وقرص الفانكشن مؤقت فالنسخ بيفقد مع نفسه، وsetInterval بيموت مع الأنستنس.
+  // قبل الحارس ده كل cold start كان بيجرب يعمل نسخة → خطأ ENOENT مسجّل في اللوج
+  // (ضوضاء + شغل ضايع عند كل إقلاع فانكشن). Supabase بيكفّي نسخ احتياطي الإنتاج.
+  // السلوك المحلي (SQLite) زي ما هو — والنسخ من الواجهة (/api/backup) شغال كالعادة.
+  if (process.env.DATABASE_URL?.startsWith("postgres")) {
+    return;
+  }
+
   // guard against double-start in dev (HMR reloads)
   const g = globalThis as unknown as {
     __nkBackupTimer?: NodeJS.Timeout;

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles, X, Send, Mic, MicOff, Maximize2, Minimize2, History, CircleHelp,
   BrainCircuit, Loader2, WifiOff, GraduationCap, ListChecks, Lightbulb,
-  Volume2, VolumeX, ThumbsUp, ThumbsDown,
+  Volume2, VolumeX, ThumbsUp, ThumbsDown, EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "./lib";
@@ -159,6 +159,7 @@ const VOICE_ERRORS: Record<string, string> = {
 
 export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
   const [open, setOpen] = useState(false);
+  const [hidden, setHidden] = useState(false); // زكي متخفي — تاب صغير في الركن بس (تجربة «ميبقاش عائق»)
   const [fullscreen, setFullscreen] = useState(false);
   const [mode, setMode] = useState<"chat" | "tasks" | "help" | "tutorial">("chat");
   const [insightsOpen, setInsightsOpen] = useState(false);
@@ -204,6 +205,7 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
     setHasVoice(!!navigator.mediaDevices?.getUserMedia || hasSR);
     setHasTts(true); // صوت زكي سيرفري دلوقتي — الزرار دايمًا ظاهر
     setTtsOn(localStorage.getItem("nk-agent-tts") !== "0"); // الصوت مفتوح افتراضيًا — سهل كتمه من زرار السماعة
+    setHidden(localStorage.getItem("nk-agent-hidden") === "1"); // آخر اختيار إخفاء للمستخدم
   }, []);
 
   /* ---------- الرد الصوتي (TTS) — صوت عربي سيرفري على كل المتصفحات ----------
@@ -660,6 +662,34 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
     setMode("chat");
   }, []);
 
+  /* ---------- إخفاء/إظهار زكي (مش عائق لما مش محتاجه) ----------
+     الإخفاء بيشيل الزرار العائم بالكامل ويسيب تاب صغير جدًا في الركن —
+     الضغط عليه (أو Ctrl+Shift+Z) بيرجّع زكي فورًا. الاختيار محفوظ لكل مستخدم. */
+  const hideZaki = useCallback(() => {
+    localStorage.setItem("nk-agent-hidden", "1");
+    setHidden(true);
+    setOpen(false);
+  }, []);
+
+  const showZaki = useCallback(() => {
+    localStorage.setItem("nk-agent-hidden", "0");
+    setHidden(false);
+    setOpen(true);
+    showTutorialOnOpen();
+  }, [showTutorialOnOpen]);
+
+  // اختصار استرجاع زكي من الكيبورد — لو التاب الصغير اتغطى بأي عنصر تاني
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === "Z" || e.key === "z")) {
+        e.preventDefault();
+        showZaki();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showZaki]);
+
   const stateLabel = STATE_LABEL[state];
 
   // حالة الروبوت — محوّلة من إشارات الوكيل الحقيقية فقط (بدون اختراع حالات)
@@ -675,22 +705,44 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
 
   return (
     <>
-      {/* الزرار العائم — شخصية زكي الحية بتعكس الحالة الحقيقية (64–80px) */}
-      <motion.button
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.6, type: "spring", stiffness: 260, damping: 18 }}
-        onClick={() => { setOpen(true); showTutorialOnOpen(); }}
-        aria-label={`افتح زكي — وكيل النخبة الذكي. ${ZAKI_STATE_AR[robotState]}`}
-        className={cn(
-          "fixed bottom-[5.4rem] md:bottom-6 end-4 z-[70] rounded-full flex items-center justify-center",
-          "w-[4.25rem] h-[4.25rem] md:w-[4.75rem] md:h-[4.75rem] drop-shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-        )}
-      >
-        <ZakiRobot state={robotState} size={68} ariaHidden interactive={!running} />
-        {/* نقطة الحالة — الوضع مش معتمد على الحركة وحدها */}
-        <span aria-hidden="true" className={cn("absolute bottom-0 end-0 w-3.5 h-3.5 rounded-full border-2 border-background", ZAKI_STATE_DOT[robotState])} />
-      </motion.button>
+      {/* الزرار العائم — شخصية زكي الحية بتعكس الحالة الحقيقية (64–80px) — بيختفي لو المستخدم خبّاه */}
+      {!hidden && (
+        <motion.button
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.6, type: "spring", stiffness: 260, damping: 18 }}
+          onClick={() => { setOpen(true); showTutorialOnOpen(); }}
+          aria-label={`افتح زكي — وكيل النخبة الذكي. ${ZAKI_STATE_AR[robotState]}`}
+          className={cn(
+            "fixed bottom-[5.4rem] md:bottom-6 end-4 z-[70] rounded-full flex items-center justify-center",
+            "w-[4.25rem] h-[4.25rem] md:w-[4.75rem] md:h-[4.75rem] drop-shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+          )}
+        >
+          <ZakiRobot state={robotState} size={68} ariaHidden interactive={!running} />
+          {/* نقطة الحالة — الوضع مش معتمد على الحركة وحدها */}
+          <span aria-hidden="true" className={cn("absolute bottom-0 end-0 w-3.5 h-3.5 rounded-full border-2 border-background", ZAKI_STATE_DOT[robotState])} />
+        </motion.button>
+      )}
+
+      {/* التاب الصغير — لما زكي متخفي: زرار هادي جدًا في الركن بيرجّعه، وبيعرض نقطة حالة لو شغّال */}
+      {hidden && (
+        <button
+          onClick={showZaki}
+          aria-label={`إظهار زكي — وكيل النخبة الذكي. ${ZAKI_STATE_AR[robotState]}`}
+          title="إظهار زكي (Ctrl+Shift+Z)"
+          className={cn(
+            "fixed bottom-[4.75rem] md:bottom-1.5 end-1.5 z-[70] h-8 w-8 rounded-full",
+            "bg-background/85 backdrop-blur border border-border shadow-sm",
+            "flex items-center justify-center opacity-75 hover:opacity-100",
+            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+          )}
+        >
+          <ZakiRobot state={robotState} size={24} antenna={false} interactive={false} floorShadow={false} ariaHidden />
+          {(running || state === "WAITING_CONFIRMATION") && (
+            <span aria-hidden="true" className={cn("absolute -top-0.5 -end-0.5 w-2.5 h-2.5 rounded-full border border-background", ZAKI_STATE_DOT[robotState])} />
+          )}
+        </button>
+      )}
 
       {/* ملاحظات زكي الحتمية (نفس لوحة القواعد القديمة) */}
       <ZakiInsightsPanel open={insightsOpen} onClose={() => setInsightsOpen(false)} />
@@ -745,6 +797,9 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
                     <Minimize2 className="w-4.5 h-4.5" />
                   </button>
                 )}
+                <button onClick={hideZaki} aria-label="إخفاء زكي من الشاشة" title="إخفاء زكي من الشاشة — بيرجع من التاب الصغير في الركن (أو Ctrl+Shift+Z)" className="p-2 rounded-xl hover:bg-white/15">
+                  <EyeOff className="w-4.5 h-4.5" />
+                </button>
                 <button onClick={() => setOpen(false)} aria-label="إغلاق" className="p-2 rounded-xl hover:bg-white/15">
                   <X className="w-4.5 h-4.5" />
                 </button>
@@ -1103,6 +1158,12 @@ function HelpView({ onPick }: { onPick: (t: string) => void }) {
           </button>
         </div>
       ))}
+      <div className="rounded-2xl border border-dashed border-border p-3 space-y-1">
+        <p className="font-black text-xs">زكي بياخد مساحة على الشاشة؟</p>
+        <p className="text-[11px] font-bold text-muted-foreground leading-relaxed">
+          اضغط أيقونة العين <EyeOff className="w-3 h-3 inline" /> فوق — هيتخفي بالكامل ويسيب تاب صغير في ركن الشاشة ترجع بيه في أي وقت (أو اضغط Ctrl+Shift+Z).
+        </p>
+      </div>
     </div>
   );
 }

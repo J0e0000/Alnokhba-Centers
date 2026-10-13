@@ -45,6 +45,30 @@ const nextConfig: NextConfig = {
   reactStrictMode: false,
   // المؤشر العائم بتاع أدوات التطوير بيغطي زر «المزيد» في وضع dev ويكسر الاختبارات — تعطيله
   devIndicators: false,
+  // ⚡ استرداد مساحة Vercel (deployment/functions storage):
+  // ملفات مش بيحتاجها الـ serverless وقت التشغيل كانت بتتفحص جوه function bundles:
+  //   • db/custom.db (28.6MB — SQLite محلي؛ الإنتاج postgres عن طريق DATABASE_URL دايمًا)
+  //   • scripts/ (~14MB وسائط تدقيق تاريخية: PDF/PNG مش من التطبيق)
+  //   • typescript (20MB — مفيش أي كود runtime بيستخدم الـ compiler)
+  //   • مجلدات الساندبوكس (skills/backups/upload/download) لو حصلت في سياق بناء
+  // القراءة كلها في الكود إما مش موجودة أصلًا أو محمية بـ existsSync/try-catch،
+  // وvercel-build.sh بيشتغل في مرحلة البناء (مش runtime) فمش بيتأثر.
+  // ملاحظة: sharp/@img بيتسابوا محليًا (next/image optimizer محلي) — استبعادهم من
+  // Vercel محتاج تحقق منفصل على الـ image optimizer بتاع المنصة (مقترح موثق في التقرير).
+  outputFileTracingExcludes: {
+    "*": [
+      "./db/*.db",
+      "./scripts/**/*.pdf",
+      "./scripts/**/*.png",
+      "./scripts/**/*.jpg",
+      "./skills/**/*",
+      "./backups/**/*",
+      "./upload/**/*",
+      "./download/**/*",
+      "./examples/**/*",
+      "./node_modules/typescript/**/*",
+    ],
+  },
   async headers() {
     return [
       {

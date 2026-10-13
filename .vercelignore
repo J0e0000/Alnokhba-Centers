@@ -15,3 +15,7 @@ tool-results/
 agent-ctx/
 Caddyfile
 tsconfig.tsbuildinfo
+db/custom.db
+scripts/*.pdf
+scripts/*.png
+scripts/*.jpg
