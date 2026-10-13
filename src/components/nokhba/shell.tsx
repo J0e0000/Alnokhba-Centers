@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { api, applyCenterBranding, type SessionUser } from "./lib";
+import { api, applyCenterBranding, prefetchApi, type SessionUser } from "./lib";
 import { AlNokhbaMark, ThemeToggle } from "./shared";
 import { Tour } from "./tour";
 import { HelpButton } from "./help";
@@ -22,6 +22,19 @@ import {
   Sheet, SheetContent, SheetTrigger, SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+
+// PERF: تسخين كاش القوائم عند التحويم على التاب — التبديل بيكون لحظي بدل انتظار الشبكة
+const VIEW_PREFETCH: Record<string, string> = {
+  home: "/api/dashboard",
+  today: "/api/today",
+  schedule: "/api/schedule",
+  students: "/api/students?pageSize=24",
+  payments: "/api/payments",
+  groups: "/api/groups",
+  books: "/api/books",
+  messages: "/api/announcements",
+  approvals: "/api/approvals",
+};
 
 /* ============================================================
    Tabs Workflow — 7 تابات رئيسية، وكل تاب فيه خطواته الفرعية.
@@ -258,6 +271,7 @@ export function CenterShell({
   }
 
   function goTab(t: TabDef) {
+    void prefetchApi(VIEW_PREFETCH[t.subs[0]]);
     setView(t.subs[0]);
     setMoreOpen(false);
   }
@@ -266,6 +280,7 @@ export function CenterShell({
     <button
       data-tour={`nav-tab-${t.id}`}
       onClick={() => goTab(t)}
+      onPointerEnter={() => void prefetchApi(VIEW_PREFETCH[t.subs[0]])}
       className={cn(
         "flex items-center gap-3 rounded-xl font-bold transition w-full",
         compact ? "px-3 py-2.5 text-sm" : "px-4 py-3 text-[15px]",
@@ -387,6 +402,7 @@ export function CenterShell({
                 key={s}
                 data-tour={`nav-${s}`}
                 onClick={() => setView(s)}
+                onPointerEnter={() => void prefetchApi(VIEW_PREFETCH[s])}
                 className={cn(
                   "flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-bold whitespace-nowrap transition",
                   view === s ? "nk-brand-grad text-white border-transparent shadow" : "bg-card border-border text-muted-foreground hover:text-foreground"
@@ -413,6 +429,7 @@ export function CenterShell({
                       key={s}
                       data-tour={`nav-${s}`}
                       onClick={() => setView(s)}
+                      onPointerEnter={() => void prefetchApi(VIEW_PREFETCH[s])}
                       className={cn(
                         "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12.5px] font-bold transition w-full text-start",
                         view === s ? "nk-brand-text bg-muted font-extrabold" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"

@@ -155,7 +155,7 @@ export async function buildEmergencySnapshot(centerId: string): Promise<{
     ]);
 
   // الرصيد اللحظي لكل طالب (لقطة موثوقة وقت التوليد)
-  const balancesMap = await manyBalances(students.map((s) => s.id));
+  const balancesMap = await manyBalances(centerId, students.map((s) => s.id));
 
   // حضور آخر 7 أيام للحصص اللي جوّه نطاق اللقطة
   const sessionIds = new Set(sessions.map((s) => s.id));

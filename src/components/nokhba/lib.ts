@@ -8,44 +8,95 @@ export { normalizeDigits, formatEGP, formatTime12, formatDateAR, dayNameAR, toda
 
 // ============================= API =============================
 
+// PERF (product-speed): ميكرو-كاش لقوائم GET + dedup للنداءات المتوازية + prefetch عند الـ hover.
+// - GET قابل للتخزين بيرجع فوري من الكاش (نافذة 30 ثانية) — التابات والقوائم تفتح لحظيًا.
+// - أي كتابة (POST/PATCH/PUT/DELETE) بتمسح الكاش كله → صفر بيانات قديمة بعد أي تعديل.
+// - النداء المتكرر لنفس الـ path أثناء الطيران بيتقاسم نفس الـ promise (بدون مضاعفة).
+const GET_TTL_MS = 30_000;
+const getCache = new Map<string, { at: number; data: unknown }>();
+const inflight = new Map<string, Promise<unknown>>();
+
+// endpoints آمنة للتخزين القصير (قوائم ثقيلة/شائعة القراءة) — استثنيات حساسة مستبعدة عمدًا
+const CACHEABLE_GETS = [
+  "/api/today", "/api/schedule", "/api/students", "/api/dashboard",
+  "/api/payments", "/api/groups", "/api/books", "/api/announcements",
+  "/api/exams", "/api/quizzes", "/api/assignments", "/api/accounting", "/api/reports",
+];
+
+function cacheableGet(path: string): boolean {
+  return CACHEABLE_GETS.some((p) => path === p || path.startsWith(p + "?") || path.startsWith(p + "/"));
+}
+
+/** مسح كاش القوائم (بيتنادى تلقائيًا بعد أي كتابة) */
+export function bustApi(): void {
+  getCache.clear();
+}
+
+/** تسخين الكاش بصمت — استدعِها عند pointerenter/focus قبل الضغط عشان الظهور يكون لحظي */
+export function prefetchApi<T = Record<string, unknown>>(path: string): Promise<T | undefined> {
+  if (!path || typeof window === "undefined") return Promise.resolve(undefined);
+  return api<T>(path, { silent: true }).catch(() => undefined);
+}
+
 export async function api<T = Record<string, unknown>>(
   path: string,
   opts: { method?: string; body?: unknown; silent?: boolean } = {}
 ): Promise<T> {
-  try {
-    const res = await fetch(path, {
-      method: opts.method ?? "GET",
-      headers: opts.body ? { "Content-Type": "application/json" } : undefined,
-      body: opts.body ? JSON.stringify(opts.body) : undefined,
-      cache: "no-store",
-    });
-    // 401 = الجلسة انتهت → ريفرش لشاشة الدخول.
-    // لكن محاولة تسجيل الدخول نفسها (username+password من غير action) لو رجعت 401
-    // دي «بيانات غلط» مش «جلسة انتهت» — لازم رسالة السيرفر توصل للمستخدم
-    // من غير ريفرش يفضّي الفورم ويخليه يفتكر إن النظام مش شغال.
-    const b = (opts.body ?? null) as Record<string, unknown> | null;
-    const isLoginAttempt =
-      path === "/api/auth" && opts.method === "POST" &&
-      !!b && !b.action && "username" in b && "password" in b;
-    if (res.status === 401 && typeof window !== "undefined" && !isLoginAttempt) {
-      window.location.reload();
-      throw new Error("انتهت الجلسة — جاري تحميل الصفحة.");
-    }
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const msg = (data as { error?: string }).error ?? "حصل خطأ غير متوقع — جرب تاني.";
-      if (!opts.silent) toast.error(msg);
-      throw new Error(msg);
-    }
-    return data as T;
-  } catch (e) {
-    if (e instanceof TypeError) {
-      const msg = "مفيش اتصال بالسيرفر — بص على النت وجرب تاني.";
-      if (!opts.silent) toast.error(msg);
-      throw new Error(msg);
-    }
-    throw e;
+  const method = opts.method ?? "GET";
+  const isGet = method === "GET";
+  const cacheOk = isGet && cacheableGet(path);
+  if (cacheOk) {
+    const hit = getCache.get(path);
+    if (hit && Date.now() - hit.at < GET_TTL_MS) return structuredClone(hit.data) as T;
+    const running = inflight.get(path);
+    if (running) return running as Promise<T>;
   }
+  if (!isGet) getCache.clear();
+
+  const p = (async (): Promise<T> => {
+    try {
+      const res = await fetch(path, {
+        method,
+        headers: opts.body ? { "Content-Type": "application/json" } : undefined,
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+        cache: "no-store",
+      });
+      // 401 = الجلسة انتهت → ريفرش لشاشة الدخول.
+      // لكن محاولة تسجيل الدخول نفسها (username+password من غير action) لو رجعت 401
+      // دي «بيانات غلط» مش «جلسة انتهت» — لازم رسالة السيرفر توصل للمستخدم
+      // من غير ريفرش يفضّي الفورم ويخليه يفتكر إن النظام مش شغال.
+      const b = (opts.body ?? null) as Record<string, unknown> | null;
+      const isLoginAttempt =
+        path === "/api/auth" && method === "POST" &&
+        !!b && !b.action && "username" in b && "password" in b;
+      if (res.status === 401 && typeof window !== "undefined" && !isLoginAttempt) {
+        window.location.reload();
+        throw new Error("انتهت الجلسة — جاري تحميل الصفحة.");
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = (data as { error?: string }).error ?? "حصل خطأ غير متوقع — جرب تاني.";
+        if (!opts.silent) toast.error(msg);
+        throw new Error(msg);
+      }
+      return data as T;
+    } catch (e) {
+      if (e instanceof TypeError) {
+        const msg = "مفيش اتصال بالسيرفر — بص على النت وجرب تاني.";
+        if (!opts.silent) toast.error(msg);
+        throw new Error(msg);
+      }
+      throw e;
+    }
+  })();
+
+  if (cacheOk) {
+    inflight.set(path, p as Promise<unknown>);
+    p.then((d) => getCache.set(path, { at: Date.now(), data: d }))
+      .catch(() => getCache.delete(path))
+      .finally(() => inflight.delete(path));
+  }
+  return p;
 }
 
 // ============================= Types =============================
