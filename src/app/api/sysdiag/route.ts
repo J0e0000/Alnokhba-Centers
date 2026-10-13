@@ -77,6 +77,16 @@ export async function GET() {
     dbPing = { error: (e as Error).message }
   }
 
+  // DB region detection (host only — NO credentials): aws-0-<region>.pooler.supabase.com → نطبع المنطقة فقط
+  let dbRegion: string | null = null
+  try {
+    const host = new URL(process.env.DATABASE_URL || '').hostname
+    const m = host.match(/aws-\d+-([a-z0-9-]+)\./)
+    dbRegion = m ? m[1] : host.replace(/^[^.]+\./, '').split('.').slice(-3).join('.') || null
+  } catch {
+    dbRegion = null
+  }
+
   return NextResponse.json({
     cwd: process.cwd(),
     vercelEnv: process.env.VERCEL_ENV || null,
@@ -90,5 +100,6 @@ export async function GET() {
     lsRoot: fs.readdirSync(process.cwd()).slice(0, 50),
     schema,
     dbPing,
+    dbRegion,
   })
 }
