@@ -55,3 +55,4 @@ scripts/vc-probe/
 .env.prod-url
 .vercel-token
 **/.vercel-token
+db/custom.db
