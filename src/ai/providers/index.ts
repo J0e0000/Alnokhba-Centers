@@ -50,12 +50,51 @@ function providerFromEnv(prefix: string): LLMProvider | null {
   return baseUrl && model ? new OpenAICompatibleProvider(baseUrl, model, apiKey) : null;
 }
 
+/** إعداد السنتر كمزود (مفتاح السنتر من شاشة الإعدادات) — بيتستخدم أساسيًا لو مفيش بيئة،
+ *  واحتياطيًا لو الأساسي (بيئة) وقع على rate-limit — مفتاح تاني = حصة تانية. */
+async function centerProvider(centerId?: string): Promise<OpenAICompatibleProvider | null> {
+  if (!centerId) return null;
+  try {
+    const center = await db.center.findUnique({
+      where: { id: centerId },
+      select: { agentLlmBaseUrl: true, agentLlmModel: true, agentLlmApiKey: true },
+    });
+    if (center?.agentLlmBaseUrl?.trim() && center?.agentLlmModel?.trim()) {
+      return new OpenAICompatibleProvider(
+        center.agentLlmBaseUrl.trim(),
+        center.agentLlmModel.trim(),
+        center.agentLlmApiKey?.trim() ?? "",
+      );
+    }
+  } catch {
+    // جدول/عمود ناقص — من غير إعداد سنتر
+  }
+  return null;
+}
+
+/** ZAI المدمج — بيترجع لو متاح بس (على Vercel بيكون مش متاح فبيتسقط بالكامل) */
+async function builtinProvider(): Promise<ZaiProvider | null> {
+  try {
+    const zai = new ZaiProvider();
+    return (await zai.isAvailable()) ? zai : null;
+  } catch {
+    return null;
+  }
+}
+
 async function resolveLLM(centerId?: string): Promise<{ provider: LLMProvider | null; source: LLMSource }> {
   // 1) البيئة (الأعلى — لنشر self-hosted أو موديل خارجي) + اختياري موديل احتياطي (failover)
   const primary = providerFromEnv("AGENT_LLM");
   if (primary) {
     const backup = providerFromEnv("AGENT_LLM_FALLBACK");
-    return { provider: backup ? new FailoverProvider([primary, backup]) : primary, source: "env" };
+    const extras: LLMProvider[] = [];
+    if (backup) extras.push(backup);
+    // فول أوفر ذكي: مفتاح السنتر (حصة منفصلة) لو الأساسي موّل، وبعده المدمج لو متاح
+    const center = await centerProvider(centerId);
+    if (center && center.model !== primary.model) extras.push(center);
+    const zai = await builtinProvider();
+    if (zai) extras.push(zai);
+    return { provider: extras.length ? new FailoverProvider([primary, ...extras]) : primary, source: "env" };
   }
 
   // 1.5) GROQ_API_KEY — مفتاح Groq القياسي لوحده كفاية: بنكمل الباقي من الوصفة المجربة
@@ -64,34 +103,28 @@ async function resolveLLM(centerId?: string): Promise<{ provider: LLMProvider | 
   if (groqKey) {
     const gBase = process.env.AGENT_LLM_BASE_URL?.trim() || "https://api.groq.com/openai/v1";
     const gModel = process.env.AGENT_LLM_MODEL?.trim() || "openai/gpt-oss-120b";
-    return { provider: new OpenAICompatibleProvider(gBase, gModel, groqKey), source: "env" };
+    const primary2 = new OpenAICompatibleProvider(gBase, gModel, groqKey);
+    const extras: LLMProvider[] = [];
+    // مفتاح السنتر = حصة Groq منفصلة — بيمتص فلانشات الـ 429 بدل ما المستخدم يشوف فشل
+    const center = await centerProvider(centerId);
+    if (center && (center.baseUrl !== primary2.baseUrl || center.apiKey !== groqKey)) extras.push(center);
+    const zai = await builtinProvider();
+    if (zai) extras.push(zai);
+    return { provider: extras.length ? new FailoverProvider([primary2, ...extras]) : primary2, source: "env" };
   }
 
   // 2) إعداد السنتر من شاشة الإعدادات (المدير بيوصل أي موديل متوافق مع OpenAI)
-  if (centerId) {
-    try {
-      const center = await db.center.findUnique({
-        where: { id: centerId },
-        select: { agentLlmBaseUrl: true, agentLlmModel: true, agentLlmApiKey: true },
-      });
-      if (center?.agentLlmBaseUrl?.trim() && center?.agentLlmModel?.trim()) {
-        return {
-          provider: new OpenAICompatibleProvider(
-            center.agentLlmBaseUrl.trim(),
-            center.agentLlmModel.trim(),
-            center.agentLlmApiKey?.trim() ?? "",
-          ),
-          source: "center",
-        };
-      }
-    } catch {
-      // جدول/عمود ناقص — نكمل للـ builtin بدل ما نكسر الوكيل
-    }
+  const center = await centerProvider(centerId);
+  if (center) {
+    const extras: LLMProvider[] = [];
+    const zai = await builtinProvider();
+    if (zai) extras.push(zai);
+    return { provider: extras.length ? new FailoverProvider([center, ...extras]) : center, source: "center" };
   }
 
   // 3) ZAI المدمج
-  const zai = new ZaiProvider();
-  if (await zai.isAvailable()) return { provider: zai, source: "builtin" };
+  const zai = await builtinProvider();
+  if (zai) return { provider: zai, source: "builtin" };
 
   return { provider: null, source: "fallback" };
 }
