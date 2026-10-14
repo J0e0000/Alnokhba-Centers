@@ -885,3 +885,17 @@ Work Log:
 
 Stage Summary:
 - The platform is now phone-first: no horizontal overflow anywhere audited, opaque readable bottom nav with short labels, stacked page headers with full-width touch targets, compact zaki panel, stacked student profile. Shipped to production (cfad6c6) and verified live on real data at 360px. Desktop untouched (regression-checked at 1440px). Remaining backlog unchanged: DB scale audit (pooled URL), k6 load test (staging), deployment cleanup (needs token).
+
+---
+Task ID: OWNER-INPUT-UNBLOCK-1
+Agent: main (Super Z)
+Task: owner asked for exact links + how-to for the blocked items (pooled URL / staging / RLS+audit-screen+device-binding) + keep using Vercel token "until it blocks you".
+
+Work Log:
+- PROD RE-VERIFIED live (no token needed, admin session): db-status 200 {"mode":"postgres"}, sysdiag commit=cfad6c6 (latest main incl. perf+mobile passes), /var/task/db does not exist at all (lsDb ENOENT — custom.db permanently gone), dbPing avg 11ms, dbRegion eu-west-2 (Supabase London, functions lhr1 aligned).
+- GIT: origin/main=cfad6c6 contains 8ef13e5 (MERGED, verified ancestry) — the approved merge + speed + mobile work fully shipped by prior continuation; local main has 1 benign UUID commit (61abbf4: mobile_audit screenshots) — left untouched, noted for tidiness.
+- TOKEN: scripts/.vercel-token MISSING again (3rd sandbox refresh; worklog documents pattern). Informed owner to re-send; will re-create file chmod 600 (gitignored) and run scripts/vercel_cleanup.py first thing.
+- DELIVERED to owner (exact steps): (1) pooled URL via Supabase Dashboard → Connect → Connection pooling (6543, aws-0-eu-west-2.pooler.supabase.com) or Settings→Database; goes to scripts/.env.prod-url as DATABASE_URL_POOLED → runs prod_db_scale_audit.ts (100% SELECT) + RLS review (pg_policies/pg_roles read-only). (2) staging = NEW free Supabase project region eu-west-2 → its pooled URL → I set preview-scoped DATABASE_URL on Vercel (token needed) → deploy staging branch preview → k6. (3) RLS review needs only (1); entitlement-audit screen + persistent student device binding are pure code work — no owner input required.
+
+Stage Summary:
+- Owner received a precise click-by-click unblock guide. Awaiting 3 items: Vercel token (cleanup pending), Supabase pooled URL (audit + RLS), staging project URL (k6). Feature work (audit screen + device binding) can start immediately without any owner input.
