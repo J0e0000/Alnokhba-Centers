@@ -899,3 +899,4 @@ Work Log:
 
 Stage Summary:
 - Owner received a precise click-by-click unblock guide. Awaiting 3 items: Vercel token (cleanup pending), Supabase pooled URL (audit + RLS), staging project URL (k6). Feature work (audit screen + device binding) can start immediately without any owner input.
+- ITER2: owner's GRANT pg_read_all_stats → 42501 denied (Supabase policy: only ADMIN-option holders may grant predefined roles; postgres lacks it). PIVOT to zero-credentials path: scripts/owner_sql_audit.sql — single read-only DO-block script (12 sections: sizes, top tables, unused indexes, FKs w/o index, cache hit, dead tuples, connections, pg_stat_statements, FULL pg_policies dump, RLS flags per table, grants to anon/authenticated/public, roles) → returns ONE JSON cell; owner pastes it into chat (or attaches CSV); I parse and produce the audit + RLS report. Script's first line drops the leftover audit_ro role. No pooled URL needed anymore for this item.
