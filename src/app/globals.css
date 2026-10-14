@@ -466,11 +466,13 @@
 }
 
 /* أزرار رأس الشاشة (PageHeader action) — موبايل: بتفرد على عرض الشاشة وبتلف لأكتر من سطر
-   بدل ما تزحم العنوان وتعمل تمرير أفقي للصفحة كلها. ديسك توب: زي ما هي. */
+   بدل ما تزحم العنوان وتعمل تمرير أفقي للصفحة كلها. ديسك توب: زي ما هي.
+   بنغطي button و a عشان أزرار الاتصال/واتساب في ملف الطالب روابط مش buttons. */
 .nk-page-actions > div { flex-wrap: wrap; }
 @media (max-width: 639.98px) {
   .nk-page-actions > div { width: 100%; }
-  .nk-page-actions > div > button { flex: 1 1 auto; }
+  .nk-page-actions > div > button,
+  .nk-page-actions > div > a { flex: 1 1 auto; }
 }
 
 /* زرار محايد قياسي — التعريف كان ناقص وشويه شاشات كانت بتستدعيه فطلع بدون ستايل.
