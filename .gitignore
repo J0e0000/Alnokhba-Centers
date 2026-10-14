@@ -56,3 +56,5 @@ scripts/vc-probe/
 .vercel-token
 **/.vercel-token
 db/custom.db
+
+scripts/.dbpass*
