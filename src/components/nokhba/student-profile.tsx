@@ -90,8 +90,9 @@ export function StudentProfileView({ user, studentId, onBack }: {
       <div className="grid md:grid-cols-2 gap-4">
         {/* ===== info ===== */}
         <SectionCard title="بيانات الطالب" icon={<User className="w-4 h-4" />}>
-          <div className="flex items-start gap-4">
-            <div className="flex-1">
+          {/* موبايل: بيانات الطالب فوق و QR تحتها في النص — قبل كده كانوا جنب بعض وعمود البيانات بيتضغط لحرفين في السطر */}
+          <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+            <div className="flex-1 min-w-0 w-full">
               <InfoRow label="موبايل الطالب" value={s.phone ? <a href={`tel:${s.phone}`} className="nk-brand-text nk-num" dir="ltr">{s.phone}</a> : "—"} />
               <InfoRow label="ولي الأمر" value={s.parentName ?? "—"} />
               <InfoRow label="موبايل ولي الأمر" value={s.parentPhone ? <a href={`tel:${s.parentPhone}`} className="nk-brand-text nk-num" dir="ltr">{s.parentPhone}</a> : "—"} />

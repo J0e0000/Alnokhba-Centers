@@ -92,6 +92,32 @@ export const NAV_LABELS: Record<ViewId, string> = {
 
 type TabDef = { id: TabId; label: string; icon: ReactNode; subs: ViewId[] };
 
+/** ليفل قصير للناف السفلي في الموبايل — الاسم الطويل كان بيلفّ لسطرين ويطلع بره الشريط */
+const TAB_SHORT_LABELS: Record<TabId, string> = {
+  dashboard: "الرئيسية",
+  today: "اليوم",
+  classes: "الحصص",
+  people: "الطلاب",
+  operations: "التشغيل",
+  reports: "التقارير",
+  settings: "الإعدادات",
+};
+
+/** ليفل قصير لناف الأدمن في الموبايل — نفس الحكاية */
+const ADMIN_SHORT_LABELS: Partial<Record<AdminViewId, string>> = {
+  centers: "السناتر",
+  analytics: "التحليلات",
+  requests: "الطلبات",
+  subscriptions: "الاشتراكات",
+  entitlements: "الأقسام",
+  students: "الطلاب",
+  billing: "الفوترة",
+  teams: "الفرق",
+  backups: "النسخ",
+  system: "النظام",
+  monitor: "المراقبة",
+};
+
 const TABS: TabDef[] = [
   { id: "dashboard", label: "الرئيسية", icon: <LayoutDashboard className="w-5 h-5" />, subs: ["home"] },
   { id: "today", label: "اليوم", icon: <CalendarClock className="w-5 h-5" />, subs: ["today", "scan", "approvals"] },
@@ -467,7 +493,7 @@ export function CenterShell({
         </aside>
 
         {/* ===== Main content ===== */}
-        <main className="flex-1 min-w-0 pb-24 lg:pb-6">{children}</main>
+        <main className="flex-1 min-w-0 pb-28 lg:pb-6">{children}</main>
       </div>
 
       {/* ===== شريط الحالة المصغّر على الموبايل ===== */}
@@ -489,8 +515,8 @@ export function CenterShell({
       {/* ===== زكي — المساعد الذكي ===== */}
       <AgentDock user={user} view={view} />
 
-      {/* ===== Mobile bottom nav — أول 4 تابات + المزيد ===== */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 nk-glass-bar border-t print:hidden" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 4px)" }} aria-label="التنقل الرئيسي">
+      {/* ===== Mobile bottom nav — أول 4 تابات + المزيد (خلفية شبه معتمة عشان المحتوى ميقراش وراها) ===== */}
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 nk-bottom-nav print:hidden" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 4px)" }} aria-label="التنقل الرئيسي">
         <div className="grid grid-cols-5 h-16">
           {mobileTabs.map((t) => (
             <button
@@ -498,24 +524,24 @@ export function CenterShell({
               data-tour={`nav-tab-${t.id}`}
               onClick={() => goTab(t)}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition",
+                "flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition min-w-0 px-0.5",
                 activeTab?.id === t.id ? "nk-brand-text" : "text-muted-foreground"
               )}
             >
-              <span key={activeTab?.id === t.id ? `${t.id}-on` : `${t.id}-off`} className={cn("grid place-items-center", activeTab?.id === t.id && "nk-anim-tab")}>
+              <span key={activeTab?.id === t.id ? `${t.id}-on` : `${t.id}-off`} className={cn("grid place-items-center shrink-0", activeTab?.id === t.id && "nk-anim-tab")}>
                 {t.icon}
               </span>
-              <span>{t.label}</span>
+              <span className="whitespace-nowrap overflow-hidden text-ellipsis max-w-full leading-none">{TAB_SHORT_LABELS[t.id] ?? t.label}</span>
             </button>
           ))}
           {mobileMore.length > 0 ? (
             <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
               <SheetTrigger className={cn(
-                "flex flex-col items-center justify-center gap-1 text-[10px] font-bold",
+                "flex flex-col items-center justify-center gap-1 text-[10px] font-bold min-w-0 px-0.5",
                 mobileMore.some((t) => t.id === activeTab?.id) ? "nk-brand-text" : "text-muted-foreground"
               )}>
-                <MoreHorizontal className="w-5 h-5" />
-                <span>المزيد</span>
+                <MoreHorizontal className="w-5 h-5 shrink-0" />
+                <span className="whitespace-nowrap leading-none">المزيد</span>
               </SheetTrigger>
               <SheetContent side="bottom" className="rounded-t-3xl px-4 pb-8 pt-3">
                 <SheetTitle className="text-start mb-2">التابات</SheetTitle>
@@ -527,10 +553,10 @@ export function CenterShell({
           ) : (
             <button
               onClick={logout}
-              className="flex flex-col items-center justify-center gap-1 text-[10px] font-bold text-muted-foreground"
+              className="flex flex-col items-center justify-center gap-1 text-[10px] font-bold text-muted-foreground min-w-0 px-0.5"
             >
-              <LogOut className="w-5 h-5" />
-              <span>خروج</span>
+              <LogOut className="w-5 h-5 shrink-0" />
+              <span className="whitespace-nowrap leading-none">خروج</span>
             </button>
           )}
         </div>
@@ -663,7 +689,7 @@ export function AdminShell({
           ))}
         </aside>
 
-        <main className="flex-1 min-w-0 pb-24 lg:pb-6">
+        <main className="flex-1 min-w-0 pb-28 lg:pb-6">
           {/* mobile admin tabs */}
           <div className="lg:hidden flex gap-2 overflow-x-auto nk-scroll pb-3 -mx-1 px-1 mb-2">
             {ADMIN_NAV.map((n) => (
@@ -684,13 +710,13 @@ export function AdminShell({
         </main>
       </div>
 
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 nk-glass-bar border-t print:hidden" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 4px)" }} aria-label="التنقل">
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 nk-bottom-nav print:hidden" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 4px)" }} aria-label="التنقل">
         <div className="grid grid-cols-5 h-16">
           {ADMIN_NAV.slice(0, 4).map((n) => (
             <button key={n.id} onClick={() => setView(n.id)}
-              className={cn("flex flex-col items-center justify-center gap-1 text-[10px] font-bold", view === n.id ? "nk-brand-text" : "text-muted-foreground")}>
+              className={cn("flex flex-col items-center justify-center gap-1 text-[10px] font-bold min-w-0 px-0.5", view === n.id ? "nk-brand-text" : "text-muted-foreground")}>
               {n.icon}
-              <span>{n.label}</span>
+              <span className="whitespace-nowrap overflow-hidden text-ellipsis max-w-full leading-none">{ADMIN_SHORT_LABELS[n.id] ?? n.label}</span>
             </button>
           ))}
           <Sheet>

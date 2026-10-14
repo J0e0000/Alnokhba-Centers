@@ -47,14 +47,20 @@ export function ThemeToggle({ className }: { className?: string }) {
 
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-3 mb-4 md:mb-5">
-      <div>
+    /* موبايل: العنوان فوق والأزرار تحته بلفّ لسطرين — ديسك توب: جنب بعض زي ما كان.
+       قبل كده كان flex واحد أفقي: 3 أزرار (~400px) كانت تزحم العنوان وتعمل overflow أفقي للصفحة كلها على الموبايل. */
+    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5 sm:gap-3 mb-4 md:mb-5">
+      <div className="min-w-0">
         <h1 data-tour="view-header" className="text-xl md:text-2xl font-extrabold tracking-tight nk-brand-text">{title}</h1>
         {/* فاصل بوابة النخبة — صدى هندسة اللوجو */}
         <span className="block nk-portal-divider mt-1.5 mb-1" aria-hidden />
         {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
       </div>
-      {action}
+      {action && (
+        <div className="nk-page-actions shrink-0 max-w-full">
+          {action}
+        </div>
+      )}
     </div>
   );
 }

@@ -763,45 +763,45 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
             )}
           >
             <div className="nk-card rounded-3xl shadow-2xl border border-border overflow-hidden flex flex-col h-full min-h-0">
-              {/* الهيدر */}
-              <div className="nk-brand-grad text-white p-3.5 flex items-center gap-2.5 shrink-0">
-                <ZakiRobot state={robotState} size={46} antenna={false} interactive={false} floorShadow={false} ariaHidden className="drop-shadow-md" />
+              {/* الهيدر — موبايل: روبوت وأيقونات أصغر + عنوان مقطوع بسطر عشان العمود ميضغطش ويلفّ حرف حرف */}
+              <div className="nk-brand-grad text-white p-2.5 md:p-3.5 flex items-center gap-2 md:gap-2.5 shrink-0">
+                <ZakiRobot state={robotState} size={40} antenna={false} interactive={false} floorShadow={false} ariaHidden className="drop-shadow-md shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="font-black leading-tight">زكي — وكيل النخبة</p>
-                  <p className="text-[10.5px] font-bold text-white/85 flex items-center gap-1">
+                  <p className="font-black leading-tight text-sm md:text-base whitespace-nowrap overflow-hidden text-ellipsis">زكي — وكيل النخبة</p>
+                  <p className="text-[10.5px] font-bold text-white/85 flex items-center gap-1 whitespace-nowrap overflow-hidden text-ellipsis">
                     {running || state === "WAITING_CONFIRMATION" ? (
-                      <>{STATE_ICON[state] ?? <Loader2 className="w-3 h-3 animate-spin" />} {stateLabel ?? "بشتغل…"}</>
+                      <>{STATE_ICON[state] ?? <Loader2 className="w-3 h-3 shrink-0 animate-spin" />} <span className="truncate">{stateLabel ?? "بشتغل…"}</span></>
                     ) : (
                       "جاهز — قولّي عايز إيه"
                     )}
                   </p>
                 </div>
                 {hasTts && (
-                  <button onClick={toggleTts} aria-label={ttsOn ? "كتم صوت زكي" : "تشغيل صوت زكي"} className="p-2 rounded-xl hover:bg-white/15">
-                    {ttsOn ? <Volume2 className="w-4.5 h-4.5" /> : <VolumeX className="w-4.5 h-4.5" />}
+                  <button onClick={toggleTts} aria-label={ttsOn ? "كتم صوت زكي" : "تشغيل صوت زكي"} className="p-1.5 md:p-2 rounded-xl hover:bg-white/15 shrink-0">
+                    {ttsOn ? <Volume2 className="w-4 h-4 md:w-4.5 md:h-4.5" /> : <VolumeX className="w-4 h-4 md:w-4.5 md:h-4.5" />}
                   </button>
                 )}
-                <button onClick={() => { setMode("tasks"); void loadTasks(); }} aria-label="المهام" className="p-2 rounded-xl hover:bg-white/15">
-                  <History className="w-4.5 h-4.5" />
+                <button onClick={() => { setMode("tasks"); void loadTasks(); }} aria-label="المهام" className="p-1.5 md:p-2 rounded-xl hover:bg-white/15 shrink-0">
+                  <History className="w-4 h-4 md:w-4.5 md:h-4.5" />
                 </button>
-                <button onClick={() => setMode("help")} aria-label="طريقة الاستخدام" className="p-2 rounded-xl hover:bg-white/15">
-                  <CircleHelp className="w-4.5 h-4.5" />
+                <button onClick={() => setMode("help")} aria-label="طريقة الاستخدام" className="p-1.5 md:p-2 rounded-xl hover:bg-white/15 shrink-0">
+                  <CircleHelp className="w-4 h-4 md:w-4.5 md:h-4.5" />
                 </button>
                 {!fullscreen && (
-                  <button onClick={() => setFullscreen(true)} aria-label="شاشة كاملة" className="p-2 rounded-xl hover:bg-white/15 md:hidden">
-                    <Maximize2 className="w-4.5 h-4.5" />
+                  <button onClick={() => setFullscreen(true)} aria-label="شاشة كاملة" className="p-1.5 md:p-2 rounded-xl hover:bg-white/15 md:hidden shrink-0">
+                    <Maximize2 className="w-4 h-4 md:w-4.5 md:h-4.5" />
                   </button>
                 )}
                 {fullscreen && (
-                  <button onClick={() => setFullscreen(false)} aria-label="تصغير" className="p-2 rounded-xl hover:bg-white/15 md:hidden">
-                    <Minimize2 className="w-4.5 h-4.5" />
+                  <button onClick={() => setFullscreen(false)} aria-label="تصغير" className="p-1.5 md:p-2 rounded-xl hover:bg-white/15 md:hidden shrink-0">
+                    <Minimize2 className="w-4 h-4 md:w-4.5 md:h-4.5" />
                   </button>
                 )}
-                <button onClick={hideZaki} aria-label="إخفاء زكي من الشاشة" title="إخفاء زكي من الشاشة — بيرجع من التاب الصغير في الركن (أو Ctrl+Shift+Z)" className="p-2 rounded-xl hover:bg-white/15">
-                  <EyeOff className="w-4.5 h-4.5" />
+                <button onClick={hideZaki} aria-label="إخفاء زكي من الشاشة" title="إخفاء زكي من الشاشة — بيرجع من التاب الصغير في الركن (أو Ctrl+Shift+Z)" className="p-1.5 md:p-2 rounded-xl hover:bg-white/15 shrink-0">
+                  <EyeOff className="w-4 h-4 md:w-4.5 md:h-4.5" />
                 </button>
-                <button onClick={() => setOpen(false)} aria-label="إغلاق" className="p-2 rounded-xl hover:bg-white/15">
-                  <X className="w-4.5 h-4.5" />
+                <button onClick={() => setOpen(false)} aria-label="إغلاق" className="p-1.5 md:p-2 rounded-xl hover:bg-white/15 shrink-0">
+                  <X className="w-4 h-4 md:w-4.5 md:h-4.5" />
                 </button>
               </div>
 
