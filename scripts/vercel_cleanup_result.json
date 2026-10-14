@@ -1,12 +1,10 @@
 {
- "before": 8,
+ "before": 4,
  "deleted": [
-  "dpl_Aikasia1jSjbmFdof6cwU3PMG6Jh",
-  "dpl_8gzAcBFWXSFVFnZA2eTRdYKEpXvh",
-  "dpl_G18fyEW7JwpBuuoBJB4RacCtDD1x",
-  "dpl_8yMLJkPgkR5SFopVnQTUisVu4uH8"
+  "dpl_C4yiLpcpc9hf3V6mxCSixNVqPd14",
+  "dpl_F5QUcPwkJjHMefzm4YHqaMEdaF2g"
  ],
  "failed": [],
- "after": 4,
- "deletedAt": 1791924651113
+ "after": 2,
+ "deletedAt": 1791990386836
 }
