@@ -12,8 +12,8 @@ PROJECT = "prj_Z5WHaJnlKq894WWFv5tQBblWa74b"
 TEAM = "team_w8PxkM7uGzBh1Dh5rbqAoHki"
 BASE = f"https://api.vercel.com"
 PROD = "https://alnokhba-centers-nine.vercel.app"
-DB_REF = "ttydfyqwzkiwuvcgiegy"
-DB_HOST = "aws-0-eu-west-2.pooler.supabase.com"
+DB_REF = os.environ.get("NK_DB_REF") or "ttydfyqwzkwivucgiegy"   # الحقيقي من المالك (كان مقروء غلط: ttydfyqwzkiwuvcgiegy)
+DB_HOST = os.environ.get("NK_DB_HOST") or "aws-0-eu-west-2.pooler.supabase.com"
 
 PASS = os.environ.get("NK_NEW_DB_PASS")
 if not PASS:
