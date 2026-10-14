@@ -39,6 +39,7 @@ export const PRIVATE_PATHS = [
   "/a/",
   "/c/",
   "/zaki-preview",
+  "/ux-lab",
 ] as const;
 
 /* ------------------------------------------------------------
