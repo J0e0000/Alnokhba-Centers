@@ -25,9 +25,13 @@ def api(method, path, body=None):
     req = urllib.request.Request(BASE + path, method=method,
         data=json.dumps(body).encode() if body is not None else None,
         headers={"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        raw = r.read().decode()
-        return json.loads(raw) if raw else {}
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            raw = r.read().decode()
+            return json.loads(raw) if raw else {}
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode()[:300]  # الرد من الـ API مفيهوش القيمة أبدًا
+        sys.exit(f"ERROR {e.code} on {method} {path}: {detail}")
 
 def login(kind):
     data = json.dumps({"username": kind, "password": "nokhba123"}).encode()
@@ -43,11 +47,18 @@ def probe(path, cookie=None):
     with urllib.request.urlopen(req, timeout=30) as r:
         return r.status, json.loads(r.read().decode())
 
-print("== 1) upsert DATABASE_URL (sensitive, production-only) — القيمة مش بتتطبع")
-api("POST", f"/v9/projects/{PROJECT}/env?teamId={TEAM}&upsert=true",
-    {"key": "DATABASE_URL", "value": NEW_URL, "type": "sensitive",
-     "target": ["production"], "gitBranch": None})
-print("   OK ✓")
+print("== 1) تحديث DATABASE_URL (sensitive, production-only) — القيمة مش بتتطبع")
+envs = api("GET", f"/v9/projects/{PROJECT}/env?teamId={TEAM}")
+cur = next((e for e in envs.get("envs", []) if e.get("key") == "DATABASE_URL"), None)
+if cur is None:
+    api("POST", f"/v9/projects/{PROJECT}/env?teamId={TEAM}",
+        {"key": "DATABASE_URL", "value": NEW_URL, "type": "sensitive",
+         "target": ["production"]})
+    print("   created (مش كان موجود) ✓")
+else:
+    api("PATCH", f"/v9/projects/{PROJECT}/env/{cur['id']}?teamId={TEAM}",
+        {"value": NEW_URL, "target": ["production"]})
+    print(f"   updated existing env ({cur['id']}, target={','.join(cur.get('target', []))}) ✓")
 
 print("== 2) إعادة نشر الإنتاج (إعادة نشر آخر deployment جاهز بنفس الإعدادات)")
 deps = api("GET", f"/v6/deployments?projectId={PROJECT}&teamId={TEAM}&target=production&limit=1&state=READY")
@@ -71,14 +82,22 @@ for i in range(48):
 else:
     sys.exit("TIMEOUT: النشر أخد أكتر من 8 دقايق — افحص الداشبورد")
 
-print("== 4) تحقق لايف على الإنتاج الجديد")
-a = login("manager")
-st, sysd = probe("/api/sysdiag", a)
-ping = (sysd.get("dbPing") or {}).get("avgMs")
-print(f"   sysdiag: {st} | commit: {sysd.get('commit')} | dbPing avg: {ping}ms | dbRegion: {sysd.get('dbRegion')}")
-st, dbst = probe("/api/system/db-status")
-print(f"   db-status: {st} {dbst}")
-st, studs = probe("/api/students?limit=1", a)
-print(f"   students (manager): {st} — {'بيانات رجعت ✓' if st==200 else 'FAILED ✗'}")
-ok = st == 200 and isinstance(ping, (int, float)) and ping < 200
+print("== 4) تحقق لايف على الإنتاج الجديد (بإعادة محاولة — التبديل بياخد ثواني)")
+for attempt in range(4):
+    try:
+        a = login("manager")
+        st, sysd = probe("/api/sysdiag", a)
+        ping = (sysd.get("dbPing") or {}).get("avgMs")
+        print(f"   sysdiag: {st} | commit: {sysd.get('commit')} | dbPing avg: {ping}ms | dbRegion: {sysd.get('dbRegion')}")
+        st, dbst = probe("/api/system/db-status")
+        print(f"   db-status: {st} {dbst}")
+        st, studs = probe("/api/students?limit=1", a)
+        print(f"   students (manager): {st} — {'بيانات رجعت ✓' if st==200 else 'FAILED ✗'}")
+        if st == 200 and isinstance(ping, (int, float)) and ping < 200:
+            ok = True
+            break
+    except Exception as e:
+        print(f"   محاولة {attempt+1} فشلت ({type(e).__name__}) — إعادة بعد 8ث...")
+    time.sleep(8)
+ok = locals().get('ok', False)
 print(f"\n== النتيجة: {'الإصلاح نجح والاتصال الجديد شغال ✓' if ok else 'محتاج مراجعة — ابعثلي المخرجات'}")
