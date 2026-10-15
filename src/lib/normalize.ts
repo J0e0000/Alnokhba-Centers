@@ -34,6 +34,8 @@ export type PhoneCheck =
  * ويرجّع الرقم الوطني (01xxxxxxxxx) من غير ما يضيّع أي رقم حقيقي.
  * الحماية من تكرار كود الدولة هي الحاجة الوحيدة اللي بتتشال — والباقي كله بيفضل.
  * بيشتغل على أرقام ناقصة كمان (أثناء الكتابة) — مش بيقصّ حاجة غير في الآخر.
+ * ذكي كمان: 1xxxxxxxxx (10 أرقام ناسي الصفر) بيتكمّل لوحده لـ 01xxxxxxxxx —
+ * عشان اللي بيكتب من غير الصفر (لأن +2 ظاهرة أصلًا) يشوف الرقم الصح فورًا.
  */
 export function smartPhoneDigits(raw: string): string {
   // أرقام عربية/فارسية → إنجليزي + شيل المسافات والشرط والأقواس وعلامات RTL
@@ -43,13 +45,19 @@ export function smartPhoneDigits(raw: string): string {
   else if (n.startsWith("0020")) n = "0" + n.slice(4);
   else if (n.startsWith("+2") && n.length > 2) n = "0" + n.slice(2);
   else if (n.startsWith("20") && n.length >= 12) n = "0" + n.slice(2);
-  return n.replace(/\D/g, "");
+  n = n.replace(/\D/g, "");
+  // ناسي الصفر الأول؟ (1xxxxxxxxx = 10 أرقام) — موبايلات مصر من غير الصفر دايمًا 10 أرقام بالظبط
+  // بنكمّله فورًا عشان الحقل يعرض الرقم الوطني الصحيح أثناء الكتابة مش بعد الحفظ
+  if (n.length === 10 && n.startsWith("1")) n = "0" + n;
+  return n;
 }
 
-/** عرض ذكي: 01012345678 → +2 01012345678 (صيغة دولية واضحة زي ما المالك طلب) */
+/** عرض ذكي: 01012345678 → +2 01012345678 (صيغة دولية واضحة زي ما المالك طلب)
+ *  بيتحمل الأرقام القديمة المخزنة ناقصة الصفر (1xxxxxxxxx) وبيعرضها صح كمان */
 export function formatPhoneIntl(national: string | null | undefined): string {
-  const n = String(national ?? "").replace(/\D/g, "");
+  let n = String(national ?? "").replace(/\D/g, "");
   if (!n) return "";
+  if (n.length === 10 && n.startsWith("1")) n = "0" + n;
   return n.startsWith("0") ? `+2 ${n}` : `+2${n}`;
 }
 
@@ -62,9 +70,7 @@ export function formatPhoneIntl(national: string | null | undefined): string {
 export function validateEgyptianPhone(raw: string, isParent = false): PhoneCheck {
   const who = isParent ? "رقم موبايل ولي الأمر" : "رقم موبايل الطالب";
   if (!raw || !raw.trim()) return { ok: false, error: `${who} مطلوب.` };
-  let n = smartPhoneDigits(raw);
-  // ناسي الصفر الأول؟ (1xxxxxxxxx) — بنكمّله من غير لوم
-  if (n.length === 10 && n.startsWith("1")) n = "0" + n;
+  const n = smartPhoneDigits(raw); // بيكمل الصفر الناقص لوحده (1xxxxxxxxx → 010xxxxxxxxx)
   if (!/^\d+$/.test(n)) {
     return { ok: false, error: `${who} فيه حروف غريبة — اكتب أرقام بس من فضلك.` };
   }

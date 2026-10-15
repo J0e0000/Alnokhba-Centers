@@ -2,7 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { randomBytes } from "crypto";
 import { db } from "@/lib/db";
-import { cleanRaw } from "@/lib/normalize";
+import { cleanRaw, smartPhoneDigits } from "@/lib/normalize";
 
 export const PORTAL_COOKIE = "nokhba_portal";
 // الكوكيز Secure على Vercel (HTTPS) — محليًا http عادي
@@ -125,11 +125,13 @@ export async function verifyStudentLogin(
   rawPhone: string,
 ): Promise<{ ok: true; studentId: string; centerId: string } | { ok: false; error: string }> {
   const code = cleanRaw(rawCode);
-  const phone = cleanRaw(rawPhone);
+  // تسجيل أرقام ذكي — أي صيغة بتتطبّع للوطني: 1000000001 → 01000000001،
+  // +20/0020/أرقام عربية/مسافات كلها بتتظبط قبل المطابقة
+  const phone = smartPhoneDigits(rawPhone);
   if (!/^\d{5}$/.test(code)) {
     return { ok: false, error: "كود الطالب لازم يكون 5 أرقام — زي اللي على كارته." };
   }
-  if (!/^\d{10,13}$/.test(phone)) {
+  if (!/^\d{11}$/.test(phone)) {
     return { ok: false, error: "اكتب رقم الموبايل الصح (11 رقم)." };
   }
   const students = await db.student.findMany({
@@ -137,8 +139,8 @@ export async function verifyStudentLogin(
     select: { id: true, centerId: true, phone: true, parentPhone: true, center: { select: { status: true } } },
   });
   const match = students.find((s) => {
-    const nums = [s.phone, s.parentPhone].map((p) => (p ? cleanRaw(p) : "")).filter(Boolean);
-    return nums.some((n) => n === phone || (n.startsWith("0") && phone.endsWith(n)) || (phone.startsWith("0") && n.endsWith(phone)));
+    const nums = [s.phone, s.parentPhone].map((p) => (p ? smartPhoneDigits(p) : "")).filter(Boolean);
+    return nums.some((n) => n === phone);
   });
   if (!match) {
     return { ok: false, error: "الكود أو رقم الموبايل مش متطابقين — تأكد منهم وجرب تاني." };

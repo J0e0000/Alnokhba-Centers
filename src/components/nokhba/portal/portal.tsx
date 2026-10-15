@@ -8,7 +8,7 @@ import {
   ClipboardList, GraduationCap, TrendingUp, FileCheck2, NotebookPen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { normalizeDigits, formatTime12, dayNameAR, formatDateAR } from "@/lib/normalize";
+import { normalizeDigits, smartPhoneDigits, formatTime12, dayNameAR, formatDateAR } from "@/lib/normalize";
 import { defaultCapabilityMap, type CapabilityMap } from "@/lib/capabilities";
 import { applyCenterBranding } from "../lib";
 import { AlNokhbaMark } from "../shared";
@@ -508,13 +508,14 @@ function PortalLogin({ onSuccess }: { onSuccess: () => void }) {
   async function submit(e?: React.FormEvent) {
     e?.preventDefault();
     const c = normalizeDigits(code).replace(/\D/g, "");
-    const p = normalizeDigits(phone).replace(/\D/g, "");
+    // تسجيل أرقام ذكي: أي صيغة (بدون صفر / دولية / عربية) بتتطبّع للوطني قبل الإرسال
+    const p = smartPhoneDigits(phone);
     if (c.length !== 5) {
       toast.error("اكتب كود الطالب — 5 أرقام (من كارته أو من الاستقبال).");
       return;
     }
-    if (p.length < 10) {
-      toast.error("اكتب رقم الموبايل المتسجّل عند السنتر (بتاع الطالب أو ولي الأمر).");
+    if (p.length !== 11) {
+      toast.error("اكتب رقم الموبايل المتسجّل عند السنتر (بتاع الطالب أو ولي الأمر) — 11 رقم.");
       return;
     }
     setBusy(true);
