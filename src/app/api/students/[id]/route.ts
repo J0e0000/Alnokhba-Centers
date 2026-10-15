@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
 import { requireModule } from "@/lib/entitlements";
 import { requireCenterUser, ApiError } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { normalizeDigits, validateOptionalPhone } from "@/lib/normalize";
 import { studentBalance } from "@/lib/finance";
@@ -110,6 +111,12 @@ export const PATCH = handler(async (req: Request, ctx: Ctx) => {
   await requireModule(user.centerId, "students", user);
   const { id } = await ctx.params;
   const body = await readJson<PatchBody>(req);
+  // صلاحية تعديل الطالب — سيرفري (spec §5): الـ UI بيخفي الزرار، والسيرفر بيفرضها هنا.
+  // تغيير الحالة (من غير ACTIVE) يفضل للمدير بس زي ما كان.
+  const editsAnyField = ["name", "phone", "parentName", "parentPhone", "school", "notes", "gradeId"].some((k) => Object.prototype.hasOwnProperty.call(body as Record<string, unknown>, k));
+  if (editsAnyField && !hasPermission(user, "EDIT_STUDENT")) {
+    throw new ApiError("تعديل بيانات الطالب محتاج صلاحية «تعديل الطالب» — كلم مدير السنتر.", 403);
+  }
 
   const student = await db.student.findFirst({ where: { id, centerId: user.centerId } });
   if (!student) throw new ApiError("الطالب ده مش موجود في السنتر ده.", 404);

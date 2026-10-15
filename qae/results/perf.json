@@ -1,0 +1,105 @@
+{
+  "queries": [
+    {
+      "name": "students pagination page 1 (5000 center)",
+      "min": 1.1,
+      "max": 2.2,
+      "plan": "SEARCH s USING INDEX Student_centerId_code_key (centerId=?) | USE TEMP B-TREE FOR ORDER BY"
+    },
+    {
+      "name": "students pagination page 100 (deep offset)",
+      "min": 3.8,
+      "max": 4.6,
+      "plan": "SEARCH s USING INDEX Student_centerId_code_key (centerId=?) | USE TEMP B-TREE FOR ORDER BY"
+    },
+    {
+      "name": "students search by code (indexed)",
+      "min": 0.3,
+      "max": 0.4,
+      "plan": "SEARCH Student USING INDEX Student_centerId_code_key (centerId=? AND code=?)"
+    },
+    {
+      "name": "students search by name LIKE (index scan)",
+      "min": 0.4,
+      "max": 0.5,
+      "plan": "SEARCH Student USING INDEX Student_centerId_code_key (centerId=?)"
+    },
+    {
+      "name": "attendance join sessions date range",
+      "min": 31.4,
+      "max": 33,
+      "plan": "SEARCH a USING INDEX Attendance_centerId_studentId_idx (centerId=?) | SEARCH si USING INDEX sqlite_autoindex_SessionInstance_1 (id=?)"
+    },
+    {
+      "name": "balances groupBy (groupBy studentId)",
+      "min": 23.5,
+      "max": 25.4,
+      "plan": "SEARCH StudentTransaction USING INDEX StudentTransaction_centerId_studentId_idx (centerId=?)"
+    },
+    {
+      "name": "dashboard today sessions",
+      "min": 0.5,
+      "max": 1.7,
+      "plan": "SEARCH SessionInstance USING INDEX SessionInstance_centerId_date_idx (centerId=? AND date=?)"
+    },
+    {
+      "name": "session close economics aggregate",
+      "min": 0.9,
+      "max": 0.9,
+      "plan": "SEARCH Attendance USING INDEX Attendance_sessionId_attendanceCode_key (sessionId=?) | LIST SUBQUERY 1 | SEARCH SessionInstance USING INDEX SessionInstance_centerId_date_idx (centerId=? AND date=?)"
+    },
+    {
+      "name": "receipts count + sum",
+      "min": 0.2,
+      "max": 0.4,
+      "plan": "SEARCH Receipt USING INDEX Receipt_centerId_seq_key (centerId=?)"
+    },
+    {
+      "name": "audit recent 50 (centerId,createdAt)",
+      "min": 0.1,
+      "max": 0.3,
+      "plan": "SEARCH AuditLog USING INDEX AuditLog_centerId_createdAt_idx (centerId=?)"
+    }
+  ],
+  "indexes": [
+    "Student.sqlite_autoindex_Student_1",
+    "SessionInstance.sqlite_autoindex_SessionInstance_1",
+    "Attendance.sqlite_autoindex_Attendance_1",
+    "StudentTransaction.sqlite_autoindex_StudentTransaction_1",
+    "Receipt.sqlite_autoindex_Receipt_1",
+    "AuditLog.sqlite_autoindex_AuditLog_1",
+    "Student.Student_qrToken_key",
+    "Student.Student_centerId_name_idx",
+    "Student.Student_centerId_status_idx",
+    "Student.Student_centerId_phone_idx",
+    "Student.Student_centerId_code_key",
+    "SessionInstance.SessionInstance_centerId_date_idx",
+    "SessionInstance.SessionInstance_groupId_date_idx",
+    "Attendance.Attendance_idemKey_key",
+    "Attendance.Attendance_centerId_studentId_idx",
+    "Attendance.Attendance_deviceId_idx",
+    "Attendance.Attendance_deviceFingerprint_idx",
+    "Attendance.Attendance_sessionId_studentId_key",
+    "Attendance.Attendance_sessionId_deviceId_key",
+    "Attendance.Attendance_sessionId_deviceFingerprint_key",
+    "Attendance.Attendance_sessionId_attendanceCode_key",
+    "StudentTransaction.StudentTransaction_idemKey_key",
+    "StudentTransaction.StudentTransaction_centerId_studentId_idx",
+    "StudentTransaction.StudentTransaction_centerId_createdAt_idx",
+    "StudentTransaction.StudentTransaction_centerId_type_idx",
+    "StudentTransaction.StudentTransaction_sessionId_idx",
+    "Receipt.Receipt_txnId_key",
+    "Receipt.Receipt_centerId_createdAt_idx",
+    "Receipt.Receipt_centerId_seq_key",
+    "AuditLog.AuditLog_centerId_createdAt_idx",
+    "AuditLog.AuditLog_action_idx"
+  ],
+  "counts": {
+    "students": 5000,
+    "groups": 30,
+    "sessions": 240,
+    "attendance": 37488,
+    "txns": 37488
+  },
+  "totalDbBytes": 43819008
+}

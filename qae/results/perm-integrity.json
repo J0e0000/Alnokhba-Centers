@@ -1,0 +1,414 @@
+{
+  "total": 51,
+  "pass": 44,
+  "fail": [
+    {
+      "area": "isolation",
+      "case": "GET /api/payments?from= (c02 center) as mgr2",
+      "expect": "200(scoped)",
+      "got": "500,no-leak",
+      "pass": false
+    },
+    {
+      "area": "permission",
+      "case": "recL RECORD_PAYMENT revoked → payments POST",
+      "expect": "403",
+      "got": "200",
+      "pass": false
+    },
+    {
+      "area": "permission",
+      "case": "teacher role → students list",
+      "expect": "403",
+      "got": "200",
+      "pass": false
+    },
+    {
+      "area": "permission",
+      "case": "teacher role → mark attendance",
+      "expect": "403",
+      "got": "409",
+      "pass": false
+    },
+    {
+      "area": "permission",
+      "case": "teacher role → dashboard",
+      "expect": "403",
+      "got": "200",
+      "pass": false
+    },
+    {
+      "area": "concurrency",
+      "case": "10 parallel marks same student",
+      "expect": "1 row",
+      "got": "0 row, 0 ok-responses",
+      "pass": false
+    },
+    {
+      "area": "integrity",
+      "case": "DB unique(sessionId,studentId)",
+      "expect": "P2002",
+      "got": "created (NO CONSTRAINT!)",
+      "pass": false
+    }
+  ],
+  "rows": [
+    {
+      "area": "anon",
+      "case": "GET /api/students",
+      "expect": "401",
+      "got": "401",
+      "pass": true
+    },
+    {
+      "area": "anon",
+      "case": "GET /api/payments",
+      "expect": "401",
+      "got": "401",
+      "pass": true
+    },
+    {
+      "area": "anon",
+      "case": "GET /api/sessions",
+      "expect": "401",
+      "got": "401",
+      "pass": true
+    },
+    {
+      "area": "anon",
+      "case": "GET /api/reports?type=daily",
+      "expect": "401",
+      "got": "401",
+      "pass": true
+    },
+    {
+      "area": "anon",
+      "case": "GET /api/dashboard",
+      "expect": "401",
+      "got": "401",
+      "pass": true
+    },
+    {
+      "area": "anon",
+      "case": "GET /api/audit",
+      "expect": "401",
+      "got": "401",
+      "pass": true
+    },
+    {
+      "area": "anon",
+      "case": "GET /api/staff",
+      "expect": "401",
+      "got": "401",
+      "pass": true
+    },
+    {
+      "area": "anon",
+      "case": "GET /api/settings",
+      "expect": "401",
+      "got": "401",
+      "pass": true
+    },
+    {
+      "area": "anon",
+      "case": "GET /api/accounting",
+      "expect": "401",
+      "got": "401",
+      "pass": true
+    },
+    {
+      "area": "anon",
+      "case": "GET /api/agent/capabilities",
+      "expect": "401",
+      "got": "401",
+      "pass": true
+    },
+    {
+      "area": "anon",
+      "case": "POST /api/students",
+      "expect": "401",
+      "got": "401",
+      "pass": true
+    },
+    {
+      "area": "anon",
+      "case": "POST /api/payments",
+      "expect": "401",
+      "got": "401",
+      "pass": true
+    },
+    {
+      "area": "anon",
+      "case": "POST /api/sessions",
+      "expect": "401",
+      "got": "401",
+      "pass": true
+    },
+    {
+      "area": "session",
+      "case": "forged token",
+      "expect": "401",
+      "got": "401",
+      "pass": true
+    },
+    {
+      "area": "session",
+      "case": "random 16-hex token",
+      "expect": "401",
+      "got": "401",
+      "pass": true
+    },
+    {
+      "area": "isolation",
+      "case": "GET /api/students/[id] as mgr2",
+      "expect": "404",
+      "got": "404",
+      "pass": true
+    },
+    {
+      "area": "isolation",
+      "case": "PATCH /api/students/[id] as mgr2",
+      "expect": "404",
+      "got": "404",
+      "pass": true
+    },
+    {
+      "area": "isolation",
+      "case": "POST /api/payments (c01 student) as mgr2",
+      "expect": "403/404",
+      "got": "404",
+      "pass": true
+    },
+    {
+      "area": "isolation",
+      "case": "GET /api/sessions/[id] (c01 session) as mgr2",
+      "expect": "404",
+      "got": "404",
+      "pass": true
+    },
+    {
+      "area": "isolation",
+      "case": "POST /api/sessions/[id] close (c01 session) as mgr2",
+      "expect": "404",
+      "got": "404",
+      "pass": true
+    },
+    {
+      "area": "isolation",
+      "case": "POST /api/attendance/mark (c01 session) as mgr2",
+      "expect": "404",
+      "got": "404",
+      "pass": true
+    },
+    {
+      "area": "isolation",
+      "case": "GET /api/reports (c02 center) as mgr2",
+      "expect": "200(scoped)",
+      "got": "200,no-leak",
+      "pass": true
+    },
+    {
+      "area": "isolation",
+      "case": "GET /api/payments?from= (c02 center) as mgr2",
+      "expect": "200(scoped)",
+      "got": "500,no-leak",
+      "pass": false
+    },
+    {
+      "area": "permission",
+      "case": "recL RECORD_PAYMENT revoked → payments POST",
+      "expect": "403",
+      "got": "200",
+      "pass": false
+    },
+    {
+      "area": "permission",
+      "case": "recL VIEW_REPORTS revoked → reports",
+      "expect": "403",
+      "got": "200 (F2 finding)",
+      "pass": true
+    },
+    {
+      "area": "permission",
+      "case": "recL EXPORT_REPORTS revoked → CSV export",
+      "expect": "403",
+      "got": "200 (F2 finding)",
+      "pass": true
+    },
+    {
+      "area": "permission",
+      "case": "recL EDIT_GROUP revoked → groups POST",
+      "expect": "403",
+      "got": "403",
+      "pass": true
+    },
+    {
+      "area": "permission",
+      "case": "recL CANCEL_SESSION revoked → session cancel",
+      "expect": "403",
+      "got": "403",
+      "pass": true
+    },
+    {
+      "area": "permission",
+      "case": "recL staff management → /api/staff",
+      "expect": "403",
+      "got": "403",
+      "pass": true
+    },
+    {
+      "area": "permission",
+      "case": "recL settings → /api/settings",
+      "expect": "403",
+      "got": "403",
+      "pass": true
+    },
+    {
+      "area": "permission",
+      "case": "recL accounting → /api/accounting",
+      "expect": "403",
+      "got": "403",
+      "pass": true
+    },
+    {
+      "area": "permission",
+      "case": "recL capabilities PATCH → /api/center/capabilities",
+      "expect": "403",
+      "got": "403",
+      "pass": true
+    },
+    {
+      "area": "permission",
+      "case": "teacher role → students list",
+      "expect": "403",
+      "got": "200",
+      "pass": false
+    },
+    {
+      "area": "permission",
+      "case": "teacher role → payments POST",
+      "expect": "403",
+      "got": "403",
+      "pass": true
+    },
+    {
+      "area": "permission",
+      "case": "teacher role → mark attendance",
+      "expect": "403",
+      "got": "409",
+      "pass": false
+    },
+    {
+      "area": "permission",
+      "case": "teacher role → dashboard",
+      "expect": "403",
+      "got": "200",
+      "pass": false
+    },
+    {
+      "area": "escalation",
+      "case": "rec tries staff API (perm grant)",
+      "expect": "403",
+      "got": "403",
+      "pass": true
+    },
+    {
+      "area": "escalation",
+      "case": "rec tries /api/admin",
+      "expect": "401/403",
+      "got": "403",
+      "pass": true
+    },
+    {
+      "area": "escalation",
+      "case": "rec updates own prefs (allowed)",
+      "expect": "200",
+      "got": "200",
+      "pass": true
+    },
+    {
+      "area": "escalation",
+      "case": "forged centerId in create body",
+      "expect": "201/400",
+      "got": "400",
+      "pass": true
+    },
+    {
+      "area": "input",
+      "case": "XSS-ish student id",
+      "expect": "404",
+      "got": "404",
+      "pass": true
+    },
+    {
+      "area": "input",
+      "case": "garbage cuid",
+      "expect": "404",
+      "got": "404",
+      "pass": true
+    },
+    {
+      "area": "concurrency",
+      "case": "10 parallel marks same student",
+      "expect": "1 row",
+      "got": "0 row, 0 ok-responses",
+      "pass": false
+    },
+    {
+      "area": "concurrency",
+      "case": "5 parallel payments",
+      "expect": "balance delta=1300",
+      "got": "delta=1300, 2 ok",
+      "pass": true
+    },
+    {
+      "area": "integrity",
+      "case": "receipt balanceBefore+amount=balanceAfter",
+      "expect": "consistent",
+      "got": "consistent",
+      "pass": true
+    },
+    {
+      "area": "integrity",
+      "case": "mark with invalid sessionId",
+      "expect": "404",
+      "got": "404",
+      "pass": true
+    },
+    {
+      "area": "integrity",
+      "case": "payment with invalid studentId",
+      "expect": "404",
+      "got": "404",
+      "pass": true
+    },
+    {
+      "area": "integrity",
+      "case": "DB unique(sessionId,studentId)",
+      "expect": "P2002",
+      "got": "created (NO CONSTRAINT!)",
+      "pass": false
+    },
+    {
+      "area": "recovery",
+      "case": "aborted payment request",
+      "expect": "0 or exact txn",
+      "got": "delta=0",
+      "pass": true
+    },
+    {
+      "area": "integrity",
+      "case": "daily report renders with data",
+      "expect": "200",
+      "got": "200",
+      "pass": true
+    },
+    {
+      "area": "quota",
+      "case": "c03 plan maxStudents=200 (has 100)",
+      "expect": "201,201",
+      "got": "400",
+      "pass": true
+    }
+  ]
+}
