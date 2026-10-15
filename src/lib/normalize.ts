@@ -29,17 +29,42 @@ export type PhoneCheck =
   | { ok: false; error: string };
 
 /**
+ * تسجيل الأرقام الذكي (طلب المالك: «يحط قبله +2 بس ميحذفش حاجة»):
+ * بياخد أي صيغة يتكتبها أو يتلصقها — أرقام عربية، مسافات، شرط، +20، 0020، 20 —
+ * ويرجّع الرقم الوطني (01xxxxxxxxx) من غير ما يضيّع أي رقم حقيقي.
+ * الحماية من تكرار كود الدولة هي الحاجة الوحيدة اللي بتتشال — والباقي كله بيفضل.
+ * بيشتغل على أرقام ناقصة كمان (أثناء الكتابة) — مش بيقصّ حاجة غير في الآخر.
+ */
+export function smartPhoneDigits(raw: string): string {
+  // أرقام عربية/فارسية → إنجليزي + شيل المسافات والشرط والأقواس وعلامات RTL
+  let n = cleanRaw(raw).replace(/[^\d+]/g, "");
+  // أكواد الدول المكررة → الرقم الوطني (مش هنمسح أرقام حقيقية، بس بتاع كود الدولة)
+  if (n.startsWith("+20")) n = "0" + n.slice(3);
+  else if (n.startsWith("0020")) n = "0" + n.slice(4);
+  else if (n.startsWith("+2") && n.length > 2) n = "0" + n.slice(2);
+  else if (n.startsWith("20") && n.length >= 12) n = "0" + n.slice(2);
+  return n.replace(/\D/g, "");
+}
+
+/** عرض ذكي: 01012345678 → +2 01012345678 (صيغة دولية واضحة زي ما المالك طلب) */
+export function formatPhoneIntl(national: string | null | undefined): string {
+  const n = String(national ?? "").replace(/\D/g, "");
+  if (!n) return "";
+  return n.startsWith("0") ? `+2 ${n}` : `+2${n}`;
+}
+
+/**
  * Egyptian mobile validation with clear Egyptian-Arabic errors.
  * Accepts: 010/011/012/015 + 8 digits (11 total), with optional +20 / 0020 prefix.
+ * ذكي كمان: بيقبل 1xxxxxxxxx (10 أرقام من غير الصفر) ويكمّله لوحده،
+ * وأي صيغة دولية (+20 / 0020 / 20) بتنطبّع لوحدها قبل الفحص.
  */
 export function validateEgyptianPhone(raw: string, isParent = false): PhoneCheck {
   const who = isParent ? "رقم موبايل ولي الأمر" : "رقم موبايل الطالب";
   if (!raw || !raw.trim()) return { ok: false, error: `${who} مطلوب.` };
-  let n = cleanRaw(raw);
-  // international prefixes: +20 / 0020 / 20 → restore the national leading zero
-  if (n.startsWith("0020")) n = "0" + n.slice(4);
-  else if (n.startsWith("+20")) n = "0" + n.slice(3);
-  else if (n.startsWith("20") && n.length === 12) n = "0" + n.slice(2);
+  let n = smartPhoneDigits(raw);
+  // ناسي الصفر الأول؟ (1xxxxxxxxx) — بنكمّله من غير لوم
+  if (n.length === 10 && n.startsWith("1")) n = "0" + n;
   if (!/^\d+$/.test(n)) {
     return { ok: false, error: `${who} فيه حروف غريبة — اكتب أرقام بس من فضلك.` };
   }
