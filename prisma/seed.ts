@@ -511,34 +511,6 @@ async function main() {
   console.log("   Demo logins → admin / manager / reception / reception2 / manager2 — password: nokhba123");
 }
 
-// كويز تجريبي منشور عشان بورتال الطالب يبقى فيه محتوى حقيقي من أول تشغيل (spec §1)
-async function seedDemoQuiz() {
-  const group = await db.group.findFirst({ where: { name: "A", isActive: true }, include: { subject: true } });
-  const anyUser = await db.user.findFirst({ where: { role: "MANAGER" } });
-  if (!group || !anyUser) return;
-  const exists = await db.quiz.findFirst({ where: { title: "كويز تجريبي — الوحدة الأولى" } });
-  if (exists) return;
-  await db.quiz.create({
-    data: {
-      centerId: group.centerId,
-      groupId: group.id,
-      title: "كويز تجريبي — الوحدة الأولى",
-      description: "كويز قصير للتجربة — بيصحح تلقائي.",
-      status: "PUBLISHED",
-      createdById: anyUser.id,
-      createdByName: anyUser.name,
-      questions: {
-        create: [
-          { order: 0, text: "السؤال الأول: وحدة القياس في جسم ساقط؟", type: "MCQ", options: JSON.stringify(["م/ث²", "نيوتن", "كجم"]), correctAnswer: "0", points: 5 },
-          { order: 1, text: "التسارع الناتج عن الجاذبية الأرضية ثابت على سطح الأرض.", type: "TRUE_FALSE", correctAnswer: "true", points: 5 },
-        ],
-      },
-    },
-  });
-  console.log("   📝 Demo quiz published (portal → الكويزات)");
-}
-
 main()
-  .then(() => seedDemoQuiz())
   .catch((e) => { console.error(e); process.exit(1); })
   .finally(() => db.$disconnect());

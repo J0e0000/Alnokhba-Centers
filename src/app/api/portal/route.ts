@@ -49,34 +49,20 @@ export const GET = handler(async () => {
 });
 
 /**
- * نظرة تقدم الطالب (spec §1) — حتمية من داتا الحضور والكويزات:
- * نسبة الحضور آخر 30 يوم + إجمالي الحصص + متوسط الكويزات المصححة.
+ * نظرة تقدم الطالب — حضور فقط:
+ * نسبة الحضور آخر 30 يوم + إجمالي الحصص.
  */
 async function portalProgress(studentId: string, centerId: string) {
   const since = new Date(Date.now() - 30 * 86400000);
-  const [attended, quizData] = await Promise.all([
-    db.attendance.findMany({
-      where: { studentId, createdAt: { gte: since }, session: { centerId, status: { not: "CANCELLED" } } },
-      select: { status: true },
-    }),
-    db.quizAttempt.findMany({
-      where: { studentId, status: "GRADED", quiz: { centerId } },
-      select: { score: true, maxScore: true },
-      orderBy: { updatedAt: "desc" },
-      take: 20,
-    }),
-  ]);
+  const attended = await db.attendance.findMany({
+    where: { studentId, createdAt: { gte: since }, session: { centerId, status: { not: "CANCELLED" } } },
+    select: { status: true },
+  });
   const sessionsAttended = attended.filter((a) => a.status === "PRESENT" || a.status === "LATE").length;
-  const graded = quizData.filter((a) => a.maxScore > 0);
-  const quizAvg = graded.length
-    ? Math.round(graded.reduce((s, a) => s + ((a.score ?? 0) / a.maxScore) * 100, 0) / graded.length)
-    : null;
   return {
     sessionsAttended,
     sessionsTotal: attended.length,
     attendanceRate: attended.length ? Math.round((sessionsAttended / attended.length) * 100) : null,
-    quizAvg,
-    quizzesGraded: graded.length,
   };
 }
 

@@ -558,52 +558,8 @@ register({
 });
 
 /* ============================================================
-   TOOLS: امتحانات — exams.list (قراءة) + سجل العمليات + الاشتراك
+   TOOLS: سجل العمليات + الاشتراك
 ============================================================ */
-
-register({
-  name: "exams.list",
-  group: "exams",
-  requiredModule: "exams",
-  description: "اعرض آخر الامتحانات/الكويزات مع حالة كل واحد (مسودة/شغال/خلص)",
-  usageHint: "«إيه آخر الامتحانات؟» / «امتحانات مجموعة الرياضيات»",
-  input: z.object({
-    group: z.string().max(80).optional().describe("فلترة باسم المجموعة (اختياري)"),
-  }),
-  risk: "LOW",
-  permissionLabel: "عرض الامتحانات",
-  async handler(args, ctx): Promise<ToolOutput> {
-    let groupId: string | undefined;
-    if (args.group?.trim()) {
-      const g = await db.group.findFirst({
-        where: { centerId: ctx.centerId, isActive: true, name: { contains: normalizeDigits(args.group.trim()) } },
-        select: { id: true, name: true },
-      });
-      if (!g) throw new ToolError("NOT_FOUND", `مفيش مجموعة اسمها فيه «${args.group}».`);
-      groupId = g.id;
-    }
-    const rows = await db.exam.findMany({
-      where: { centerId: ctx.centerId, ...(groupId ? { groupId } : {}) },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-      include: { group: { include: { subject: true, grade: true } } },
-    });
-    if (!rows.length) return { summary: "مفيش امتحانات مسجلة." + (groupId ? " في المجموعة دي." : ""), data: { count: 0 } };
-    return {
-      summary: `آخر ${rows.length} امتحان${groupId ? " في المجموعة" : ""}: ${rows.slice(0, 3).map((e) => e.title).join("، ")}.`,
-      data: { count: rows.length, exams: rows.map((e) => ({ id: e.id, title: e.title, group: e.group?.name ?? null, status: e.status, startAt: e.startAt })) },
-      cards: [{
-        type: "students", title: "آخر الامتحانات",
-        items: rows.map((e) => ({
-          id: e.id,
-          title: e.title,
-          sub: `${e.group ? `${e.group.grade.name} — ${e.group.subject.name} (${e.group.name})` : "بدون مجموعة"} · ${e.status}${e.startAt ? ` · ${new Date(e.startAt).toLocaleDateString("ar-EG")}` : ""}`,
-          actions: [{ label: "افتح الامتحانات", action: "navigate" as const, view: "exams" }],
-        })),
-      }],
-    };
-  },
-});
 
 register({
   name: "audit.recent",

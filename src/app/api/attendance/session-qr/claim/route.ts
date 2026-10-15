@@ -61,7 +61,7 @@ export const POST = handler(async (req: Request) => {
     }
     throw e;
   }
-  if (qr.scope !== "CENTERS" || !qr.centerId) {
+  if (!qr.centerId) {
     throw new ApiError("الكود ده مش كود حضور سنترز.", 400);
   }
 

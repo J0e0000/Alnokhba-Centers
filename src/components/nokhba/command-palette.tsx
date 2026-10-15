@@ -34,9 +34,9 @@ export function CommandPalette({ user, setView, onOpenStudent }: {
   const listRef = useRef<HTMLDivElement>(null);
 
   const navIds: ViewId[] = user.role === "MANAGER"
-    ? ["home", "today", "scan", "approvals", "schedule", "groups", "exams", "quizzes", "assignments", "students", "payments", "messages", "books", "operations", "accounting", "emergency", "reports", "settings"]
+    ? ["home", "today", "scan", "approvals", "schedule", "groups", "students", "payments", "messages", "books", "operations", "accounting", "emergency", "reports", "settings"]
     : user.role === "TEACHER"
-      ? ["home", "schedule", "quizzes", "exams", "assignments"]
+      ? ["home", "schedule"]
       : ["home", "today", "scan", "students", "payments", "books", "messages", "schedule"];
 
   // فتح/قفل بـ Ctrl+K أو ⌘K

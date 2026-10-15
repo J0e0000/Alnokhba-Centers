@@ -20,7 +20,7 @@ const inflight = new Map<string, Promise<unknown>>();
 const CACHEABLE_GETS = [
   "/api/today", "/api/schedule", "/api/students", "/api/dashboard",
   "/api/payments", "/api/groups", "/api/books", "/api/announcements",
-  "/api/exams", "/api/quizzes", "/api/assignments", "/api/accounting", "/api/reports",
+  "/api/accounting", "/api/reports",
 ];
 
 function cacheableGet(path: string): boolean {
@@ -114,9 +114,7 @@ export type CenterInfo = {
 
 export type SessionUser = {
   id: string; name: string; username: string;
-  role: "ADMIN" | "MANAGER" | "RECEPTIONIST" | "TEACHER" | "STUDENT";
-  /** product scope: "centers" (legacy) | "academia" (AlNokhba Academia) */
-  scope?: "centers" | "academia";
+  role: "ADMIN" | "MANAGER" | "RECEPTIONIST" | "TEACHER";
   centerId: string | null; canAddStudents: boolean;
   // الصلاحيات الدقيقة المحسومة من السيرفر (الواجهة بتتكيف بيها — الفحص الحقيقي سيرفر-سايد)
   permissions?: string[];

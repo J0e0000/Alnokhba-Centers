@@ -5,7 +5,7 @@ import { getPortalTeacher } from "@/lib/teacher-auth";
 
 export const dynamic = "force-dynamic";
 
-// ============================= GET — جدولي الأسبوعي =============================
+// ============================= GET — جدولي الأسبوعي (مع عدد الطلاب لكل حصة) =============================
 
 export const GET = handler(async () => {
   const teacher = await getPortalTeacher();
@@ -24,6 +24,16 @@ export const GET = handler(async () => {
         orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
       })
     : [];
+
+  // عدد الطلاب النشطين في كل مجموعة — «حضرتك جاي إمتى وعدد الطلاب فيها كذا»
+  const counts = groupIds.length
+    ? await db.studentGroup.groupBy({
+        by: ["groupId"],
+        where: { groupId: { in: groupIds }, status: "ACTIVE" },
+        _count: true,
+      })
+    : [];
+  const studentsByGroup = new Map(counts.map((c) => [c.groupId, c._count]));
 
   const today = todayStr();
   const todayDow = new Date(`${today}T12:00:00Z`).getUTCDay();
@@ -47,6 +57,7 @@ export const GET = handler(async () => {
           endTime: s.endTime,
           isPast: dow === todayDow && s.endTime < nowHM,
           isNow: dow === todayDow && s.startTime <= nowHM && s.endTime > nowHM,
+          students: s.groupId ? studentsByGroup.get(s.groupId) ?? 0 : 0,
         };
       }),
     };

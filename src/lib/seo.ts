@@ -34,7 +34,6 @@ export const PRIVATE_PATHS = [
   "/portal",
   "/teacher",
   "/staff-screen",
-  "/academia",
   "/s/",
   "/a/",
   "/c/",

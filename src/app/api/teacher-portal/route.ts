@@ -76,21 +76,10 @@ export const GET = handler(async () => {
     }
   }
 
-  // المستحقات والإحصائيات
-  const [settlements, studentCount] = await Promise.all([
-    db.teacherSettlement.findMany({
-      where: { teacherId: teacher.id },
-      select: { type: true, amount: true },
-    }),
-    db.studentGroup.count({ where: { groupId: { in: groupIds }, status: "ACTIVE" } }),
-  ]);
-  const balance = settlements.reduce((a, s) => a + s.amount, 0);
-  const totalEarned = settlements.filter((s) => s.type === "EARNED").reduce((a, s) => a + s.amount, 0);
-  const monthSettlements = await db.teacherSettlement.findMany({
-    where: { teacherId: teacher.id, type: "EARNED", date: { gte: `${today.slice(0, 7)}-01` } },
-    select: { amount: true },
-  });
-  const thisMonthEarned = monthSettlements.reduce((a, s) => a + s.amount, 0);
+  // إحصائيات بسيطة — مجموعات + عدد الطلاب (بدون أي بيانات مالية — البورتال جدول + عدد + رسالة)
+  const studentCount = groupIds.length
+    ? await db.studentGroup.count({ where: { groupId: { in: groupIds }, status: "ACTIVE" } })
+    : 0;
 
   return ok({
     teacher: {
@@ -128,9 +117,6 @@ export const GET = handler(async () => {
     stats: {
       groups: groups.length,
       students: studentCount,
-      balance,
-      thisMonthEarned,
-      totalEarned,
     },
   });
 });

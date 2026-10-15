@@ -8,7 +8,7 @@ import {
   ShieldCheck, Zap, Sparkles, Building2, Users, CalendarDays, ClipboardCheck,
   RefreshCw, Clock, TrendingUp, Lock, FileKey, ScrollText, ArrowDown,
   Menu, X, MonitorSmartphone, Landmark, Database, Cog, BrainCircuit,
-  MousePointerClick, BookOpen, Puzzle, CheckCircle2,
+  MousePointerClick, Puzzle, CheckCircle2,
 } from "lucide-react";
 import { api, type SessionUser } from "./lib";
 import { AlNokhbaMark } from "./shared";
@@ -103,25 +103,13 @@ const ROLES = [
   },
 ];
 
-/* منظومة النخبة — طبقة الإدارة بتربط المنتجات */
+/* منظومة النخبة — النخبة سنترز: حضور + مالية */
 const ECOSYSTEM = [
-  {
-    icon: <GraduationCap className="w-6 h-6" />,
-    name: "AlNokhba Edu",
-    desc: "منصة التعليم: كويزات وواجبات وتفاعل يومي بين المدرس والطالب — والأداء بيرجع للإدارة كتقارير.",
-    tone: "brand" as const,
-  },
   {
     icon: <Building2 className="w-6 h-6" />,
     name: "AlNokhba Centers",
     desc: "التشغيل اليومي للسنتر: حضور، حسابات بالقرش، حصص وقاعات، اشتراكات، ووضع طوارئ أوفلاين.",
     tone: "current" as const,
-  },
-  {
-    icon: <BookOpen className="w-6 h-6" />,
-    name: "AlNokhba QB",
-    desc: "بنك أسئلة منظم: امتحانات جاهزة وطباعة احترافية — وسؤال واحد بيتعيد استخدامه في كل حتة.",
-    tone: "teal" as const,
   },
   {
     icon: <Puzzle className="w-6 h-6" />,
@@ -478,9 +466,7 @@ export function LandingPage() {
                 <span
                   className={
                     "w-11 h-11 rounded-xl grid place-items-center shrink-0 " +
-                    (e.tone === "brand" ? "nk-brand-grad text-white shadow-sm"
-                      : e.tone === "teal" ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
-                        : e.tone === "current" ? "nk-brand-bg-soft nk-brand-text border border-[color:var(--c-primary)]/20"
+                    (e.tone === "current" ? "nk-brand-bg-soft nk-brand-text border border-[color:var(--c-primary)]/20"
                           : "bg-muted border border-border text-muted-foreground")
                   }
                 >

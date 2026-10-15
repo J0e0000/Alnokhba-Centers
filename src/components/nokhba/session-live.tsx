@@ -16,7 +16,7 @@ import { showSuccess } from "./success-bar";
 import { ScanView } from "./scan";
 import { SessionQrCard } from "./session-qr-card";
 import { useCaps } from "./caps";
-import { RecipientPickerModal, SendQueueModal, buildReportMessage, recipientPhone, type ReportStudent, type ReportContext } from "./session-report";
+import { RecipientPickerModal, SendQueueModal, recipientPhone, type ReportStudent, type ReportContext } from "./session-report";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -25,9 +25,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 /* ============================================================
-   مساحة عمل الحصة — خط الأنابيب بخمس مراحل (نقل من المنصة الأساسية):
-   ① الحضور  ② التفاعل والواجب  ③ الامتحانات  ④ المراجعة  ⑤ التقرير
-   الخط مش معالج خطوات (wizard) — التنقل حر بين المراحل، والشغل بيتحفظ
+   مساحة عمل الحصة — خط الأنابيب بثلاث مراحل:
+   ① الحضور  ② المراجعة  ③ التقرير (رسائل أولياء الأمور + الإنهاء)
+   الخط مش معالج خطوات (wizard) — التنقل حر بين المراحل، والحضور بيتحفظ
    لحظيًا، والقفل قرار صريح (الحفظ ≠ الإنهاء).
    محفوظ من السنترز: المسح والـ QR، الحسابات (تحميل/نصيب مدرس)،
    المدفوعات، الاعتمادات (إلغاء/إعادة فتح)، الطباعة والتصدير، مضادات الغش.
@@ -39,7 +39,6 @@ type SessionDetail = {
     subject: string; grade: string; groupName: string; teacher: string; price: number;
     teacherPercent: number; openedAt: string | null; closedAt: string | null;
     studentSource: string; studentCodeLength: number | null; allowUnregistered: boolean;
-    lessonTopic: string; homeworkText: string; videoLink: string;
   };
   economics: {
     presentCount: number; totalRevenue: number; teacherShare: number; centerShare: number;
@@ -49,12 +48,9 @@ type SessionDetail = {
     id: string; studentId: string | null; name: string; code: string; unregistered: boolean;
     status: "PRESENT" | "LATE" | "EXCUSED"; charged: number | null; at: string | null;
     method: string; phone: string | null; parentPhone: string | null;
-    homeworkStatus: string | null; interactionPlus: number; interactionMinus: number;
     riskScore: number; riskFlags: string[];
   }[];
   absent: { studentId: string; name: string; code: string; phone: string | null; parentPhone: string | null }[];
-  exam: { id: string; title: string; maxScore: number } | null;
-  examScores: { studentId: string; score: number | null }[];
 };
 
 // محاولات الحضور العام (نجاح/رفض) — مصدر قسم "النشاط المشبوه" (device-locked attendance)
@@ -91,22 +87,18 @@ type SessionPayments = {
   payments: { id: string; type: string; amount: number; method: string | null; createdAt: string; student: { name: string; code: string } | null; receiptNumber: string | null }[];
 };
 
-// ===== مراحل الخط — نفس مراحل المنصة الأساسية =====
-type TabKey = "attendance" | "interaction" | "exams" | "review" | "report";
+// ===== مراحل الخط — حضور، مراجعة، تقرير =====
+type TabKey = "attendance" | "review" | "report";
 const TABS: { key: TabKey; n: number; title: string; sub: string }[] = [
   { key: "attendance", n: 1, title: "الحضور", sub: "سجّل حاضر وغائب" },
-  { key: "interaction", n: 2, title: "التفاعل والواجب", sub: "للحاضرين فقط" },
-  { key: "exams", n: 3, title: "الامتحانات", sub: "الدرجات والتصحيح" },
-  { key: "review", n: 4, title: "المراجعة", sub: "راجع قبل الإغلاق" },
-  { key: "report", n: 5, title: "التقرير", sub: "التقرير وإنهاء الحصة" },
+  { key: "review", n: 2, title: "المراجعة", sub: "راجع قبل الإغلاق" },
+  { key: "report", n: 3, title: "التقرير", sub: "التقرير وإنهاء الحصة" },
 ];
-
-const HW_LABEL: Record<string, string> = { DONE: "✓ مكتمل", PARTIAL: "◐ ناقص", MISSING: "○ لم يتم" };
 
 // ===== حالة المراحل الصريحة (نقل useStageState): إنجاز المرحلة قرار مدرس مش نسبة =====
 function readStage(sid: string): { attendanceComplete: boolean; tab: TabKey | null } {
   try {
-    const raw = localStorage.getItem(`nk_stage_v1_${sid}`);
+    const raw = localStorage.getItem(`nk_stage_v2_${sid}`);
     if (raw) return JSON.parse(raw);
   } catch { /* ignore */ }
   return { attendanceComplete: false, tab: null };
@@ -114,7 +106,7 @@ function readStage(sid: string): { attendanceComplete: boolean; tab: TabKey | nu
 function writeStage(sid: string, patch: Partial<{ attendanceComplete: boolean; tab: TabKey }>) {
   try {
     const next = { ...readStage(sid), ...patch };
-    localStorage.setItem(`nk_stage_v1_${sid}`, JSON.stringify(next));
+    localStorage.setItem(`nk_stage_v2_${sid}`, JSON.stringify(next));
   } catch { /* ignore */ }
 }
 
@@ -123,11 +115,10 @@ type RosterRow = {
   studentId: string; name: string; code: string;
   phone: string | null; parentPhone: string | null;
   attId: string | null; status: "PRESENT" | "LATE" | "EXCUSED" | null; charged: number | null;
-  homeworkStatus: string | null; interactionPlus: number; interactionMinus: number;
 };
 
 /**
- * مساحة عمل الحصة — خط أنابيب 5 مراحل.
+ * مساحة عمل الحصة — خط أنابيب 3 مراحل.
  * نفس مكان العمل للكل: المدير والاستقبال (الدور بيحدد الأزرار المتاحة).
  */
 export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab, qrFullscreen }: {
@@ -145,8 +136,7 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
     setTabState(k);
     writeStage(sessionId, { tab: k });
   }, [sessionId]);
-  // وضع تعديل حصة قديمة (نقل من المنصة الأساسية): مقفولة + صلاحية → الواجب/التفاعل/الامتحان/البيانات تتعدل
-  const [editPast, setEditPast] = useState(false);
+  // وضع تعديل حصة قديمة اتشال — الحضور القديم بيتعدل بإعادة فتح الحصة (عشان الحسابات)
   const [autoFullQr, setAutoFullQr] = useState<boolean>(qrFullscreen === true);
   const [closeOpen, setCloseOpen] = useState(false);
   const [reopenOpen, setReopenOpen] = useState(false);
@@ -233,10 +223,8 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
   const closed = s?.status === "CLOSED";
   const cancelled = s?.status === "CANCELLED";
   const isOpenMode = s?.studentSource === "OPEN";
-  // editable = الحصة مفتوحة، أو مقفولة مع وضع التعديل + صلاحية (نقل من المنصة الأساسية)
-  const editAllowed = isManager || userCan(user, "EDIT_ATTENDANCE");
-  const editPastOrOpen = (!closed && !cancelled) || (closed && editAllowed && editPast);
-  const canEditRecords = editPastOrOpen;
+  // editable = الحصة مفتوحة (التعديل القديم كله عن طريق إعادة الفتح)
+  const canEditRecords = !closed && !cancelled;
 
   // صفوف الكشف الموحدة (ROSTER): الحاضرين (صفوف حقيقية) + غير المرصد/الغايبين من الكشف
   const roster: RosterRow[] = useMemo(() => {
@@ -247,14 +235,12 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
         studentId: a.studentId as string, name: a.name, code: a.code,
         phone: a.phone, parentPhone: a.parentPhone,
         attId: a.id, status: a.status, charged: a.charged,
-        homeworkStatus: a.homeworkStatus, interactionPlus: a.interactionPlus, interactionMinus: a.interactionMinus,
       }));
     const byId = new Set(present.map((p) => p.studentId));
     const rest: RosterRow[] = (data.absent ?? []).filter((x) => !byId.has(x.studentId)).map((x) => ({
       studentId: x.studentId, name: x.name, code: x.code,
       phone: x.phone, parentPhone: x.parentPhone,
       attId: null, status: null, charged: null,
-      homeworkStatus: null, interactionPlus: 0, interactionMinus: 0,
     }));
     return [...present, ...rest];
   }, [data, isOpenMode]);
@@ -263,11 +249,6 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
   const presentCount = roster.filter((r) => r.status !== null && r.status !== "EXCUSED").length;
   const lateCount = roster.filter((r) => r.status === "LATE").length;
   const unmarked = roster.filter((r) => r.status === null).length;
-  // الواجب: للحاضرين بس (زي المنصة الأساسية — الغايب مش applicable)
-  const hwApplicable = roster.filter((r) => r.status !== null).length;
-  const hwDone = roster.filter((r) => r.status !== null && r.homeworkStatus === "DONE").length;
-  const interactionCount = roster.filter((r) => r.status !== null && (r.interactionPlus > 0 || r.interactionMinus > 0)).length;
-  const gradedCount = data?.examScores?.filter((sc) => sc.score != null).length ?? 0;
 
   function flashSaved(studentId: string) {
     setSavedFlash((m) => ({ ...m, [studentId]: true }));
@@ -312,15 +293,6 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
       setBulkOpen(false);
       load();
     } catch { /* toast */ } finally { setBusy(false); }
-  }
-
-  // ===== أفعال التفاعل والواجب =====
-  async function saveRecord(studentId: string, payload: { homeworkStatus?: "DONE" | "PARTIAL" | "MISSING" | null; interaction?: "plus" | "minus" }) {
-    try {
-      await api(`/api/sessions/${sessionId}/records`, { method: "POST", body: { studentId, ...payload } });
-      flashSaved(studentId);
-      load();
-    } catch { /* toast */ }
   }
 
   // ===== أفعال الحصة =====
@@ -405,18 +377,15 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
       window.dispatchEvent(new CustomEvent("nk-sessions-changed"));
       setReopenOpen(false);
       setReopenReason("");
-      setEditPast(false);
       load();
     } catch { /* toast */ } finally { setBusy(false); }
   }
 
-  // ===== حالة كل مرحلة (نفس حسابات المنصة الأساسية: ✓ مكتمل / ! محتاج انتباه / ● نشطة / رقم) =====
+  // ===== حالة كل مرحلة (✓ مكتمل / ! محتاج انتباه / ● نشطة / رقم) =====
   const stepStateOf = useCallback((key: TabKey): "done" | "attention" | "active" => {
     if (cancelled) return "active";
     if (closed) {
       if (key === "attendance" || key === "report") return "done";
-      if (key === "interaction") return "done";
-      if (key === "exams") return (data?.exam ? "done" : "active");
       return "active";
     }
     if (key === "attendance") {
@@ -426,22 +395,14 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
       if (unmarked === 0 && rosterTotal > 0) return "done";
       return "active";
     }
-    if (key === "interaction") {
-      if (isOpenMode) return "active";
-      if (hwApplicable === 0) return "active";
-      if (hwDone >= hwApplicable) return "done";
-      if (hwDone > 0) return "attention";
-      return "active";
-    }
-    if (key === "exams") return data?.exam ? "done" : "active";
     if (key === "review") return "active";
     return closed ? "done" : "active";
-  }, [cancelled, closed, data?.exam, isOpenMode, presentCount, rosterTotal, sessionId, unmarked, hwApplicable, hwDone, data?.attendance.length]);
+  }, [cancelled, closed, isOpenMode, presentCount, rosterTotal, sessionId, unmarked, data?.attendance.length]);
 
   const completeAttendanceStage = useCallback(() => {
     writeStage(sessionId, { attendanceComplete: true });
-    setTab(presentCount > 0 && !isOpenMode ? "interaction" : closed ? "report" : "review");
-  }, [sessionId, presentCount, isOpenMode, closed, setTab]);
+    setTab(closed ? "report" : "review");
+  }, [sessionId, closed, setTab]);
 
   const viewAbsentFromReport = useCallback(() => {
     setAbsentIntent((n) => n + 1);
@@ -450,14 +411,11 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
 
   if (!data || !s || !e) return <Loading />;
 
-  const isOpenSession = isOpenMode; // حضور مفتوح — مفيش كشف/تفاعل/واجب/درجات
+  const isOpenSession = isOpenMode; // حضور مفتوح — مفيش كشف
   const canCancelDirect = userCan(user, "CANCEL_SESSION");
   const canCancelRequest = userCanRequest(user, "REQUEST_SESSION_CANCELLATION");
   const canEnd = userCan(user, "END_SESSION");
-  // المراحل المعروضة: الحضور المفتوح = 3 مراحل بس (مفيش كشف)
-  const visibleTabs: TabKey[] = isOpenSession
-    ? ["attendance", "review", "report"]
-    : ["attendance", "interaction", "exams", "review", "report"];
+  const visibleTabs: TabKey[] = ["attendance", "review", "report"];
   const activeTab = TABS.find((t) => t.key === tab) ?? TABS[0];
 
   return (
@@ -531,33 +489,11 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
           </DropdownMenu>
         </div>
 
-        {/* وضع تعديل حصة قديمة (نقل من المنصة الأساسية) */}
-        {closed && !cancelled && editAllowed && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              className={cn("rounded-xl px-4 py-2 text-[.72rem] font-extrabold transition",
-                editPast ? "bg-white text-[var(--c-primary)]" : "bg-white/10 border border-white/25 text-white hover:bg-white/15")}
-              aria-pressed={editPast}
-              onClick={() => setEditPast((v) => !v)}
-            >
-              {editPast ? "✓ إنهاء التعديل" : "✎ تعديل بيانات هذه الحصة"}
-            </button>
-          </div>
-        )}
-        {closed && editPast && (
-          <p className="nk-notice mt-3 !bg-white/10 !border-white/25 !text-white/90">
-            وضع التعديل مفعّل — عدّل الواجب والتفاعل والدرجات وبيانات الحصة من المراحل فوق، وكل تغيير بيتحفظ فورًا.
-            تعديل الحضور نفسه للمدير بيتم بإعادة فتح الحصة (عشان الحسابات).
-          </p>
-        )}
-
         {/* الملخص المصغر الدائم — عمره ما بيختفي مع تنقل المراحل */}
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mt-4">
+        <div className={cn("grid gap-2 mt-4", isOpenSession ? "grid-cols-2" : "grid-cols-3")}>
           <div className="nk-mini"><small>{isOpenSession ? "المسجلين" : "الطلاب"}</small><b dir="ltr" className="text-end">{isOpenSession ? data.attendance.length : rosterTotal}</b></div>
           <div className="nk-mini nk-mini--ok"><small>الحضور</small><b dir="ltr" className="text-end">{isOpenSession ? data.attendance.length : `${presentCount} / ${rosterTotal}`}</b></div>
           {!isOpenSession && <div className="nk-mini"><small>لم يُرصد</small><b dir="ltr" className="text-end">{unmarked}</b></div>}
-          {!isOpenSession && <div className="nk-mini nk-mini--gold"><small>الواجب</small><b dir="ltr" className="text-end">{hwDone} / {hwApplicable}</b></div>}
-          {!isOpenSession && <div className="nk-mini nk-mini--info"><small>الدرجات</small><b dir="ltr" className="text-end">{data.exam ? `${gradedCount} / ${presentCount}` : "—"}</b></div>}
         </div>
       </div>
 
@@ -609,48 +545,24 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
         />
       )}
 
-      {/* =========================== ② التفاعل والواجب =========================== */}
-      {tab === "interaction" && !cancelled && !isOpenSession && (
-        <InteractionStage
-          data={data} roster={roster} editable={canEditRecords}
-          onRecord={saveRecord} savedFlash={savedFlash}
-          hwDone={hwDone} hwApplicable={hwApplicable}
-          onGoNext={() => setTab("exams")}
-        />
-      )}
-
-      {/* =========================== ③ الامتحانات =========================== */}
-      {tab === "exams" && !cancelled && !isOpenSession && (
-        <ExamsStage
-          data={data} sessionId={sessionId} roster={roster}
-          editable={canEditRecords}
-          onGoNext={() => setTab("review")}
-          onSaved={load}
-        />
-      )}
-
-      {/* =========================== ④ المراجعة =========================== */}
+      {/* =========================== ② المراجعة =========================== */}
       {tab === "review" && !cancelled && (
         <ReviewStage
           isOpenSession={isOpenSession} closed={closed}
           rosterTotal={rosterTotal} presentCount={presentCount} unmarked={unmarked}
-          interactionCount={interactionCount}
-          hwDone={hwDone} hwApplicable={hwApplicable}
-          hasExam={!!data.exam} gradedCount={gradedCount}
-          issues={buildIssues(isOpenSession, closed, unmarked, presentCount, hwDone, hwApplicable, !!data.exam, gradedCount)}
+          issues={buildIssues(isOpenSession, closed, unmarked, presentCount)}
           onGoTo={setTab}
         />
       )}
 
-      {/* =========================== ⑤ التقرير =========================== */}
+      {/* =========================== ③ التقرير =========================== */}
       {tab === "report" && !cancelled && (
         <ReportStage
-          data={data} user={user} sessionId={sessionId}
+          data={data} user={user}
           isOpenSession={isOpenSession} closed={closed}
           roster={roster} presentCount={presentCount}
-          unmarked={unmarked} hwDone={hwDone} hwApplicable={hwApplicable}
+          unmarked={unmarked}
           payments={payments} paymentsLoading={paymentsLoading}
-          editable={canEditRecords}
           canEnd={canEnd}
           onCloseOpen={() => setCloseOpen(true)}
           closeBusy={busy}
@@ -842,7 +754,7 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
               {isOpenSession && s.studentCodeLength && <InfoCell label="طول الكود" value={`${s.studentCodeLength} أرقام`} mono />}
             </div>
             <p className="text-[11px] font-bold text-muted-foreground bg-muted/50 rounded-xl px-3 py-2 leading-relaxed">
-              الحفظ مش إنهاء — الحضور والتفاعل والواجب والدرجات بتتسجل لحظيًا وبتفضل محفوظة لو خرجت ورجعت. الإنهاء بيتعمل من مرحلة «التقرير».
+              الحفظ مش إنهاء — الحضور بيتسجل لحظيًا وبيفضل محفوظ لو خرجت ورجعت. الإنهاء بيتعمل من مرحلة «التقرير».
             </p>
           </div>
         </DialogContent>
@@ -853,15 +765,11 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
 
 function buildIssues(
   isOpenSession: boolean, closed: boolean, unmarked: number, presentCount: number,
-  hwDone: number, hwApplicable: number, hasExam: boolean, gradedCount: number,
 ): string[] {
   if (isOpenSession || closed) return [];
   const list: string[] = [];
   if (unmarked > 0 && presentCount > 0) list.push(`${unmarked} طالب لم يُرصد حضورهم`);
   if (unmarked > 0 && presentCount === 0) list.push("مفيش أي حضور مسجل لسه");
-  if (hwApplicable > hwDone) list.push(`الواجب مكتمل لـ ${hwDone} من ${hwApplicable}`);
-  if (!hasExam) list.push("لا يوجد امتحان مرتبط بهذه الحصة (اختياري)");
-  else if (gradedCount < presentCount) list.push(`الدرجات مرصودة لـ ${gradedCount} من ${presentCount}`);
   return list;
 }
 
@@ -1060,135 +968,6 @@ function AttendanceStage({ data, user, caps, sessionId, roster, isOpenSession, c
   );
 }
 
-/* ============================================================
-   ② مرحلة التفاعل والواجب — للحاضرين بس (نقل من المنصة الأساسية):
-      ＋ تفاعل / − مخالفة (عدّاد ضغطات) + واجب 3 حالات — كل ضغطة بتتحفظ فورًا.
-============================================================ */
-function InteractionStage({ data, roster, editable, onRecord, savedFlash, hwDone, hwApplicable, onGoNext }: {
-  data: SessionDetail; roster: RosterRow[]; editable: boolean;
-  onRecord: (studentId: string, payload: { homeworkStatus?: "DONE" | "PARTIAL" | "MISSING" | null; interaction?: "plus" | "minus" }) => void;
-  savedFlash: Record<string, boolean>;
-  hwDone: number; hwApplicable: number; onGoNext: () => void;
-}) {
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"present" | "all">("present");
-
-  const rows = useMemo(() => {
-    const q = search.trim();
-    return roster.filter((r) => {
-      if (filter === "present" && r.status === null) return false;
-      if (!q) return true;
-      return [r.name, r.code].join(" ").includes(q);
-    });
-  }, [roster, search, filter]);
-
-  return (
-    <div className="space-y-3 nk-anim-view">
-      <div className="flex justify-end">
-        <button
-          className="rounded-xl px-4 py-2.5 text-[.78rem] font-extrabold !min-h-[2.75rem] shadow active:scale-[0.98] transition nk-brand-grad text-white"
-          onClick={onGoNext}
-        >
-          التالي — الامتحانات ←
-        </button>
-      </div>
-      <div className="nk-notice">
-        {editable
-          ? "التفاعل والواجب يظهران للحاضرين — غير المرصد مستثنى تلقائيًا. كل ضغطة تُحفظ فورًا."
-          : "الحصة مقفولة — العرض للقراءة فقط. اضغط «✎ تعديل بيانات هذه الحصة» فوق للتعديل."}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          className="rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm font-semibold flex-1 min-w-[180px]"
-          placeholder="🔍 بحث بالاسم أو الكود..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="بحث"
-        />
-        <div className="flex rounded-xl overflow-hidden border border-border">
-          {([["present", "الحاضرون"], ["all", "الكل"]] as [typeof filter, string][]).map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setFilter(key)}
-              className={cn("px-3 py-2 text-xs font-extrabold", filter === key ? "nk-brand-bg text-white" : "bg-card text-muted-foreground")}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <span className="nk-pill-pending">الواجب: <span dir="ltr" className="nk-num">{hwDone} / {hwApplicable}</span></span>
-      </div>
-
-      <div className="grid gap-2">
-        {rows.map((r) => {
-          const isUnmarked = r.status === null;
-          return (
-            <div key={r.studentId} className="nk-card rounded-2xl p-3.5 space-y-2.5" style={{ opacity: isUnmarked ? 0.65 : 1 }}>
-              <div className="flex items-center justify-between gap-2 w-full min-w-0">
-                <span className="min-w-0">
-                  <b className="text-sm truncate block">{r.name}</b>
-                  <small className="text-[11px] font-bold text-muted-foreground">
-                    <span className="nk-num" dir="ltr">{r.code}</span> · الحضور: {r.status ? ATTENDANCE_LABEL[r.status] : "لم يُرصد"}
-                    {savedFlash[r.studentId] && <span className="ms-1.5 text-emerald-600 dark:text-emerald-300">✓ تم الحفظ</span>}
-                  </small>
-                </span>
-                {isUnmarked && <span className="nk-pill-neutral shrink-0">غير مرصد — غير applicable</span>}
-              </div>
-
-              {!isUnmarked && (
-                <div className="flex flex-wrap items-center gap-2 w-full">
-                  {/* عدّادات التفاعل */}
-                  <span className="nk-seg">
-                    <button
-                      disabled={!editable}
-                      onClick={() => onRecord(r.studentId, { interaction: "plus" })}
-                      title="إجابة وتفاعل"
-                    >
-                      ＋ تفاعل{r.interactionPlus > 0 && <span className="ms-1 nk-num">({r.interactionPlus})</span>}
-                    </button>
-                    <button
-                      disabled={!editable}
-                      onClick={() => onRecord(r.studentId, { interaction: "minus" })}
-                      title="مخالفة سلوكية"
-                    >
-                      − مخالفة{r.interactionMinus > 0 && <span className="ms-1 nk-num">({r.interactionMinus})</span>}
-                    </button>
-                  </span>
-                  {/* الواجب — 3 حالات */}
-                  <span className="nk-seg ms-auto" role="group" aria-label={`${r.name} homework`}>
-                    {(["DONE", "PARTIAL", "MISSING"] as const).map((v) => (
-                      <button
-                        key={v}
-                        className={r.homeworkStatus === v ? (v === "DONE" ? "nk-on-hw-done" : v === "PARTIAL" ? "nk-on-hw-partial" : "nk-on-hw-missing") : ""}
-                        aria-pressed={r.homeworkStatus === v}
-                        disabled={!editable}
-                        onClick={() => onRecord(r.studentId, { homeworkStatus: r.homeworkStatus === v ? null : v })}
-                      >
-                        {HW_LABEL[v]}
-                      </button>
-                    ))}
-                  </span>
-                </div>
-              )}
-              {isUnmarked && editable && (
-                <small className="text-[11px] font-bold text-muted-foreground">سجّل حضوره الأول من مرحلة الحضور ليظهر هنا.</small>
-              )}
-            </div>
-          );
-        })}
-        {rows.length === 0 && (
-          <p className="text-center py-6 text-sm text-muted-foreground font-bold">
-            {filter === "present" && hwApplicable === 0
-              ? "سجّل الحضور أولاً ليظهروا هنا"
-              : "لا نتائج مطابقة"}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // keep unused imports referenced
 void Chip;
 void EmptyState;
@@ -1203,285 +982,11 @@ void ReceiptText;
 void Download;
 
 /* ============================================================
-   ③ مرحلة الامتحانات — إعداد + رصد (نقل من المنصة الأساسية):
-      امتحان واحد لكل حصة: عنوان + درجة نهائية، وشبكة رصد للحاضرين.
-      مسودة الدرجات بتتحفظ في الجهاز (نفس عقد المنصة الأساسية) — لو الجلسة
-      قفلت بنص الرصد بترجع كاملة. الغايب مش بياخد درجة.
+   ② مرحلة المراجعة — فحص خفيف قبل الإنهاء:
+      كشف الحضور + ملاحظات قبل الإنهاء — مش بيمنع الإنهاء.
 ============================================================ */
-const examDraftKey = (sid: string) => `nk_exam_draft_v1_${sid || "none"}`;
-
-function ExamsStage({ data, sessionId, roster, editable, onGoNext, onSaved }: {
-  data: SessionDetail; sessionId: string; roster: RosterRow[]; editable: boolean;
-  onGoNext: () => void; onSaved: () => void;
-}) {
-  const [view, setView] = useState<"list" | "setup" | "grade">("list");
-  const [setup, setSetup] = useState<{ title: string; max: number }>(() => {
-    try {
-      const raw = localStorage.getItem(examDraftKey(sessionId));
-      if (raw) { const d = JSON.parse(raw); if (d?.setup) return d.setup; }
-    } catch { /* ignore */ }
-    return { title: `امتحان ${new Date().toLocaleDateString("ar-EG")}`, max: 20 };
-  });
-  const [rows, setRows] = useState<Record<string, string>>(() => {
-    try {
-      const raw = localStorage.getItem(examDraftKey(sessionId));
-      if (raw) { const d = JSON.parse(raw); if (d?.rows) return d.rows; }
-    } catch { /* ignore */ }
-    return {};
-  });
-  const [restored, setRestored] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [editMax, setEditMax] = useState<string | null>(null);
-
-  const present = roster.filter((r) => r.status !== null);
-  const exam = data.exam;
-  const scoreMap = new Map((data.examScores ?? []).map((s) => [s.studentId, s.score]));
-
-  // استرجاع المسودة عند الدخول
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(examDraftKey(sessionId));
-      if (raw) {
-        const d = JSON.parse(raw);
-        if (d?.rows && Object.keys(d.rows).length) { setRestored(true); setView("grade"); }
-      }
-    } catch { /* ignore */ }
-     
-  }, []);
-
-  function writeDraft(nextSetup: { title: string; max: number } | null, nextRows: Record<string, string> | null) {
-    try {
-      localStorage.setItem(examDraftKey(sessionId), JSON.stringify({ setup: nextSetup ?? setup, rows: nextRows ?? rows, savedAt: new Date().toISOString() }));
-    } catch { /* ignore */ }
-  }
-  function clearDraft() {
-    try { localStorage.removeItem(examDraftKey(sessionId)); } catch { /* ignore */ }
-  }
-
-  async function saveExam() {
-    setSaving(true);
-    try {
-      const clean = Object.entries(rows)
-        .map(([studentId, v]) => ({ studentId, score: v.trim() === "" ? null : Number(v) }))
-        .filter((r): r is { studentId: string; score: number } => r.score !== null && Number.isFinite(r.score));
-      if (!setup.title.trim()) { toast.error("اكتب عنوان الامتحان."); return; }
-      const max = Number(setup.max);
-      if (!Number.isFinite(max) || max <= 0) { toast.error("الدرجة النهائية غير صحيحة."); return; }
-      for (const r of clean) {
-        if ((r.score as number) > max) { toast.error(`فيه درجة أكبر من النهائي (${max}) — راجع الشبكة.`); return; }
-      }
-      await api(`/api/sessions/${sessionId}/exam`, { method: "POST", body: { title: setup.title.trim(), maxScore: max } });
-      await api(`/api/sessions/${sessionId}/exam`, { method: "POST", body: { scores: clean.map((r) => ({ studentId: r.studentId, score: r.score })) } });
-      toast.success(`الامتحان اتسجل — ${clean.length} درجة.`);
-      clearDraft();
-      setRows({});
-      setView("list");
-      onSaved();
-    } catch { /* toast */ } finally { setSaving(false); }
-  }
-
-  async function saveSingleScore(studentId: string, value: string) {
-    const max = exam?.maxScore ?? Number(setup.max);
-    const n = Number(value);
-    if (value.trim() === "") {
-      try {
-        await api(`/api/sessions/${sessionId}/exam`, { method: "POST", body: { scores: [{ studentId, score: null }] } });
-        toast.success("الدرجة اتمسحت.");
-        onSaved();
-      } catch { /* toast */ }
-      return;
-    }
-    if (!Number.isFinite(n) || n < 0) { toast.error("الدرجة لازم تكون رقم."); return; }
-    if (n > max) { toast.error(`الدرجة أكبر من النهائي (${max}).`); return; }
-    try {
-      await api(`/api/sessions/${sessionId}/exam`, { method: "POST", body: { scores: [{ studentId, score: n }] } });
-      flashRow(studentId);
-      onSaved();
-    } catch { /* toast */ }
-  }
-
-  async function saveMax(newMax: string) {
-    const n = Number(newMax);
-    if (!Number.isFinite(n) || n <= 0) { toast.error("الدرجة النهائية غير صحيحة."); return; }
-    try {
-      await api(`/api/sessions/${sessionId}/exam`, { method: "POST", body: { title: exam?.title ?? setup.title, maxScore: n } });
-      toast.success("الدرجة النهائية اتعدلت — درجات الطلاب زي ما هي (نفس قاعدة المنصة الأساسية).");
-      setEditMax(null);
-      onSaved();
-    } catch { /* toast */ }
-  }
-
-  const [flash, setFlash] = useState<Record<string, boolean>>({});
-  function flashRow(studentId: string) {
-    setFlash((m) => ({ ...m, [studentId]: true }));
-    setTimeout(() => setFlash((m) => ({ ...m, [studentId]: false })), 1400);
-  }
-
-  // ===== شبكة الرصد (امتحان جديد أو مسودة مسترجعة) =====
-  if (view === "grade") {
-    return (
-      <div className="space-y-3 nk-anim-view">
-        <div className="flex justify-between items-center gap-2 flex-wrap">
-          <b className="text-sm">{setup.title} · النهائي: <span className="nk-num">{setup.max}</span></b>
-          <button className="nk-wf-ghost" onClick={() => { setSetup({ title: exam?.title ?? setup.title, max: exam?.maxScore ?? setup.max }); setView("setup"); }}>✎ تعديل الإعداد</button>
-        </div>
-        {restored && (
-          <div className="nk-notice">
-            ↺ تم استرجاع الدرجات المُدخلة قبل انقطاع الجلسة — كمّل رصد واضغط حفظ.
-          </div>
-        )}
-        <div className="grid gap-1.5">
-          {present.map((r) => (
-            <div key={r.studentId} className="nk-att-row">
-              <span className="nk-att-row__name">
-                <b className="truncate">{r.name}</b>
-                <small><span className="nk-num" dir="ltr">{r.code}</span>{flash[r.studentId] ? " · ✓ تم الحفظ" : ""}</small>
-              </span>
-              <input
-                type="number" min={0} max={setup.max} step="0.5"
-                inputMode="decimal"
-                value={rows[r.studentId] ?? ""}
-                disabled={!editable}
-                onChange={(ev) => { setRows((m) => ({ ...m, [r.studentId]: ev.target.value })); writeDraft(null, { ...rows, [r.studentId]: ev.target.value }); }}
-                onKeyDown={(ev) => { if (ev.key === "Enter") { const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('.nk-exam-input')); const i = inputs.indexOf(ev.currentTarget); inputs[i + 1]?.focus(); } }}
-                className="nk-exam-input w-24 rounded-xl border-2 border-input bg-card px-3 py-2 text-sm font-extrabold nk-num text-center"
-                placeholder="—"
-                aria-label={`درجة ${r.name}`}
-              />
-            </div>
-          ))}
-          {present.length === 0 && (
-            <p className="text-center py-6 text-sm text-muted-foreground font-bold">سجّل الحضور الأول — الغايب مش بياخد درجة.</p>
-          )}
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={saveExam}
-            disabled={saving || !editable || present.length === 0}
-            className="flex-1 nk-brand-bg text-white font-extrabold rounded-xl py-3.5 shadow flex items-center justify-center gap-2 disabled:opacity-60"
-          >
-            {saving ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : "💾"} حفظ الامتحان
-          </button>
-          <button onClick={() => setView("list")} className="rounded-xl border border-border bg-card font-bold px-5">إلغاء</button>
-        </div>
-      </div>
-    );
-  }
-
-  // ===== إعداد امتحان جديد =====
-  if (view === "setup") {
-    return (
-      <div className="space-y-3 nk-anim-view max-w-xl">
-        <label className="block">
-          <span className="block text-xs font-extrabold mb-1.5">عنوان الامتحان</span>
-          <input className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm font-semibold" value={setup.title} onChange={(ev) => setSetup({ ...setup, title: ev.target.value })} />
-        </label>
-        <label className="block max-w-[220px]">
-          <span className="block text-xs font-extrabold mb-1.5">الدرجة النهائية</span>
-          <input type="number" min={1} className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm font-semibold nk-num" value={setup.max} onChange={(ev) => setSetup({ ...setup, max: Number(ev.target.value) })} />
-        </label>
-        <div className="flex gap-2">
-          <button
-            className="nk-brand-bg text-white font-extrabold rounded-xl px-5 py-3 text-sm shadow active:scale-[0.98] flex items-center gap-2"
-            onClick={() => { if (!setup.title.trim() || !(Number(setup.max) > 0)) { toast.error("أكمل العنوان والدرجة النهائية."); return; } writeDraft(setup, {}); setRestored(false); setView("grade"); }}
-          >
-            التالي — رصد الدرجات ←
-          </button>
-          <button onClick={() => setView("list")} className="rounded-xl border border-border bg-card font-bold px-5 text-sm">إلغاء</button>
-        </div>
-      </div>
-    );
-  }
-
-  // ===== قائمة الامتحان المحفوظ =====
-  return (
-    <div className="space-y-3 nk-anim-view">
-      <div className="flex justify-end">
-        <button className="rounded-xl px-4 py-2.5 text-[.78rem] font-extrabold !min-h-[2.75rem] shadow active:scale-[0.98] transition nk-brand-grad text-white" onClick={onGoNext}>
-          التالي — المراجعة ←
-        </button>
-      </div>
-      {!closed && (
-        <button
-          className="w-full nk-brand-grad text-white font-extrabold rounded-xl py-3.5 shadow active:scale-[0.99] flex items-center justify-center gap-2"
-          onClick={() => { setSetup({ title: `امتحان ${new Date().toLocaleDateString("ar-EG")}`, max: 20 }); setView("setup"); }}
-        >
-          ＋ امتحان جديد
-        </button>
-      )}
-      {!closed && !exam && (
-        <p className="text-center text-sm text-muted-foreground font-bold py-2">
-          لا يوجد امتحان مرتبط بهذه الحصة (اختياري).
-        </p>
-      )}
-      {closed && !exam && (
-        <div className="nk-notice">الحصة منتهية — تقدر تضيف امتحان وترصد درجاته بوضع التعديل (اختياري).</div>
-      )}
-      {exam && (
-        <SectionCard title={exam.title} icon={<ClipboardList className="w-4 h-4" />}>
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <span className="nk-pill-pending">النهائي: <span className="nk-num">{exam.maxScore}</span></span>
-            <span className="nk-pill-live">المرصدون: <span className="nk-num">{data.examScores.filter((x) => x.score != null).length}/{present.length}</span></span>
-            {editMax === null ? (
-              editable && <button className="nk-wf-ghost" onClick={() => setEditMax(String(exam.maxScore))}>أ · تعديل الدرجة النهائية</button>
-            ) : (
-              <span className="flex items-center gap-1.5">
-                <input
-                  type="number" min={1} value={editMax}
-                  onChange={(ev) => setEditMax(ev.target.value)}
-                  className="w-20 rounded-xl border-2 border-input bg-card px-2 py-1.5 text-sm font-extrabold nk-num text-center"
-                />
-                <button className="nk-wf-ghost" onClick={() => saveMax(editMax)}>حفظ</button>
-                <button className="nk-wf-ghost" onClick={() => setEditMax(null)}>إلغاء</button>
-              </span>
-            )}
-          </div>
-          <p className="text-[11px] font-bold text-muted-foreground mb-2">
-            تعديل الدرجة النهائية **مش** بيغير درجات الطلاب — 32 بتفضل 32 لو النهائي بقى 40.
-          </p>
-          <div className="grid gap-1.5">
-            {present.map((r) => {
-              const val = scoreMap.get(r.studentId);
-              return (
-                <div key={r.studentId} className="nk-att-row">
-                  <span className="nk-att-row__name">
-                    <b className="truncate">{r.name}</b>
-                    <small><span className="nk-num" dir="ltr">{r.code}</span></small>
-                  </span>
-                  <span className="flex items-center gap-2">
-                    {val != null && (
-                      <span className={cn("nk-num text-xs font-extrabold", (val / exam.maxScore) >= 0.5 ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300")}>
-                        {Math.round((val / exam.maxScore) * 100)}%
-                      </span>
-                    )}
-                    <input
-                      type="number" min={0} max={exam.maxScore} step="0.5" inputMode="decimal"
-                      defaultValue={val ?? ""}
-                      key={`${r.studentId}-${val ?? "empty"}`}
-                      disabled={!editable}
-                      onBlur={(ev) => { const v = ev.target.value; if (v !== (val != null ? String(val) : "")) saveSingleScore(r.studentId, v); }}
-                      className="w-20 rounded-xl border-2 border-input bg-card px-2 py-1.5 text-sm font-extrabold nk-num text-center"
-                      placeholder="—"
-                      aria-label={`درجة ${r.name}`}
-                    />
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </SectionCard>
-      )}
-    </div>
-  );
-}
-
-/* ============================================================
-   ④ مرحلة المراجعة — فحص خفيف قبل الإنهاء (نقل من المنصة الأساسية):
-      كشف المراحل بنسبها + ملاحظات قبل الإنهاء — مش بيمنع الإنهاء.
-============================================================ */
-function ReviewStage({ isOpenSession, closed, rosterTotal, presentCount, unmarked, interactionCount, hwDone, hwApplicable, hasExam, gradedCount, issues, onGoTo }: {
+function ReviewStage({ isOpenSession, closed, rosterTotal, presentCount, unmarked, issues, onGoTo }: {
   isOpenSession: boolean; closed: boolean; rosterTotal: number; presentCount: number; unmarked: number;
-  interactionCount: number; hwDone: number; hwApplicable: number; hasExam: boolean; gradedCount: number;
   issues: string[]; onGoTo: (k: TabKey) => void;
 }) {
   const rows = [
@@ -1491,23 +996,6 @@ function ReviewStage({ isOpenSession, closed, rosterTotal, presentCount, unmarke
       progress: rosterTotal ? (presentCount + (closed ? unmarked : 0)) / rosterTotal : 0,
       ok: closed ? true : unmarked === 0,
     },
-    ...(!isOpenSession ? [{
-      key: "interaction" as TabKey, label: "التفاعل",
-      value: `${interactionCount} / ${presentCount}`,
-      progress: presentCount ? interactionCount / presentCount : 0,
-      ok: interactionCount > 0,
-    }, {
-      key: "interaction2" as TabKey, label: "الواجب",
-      value: `${hwDone} / ${hwApplicable}`,
-      progress: hwApplicable ? hwDone / hwApplicable : 0,
-      ok: hwDone >= hwApplicable,
-      jump: "interaction" as TabKey,
-    }, {
-      key: "exams" as TabKey, label: "الامتحانات",
-      value: hasExam ? `${gradedCount} / ${presentCount}` : "لا يوجد",
-      progress: hasExam && presentCount ? gradedCount / presentCount : 0,
-      ok: hasExam ? gradedCount >= presentCount : true,
-    }] : []),
   ];
 
   return (
@@ -1552,75 +1040,31 @@ function ReviewStage({ isOpenSession, closed, rosterTotal, presentCount, unmarke
 }
 
 /* ============================================================
-   ⑤ مرحلة التقرير — نهاية الخط (نقل من المنصة الأساسية + حسابات السنترز):
-      ملخص الحصة + بيانات الحصة (حفظ ≠ إنهاء — autosave 900ms + مرآة محلية)
-      + تقارير أولياء الأمور (واتساب — للحصص المنتهية) + الحسابات والمدفوعات
-      + إنهاء الحصة + شريط الغائبين.
+   ③ مرحلة التقرير — نهاية الخط:
+      ملخص الحصة + تقارير أولياء الأمور (واتساب — للحصص المنتهية)
+      + الحسابات والمدفوعات + إنهاء الحصة + شريط الغائبين.
 ============================================================ */
-const reportDraftKey = (sid: string) => `nk_report_draft_v1_${sid || "none"}`;
 
-function ReportStage({ data, user, sessionId, isOpenSession, closed, roster, presentCount, unmarked, hwDone, hwApplicable, payments, paymentsLoading, editable, canEnd, onCloseOpen, closeBusy, printAttendance, downloadCsv, onViewAbsent, onBack }: {
-  data: SessionDetail; user: SessionUser; sessionId: string;
+function ReportStage({ data, user, isOpenSession, closed, roster, presentCount, unmarked, payments, paymentsLoading, canEnd, onCloseOpen, closeBusy, printAttendance, downloadCsv, onViewAbsent, onBack }: {
+  data: SessionDetail; user: SessionUser;
   isOpenSession: boolean; closed: boolean; roster: RosterRow[];
-  presentCount: number; unmarked: number; hwDone: number; hwApplicable: number;
+  presentCount: number; unmarked: number;
   payments: SessionPayments | null; paymentsLoading: boolean;
-  editable: boolean; canEnd: boolean;
+  canEnd: boolean;
   onCloseOpen: () => void; closeBusy: boolean;
   printAttendance: () => void; downloadCsv: () => void;
   onViewAbsent: () => void; onBack: () => void;
 }) {
   const s = data.session;
-  // بيانات الحصة — autosave بمرآة محلية (نفس عقد المنصة الأساسية: المحلي بيكسب لو أحدث)
-  const [draft, setDraft] = useState(() => {
-    const base = { lessonTopic: s.lessonTopic ?? "", homeworkText: s.homeworkText ?? "", videoLink: s.videoLink ?? "" };
-    try {
-      const raw = localStorage.getItem(reportDraftKey(sessionId));
-      if (raw) {
-        const stored = JSON.parse(raw);
-        const serverAt = s.openedAt ? new Date(s.openedAt).getTime() : 0;
-        if (stored?.draft && stored?.savedAt && new Date(stored.savedAt).getTime() > serverAt) return { ...base, ...stored.draft };
-      }
-    } catch { /* ignore */ }
-    return base;
-  });
-  const [dirty, setDirty] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [picker, setPicker] = useState<{ candidates: ReportStudent[]; title: string; subtitle: string; preselect: "absent" | "present" | "all" | "manual" } | null>(null);
   const [queue, setQueue] = useState<ReportStudent[] | null>(null);
 
-  const updateDraft = (patch: Partial<typeof draft>) => {
-    const next = { ...draft, ...patch };
-    setDraft(next);
-    setDirty(true);
-    try { localStorage.setItem(reportDraftKey(sessionId), JSON.stringify({ draft: next, savedAt: new Date().toISOString() })); } catch { /* ignore */ }
-  };
-
-  const saveDetails = useCallback(async () => {
-    setSaving(true);
-    try {
-      await api(`/api/sessions/${sessionId}`, { method: "POST", body: { action: "save-details", ...draft } });
-      setDirty(false);
-      try { localStorage.removeItem(reportDraftKey(sessionId)); } catch { /* ignore */ }
-    } catch { /* toast */ } finally { setSaving(false); }
-  }, [sessionId, draft]);
-
-  // autosave بتأخير 900ms — نفس قيمة المنصة الأساسية
-  useEffect(() => {
-    if (!dirty || !editable) return undefined;
-    const t = setTimeout(() => { void saveDetails(); }, 900);
-    return () => clearTimeout(t);
-  }, [draft, dirty, editable, saveDetails]);
-
-  // ===== بناء مرشحي التقارير (نفس بنية المنصة الأساسية) =====
-  const exam = data.exam;
+  // ===== بناء مرشحي التقارير (حضور فقط) =====
   const ctx: ReportContext = {
     centerName: user.center?.name ?? "السنتر",
     subject: s.subject, groupName: s.groupName, grade: s.grade, date: s.date,
-    lessonTopic: draft.lessonTopic ?? "", homeworkText: draft.homeworkText ?? "", videoLink: draft.videoLink ?? "",
-    examTitle: exam?.title ?? null, examMaxScore: exam?.maxScore ?? null,
   };
-  const scoreMap = new Map((data.examScores ?? []).map((x) => [x.studentId, x.score]));
 
   const candidates: ReportStudent[] = roster.map((r) => {
     const statusType = r.status ? "present" : closed ? "absent" : "unmarked";
@@ -1629,9 +1073,6 @@ function ReportStage({ data, user, sessionId, isOpenSession, closed, roster, pre
       statusType,
       statusLabel: r.status ? ATTENDANCE_LABEL[r.status] : closed ? "غائب" : "لم يُرصد",
       phone: r.phone ?? r.parentPhone,
-      homeworkStatus: r.homeworkStatus,
-      examScore: scoreMap.get(r.studentId) ?? null,
-      interactionPlus: r.interactionPlus, interactionMinus: r.interactionMinus,
     };
   });
 
@@ -1683,54 +1124,15 @@ function ReportStage({ data, user, sessionId, isOpenSession, closed, roster, pre
           <span className="nk-pill-neutral">{isOpenSession ? "المسجلين" : "الطلاب"}: {isOpenSession ? data.attendance.length : roster.length}</span>
           <span className="nk-pill-live">حاضر: {isOpenSession ? data.attendance.length : presentCount}</span>
           {!isOpenSession && <span className="nk-pill-danger">{closed ? "غائب" : "لم يُرصد"}: {unmarked}</span>}
-          {!isOpenSession && <span className="nk-pill-pending">الواجب مكتمل: {hwDone}/{hwApplicable}</span>}
         </div>
       </div>
 
-      {/* بيانات الحصة — SAVE ≠ FINISH */}
-      {editable ? (
-        <div className="grid gap-3">
-          <label className="block">
-            <span className="block text-xs font-extrabold mb-1.5">درس اليوم</span>
-            <input className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm font-semibold" value={draft.lessonTopic} onChange={(ev) => updateDraft({ lessonTopic: ev.target.value })} placeholder="موضوع الحصة..." />
-          </label>
-          <label className="block">
-            <span className="block text-xs font-extrabold mb-1.5">تفاصيل الواجب</span>
-            <textarea className="w-full min-h-[64px] rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm font-semibold resize-none" value={draft.homeworkText} onChange={(ev) => updateDraft({ homeworkText: ev.target.value })} placeholder="الواجب المطلوب..." />
-          </label>
-          <label className="block">
-            <span className="block text-xs font-extrabold mb-1.5">رابط فيديو الشرح</span>
-            <input dir="ltr" className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm font-semibold" value={draft.videoLink} onChange={(ev) => updateDraft({ videoLink: ev.target.value })} placeholder="https://..." />
-          </label>
-          <div className="flex flex-wrap gap-2 items-center">
-            <button className="nk-btn nk-btn-brand" disabled={saving || !dirty} onClick={() => void saveDetails()}>
-              💾 {saving ? "جاري الحفظ..." : "حفظ بيانات الحصة"}
-            </button>
-            {dirty && <span className="text-[11px] font-extrabold text-amber-600 dark:text-amber-300">بيتحفظ تلقائيًا…</span>}
-          </div>
-        </div>
-      ) : (
-        <div className="rounded-2xl p-3.5 text-sm bg-muted/50 border border-border">
-          <b className="block">درس اليوم</b>
-          <p className="m-0 text-muted-foreground font-semibold">{draft.lessonTopic || "—"}</p>
-          <b className="block mt-2">الواجب</b>
-          <p className="m-0 text-muted-foreground font-semibold">{draft.homeworkText || "لا يوجد"}</p>
-          {draft.videoLink && (
-            <>
-              <b className="block mt-2">الفيديو</b>
-              <a dir="ltr" href={draft.videoLink} target="_blank" rel="noreferrer" className="text-xs underline nk-brand-text break-all">{draft.videoLink}</a>
-            </>
-          )}
-          <p className="m-0 mt-2 text-[11px] font-bold text-muted-foreground">لتعديل البيانات دي اضغط «✎ تعديل بيانات هذه الحصة» فوق.</p>
-        </div>
-      )}
-
-      {/* تقارير أولياء الأمور (واتساب) — للحصص المنتهية (نفس قاعدة المنصة الأساسية) */}
+      {/* تقارير أولياء الأمور (واتساب) — للحصص المنتهية */}
       <div className="rounded-2xl p-4 bg-muted/50 border border-border">
         <b className="block mb-1 text-sm">تقارير أولياء الأمور (WhatsApp)</b>
         <p className="text-[11px] font-bold text-muted-foreground m-0 mb-3">
           {closed
-            ? "اختر المستلمين — رسالة الحاضر تختلف عن رسالة الغائب، ودرجة امتحان الحصة بتتحط تلقائيًا."
+            ? "اختر المستلمين — رسالة الحاضر تختلف عن رسالة الغائب."
             : "أنهِ الحصة أولًا لتفعيل التقارير (قاعدة النظام)."}
         </p>
         <div className="nk-menu-wrap">
@@ -1881,7 +1283,6 @@ function ReportStage({ data, user, sessionId, isOpenSession, closed, roster, pre
           title={picker.title}
           subtitle={picker.subtitle}
           preselect={picker.preselect}
-          examMax={exam?.maxScore ?? null}
           onClose={() => setPicker(null)}
           onStart={(items) => { setPicker(null); setQueue(items); }}
         />

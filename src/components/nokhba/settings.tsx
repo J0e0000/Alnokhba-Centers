@@ -724,7 +724,7 @@ function AddStaffDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
     } catch { /* toast */ } finally { setBusy(false); }
   }
 
-  const roleLabels: Record<string, string> = { MANAGER: "مدير (صلاحيات كاملة)", TEACHER: "مدرس (امتحانات وكويزات وواجبات بس)", RECEPTIONIST: "موظف استقبال (عمليات يومية)" };
+  const roleLabels: Record<string, string> = { MANAGER: "مدير (صلاحيات كاملة)", TEACHER: "مدرس (جدول الحصص بس)", RECEPTIONIST: "موظف استقبال (عمليات يومية)" };
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>

@@ -48,7 +48,7 @@ export const POST = handler(async (req: Request) => {
   const name = String(body.name ?? "").trim();
   const username = cleanRaw(String(body.username ?? "")).toLowerCase();
   const password = String(body.password ?? "");
-  // TEACHER = مدرس بحساب موظف — بيشوف الامتحانات/الكويزات/الواجبات بس (من غير فلوس ولا إعدادات)
+  // TEACHER = مدرس بحساب موظف — بيشوف جدول الحصص بس (من غير فلوس ولا إعدادات)
   const role = body.role === "MANAGER" || body.role === "TEACHER" ? body.role : "RECEPTIONIST";
 
   if (name.length < 3) throw new ApiError("اكتب اسم الموظف.");

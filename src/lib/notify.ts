@@ -2,13 +2,13 @@ import "server-only";
 import { db } from "@/lib/db";
 import { sendPushToStudents } from "@/lib/push";
 
-/** إشعار لطلاب مجموعة معينة — بيتستخدم عند تغيير الجدول/الميعاد/المكان، ونشر الامتحانات والواجبات والكويزات.
- *  أنواع محدودة عمدًا (مفيش سبام): SCHEDULE_CHANGE | TIME_CHANGE | LOCATION_CHANGE | EXAM | ASSIGNMENT | QUIZ
- *  url = deep-link جوّه البورتال (مثال: /portal?tab=exams) — بتفتح التاب الصح لما الطالب يدوس على الإشعار */
+/** إشعار لطلاب مجموعة معينة — بيتستخدم عند تغيير الجدول/الميعاد/المكان.
+ *  أنواع محدودة عمدًا (مفيش سبام): SCHEDULE_CHANGE | TIME_CHANGE | LOCATION_CHANGE
+ *  url = deep-link جوّه البورتال (مثال: /portal?tab=schedule) — بتفتح التاب الصح لما الطالب يدوس على الإشعار */
 export async function notifyGroupStudents(
   centerId: string,
   groupId: string,
-  type: "SCHEDULE_CHANGE" | "TIME_CHANGE" | "LOCATION_CHANGE" | "EXAM" | "ASSIGNMENT" | "QUIZ",
+  type: "SCHEDULE_CHANGE" | "TIME_CHANGE" | "LOCATION_CHANGE",
   title: string,
   body: string,
   url = "/portal",

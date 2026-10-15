@@ -1,8 +1,9 @@
 /* ============================================================
    سجل أقسام المنتج (Module Registry) — Master Prompt §4
    ------------------------------------------------------------
-   - القسم = وحدة منتج كاملة (مالية/امتحانات/كتب/زكي...) — أعلى مستوى
+   - القسم = وحدة منتج كاملة (حضور/مالية/كتب/زكي...) — أعلى مستوى
      من قدرات الحضور (capabilities.ts) اللي بتتحكم في طرق الحضور بس.
+   - النظام مالي + حضور فقط — مفيش أقسام أكاديمية (كويزات/امتحانات/واجبات اتشالت).
    - الثلاث طبقات فوق بعض بالظبط (Master Prompt §2):
        أ) اشتراك المنصة (Plan)      — إيه اللي السنتر اشتراه
        ب) إعدادات السنتر (Modules)  — المدير يقفل قسم مش محتاجه
@@ -17,15 +18,13 @@ export type ModuleKey =
   | "students"        // الطلاب والمجموعات
   | "sessions"        // الحصص والجدول
   | "finance"         // المالية: دفعات/مصروفات/يومية/تسويات
-  | "exams"           // الامتحانات والكويزات
-  | "assignments"     // الواجبات
   | "books"           // مبيعات الكتب والمخزون
   | "reports"         // التقارير والتصدير
   | "ai_agent"        // زكي — المساعد الذكي (محادثة/صوت/تحليل)
   | "communications"  // إشعارات أولياء الأمور (واتساب/بنر)
   | "settings";       // إعدادات المركز
 
-export type ModuleGroup = "core" | "academic" | "commercial" | "platform";
+export type ModuleGroup = "core" | "commercial" | "platform";
 
 export type ModuleMeta = {
   label: string;
@@ -57,18 +56,6 @@ export const MODULE_CATALOG: Record<ModuleKey, ModuleMeta> = {
     label: "المالية",
     desc: "الدفعات والإيصالات، المصروفات، اليومية، تسويات المدرسين، وقيود الصندوق.",
     group: "commercial",
-    defaultEnabled: true,
-  },
-  exams: {
-    label: "الامتحانات والكويزات",
-    desc: "بنك الامتحانات، الكويزات الإلكترونية، الدرجات، ونتائج الطلاب.",
-    group: "academic",
-    defaultEnabled: true,
-  },
-  assignments: {
-    label: "الواجبات",
-    desc: "إسناد الواجبات لمجموعات ومتابعة التسليم والتقييم.",
-    group: "academic",
     defaultEnabled: true,
   },
   books: {
