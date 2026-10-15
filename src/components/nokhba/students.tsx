@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   UserPlus, Users, Phone, ChevronLeft, X, Loader2, GraduationCap, BookOpen,
   CheckSquare, Square, Printer, XCircle, Layers, MessageSquareText,
+  Plus, Trash2, ClipboardPaste,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, fmt, normalizeDigits, prefetchApi, STUDENT_STATUS, type SessionUser } from "./lib";
@@ -119,7 +120,7 @@ export function StudentsView({ user, openNew, onOpenNewConsumed, onOpenProfile }
               <>
                 <button
                   onClick={() => setShowBulk(true)}
-                  title="سجّل دفعة طلاب مرة واحدة من قايمة ملزوقة"
+                  title="تاب واحدة سريعة: صف لكل طالب — الاسم ورقمين والدفعة كلها تُسجل مرة واحدة"
                   className="bg-card border-border border font-extrabold rounded-xl px-4 py-2.5 flex items-center gap-2 active:scale-[0.98]"
                 >
                   <Layers className="w-4.5 h-4.5 nk-brand-text" /> إضافة دفعية
@@ -527,81 +528,282 @@ export function inputCls(hasError: boolean): string {
 }
 
 /* ============================================================
-   إضافة دفعية (Bulk Add) — تلصق قايمة طلاب في التكست،
-   السطر لكل طالب:  الاسم ، موبايل الطالب ، اسم ولي الأمر ، موبايل ولي الأمر
-   الفواصل المدعومة: فاصلة / تاب / |  — الاسم والحصة اختيارية بعد الاسم.
+   إضافة دفعة سريعة (فلسفة «السريعة» — قرار مختبر UX):
+   تاب واحدة: صف لكل طالب — الاسم + موبايل الطالب + موبايل ولي الأمر.
+   رقم واحد كفاية لو التاني فاضي (الاحتياطي على السيرفر)،
+   اسم ولي الأمر بيتكتب لوحده، والمرحلة بتتحدد مرة واحدة للدفعة كلها.
+   وعندك قايمة جاهزة في إكسل؟ زرار اللصق يملأ الصفوف فورًا.
    ============================================================ */
+type QuickRow = { key: number; name: string; phone: string; parentName: string; parentPhone: string; parentTouched: boolean };
+let quickRowKey = 0;
+const emptyQuickRow = (): QuickRow => ({ key: ++quickRowKey, name: "", phone: "", parentName: "", parentPhone: "", parentTouched: false });
+const digitsOnly = (s: string) => normalizeDigits(s).replace(/\D/g, "");
+const isEgyptianMobile = (s: string) => /^01[0125]\d{8}$/.test(s);
+
 function BulkAddDialog({ open, onClose, onSaved }: {
   open: boolean;
   onClose: () => void;
   onSaved: (count: number) => void;
 }) {
+  const academics = useAcademics();
+  const [gradeId, setGradeId] = useState("");
+  const [groupIds, setGroupIds] = useState<string[]>([]);
+  const [rows, setRows] = useState<QuickRow[]>([]);
+  const [pasteMode, setPasteMode] = useState(false);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [errs, setErrs] = useState<Record<number, string>>({});
 
-  const parsed = useMemo(() => {
-    return text
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean)
-      .map((line) => {
-        const parts = line.split(/\t|,|،|\||;/).map((p) => p.trim()).filter(Boolean);
-        return { raw: line, name: parts[0] ?? "", phone: parts[1] ?? "", parentName: parts[2] ?? "", parentPhone: parts[3] ?? "" };
-      })
-      .filter((r) => r.name.length > 0);
-  }, [text]);
+  // لما يتفتح: صفوف فاضية جاهزة للكتابة فورًا
+  useEffect(() => {
+    if (!open) return;
+    setErrs({}); setPasteMode(false); setText(""); setGroupIds([]);
+    setRows(Array.from({ length: 4 }, emptyQuickRow));
+  }, [open]);
+
+  // المرحلة الافتراضية أول ما المراحل توصل — من غير ما نمسح اختيار المستخدم
+  useEffect(() => {
+    if (!open || !academics) return;
+    setGradeId((g) => g || (academics.grades[1]?.id ?? academics.grades[0]?.id ?? ""));
+  }, [open, academics]);
+
+  const gradeGroups = useMemo(
+    () => academics?.groups.filter((g) => !gradeId || g.gradeId === gradeId) ?? [],
+    [academics, gradeId]
+  );
+
+  function patch(key: number, changes: Partial<QuickRow>) {
+    setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...changes } : r)));
+    setErrs((e) => {
+      if (!e[key]) return e;
+      const { [key]: _drop, ...rest } = e;
+      return rest;
+    });
+  }
+
+  const addRow = () => setRows((rs) => (rs.length >= 100 ? rs : [...rs, emptyQuickRow()]));
+  const removeRow = (key: number) => setRows((rs) => {
+    const next = rs.filter((r) => r.key !== key);
+    return next.length ? next : Array.from({ length: 2 }, emptyQuickRow);
+  });
+
+  // استنتاج اسم ولي الأمر من اسم الطالب (نفس استنتاج الإضافة الفردية)
+  function setName(r: QuickRow, v: string) {
+    if (!r.parentTouched) {
+      const parts = v.trim().split(/\s+/).filter(Boolean);
+      const dad = parts.length >= 2 ? parts[1] : "";
+      patch(r.key, { name: v, parentName: dad });
+    } else {
+      patch(r.key, { name: v });
+    }
+  }
+
+  const filled = rows.filter((r) => r.name.trim() || digitsOnly(r.phone) || digitsOnly(r.parentPhone));
+
+  function validate(): boolean {
+    const e: Record<number, string> = {};
+    filled.forEach((r, i) => {
+      const no = i + 1;
+      const name = r.name.trim();
+      if (name.replace(/\s/g, "").length < 6) { e[r.key] = `صف ${no}: الاسم قصير — اكتب الاسم كامل (3 أسماء زي: أحمد محمد علي).`; return; }
+      const ph = digitsOnly(r.phone);
+      const pp = digitsOnly(r.parentPhone);
+      if (!ph && !pp) { e[r.key] = `صف ${no}: اكتب رقم موبايل واحد على الأقل (طالب أو ولي أمر).`; return; }
+      if (ph && !isEgyptianMobile(ph)) { e[r.key] = `صف ${no}: موبايل الطالب لازم 11 رقم يبدأ بـ 010/011/012/015.`; return; }
+      if (pp && !isEgyptianMobile(pp)) { e[r.key] = `صف ${no}: موبايل ولي الأمر لازم 11 رقم يبدأ بـ 010/011/012/015.`; return; }
+    });
+    setErrs(e);
+    return Object.keys(e).length === 0;
+  }
 
   async function save() {
-    if (parsed.length === 0) { toast.error("الصق قايمة الطلاب الأول — سطر لكل طالب."); return; }
+    if (filled.length === 0) { toast.error("اكتب طالب واحد على الأقل — صف لكل طالب."); return; }
+    if (!validate()) { toast.error("في صفوف فيها بيانات ناقصة أو غلط — اتصححها الأول."); return; }
+    // بنحتفظ بمفتاح كل صف بالترتيب عشان أخطاء السيرفر (أرقام الصفوف) ترجع للصف الصح
+    const payload = filled.map((r) => ({
+      key: r.key,
+      data: {
+        name: r.name.trim(),
+        phone: digitsOnly(r.phone),
+        parentName: r.parentName.trim(),
+        parentPhone: digitsOnly(r.parentPhone),
+        gradeId: gradeId || undefined,
+        groupIds,
+      },
+    }));
     setBusy(true);
     try {
       const res = await api<{ created: number }>("/api/students/bulk", {
         method: "POST",
-        body: {
-          students: parsed.map((r) => ({
-            name: r.name, phone: r.phone, parentName: r.parentName, parentPhone: r.parentPhone,
-          })),
-        },
+        body: { students: payload.map((p) => p.data) },
       });
       onSaved(res.created);
-      setText("");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "فشل تسجيل الدفعة.");
-    } finally {
-      setBusy(false);
-    }
+    } catch (err) {
+      // أخطاء الصفوف من السيرفر (422) → تمييز الصفوف نفسها بالأحمر
+      const data = (err as Error & { data?: { errors?: { row: number; message: string }[] } }).data;
+      if (data?.errors?.length) {
+        const e: Record<number, string> = {};
+        for (const re of data.errors) {
+          const target = payload[re.row - 1];
+          if (target) e[target.key] = `صف ${re.row}: ${re.message}`;
+        }
+        setErrs(e);
+      }
+    } finally { setBusy(false); }
+  }
+
+  // لصق قايمة جاهزة — بيفهم الصيغتين:
+  // الجديدة:  اسم ، موبايل الطالب ، موبايل ولي الأمر
+  // القديمة:  اسم ، موبايل الطالب ، اسم ولي الأمر ، موبايل ولي الأمر
+  function applyPaste() {
+    const isPhone = (s: string) => { const d = digitsOnly(s); return d.length >= 9 && d.length <= 14 && /^\d+$/.test(d); };
+    const parsed = text.split("\n").map((l) => l.trim()).filter(Boolean).map((line) => {
+      const parts = line.split(/\t|,|،|\||;/).map((p) => p.trim()).filter(Boolean);
+      const r = emptyQuickRow();
+      r.name = parts[0] ?? "";
+      if (parts[1] && isPhone(parts[1])) r.phone = digitsOnly(parts[1]);
+      if (parts.length >= 4) {
+        if (parts[2] && !isPhone(parts[2])) { r.parentName = parts[2]; r.parentTouched = true; }
+        if (parts[3] && isPhone(parts[3])) r.parentPhone = digitsOnly(parts[3]);
+        else if (parts[2] && isPhone(parts[2])) r.parentPhone = digitsOnly(parts[2]);
+      } else if (parts.length === 3) {
+        if (isPhone(parts[2])) r.parentPhone = digitsOnly(parts[2]);
+        else { r.parentName = parts[2]; r.parentTouched = true; }
+      }
+      return r;
+    }).filter((r) => r.name.length > 0);
+    if (parsed.length === 0) { toast.error("مفيش سطور مفهومة — اتأكد إن كل سطر فيه اسم على الأقل."); return; }
+    setRows(parsed.slice(0, 100));
+    setErrs({});
+    setPasteMode(false);
   }
 
   return (
     <Dialog open={open} onOpenChange={(v) => (!v ? onClose() : null)}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto nk-scroll">
         <DialogHeader>
-          <DialogTitle className="nk-brand-text">إضافة دفعة طلاب</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><Layers className="w-5 h-5 nk-brand-text" /> إضافة دفعة سريعة</DialogTitle>
         </DialogHeader>
+
         <p className="text-[12px] font-bold text-muted-foreground leading-relaxed">
-          سطر لكل طالب: <span dir="ltr" className="nk-num">الاسم ، موبايل الطالب ، اسم ولي الأمر ، موبايل ولي الأمر</span>
+          صف لكل طالب: الاسم + موبايل الطالب + موبايل ولي الأمر — رقم واحد كفاية لو التاني فاضي.
           <br />
-          الموبايل وبيانات ولي الأمر اختيارية — ممكن تلصق الاسم بس.
+          اسم ولي الأمر بيتكتب لوحده، والكود والـ QR بيتولدوا أوتوماتيك بعد الحفظ.
         </p>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={9}
-          dir="rtl"
-          placeholder={"يوسف السيد إبراهيم، 01012345678\nمريم أحمد علي، 01198765432، أحمد علي، 01555555555"}
-          className="w-full rounded-xl border border-border bg-card p-3 font-bold text-[13px] leading-relaxed focus:outline-none focus:ring-2 nk-focus"
-        />
+
+        {/* المرحلة والمجموعات — مرة واحدة للدفعة كلها بدل سؤال كل صف */}
+        <div className="grid sm:grid-cols-2 gap-3">
+          <Field label="المرحلة الدراسية (للدفعة كلها)">
+            <select className={inputCls(false)} value={gradeId} onChange={(e) => { setGradeId(e.target.value); setGroupIds([]); }}>
+              <option value="">بدون مرحلة — تقدر تضيفها بعدين</option>
+              {(academics?.grades ?? []).map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+          </Field>
+        </div>
+        {gradeId && gradeGroups.length > 0 && (
+          <Field label="المجموعات (اختياري — كل الطلبة هيتسجلوا فيها)">
+            <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto nk-scroll">
+              {gradeGroups.map((g) => {
+                const on = groupIds.includes(g.id);
+                return (
+                  <button key={g.id} type="button"
+                    onClick={() => setGroupIds(on ? groupIds.filter((x) => x !== g.id) : [...groupIds, g.id])}
+                    className={cn(
+                      "rounded-full border px-3 py-1.5 text-xs font-bold transition",
+                      on ? "nk-brand-bg text-white border-transparent" : "bg-card border-border text-muted-foreground"
+                    )}>
+                    {g.subject} — {g.name}
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
+        )}
+
+        {pasteMode ? (
+          <div className="space-y-2">
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              rows={8}
+              dir="rtl"
+              placeholder={"يوسف السيد إبراهيم، 01012345678، 01555555555\nمريم أحمد علي، 01198765432\nمصطفى كامل، 01234567890، أحمد كامل، 01098765432"}
+              className="w-full rounded-xl border border-border bg-card p-3 font-bold text-[13px] leading-relaxed focus:outline-none focus:ring-2 nk-focus"
+            />
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold text-muted-foreground">
+                سطر لكل طالب — الفواصل: فاصلة / تاب / | — والصيغة القديمة (باسم ولي الأمر) بتتفهم لوحدها.
+              </span>
+              <button onClick={applyPaste} className="nk-brand-bg text-white rounded-xl px-4 py-2.5 font-extrabold text-sm shrink-0 active:scale-[0.98]">
+                املأ الصفوف
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="hidden sm:grid sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_32px] gap-2 px-1 text-[11px] font-bold text-muted-foreground">
+              <span>اسم الطالب</span><span>موبايل الطالب</span><span>موبايل ولي الأمر</span><span>اسم ولي الأمر (أوتوماتيك)</span><span />
+            </div>
+            {rows.map((r, i) => {
+              const err = errs[r.key];
+              return (
+                <div key={r.key} className={cn(
+                  "grid gap-2 rounded-xl border-2 p-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_32px] sm:items-center transition",
+                  err ? "border-rose-300 bg-rose-50/40" : "border-border bg-card"
+                )}>
+                  <input dir="rtl" className={cn(inputCls(false), "h-10 text-sm")} value={r.name}
+                    onChange={(e) => setName(r, e.target.value)}
+                    placeholder={`صف ${i + 1} — اسم الطالب بالكامل`} />
+                  <input dir="ltr" inputMode="numeric" className={cn(inputCls(false), "h-10 text-sm")} value={r.phone}
+                    onChange={(e) => patch(r.key, { phone: digitsOnly(e.target.value).slice(0, 11) })}
+                    placeholder="01xxxxxxxxx" />
+                  <input dir="ltr" inputMode="numeric" className={cn(inputCls(false), "h-10 text-sm")} value={r.parentPhone}
+                    onChange={(e) => patch(r.key, { parentPhone: digitsOnly(e.target.value).slice(0, 11) })}
+                    placeholder="01xxxxxxxxx" />
+                  <input dir="rtl" className={cn(inputCls(false), "h-10 text-sm hidden sm:block", !r.parentTouched && r.parentName && "text-muted-foreground")}
+                    value={r.parentName}
+                    onChange={(e) => patch(r.key, { parentName: e.target.value, parentTouched: e.target.value.trim().length > 0 })}
+                    placeholder="بيتكتب لوحده" />
+                  <button onClick={() => removeRow(r.key)} title="شيل الصف"
+                    className="justify-self-end sm:justify-self-center rounded-lg p-1.5 text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 transition">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
+            <div className="flex items-center justify-between gap-2 pt-1">
+              <button onClick={addRow} disabled={rows.length >= 100}
+                className="rounded-xl border border-border bg-card px-3.5 py-2.5 font-extrabold text-sm flex items-center gap-1.5 active:scale-[0.98] disabled:opacity-50">
+                <Plus className="w-4 h-4 nk-brand-text" /> صف جديد
+              </button>
+              <button onClick={() => { setPasteMode(true); }}
+                className="text-[12px] font-extrabold text-muted-foreground underline underline-offset-4 flex items-center gap-1 hover:text-foreground transition">
+                <ClipboardPaste className="w-3.5 h-3.5" /> عندك قايمة جاهزة؟ الصقها هنا
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* أخطاء الصفوف — من العميل أو من السيرفر */}
+        {Object.values(errs).some(Boolean) && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 dark:border-rose-900 dark:bg-rose-950/30 p-3 space-y-1 max-h-28 overflow-y-auto nk-scroll">
+            {Object.values(errs).filter(Boolean).map((m, i) => (
+              <p key={i} className="text-xs font-bold text-rose-700 dark:text-rose-300">{m}</p>
+            ))}
+          </div>
+        )}
+
         <div className="flex items-center justify-between gap-3">
           <span className="text-[12px] font-extrabold text-muted-foreground nk-num">
-            {parsed.length} طالب جاهزين للتسجيل
+            {filled.length} طالب جاهزين للتسجيل{rows.length > filled.length ? ` (${rows.length - filled.length} فاضيين)` : ""}
           </span>
           <div className="flex items-center gap-2">
-            <button onClick={onClose} className="rounded-xl border border-border bg-card px-4 py-2.5 font-extrabold text-sm">
+            <button onClick={onClose} disabled={busy} className="rounded-xl border border-border bg-card px-4 py-2.5 font-extrabold text-sm">
               إلغاء
             </button>
             <button
               onClick={save}
-              disabled={busy || parsed.length === 0}
+              disabled={busy || filled.length === 0}
               className="nk-brand-bg text-white rounded-xl px-5 py-2.5 font-extrabold text-sm shadow active:scale-[0.98] disabled:opacity-50 flex items-center gap-2"
             >
               {busy && <Loader2 className="w-4 h-4 animate-spin" />} سجّل الدفعة

@@ -77,7 +77,11 @@ export async function api<T = Record<string, unknown>>(
       if (!res.ok) {
         const msg = (data as { error?: string }).error ?? "حصل خطأ غير متوقع — جرب تاني.";
         if (!opts.silent) toast.error(msg);
-        throw new Error(msg);
+        // بنعلّق جسم الرد على الخطا عشان الشاشات اللي محتاجة تفاصيل
+        // (زي أخطاء الصفوف في الإضافة الدفعية) تعرف تعرضها بدقة.
+        const err = new Error(msg) as Error & { data?: unknown };
+        err.data = data;
+        throw err;
       }
       return data as T;
     } catch (e) {

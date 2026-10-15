@@ -3,7 +3,7 @@ import { ok, handler, readJson } from "@/lib/api";
 import { requireModule } from "@/lib/entitlements";
 import { requireCenterUser, canRegisterStudents, generateStudentCode, generateQrToken, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
-import { normalizeDigits, validateEgyptianPhone } from "@/lib/normalize";
+import { normalizeDigits, validateOptionalPhone } from "@/lib/normalize";
 import { PRICING } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
@@ -20,10 +20,17 @@ type BulkRow = {
 
 type RowError = { row: number; message: string };
 
-/** POST /api/students/bulk — إضافة دفعة طلاب مرة واحدة.
- *  قاعدة صارمة: التحقق من الدفعة كلها قبل أي إنشاء (all-or-nothing) —
- *  أي خطأ في أي صف = صفر طلاب يتسجلوا + قايمة أخطاء لكل صف.
- *  منع التكرار: داخل الدفعة (موبايل/اسم+موبايل ولي/كود) ومع الطلاب الموجودين. */
+/** POST /api/students/bulk — إضافة دفعة طلاب مرة واحدة (فلسفة «السريعة» — قرار مختبر UX).
+ *  قواعد السرعة:
+ *  - الاسم هو العمود الأساسي؛ رقم واحد موبايل كفاية (طالب أو ولي أمر) والاتنين يحتملوا الفاضي
+ *    مع الاحتياطي: مفيش رقم طالب؟ نستخدم رقم ولي أمر — والعكس.
+ *  - اسم ولي الأمر بيتستنتج أوتوماتيك من اسم الطالب لو اتنساب فاضي (نفس استنتاج الإضافة الفردية).
+ *  - المرحلة اختيارية (بتتحدد مرة واحدة في الواجهة للدفعة كلها) — لو اتبعتت بتتحقق.
+ *  قواعد الأمان (زي ما هي):
+ *  - التحقق من الدفعة كلها قبل أي إنشاء (all-or-nothing) — أي خطأ في أي صف =
+ *    صفر طلاب يتسجلوا + قايمة أخطاء لكل صف (row = رقم الصف المتبعت 1-based).
+ *  - منع التكرار: داخل الدفعة (موبايل/اسم+موبايل ولي/كود) ومع الطلاب الموجودين.
+ *  - الكود اليدوي للمدير بس و5 أرقام بالظبط. */
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
   await requireModule(user.centerId, "students", user);
@@ -36,7 +43,7 @@ export const POST = handler(async (req: Request) => {
   if (rows.length === 0) throw new ApiError("مفيش صفوف في الدفعة — ضيف طلاب الأول.");
   if (rows.length > 100) throw new ApiError("الحد الأقصى 100 طالب في الدفعة الواحدة.");
 
-  // ===== المراحل والمعايير المتاحة (بتتحقق مرة واحدة) =====
+  // ===== المراحل المتاحة (بتتحقق مرة واحدة) =====
   const grades = await db.grade.findMany({ where: { centerId: user.centerId } });
   const gradeIds = new Set(grades.map((g) => g.id));
 
@@ -53,7 +60,7 @@ export const POST = handler(async (req: Request) => {
   const errors: RowError[] = [];
   type ValidRow = {
     name: string; phone: string; parentName: string; parentPhone: string;
-    gradeId: string; groupIds: string[]; code?: string;
+    gradeId: string | null; groupIds: string[]; code?: string;
   };
   const valid: ValidRow[] = [];
   const seenPhone = new Map<string, number>(); // normalized phone → row index
@@ -70,28 +77,42 @@ export const POST = handler(async (req: Request) => {
       continue;
     }
 
-    const phoneCheck = validateEgyptianPhone(String(r.phone ?? ""));
+    // الأرقام كلها اختيارية بس لازم رقم واحد على الأقل — والاحتياطي بينقذ الصف
+    const phoneCheck = validateOptionalPhone(String(r.phone ?? ""), "موبايل الطالب");
     if (!phoneCheck.ok) {
       errors.push({ row: rowNo, message: `موبايل الطالب: ${phoneCheck.error}` });
       continue;
     }
-
-    const parentName = String(r.parentName ?? "").trim();
-    if (!parentName) {
-      errors.push({ row: rowNo, message: "اسم ولي الأمر مطلوب." });
-      continue;
-    }
-
-    const parentPhoneCheck = validateEgyptianPhone(String(r.parentPhone ?? ""));
+    const parentPhoneCheck = validateOptionalPhone(String(r.parentPhone ?? ""), "موبايل ولي الأمر");
     if (!parentPhoneCheck.ok) {
       errors.push({ row: rowNo, message: `موبايل ولي الأمر: ${parentPhoneCheck.error}` });
       continue;
     }
-
-    const gradeId = String(r.gradeId ?? "");
-    if (!gradeId || !gradeIds.has(gradeId)) {
-      errors.push({ row: rowNo, message: "المرحلة مختارة غلط أو مش موجودة." });
+    let phone = phoneCheck.normalized;
+    let parentPhone = parentPhoneCheck.normalized;
+    if (!phone && !parentPhone) {
+      errors.push({ row: rowNo, message: "اكتب رقم موبايل واحد على الأقل (طالب أو ولي أمر) — من غيره مفيش واتساب ولا دخول للبوابة." });
       continue;
+    }
+    if (!phone) phone = parentPhone;
+    if (!parentPhone) parentPhone = phone;
+
+    // اسم ولي الأمر: استنتاج تلقائي من اسم الطالب لو فاضي (الكلمة التانية = اسم الأب)
+    let parentName = String(r.parentName ?? "").replace(/\s+/g, " ").trim();
+    if (!parentName) {
+      const parts = name.split(" ").filter(Boolean);
+      parentName = parts.length >= 2 ? parts[1] : parts[0] ?? "";
+    }
+
+    // المرحلة اختيارية — لو اتبعتت لازم تكون موجودة
+    let gradeId: string | null = null;
+    const rawGrade = String(r.gradeId ?? "").trim();
+    if (rawGrade) {
+      if (!gradeIds.has(rawGrade)) {
+        errors.push({ row: rowNo, message: "المرحلة مختارة غلط أو مش موجودة." });
+        continue;
+      }
+      gradeId = rawGrade;
     }
 
     // كود يدوي؟ (المدير بس — زي الإضافة الفردية)
@@ -109,12 +130,12 @@ export const POST = handler(async (req: Request) => {
       code = raw;
     }
 
-    // تكرار جوّه الدفعة
-    if (seenPhone.has(phoneCheck.normalized)) {
-      errors.push({ row: rowNo, message: `نفس موبايل الطالب متكرر في الدفعة (صف ${seenPhone.get(phoneCheck.normalized)}).` });
+    // تكرار جوّه الدفعة (بعد الاحتياطيات — عشان القيم النهائية هي اللي بتتقارن)
+    if (seenPhone.has(phone)) {
+      errors.push({ row: rowNo, message: `نفس موبايل الطالب متكرر في الدفعة (صف ${seenPhone.get(phone)}).` });
       continue;
     }
-    const np = `${name}|${parentPhoneCheck.normalized}`;
+    const np = `${name}|${parentPhone}`;
     if (seenNameParent.has(np)) {
       errors.push({ row: rowNo, message: `نفس الطالب (الاسم + موبايل ولي الأمر) متكرر في الدفعة (صف ${seenNameParent.get(np)}).` });
       continue;
@@ -124,10 +145,10 @@ export const POST = handler(async (req: Request) => {
       continue;
     }
 
-    seenPhone.set(phoneCheck.normalized, rowNo);
+    seenPhone.set(phone, rowNo);
     seenNameParent.set(np, rowNo);
     if (code) seenCode.set(code, rowNo);
-    valid.push({ name, phone: phoneCheck.normalized, parentName, parentPhone: parentPhoneCheck.normalized, gradeId, groupIds: (r.groupIds ?? []).map(String), code });
+    valid.push({ name, phone, parentName, parentPhone, gradeId, groupIds: (r.groupIds ?? []).map(String), code });
   }
 
   // ===== تكرار مع الطلاب الموجودين =====
@@ -180,7 +201,11 @@ export const POST = handler(async (req: Request) => {
 
   // أي خطأ = مفيش إنشاء خالص (كل الدفعة ولا ولا حاجة)
   if (errors.length > 0) {
-    return ok({ created: 0, errors }, { status: 422 });
+    const top = errors.slice(0, 3).map((e) => `صف ${e.row}: ${e.message}`).join(" · ");
+    return ok(
+      { created: 0, errors, error: `الدفععة فيها ${errors.length} صف غلط — مفيش حاجة اتسجلت. ${top}${errors.length > 3 ? ` … و${errors.length - 3} كمان` : ""}` },
+      { status: 422 },
+    );
   }
 
   // ===== المجموعات المطلوبة (بتتحقق مرة واحدة) =====
