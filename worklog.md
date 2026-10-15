@@ -1088,3 +1088,29 @@ Work Log:
 
 Stage Summary:
 - «حدث خطأ في السيرفر» اتحل من جذره (تلف WAL/shm في SQLite) + حماية تلقائية في db.ts. الإضافة الدفعية بقت «تاب سريعة واحدة» (اسم + رقمين) بالمرحلة مرة واحدة للدفعة + لصق قايمة يفهم الصيغتين + أخطاء بالأحمر على الصف نفسه. الباك أب: db-backup-20261015/. طلاب اختبار محسومين (تجربة/اختبار) سايبين في db المحلي كإثبات تشغيل.
+
+---
+Task ID: FIX-2 (server error on PRODUCTION root-cause + fix + verified deploy)
+Agent: main (Super Z)
+Task: المالك بلّغ «لسة نفس المشكلة + صلح موضوع اضافة الطلاب دفعة واحدة» — والصورة من الإنتاج (alnokhba-centers-nine.vercel.app). اكتشاف إن إصلاح FIX-1 (WAL محلي) عمره ما وصل للإنتاج (3 كوميتات unpushed) وإن سبب الإنتاج مختلف تمامًا (Postgres مش SQLite).
+
+Work Log:
+- DIAGNOSIS (لايف على الإنتاج): دخول مدير + GETs كله سليم (undo/audit/academics/preferences). POST /api/students = 500 بعد ~5.35s والطالب مش بيتسجل خالص. POST /api/students/bulk (الكود القديم المنشور) = 422 «اسم ولي الأمر مطلوب» (بيأكد إن الإنتاج شغال بكود قديم) ولو البيانات صالحة = 500 بنفس التوقيت ~5.36s. الكتابة العادية (PUT preferences) = 200 في 313ms → القاعدة سليمة والكتابة شغالة.
+- ROOT CAUSE (اتثبت بإعادة إنتاج حرفية): Prisma interactive transaction بـ connection_limit=1 (رابط Supabase pooler الموصى به في docs/PRODUCTION-DB.md) + أي قراءة عن طريق عميل db العام من جوه كولباك المعاملة → الكويري بيفضل معلق مستني اتصال تاني مش هييجي أبدًا → الـ tx بينتهي بـ P2028 بعد 5000ms (الحد الافتراضي) → handler يرجع 500 «حصل خطأ غير متوقع في السيرفر». بيئة الإعادة: embedded-postgres حقيقي محليًا + migrate_sqlite_to_postgres (85,777 صف) + رابط بنفس باراميترات الإنتاج:
+  * A) قراءة عامة جوه tx (كود الإنتاج) = ❌ P2028 @ 5007ms
+  * B) كل القراءات عبر tx (الإصلاح) = ✅ @ 6ms
+  * C) generateStudentCode جوه tx (كود الدفعة) = ❌ P2028 @ 5005ms
+- النقطتان السامتان الوحيدتان في المشروع كله (تدقيق آلي scripts/audit-tx-helpers.mjs على كل $transaction):
+  * assertStudentQuotaTx (entitlements.ts) — كانت بتنادي getSubscriptionState اللي بتقرا من db العام دايمًا (بلا كاش!) من جوه tx → ده اللي كان بقتل الإضافة الفردية.
+  * generateStudentCode جوه tx الـ bulk (auth.ts / bulk route) — findUnique على db العام → اللي كان بقتل الدفعة.
+- FIXES:
+  * src/lib/entitlements.ts — assertStudentQuotaTx بقتقرا الاشتراك+الخطة عبر tx نفسه (نفس الدلالات: مفيش اشتراك/حد null = مسموح) + شرح العطل في docstring.
+  * src/lib/auth.ts — generateStudentCode بقتقبل عميل اختياري (default db) عشان تمرر tx.
+  * src/app/api/students/bulk/route.ts — بتمرر tx لـ generateStudentCode.
+- VERIFY (4/4 ✅): scripts/pgtest/verify-fix.mts على PG حقيقي بـ connection_limit=1: المسار الفردي المصلح 3-13ms · كود الدفعة عبر tx 2-3ms · منطق الحصة بيرمي 403 صح عبر tx · تحكم سلبي: القراءة العامة جوه tx لسه بتفشل P2028 (صلاحية الاختبار سليمة).
+- E2E كامل على سيرفر تطوير موصول بـ PG بنفس إعدادات الإنتاج (scripts/pgtest/e2e-local.mjs): دخول 200 → إضافة فردية **201** (160ms) → دفعة «اسم + رقم واحد بس» **201** (طلب المالك بالظبط — كانت 422) → دفعة 3 صفوف باحتياز الأرقام المتبادل **201** (95ms) → ظهور وتنظيف سليم.
+- ENV RESTORED: prisma client رجع SQLite + سيرفر التطوير على 3000 بـ mode:local + حساب الفحص اتشال. embedded-postgres daemon لسه شغال على 5433 للفحص المستقبلي (scripts/pgtest/server.mjs stop لإيقافه). بقايا مقبولة في قاعدة الفحص المحلية فقط.
+- DEPLOY: الرفع شمل الكوميتات المعلقة الثلاثة (فيهم إصلاح FIX-1 وزرار الدفعة الجديد) + إصلاح FIX-2 → Vercel هيبني من GitHub (vercel-build.sh بيولّد client من schema.postgres.prisma زي ما هو).
+
+Stage Summary:
+- سبب «حدث خطأ فالسيرڤر» على الإنتاج: deadlock ناتج عن قراءة اشتراك باتصال عام من جوه معاملة على pool باتصال واحد → P2028@5s. اتصلح في النقطتين الوحيدين + اتأكد بإعادة إنتاج حرفية + E2E 201/201/201 على بيئة مطابقة. الإضافة الدفعية الجديدة (تاب واحدة: اسم + رقم — استنتاج اسم ولي الأمر والمرحلة للدفعة كلها) هتوصل للمالك مع نفس الرفعة.

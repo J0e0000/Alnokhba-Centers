@@ -58,3 +58,9 @@ scripts/vc-probe/
 db/custom.db
 
 scripts/.dbpass*
+
+# embedded postgres diagnostic cluster (local only)
+scripts/pgtest/pgdata/
+scripts/pgtest/pg.pid
+scripts/pgtest/pg.log
+scripts/pgtest/dev-pg.log

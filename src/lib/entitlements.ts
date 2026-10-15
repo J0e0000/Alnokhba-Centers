@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { ApiError } from "@/lib/auth";
+import type { Prisma } from "@prisma/client";
 import { deriveSubStatus, type SubStatus } from "@/lib/subscription";
 import {
   MODULE_CATALOG,
@@ -269,17 +270,27 @@ export function applyUserModuleGrants(
   return out;
 }
 
-/** حصة الطلاب (maxStudents) — تتنادى جوه transaction إنشاء الطالب عشان منع السباق */
+/** حصة الطلاب (maxStudents) — تتنادى جوه transaction إنشاء الطالب عشان منع السباق.
+ *  ⚠️ القراءة لازم تمر على tx نفسه — ممنوع منعًا باتًا getSubscriptionState هنا:
+ *  بتستخدم اتصال db العام ومن جوه interactive transaction على pool باتصال واحد
+ *  (connection_limit=1 في رابط Supabase/Neon الموصى به) بتعمل deadlock → الـ tx
+ *  بينتهي بـ P2028 بعد 5 ثواني → «حصل خطأ غير متوقع في السيرفر» على كل إضافة طالب.
+ *  (عطل إنتاج حقيقي اتشخّص واتصلّح 2026-10-15 — اختبار A/B في scripts/pgtest/repro.mjs). */
 export async function assertStudentQuotaTx(
-  tx: { student: { count: (args: { where: { centerId: string; status?: string } }) => Promise<number> } },
+  tx: Pick<Prisma.TransactionClient, "student" | "subscription">,
   centerId: string,
 ): Promise<void> {
-  const subscription = await getSubscriptionState(centerId);
-  if (!subscription.hasSubscription || subscription.maxStudents == null) return; // مفيش حد
+  // select ضيق: الحالة الفعلية للاشتراك بتتقفل في requireModule قبل المعاملة —
+  // هنا هدفنا سقف الخطة بس (نفس دلالات النسخة القديمة: مفيش اشتراك أو مفيش حد = مسموح)
+  const sub = await tx.subscription.findUnique({
+    where: { centerId },
+    select: { planId: true, plan: { select: { maxStudents: true } } },
+  });
+  if (!sub || sub.plan?.maxStudents == null) return; // مفيش حد
   const active = await tx.student.count({ where: { centerId, status: "ACTIVE" } });
-  if (active >= subscription.maxStudents) {
+  if (active >= sub.plan.maxStudents) {
     throw new ApiError(
-      `وصلتوا للحد الأقصى لعدد الطلاب في خطتكم (${subscription.maxStudents} طالب) — ارفعوا الخطة أو أرشفوا طلاب غير نشطين.`,
+      `وصلتوا للحد الأقصى لعدد الطلاب في خطتكم (${sub.plan.maxStudents} طالب) — ارفعوا الخطة أو أرشفوا طلاب غير نشطين.`,
       403,
     );
   }
