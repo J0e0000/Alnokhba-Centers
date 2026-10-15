@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2022",
+    "esModuleInterop": true,
+    "baseUrl": "/home/z/my-project",
+    "paths": {
+      "server-only": ["scripts/pgtest/stub-server-only.ts"],
+      "next/headers": ["scripts/pgtest/stub-next-headers.ts"],
+      "@/*": ["src/*"]
+    }
+  }
+}

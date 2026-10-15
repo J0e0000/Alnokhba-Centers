@@ -386,10 +386,16 @@ export function rateLimit(key: string, max = 10, windowMs = 60_000): void {
 // ============================= STUDENT CODES =============================
 
 /** Generate a unique 5-digit code within the center (10000-99999). */
-export async function generateStudentCode(centerId: string): Promise<string> {
+export async function generateStudentCode(
+  centerId: string,
+  // ⚠️ العميل اختياري: جوه interactive transaction لازم تمرر tx — استدعاء db العام
+  // جوه المعاملة على pool باتصال واحد (connection_limit=1) بيعمل deadlock → P2028@5s
+  // → «حصل خطأ غير متوقع في السيرفر» (عطل إنتاج حقيقي 2026-10-15).
+  client: Pick<import("@prisma/client").Prisma.TransactionClient, "student"> = db,
+): Promise<string> {
   for (let i = 0; i < 50; i++) {
     const code = String(randomInt(10000, 100000));
-    const exists = await db.student.findUnique({
+    const exists = await client.student.findUnique({
       where: { centerId_code: { centerId, code } },
       select: { id: true },
     });

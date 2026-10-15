@@ -219,7 +219,9 @@ export const POST = handler(async (req: Request) => {
   const created = await db.$transaction(async (tx) => {
     const out: { id: string; name: string; code: string }[] = [];
     for (const v of valid) {
-      const code = v.code ?? (await generateStudentCode(user.centerId));
+      // ⚠️ الكود بيتولد عبر tx — generateStudentCode على db العام جوه المعاملة
+      // بيعمل deadlock على pool باتصال واحد (عطل إنتاج حقيقي 2026-10-15)
+      const code = v.code ?? (await generateStudentCode(user.centerId, tx));
       const st = await tx.student.create({
         data: {
           centerId: user.centerId,
