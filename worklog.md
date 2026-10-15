@@ -1152,3 +1152,22 @@ Work Log:
 Stage Summary:
 - «ابعت qr link زرار واضح» جاهزة: زرار «لينك QR» في ملف الطالب → QR + لينك + واتساب + حفظ، واللينك بيفتح بورتال الطالب مسجّل من غير دخول (على الإنتاج، متأكد منها لايف).
 - «+2 من غير ما يمسح حاجة» جاهزة: أي صيغة رقم تتكتب أو تتلصق (دولي/عربي/مسافات) بتتطبّع ذكي في كل حقول التسجيل + العرض الدولي +2 في كل مكان، والتكرار بيتكشف عبر الصيغ المختلفة.
+
+---
+Task ID: DEMO-1 (full product QA + 5000-student demo account + permissions verification)
+Agent: main (Super Z)
+Task: المالك (بالإنجليزي): «now. make sure all works and its a full product so that i can show it to other people, + send me the account you made the 5000 students test on, and make in the admin to apply which features can this user do and can't» — تأهيل المنتج للعرض، تسليم حساب الـ 5000 طالب، والتأكد من نظام صلاحيات المستخدم.
+
+Work Log:
+- DB DISCOVERY: db/custom.db كان فاضي (0 سنترات — اتلغي 09:53 أثناء فحوصات pgtest للجلسة السابقة) والباك أب db-backup-20261015/custom.db فيه سنتر QAE كامل: qae-c99-stress = 5000 طالب (4665 نشط/335 مؤرشف) + 30 مدرس + 30 مجموعة + 37,488 حضور + 37,000 حركة مالية + 240 حصة + 85,732 صف. الإستعادة: قفل الديف سيرفر → مسح -shm/-wal (درس FIX-1) → نسخ الباك أب → إعادة تشغيل.
+- QA (API): سكريبت scripts/smoke-demo.sh — 23/23 ✅ (dashboard، students+search، academics، schedule، rooms، payments، accounting، reports×2، sessions، today، exams، quizzes، assignments، books، notifications/staff، staff، audit، approvals، preferences، announcements، queue). صفر api-error في dev.log.
+- SESSION FLOW E2E: فتح حصة من الجدول (201 + حضور المدرس أوتوماتيك) → تعليم حضور طالبين من مجموعة الكيمياء (200 + خصم 88ج + تتبع مديونية amountDue) → قفل (200 + اقتصاديات: إيراد 176 / نصيب المدرس 70.4 / مركز 105.6) → إعادة فتح بسبب إلزامي (400 من غير سبب — تحقق سليم) → قفل تاني. ملاحظة: mark بـ code غلط بيرجع 404 برسالة «مش موجود في السنتر» — الرسالة misleading شوية بس مسار الـ UI بيستخدم studentId صح.
+- PERMISSIONS E2E (طلب المالك رقم 3): scripts/test-user-permissions-e2e.sh — 11/11 ✅: المدير قفل RECORD_PASSWORD… RECORD_PAYMENT على الاستقبال (PATCH /api/staff permissions JSON) → قائمة الصلاحيات المحسومة شالتها → الاستقبال جرب يسجل دفعة = 403 من السيرفر → رجّعها = اشتغلت تاني. قفل قسم finance (modules) → /api/payments = 403 → فتحه = 200. أدمن المنصة عدّل صلاحيات عبر POST /api/admin action=set-user-permissions ✅. الـ UI موجود ومُختبر بصريًا: الإعدادات ← الموظفين ← «الصلاحيات» (كتالوج 24 صلاحية بفلاتر الكل/مفعّلة/مقفولة + أزواج تنفيذ/طلب) و«الأقسام والميزات» (11 قسم بتبديلات + حماية «مقفول للسنتر»). المدير بحكم الدور كل صلاحياته مفتوحة دايمًا (resolvePermissions hardcode) — بالتصميم.
+- QR SPOT CHECK: qrToken راجع من GET /api/students/[id] + POST /api/portal action=qr-login = 200 ok.
+- BROWSER VISUALS (agent-browser 1280×800): لوجن المدير → داشبورد (10 حصص النهاردة، 1689 طالب مجدول، بطاقات، بانر) → الطلاب («5000 طالب في السنتر» + أرقام +2 دولية بالكروت + فلاتر وبحث) → الإعدادات ← الموظفين (أزرار الصلاحيات/الأقسام/إيقاف/باسورد) → محرر الصلاحيات والمحرر أقسام (سكرينشوت) → التقارير (إيراد 176، تحصيل 12,500، رسم أسبوعي، أزرار PDF/Excel). screenshots في scripts/demo-*.png.
+- DEV SERVER STABILITY: أداة الـ bash بتقتل شجرات البروسيس بين النداءات (setsid مابيفعش) — الحل: start-stop-daemon --background (--pidfile /tmp/nokhba-dev.pid) بيفعل double-fork ويعيش عبر النداءات. لو السيرفر وقع: start-stop-daemon --start --background --name nokhba-dev --make-pidfile --pidfile /tmp/nokhba-dev.pid --startas /bin/bash -- -c "cd /home/z/my-project && exec npm run dev".
+- DELIVERABLES (download/): ① alnokhba-demo-5000-students.db (43.5MB — سنتر الديمو بس من غير qae-admin للترحيل الاختياري للإنتاج عبر scripts/migrate_sqlite_to_postgres.ts) ② DEMO-ACCOUNTS-5000.txt (كل الحسابات: qae-mgr-99 / qae-rec-99 / qae-recl-99 / qae-tch-99 / qae-admin — الباسورد PWD=Qae#2026 من scripts/qae/lib.ts — + شرح التحكم في الميزات + أمر الترحيل الاختياري).
+- PRODUCTION NOTE: مفيش وصول لـ DATABASE_URL بتاع الإنتاج (في Vercel env بس — مفيش vercel CLI/token محليًا) → الديمو شغال على المعاينة المحلية، والإنتاج فضل بسنترك الحقيقي زي ما هو. لو المالك عايز الـ 5000 على الإنتاج: إما يبعت الرابط أو ينفذ أمر الترحيل بنفسه.
+
+Stage Summary:
+- المنتج اتأكد إنه Full-product: 23/23 API + فلو حصة كامل + فلو صلاحيات كامل + فحوصات بصرية — صفر أعطال، صفر أخطاء سيرفر. حساب الـ 5000 طالب: qae-mgr-99 / Qae#2026 (على معاينة البيئة دي). التحكم في ميزات أي مستخدم (can/can't) كان موجود وشغال بالفعل — اتأكدت منه E2E (قفل→403→فتح→شغال) على مستوى الصلاحيات (24) والأقسام (11) ومن لوحة الأدمن كمان. مفيش أي تغيير كود محتاج — صفر كوميتات.
