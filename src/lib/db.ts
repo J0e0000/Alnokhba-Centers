@@ -78,6 +78,36 @@ if (process.env.DATABASE_URL.startsWith('file:')) {
   db.$queryRawUnsafe('PRAGMA journal_mode=WAL;').catch(() => {})
 }
 
+// ============================================================
+// حماية من حالة SQLite التالفة عند الإقلاع (وجة هجوم حقيقي 2026-10-15):
+// لو عملية اتحطمت والـ WAL اتشال والـ -shm فضل قديم → أي query (حتى قراءة)
+// بيرمي "disk I/O error" والنظام بيرد «حدث خطأ في السيرفر» لكل حاجة.
+// التشخيص عند الإقلاع: probe بسيط — لو فشل بخطأ I/O بننضف الملفات الجانبية
+// بالترتيب الآمن (-shm الأول، وبعدين -wal كحل أخير) وبنكتب في اللوج بوضوح.
+// ============================================================
+if (process.env.DATABASE_URL.startsWith('file:')) {
+  void (async () => {
+    const dbFile = process.env.DATABASE_URL!.slice('file:'.length);
+    const probe = () => db.$queryRawUnsafe('SELECT 1 FROM sqlite_master LIMIT 1');
+    try {
+      await probe();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/disk I\/O|malformed|not a database/i.test(msg)) return; // مشكلة تانية — مش بتاعتنا
+      console.error('[db-recovery] SQLite بيرمي خطأ I/O عند الإقلاع — بجرب إصلاح ملفات WAL الجانبية:', msg);
+      for (const suffix of ['-shm', '-wal']) {
+        try { fs.rmSync(dbFile + suffix, { force: true }); } catch { /* تجاهل — بنجرب برضه */ }
+        try {
+          await probe();
+          console.error(`[db-recovery] الداتابيز رجعت شغالة بعد مسح ${suffix} — يُراجع السجل المفقود يدويًا لو فيه كتابات مهمة.`);
+          return;
+        } catch { /* لسه فاشلة — نكمل */ }
+      }
+      console.error('[db-recovery] الداتابيز لسه فاشلة بعد التنظيف — محتاجة تدخل يدوي (استعن بـ .recover).');
+    }
+  })();
+}
+
 // Cache on EVERY environment (incl. production): Next.js bundles this module
 // into each route's serverless bundle — without globalThis caching, every
 // route in a lambda instance would spin its own PrismaClient + engine,
