@@ -1008,3 +1008,225 @@
     animation: none !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   مسار الحصص (SESSION PIPELINE) — لغة المنصة الأساسية Alnokhba المنقولة.
+   نفس مكوّنات التجربة: كروت الحصص، الكروت الإحصائية، الحبوب الحالة، شريط
+   التقدم، خط المراحل، صفوف الحضور، وأزرار العمل السريع — معوّدة على
+   متغيرات السنترز (--c-primary/--gold + توكنز shadcn) وتدعم الوضع الليلي.
+═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --nk-ok: #10b981; --nk-ok-strong: #047857; --nk-ok-bg: #ecfdf5; --nk-ok-border: #a7f3d0;
+  --nk-warn-strong: #b45309; --nk-warn-bg: #fffbeb; --nk-warn-border: #fde68a;
+  --nk-danger-strong: #be123c; --nk-danger-bg: #fff1f2; --nk-danger-border: #fecdd3;
+  --nk-info-strong: #1d4ed8; --nk-info-bg: #eff6ff; --nk-info-border: #bfdbfe;
+  --nk-gold-surface: var(--gold-50);
+}
+.dark {
+  --nk-ok-strong: #6ee7b7; --nk-ok-bg: rgba(16, 185, 129, .12); --nk-ok-border: rgba(16, 185, 129, .38);
+  --nk-warn-strong: #fcd34d; --nk-warn-bg: rgba(245, 158, 11, .12); --nk-warn-border: rgba(245, 158, 11, .38);
+  --nk-danger-strong: #fda4af; --nk-danger-bg: rgba(225, 29, 72, .12); --nk-danger-border: rgba(225, 29, 72, .38);
+  --nk-info-strong: #93c5fd; --nk-info-bg: rgba(37, 99, 235, .14); --nk-info-border: rgba(37, 99, 235, .38);
+  --nk-gold-surface: color-mix(in srgb, var(--gold) 14%, transparent);
+}
+
+/* حبوب الحالة — لون + أيقونة/نص (مش لون لوحده) */
+.nk-pill-live, .nk-pill-done, .nk-pill-pending, .nk-pill-danger, .nk-pill-neutral, .nk-pill-muted {
+  display: inline-flex; align-items: center; gap: .35rem;
+  border-radius: 999px; padding: .3rem .7rem;
+  font-size: .72rem; font-weight: 800; white-space: nowrap;
+  border: 1px solid transparent;
+}
+.nk-pill-live    { color: var(--nk-ok-strong); background: var(--nk-ok-bg); border-color: var(--nk-ok-border); }
+.nk-pill-pending { color: var(--nk-warn-strong); background: var(--nk-warn-bg); border-color: var(--nk-warn-border); }
+.nk-pill-done    { color: var(--nk-info-strong); background: var(--nk-info-bg); border-color: var(--nk-info-border); }
+.nk-pill-danger  { color: var(--nk-danger-strong); background: var(--nk-danger-bg); border-color: var(--nk-danger-border); }
+.nk-pill-neutral, .nk-pill-muted { color: var(--muted-foreground); background: var(--muted); border-color: var(--border); }
+
+/* كارت الحصة في الرئيسية */
+.nk-session-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; text-align: right; padding: 15px 17px; border-radius: 19px;
+  background: var(--card); border: 1px solid var(--border);
+  box-shadow: 0 1px 2px rgba(2, 12, 40, .05);
+  cursor: pointer; font: inherit; color: inherit;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.nk-session-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--gold);
+  box-shadow: 0 8px 22px rgba(2, 12, 40, .10);
+}
+.nk-session-card-next { border-color: color-mix(in srgb, var(--gold) 55%, var(--border)); box-shadow: 0 6px 18px color-mix(in srgb, var(--gold) 18%, transparent); }
+.nk-session-icon {
+  width: 42px; height: 42px; border-radius: 13px;
+  background: var(--nk-gold-surface); color: var(--gold);
+  display: grid; place-items: center; font-weight: 900; flex-shrink: 0;
+}
+.nk-next-badge {
+  display: inline-flex; align-items: center; gap: .35rem;
+  background: var(--gold); color: #06281f;
+  border-radius: 999px; padding: .22rem .7rem;
+  font-size: .64rem; font-weight: 900; letter-spacing: .02em;
+}
+.dark .nk-next-badge { color: #04241b; }
+
+/* كروت الإحصاء الثلاثة */
+.nk-stat-gold {
+  padding: 16px; border-radius: 19px;
+  background: var(--nk-gold-surface);
+  border: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
+  box-shadow: 0 1px 2px rgba(2, 12, 40, .05);
+  font: inherit; color: inherit; width: 100%;
+  display: block;
+}
+.nk-stat-gold small { color: var(--gold-deep); font-size: .72rem; font-weight: 800; display: block; }
+.nk-stat-gold strong { display: block; font-size: 1.7rem; margin-top: 6px; color: var(--gold-deep); }
+.dark .nk-stat-gold small, .dark .nk-stat-gold strong { color: var(--gold-light); }
+@media (max-width: 420px) {
+  .nk-stat-gold { padding: 11px 10px; border-radius: 15px; }
+  .nk-stat-gold strong { font-size: 1.35rem; }
+  .nk-stat-gold small { font-size: .64rem; }
+}
+
+/* شريط التقدم (مرصد/إجمالي) */
+.nk-bar { height: 7px; border-radius: 999px; background: var(--muted); overflow: hidden; display: inline-block; }
+.nk-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--gold); transition: width .3s ease; }
+
+/* تنبيه تحذيري */
+.nk-notice {
+  background: var(--nk-warn-bg); border: 1px solid var(--nk-warn-border);
+  color: var(--nk-warn-strong); border-radius: 12px;
+  padding: 11px 13px; font-size: .8rem; font-weight: 700; line-height: 1.7;
+}
+
+/* ترويسة مساحة عمل الحصة — شريط كحلي زي المنصة الأساسية */
+.nk-ws-head {
+  background: linear-gradient(135deg, var(--c-primary-strong, var(--c-primary)), var(--navy-deep));
+  color: #fff; border-radius: 24px; padding: 18px 20px;
+  box-shadow: 0 10px 28px rgba(2, 12, 40, .22);
+}
+.nk-ws-head .nk-ws-muted { color: color-mix(in srgb, #fff 72%, transparent); }
+.nk-mini {
+  background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 13px; padding: 10px; min-width: 0;
+}
+.nk-mini small { display: block; color: color-mix(in srgb, #fff 72%, transparent); font-size: .66rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nk-mini b { display: block; margin-top: 4px; font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nk-mini--ok b { color: #7fe0bd; }
+.nk-mini--gold b { color: #f3d7a8; }
+.nk-mini--info b { color: #9ec6f3; }
+
+/* خط المراحل (pipeline) — مش معالج خطوات: التنقل حر بين التبويبات */
+.nk-timeline { display: flex; align-items: flex-start; gap: .2rem; overflow-x: auto; padding: .15rem 0 .35rem; -webkit-overflow-scrolling: touch; }
+.nk-timeline__link { flex: 1 0 .6rem; height: 2px; margin-top: .8rem; background: var(--border); border-radius: 2px; min-width: .5rem; }
+.nk-timeline__link--done { background: var(--nk-ok-border); }
+.nk-timeline__step {
+  display: flex; flex-direction: column; align-items: center; gap: .2rem;
+  background: transparent; border: 0; padding: 0; margin: 0; cursor: pointer;
+  min-width: 3.1rem; font: inherit; color: inherit;
+}
+.nk-timeline__dot {
+  width: 1.6rem; height: 1.6rem; border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .7rem; font-weight: 800; line-height: 1;
+  border: 1.5px solid var(--border); background: var(--card); color: var(--muted-foreground);
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+.nk-timeline__step--active .nk-timeline__dot {
+  border-color: var(--gold); background: var(--gold); color: #04241b;
+  box-shadow: 0 0 0 3px var(--nk-gold-surface);
+}
+.nk-timeline__step--done .nk-timeline__dot { border-color: var(--nk-ok-border); background: var(--nk-ok-bg); color: var(--nk-ok-strong); }
+.nk-timeline__step--attention .nk-timeline__dot { border-color: var(--nk-warn-border); background: var(--nk-warn-bg); color: var(--nk-warn-strong); }
+.nk-timeline__label {
+  font-size: .58rem; font-weight: 700; color: var(--muted-foreground);
+  max-width: 4rem; text-align: center; line-height: 1.25;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.nk-timeline__step--active .nk-timeline__label { color: var(--gold); }
+.dark .nk-timeline__step--active .nk-timeline__label { color: var(--gold-light); }
+.nk-timeline__step--done .nk-timeline__label { color: var(--nk-ok-strong); }
+
+/* صفوف الحضور + أدوات التبويب */
+.nk-att-list { padding-bottom: .25rem; }
+.nk-att-row {
+  display: flex; align-items: center; justify-content: space-between; gap: .55rem;
+  padding: .45rem .6rem; border-radius: 14px;
+  background: var(--muted); border: 1px solid var(--border);
+}
+.nk-att-row--present { border-color: var(--nk-ok-border); background: var(--nk-ok-bg); }
+.nk-att-row--absent { border-color: var(--nk-danger-border); background: var(--nk-danger-bg); }
+.nk-att-row__name { min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
+.nk-att-row__name b { font-size: .8rem; }
+.nk-att-row__name small { font-size: .66rem; color: var(--muted-foreground); font-weight: 600; }
+.nk-att-tools { display: flex; align-items: center; gap: .5rem; }
+.nk-att-chips { display: flex; gap: .4rem; overflow-x: auto; padding: .35rem 0 .45rem; scrollbar-width: none; }
+.nk-att-chips::-webkit-scrollbar { display: none; }
+.nk-att-chip {
+  flex-shrink: 0; border: 1px solid var(--border); background: var(--muted);
+  color: var(--muted-foreground); border-radius: 999px; padding: .4rem .8rem;
+  font-size: .7rem; font-weight: 800; cursor: pointer; font-family: inherit; min-height: 2.25rem;
+}
+.nk-att-chip--on { background: var(--c-primary-strong, var(--c-primary)); color: #fff; border-color: transparent; }
+.dark .nk-att-chip--on { color: #fff; }
+.nk-att-chip:hover:not(:disabled) { color: var(--foreground); border-color: var(--gold); }
+.nk-att-chip--on:hover { color: #fff; }
+
+/* أزرار العمل السريع (شبح) */
+.nk-wf-ghost {
+  border: 1px solid var(--border); background: var(--muted); color: var(--muted-foreground);
+  border-radius: 11px; padding: .45rem .8rem; font-size: .7rem; font-weight: 800;
+  cursor: pointer; font-family: inherit; min-height: 2.35rem;
+}
+.nk-wf-ghost:hover:not(:disabled) { color: var(--foreground); border-color: var(--gold); }
+.nk-wf-ghost:disabled { opacity: .4; cursor: not-allowed; }
+
+/* التحكم المجزأ (حاضر/غائب/⟲ والواجب) */
+.nk-seg { display: inline-flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; }
+.nk-seg button {
+  border: 1px solid var(--border); background: var(--card); color: var(--muted-foreground);
+  border-radius: 10px; padding: 7px 13px; font: inherit; font-size: .76rem; font-weight: 800;
+  cursor: pointer; transition: all .14s ease; min-height: 38px;
+}
+.nk-seg button:hover:not(:disabled) { border-color: var(--gold); color: var(--foreground); }
+.nk-seg button:disabled { opacity: .5; cursor: not-allowed; }
+.nk-seg button.nk-on-present { background: var(--nk-ok-bg); color: var(--nk-ok-strong); border-color: var(--nk-ok-border); }
+.nk-seg button.nk-on-absent { background: var(--nk-danger-bg); color: var(--nk-danger-strong); border-color: var(--nk-danger-border); }
+.nk-seg button.nk-on-neutral { background: var(--muted); color: var(--foreground); border-color: var(--border); }
+.nk-seg button.nk-on-hw-done { background: var(--nk-ok-bg); color: var(--nk-ok-strong); border-color: var(--nk-ok-border); }
+.nk-seg button.nk-on-hw-partial { background: var(--nk-warn-bg); color: var(--nk-warn-strong); border-color: var(--nk-warn-border); }
+.nk-seg button.nk-on-hw-missing { background: var(--nk-danger-bg); color: var(--nk-danger-strong); border-color: var(--nk-danger-border); }
+
+/* شريط الغائبين (آخر تاب التقرير) */
+.nk-att-absent {
+  display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap;
+  padding: .6rem .7rem; border-radius: 14px;
+  background: var(--nk-danger-bg); border: 1px solid var(--nk-danger-border);
+}
+.nk-att-absent__text { min-width: 0; }
+.nk-att-absent__text small { display: block; font-size: .68rem; color: var(--nk-danger-strong); opacity: .85; font-weight: 600; }
+.nk-att-absent__actions { display: flex; gap: .4rem; flex-shrink: 0; }
+.nk-att-absent .nk-wf-ghost { background: transparent; border-color: var(--nk-danger-border); color: var(--nk-danger-strong); }
+
+/* قائمة الاختيار (مستلمو التقارير) */
+.nk-menu-wrap { position: relative; }
+.nk-menu-backdrop { position: fixed; inset: 0; z-index: 58; background: transparent; }
+.nk-menu-sheet {
+  position: absolute; z-index: 59; inset-inline-end: 0; top: calc(100% + .4rem);
+  min-width: 240px; background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; box-shadow: 0 14px 40px rgba(0, 0, 0, .22);
+  padding: .4rem; display: grid; gap: 2px;
+}
+.nk-menu-sheet__title { font-size: .66rem; color: var(--muted-foreground); padding: .35rem .6rem .25rem; border-bottom: 1px solid var(--border); margin-bottom: .25rem; }
+.nk-menu-sheet button {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  width: 100%; text-align: start; background: transparent; border: 0; border-radius: 10px;
+  padding: .55rem .6rem; font: inherit; font-size: .78rem; font-weight: 800; color: var(--foreground); cursor: pointer;
+}
+.nk-menu-sheet button:hover:not(:disabled) { background: var(--muted); }
+.nk-menu-sheet button:disabled { opacity: .4; cursor: not-allowed; }
+.nk-menu-sheet button small { font-size: .66rem; font-weight: 600; color: var(--muted-foreground); }
+@media (max-width: 640px) {
+  .nk-menu-sheet { position: fixed; inset-inline: .5rem; top: auto; bottom: 1rem; min-width: 0; }
+}

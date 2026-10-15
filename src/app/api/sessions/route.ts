@@ -31,6 +31,18 @@ export const GET = handler(async (req: Request) => {
   });
   const unmaterialized = slots.filter((s) => !sessions.some((x) => x.scheduleId === s.id && x.status !== "CANCELLED"));
 
+  // إجمالي الكشف (roster) لكل مجموعة — شريط التقدم marked/total في مسار الحصص (نقل من المنصة الأساسية)
+  const groupIds = [...new Set([...sessions.map((s) => s.groupId).filter(Boolean), ...unmaterialized.map((s) => s.groupId)] as string[])];
+  const rosterCounts = new Map<string, number>();
+  if (groupIds.length) {
+    const rows = await db.studentGroup.groupBy({
+      by: ["groupId"],
+      where: { groupId: { in: groupIds }, status: "ACTIVE", student: { status: "ACTIVE" } },
+      _count: { _all: true },
+    });
+    for (const r of rows) rosterCounts.set(r.groupId, r._count._all);
+  }
+
   return ok({
     date,
     sessions: sessions.map((s) => ({
@@ -47,6 +59,8 @@ export const GET = handler(async (req: Request) => {
       // وقت البداية الفعلي = لحظة فتح الحصة (الجدول بيتخطط — الفتح بيتسجل)
       openedAt: s.status !== "CANCELLED" ? s.createdAt.toISOString() : null,
       attendanceCount: s.attendance.length,
+      // إجمالي الكشف النشط (لحساب «مرصد X من Y» في مسار الحصص) — null للحضور المفتوح
+      rosterTotal: s.groupId ? (rosterCounts.get(s.groupId) ?? null) : null,
       // حصص الكشف: حاضر = مش بعذر · الحضور المفتوح: كل صف اتسجل = حضور ناجح (مفيش غياب — spec §15)
       presentCount: s.studentSource === "OPEN" ? s.attendance.length : s.attendance.filter((a) => a.status !== "EXCUSED").length,
       closed: s.status === "CLOSED",
@@ -60,6 +74,7 @@ export const GET = handler(async (req: Request) => {
       subject: s.group.subject.name, grade: s.group.grade.name, groupName: s.group.name,
       teacher: s.group.teacher?.name ?? "—",
       price: s.group.sessionPrice, teacherPercent: s.group.teacherPercent,
+      students: rosterCounts.get(s.groupId) ?? 0,
     })),
   });
 });

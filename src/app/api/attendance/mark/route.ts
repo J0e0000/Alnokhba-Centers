@@ -269,6 +269,53 @@ export const POST = handler(async (req: Request) => {
   });
 });
 
+/** DELETE /api/attendance/mark — مسح الرصد (⟲): حذف صف الحضور وعكس التحميل بنفس دقة تسجيله.
+ *  دي خطوة «مسح الرصد» في مسار الحصص المنقول من المنصة الأساسية — الطالب بيرجع «لم يُرصد».
+ *  الحصة المفتوحة: أي موظف سنتر (زي POST). المقفولة: المدير بس (زي PATCH). */
+export const DELETE = handler(async (req: Request) => {
+  const user = await requireCenterUser();
+  const url = new URL(req.url);
+  const id = String(url.searchParams.get("attendanceId") ?? "");
+  if (!id) throw new ApiError("حدد سجل الحضور.", 400);
+
+  const att = await db.attendance.findFirst({
+    where: { id, centerId: user.centerId },
+    include: { session: { include: { group: { include: { subject: true } } } }, student: true },
+  });
+  if (!att) throw new ApiError("سجل الحضور ده مش موجود.", 404);
+  if (att.session.status === "CLOSED" && user.role !== "MANAGER") {
+    throw new ApiError("الحصة مقفولة — مسح الرصد للمدير بس.", 403);
+  }
+  if (att.session.status === "CANCELLED") throw new ApiError("الحصة دي ملغاة.", 400);
+
+  const wasCharged = att.charged ?? 0;
+  await db.$transaction(async (tx) => {
+    await tx.attendance.delete({ where: { id } });
+    if (wasCharged > 0 && att.studentId) {
+      await tx.studentTransaction.create({
+        data: {
+          centerId: user.centerId, studentId: att.studentId, sessionId: att.sessionId,
+          type: "CHARGE", amount: wasCharged, // عكس التحميل — قيد موجب بيرجّع الرصيد
+          reason: `مسح رصد حصة (${att.session.group?.subject.name ?? ""})`,
+          createdBy: user.id,
+        },
+      });
+    }
+  });
+
+  await logAudit({
+    user,
+    action: AUDIT.ATTENDANCE_UPDATED,
+    entity: "ATTENDANCE",
+    entityId: id,
+    before: { status: att.status, charged: wasCharged },
+    after: { status: "REMOVED", charged: 0 },
+    reason: `مسح رصد — ${att.student?.name ?? att.studentName ?? ""}`,
+  });
+
+  return ok({ ok: true, reversed: wasCharged });
+});
+
 /** PATCH /api/attendance/mark — update attendance status (manager, or before session close) */
 export const PATCH = handler(async (req: Request) => {
   const user = await requireCenterUser();

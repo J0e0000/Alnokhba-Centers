@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AlNokhbaMark } from "./shared";
 import { api, applyCenterBranding, type SessionUser } from "./lib";
 import { CenterShell, AdminShell, NAV_LABELS, type ViewId, type AdminViewId } from "./shell";
-import { TabsDashboardView } from "./tabs-dashboard";
+import { PipelineHome } from "./pipeline-home";
 import { TodayView } from "./today-view";
 import { OperationsView } from "./operations";
 import { FocusShell } from "./focus-shell";
@@ -235,7 +235,7 @@ export function App() {
   } else {
     switch (view) {
       case "home":
-        content = <TabsDashboardView user={user} setView={setView} openSession={openSession} goScanForSession={goScanForSession} />;
+        content = <PipelineHome user={user} setView={setView} openSession={openSession} goScanForSession={goScanForSession} />;
         break;
       case "today":
         content = <TodayView user={user} setView={setView} openSession={openSession} goScanForSession={goScanForSession} />;
@@ -307,7 +307,7 @@ export function App() {
         content = <ApprovalsView user={user} />;
         break;
       default:
-        content = <TabsDashboardView user={user} setView={setView} openSession={openSession} goScanForSession={goScanForSession} />;
+        content = <PipelineHome user={user} setView={setView} openSession={openSession} goScanForSession={goScanForSession} />;
     }
   }
 
