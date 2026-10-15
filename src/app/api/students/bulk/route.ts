@@ -217,7 +217,7 @@ export const POST = handler(async (req: Request) => {
 
   // ===== الإنشاء — معاملة واحدة (كل الدفعة أو لا شيء) =====
   const created = await db.$transaction(async (tx) => {
-    const out: { id: string; name: string; code: string }[] = [];
+    const out: { id: string; name: string; code: string; qrToken: string; phone: string }[] = [];
     for (const v of valid) {
       // ⚠️ الكود بيتولد عبر tx — generateStudentCode على db العام جوه المعاملة
       // بيعمل deadlock على pool باتصال واحد (عطل إنتاج حقيقي 2026-10-15)
@@ -240,7 +240,9 @@ export const POST = handler(async (req: Request) => {
           await tx.studentGroup.create({ data: { studentId: st.id, groupId: gid, registeredBy: user.id } });
         }
       }
-      out.push({ id: st.id, name: st.name, code: st.code });
+      // qrToken + phone بيرجعوا عشان شاشة النتيجة تبني لينكات البورتال ورسائل الواتساب فورًا
+      // (فكرة الريبو المرجعي: لينكات جاهزة لكل طالب بعد الحفظ — من غير أي طلبات إضافية)
+      out.push({ id: st.id, name: st.name, code: st.code, qrToken: st.qrToken, phone: st.phone ?? "" });
     }
     return out;
   });
