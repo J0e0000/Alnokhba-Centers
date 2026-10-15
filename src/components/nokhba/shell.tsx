@@ -5,8 +5,8 @@ import {
   LayoutDashboard, ScanLine, CreditCard, Users, CalendarDays, Layers,
   Calculator, BarChart3, Settings, LogOut, MoreHorizontal, ChevronLeft,
   Building2, BadgeCheck, Receipt, MonitorCog, Activity, GraduationCap, Menu, BookOpen, MessageSquareText,
-  ShieldAlert, UserCog, DatabaseBackup, LifeBuoy, Sparkles, ClipboardCheck, UserPlus, ClipboardList,
-  FileCheck2, NotebookPen, DoorClosed, CalendarClock, Grid3x3,
+  ShieldAlert, UserCog, DatabaseBackup, LifeBuoy, Sparkles, ClipboardCheck, UserPlus,
+  DoorClosed, CalendarClock, Grid3x3,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -43,7 +43,7 @@ const VIEW_PREFETCH: Record<string, string> = {
 
 export type ViewId =
   | "home" | "today" | "scan" | "payments" | "students" | "schedule"
-  | "groups" | "quizzes" | "exams" | "assignments" | "books" | "messages" | "accounting" | "reports" | "settings"
+  | "groups" | "books" | "messages" | "accounting" | "reports" | "settings"
   | "emergency" | "approvals" | "operations";
 
 export type TabId = "dashboard" | "today" | "classes" | "people" | "operations" | "reports" | "settings";
@@ -56,9 +56,6 @@ export const NAV_ICONS: Record<ViewId, ReactNode> = {
   students: <Users className="w-5 h-5" />,
   schedule: <CalendarDays className="w-5 h-5" />,
   groups: <Layers className="w-5 h-5" />,
-  quizzes: <ClipboardList className="w-5 h-5" />,
-  exams: <FileCheck2 className="w-5 h-5" />,
-  assignments: <NotebookPen className="w-5 h-5" />,
   books: <BookOpen className="w-5 h-5" />,
   messages: <MessageSquareText className="w-5 h-5" />,
   accounting: <Calculator className="w-5 h-5" />,
@@ -77,9 +74,6 @@ export const NAV_LABELS: Record<ViewId, string> = {
   students: "الطلاب",
   schedule: "الجداول",
   groups: "المجموعات",
-  quizzes: "الكويزات",
-  exams: "الامتحانات",
-  assignments: "الواجبات",
   books: "الكتب",
   messages: "الرسائل",
   accounting: "الحسابات",
@@ -121,7 +115,7 @@ const ADMIN_SHORT_LABELS: Partial<Record<AdminViewId, string>> = {
 const TABS: TabDef[] = [
   { id: "dashboard", label: "الرئيسية", icon: <LayoutDashboard className="w-5 h-5" />, subs: ["home"] },
   { id: "today", label: "اليوم", icon: <CalendarClock className="w-5 h-5" />, subs: ["today", "scan", "approvals"] },
-  { id: "classes", label: "الحصص", icon: <Layers className="w-5 h-5" />, subs: ["schedule", "groups", "exams", "quizzes", "assignments"] },
+  { id: "classes", label: "الحصص", icon: <Layers className="w-5 h-5" />, subs: ["schedule", "groups"] },
   { id: "people", label: "الطلاب والمعلمين", icon: <Users className="w-5 h-5" />, subs: ["students", "payments", "messages", "books"] },
   { id: "operations", label: "القاعات والتشغيل", icon: <DoorClosed className="w-5 h-5" />, subs: ["operations", "accounting", "emergency"] },
   { id: "reports", label: "التقارير", icon: <BarChart3 className="w-5 h-5" />, subs: ["reports"] },
@@ -132,7 +126,7 @@ const TABS: TabDef[] = [
 const ROLE_ALLOWED: Record<"MANAGER" | "RECEPTIONIST" | "TEACHER", ViewId[]> = {
   MANAGER: TABS.flatMap((t) => t.subs),
   RECEPTIONIST: ["home", "today", "scan", "students", "payments", "books", "messages", "schedule"],
-  TEACHER: ["home", "schedule", "quizzes", "exams", "assignments"],
+  TEACHER: ["home", "schedule"],
 };
 
 function tabsForRole(role: "MANAGER" | "RECEPTIONIST" | "TEACHER"): TabDef[] {
@@ -154,9 +148,6 @@ export const VIEW_TO_MODULE: Partial<Record<ViewId, import("@/lib/modules").Modu
   students: "students",
   groups: "students",
   schedule: "sessions",
-  quizzes: "exams",
-  exams: "exams",
-  assignments: "assignments",
   books: "books",
   messages: "communications",
   reports: "reports",

@@ -250,7 +250,6 @@ const RE = {
   approvalsList: /طلبات (مستنيه|الموافقه|الموافقات)\?|طلبات مستني|في طلبات|الطلبات المستنيه|اعرض (ال)?طلبات|مستني(ه)? قرار|pending (requests?|approvals?)|approval (requests?|queue)/,
   subscriptionStatus: /اشتراكنا|الاشتراك|اشتراك السنتر|خطتنا|إيه الخطة|ايه الخطة|التجديد|تجديد لغاية|subscription|our plan|renewal/,
   auditRecent: /سجل العمليات|(آخر|اخر) العمليات|مين سجل|مين عمل|audit (log|trail)|recent (activity|actions)/,
-  examsList: /(آخر|اخر) الامتحانات|الامتحانات\?|امتحانات (المجموعه|مجموعه|الاولاد)|في امتحانات|exams?( list)?|list exams|show exams/,
   tomorrowSessions: /بكره|بكرا|غدا|tomorrow/,
   openSession: /افتح (حصه|حضور|session)|اعمل حصه|ابدأ حضور|open (a )?session|start (a )?session/,
   // تسجيل حضور بالأسماء — لازم فعل تسجيل/تعليم صريح عشان ميخبطش مع أسئلة الغياب.
@@ -630,13 +629,6 @@ export function fallbackPlan(
     const prev = obsOf(observations, "audit.recent");
     if (prev) return doneWith(prev, "خلصت — السجل فوق.");
     return { say: "هجيبلك آخر العمليات من سجل التدقيق.", tool: { name: "audit.recent", args: {} } };
-  }
-
-  /* ================= الامتحانات (قراءة) ================= */
-  if (RE.examsList.test(t)) {
-    const prev = obsOf(observations, "exams.list");
-    if (prev) return doneWith(prev, "خلصت — الامتحانات فوق.");
-    return { say: "هجيبلك آخر الامتحانات.", tool: { name: "exams.list", args: {} } };
   }
 
   /* ================= ملخص النهاردة ================= */

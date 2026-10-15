@@ -48,7 +48,6 @@ export const POST = handler(async (req: Request) => {
   if (session.status === "CANCELLED") throw new ApiError("الحصة دي ملغاة.", 400);
 
   const slot = await issueSessionQrSlot({
-    scope: "CENTERS",
     sessionId,
     centerId: user.centerId,
     createdById: user.id,

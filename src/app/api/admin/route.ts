@@ -338,7 +338,6 @@ export const POST = handler(async (req: Request) => {
     if (target.role === "MANAGER") {
       throw new ApiError("حساب المدير بيتحكم من مدير السنتر نفسه — صلاحيات المدير كاملة دايمًا.", 400);
     }
-    if (target.scope === "academia") throw new ApiError("الحساب ده من نظام أكاديميا — بيتحكم من هناك.", 400);
 
     const data: Record<string, unknown> = {};
 

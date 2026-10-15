@@ -64,7 +64,7 @@ export function PermissionsEditorDialog({ staff, onClose, onSaved }: {
             <ShieldCheck className="w-5 h-5 nk-brand-text" /> صلاحيات {staff.name}
           </DialogTitle>
           <DialogDescription>
-            الكتالوج كامل — كل صلاحية بتتفحص على السيرفر مع كل طلب. {staff.role === "TEACHER" ? "المدرس افتراضيًا معاه امتحانات وكويزات وواجبات بس — من هنا تقدر تزوّده أكتر." : "افتراضي الاستقبال: العمليات اليومية + الطلبات، والحساس بتنفّذه الإدارة."}
+            الكتالوج كامل — كل صلاحية بتتفحص على السيرفر مع كل طلب. {staff.role === "TEACHER" ? "المدرس افتراضيًا معاه جدول الحصص بس — من هنا تقدر تزوّده أكتر." : "افتراضي الاستقبال: العمليات اليومية + الطلبات، والحساس بتنفّذه الإدارة."}
           </DialogDescription>
         </DialogHeader>
 

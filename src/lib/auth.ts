@@ -68,9 +68,7 @@ export type SessionUser = {
   id: string;
   name: string;
   username: string;
-  role: "ADMIN" | "MANAGER" | "RECEPTIONIST" | "TEACHER" | "STUDENT";
-  /** product scope: "centers" (legacy) | "academia" (AlNokhba Academia) */
-  scope: "centers" | "academia";
+  role: "ADMIN" | "MANAGER" | "RECEPTIONIST" | "TEACHER";
   centerId: string | null;
   canAddStudents: boolean;
   // الصلاحيات الدقيقة المحسومة (للواجهات + لفحوص السيرفر في كل مكان)
@@ -294,20 +292,14 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   });
   if (!sess || sess.expiresAt < new Date() || !sess.user.isActive) return null;
   const u = sess.user;
-  // Academia users keep their TEACHER/STUDENT roles; Centers roles resolve as before.
-  // أمان: دور TEACHER (موظف امتحانات) بيفضل TEACHER — ميتحولش لاستقبال
-  // عشان صلاحيات الفلوس (تسجيل دفعات/تعديل حضور) متبقاش عنده افتراضيًا.
-  const isAca = u.scope === "academia";
-  const role = isAca
-    ? (["ADMIN", "MANAGER", "TEACHER", "STUDENT"].includes(u.role) ? u.role : "STUDENT")
-    : (["ADMIN", "MANAGER", "RECEPTIONIST", "TEACHER"].includes(u.role) ? u.role : "RECEPTIONIST");
+  // Centers roles — النظام حضور + مالية فقط (الأكاديميات اتشالت)
+  const role = ["ADMIN", "MANAGER", "RECEPTIONIST", "TEACHER"].includes(u.role) ? u.role : "RECEPTIONIST";
   const support = await resolveSupportContext();
   return {
     id: u.id,
     name: u.name,
     username: u.username,
     role: role as SessionUser["role"],
-    scope: isAca ? "academia" : "centers",
     centerId: u.centerId,
     canAddStudents: u.canAddStudents,
     permissions: permissionsForClient(u),

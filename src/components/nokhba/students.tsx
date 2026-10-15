@@ -570,7 +570,7 @@ export function StudentFormDialog({ open, onClose, onCreated, onOpenProfile, use
       `أهلًا ${firstName}،`,
       `ده لينك بورتالك في ${user.center?.name || "السنتر"} — بيفتح من غير تسجيل دخول:`,
       portalLink,
-      "احتفظ باللينك ده — رصيدك وجدولك وواجباتك كلها فيه في أي وقت.",
+      "احتفظ باللينك ده — رصيدك وجدولك كلهم فيه في أي وقت.",
     ].join("\n");
     const target = saved.phone || saved.parentPhone || "";
     setSending(true);
@@ -894,7 +894,7 @@ function buildPortalMessage(name: string, link: string, centerName: string | nul
     `أهلًا ${first}،`,
     `ده لينك بورتالك في ${centerName || "السنتر"} — بيفتح من غير تسجيل دخول:`,
     link,
-    "احتفظ باللينك ده — رصيدك وجدولك وواجباتك كلها فيه في أي وقت.",
+    "احتفظ باللينك ده — رصيدك وجدولك كلهم فيه في أي وقت.",
   ].join("\n");
 }
 // نسخ احتياطي (المتصفحات القديمة) — نفس fallback StudentQrLinkModal
@@ -1431,8 +1431,7 @@ function BulkMessageDialog({ open, onClose, rows, centerName }: {
     const items: ReportStudent[] = withPhone.map((r) => ({
       studentId: r.id, name: r.name, code: r.code,
       statusType: "present", statusLabel: "محدد",
-      phone: r.phone, homeworkStatus: null, examScore: null,
-      interactionPlus: 0, interactionMinus: 0,
+      phone: r.phone,
     }));
     setQueue(items);
   };

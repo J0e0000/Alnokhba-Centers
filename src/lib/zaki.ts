@@ -229,50 +229,6 @@ async function ruleDebtors(centerId: string, out: ZakiFinding[]) {
   });
 }
 
-// 7) تراجع درجات الكويزات لطالب
-async function ruleQuizDecline(centerId: string, out: ZakiFinding[]) {
-  const quizzes = await db.quiz.findMany({
-    where: { centerId, status: { in: ["PUBLISHED", "CLOSED"] } },
-    select: { id: true },
-  });
-  if (quizzes.length < 6) return;
-  const attempts = await db.quizAttempt.findMany({
-    where: { quizId: { in: quizzes.map((q) => q.id) }, status: "GRADED", score: { not: null } },
-    include: { quiz: { select: { createdAt: true } }, student: { select: { id: true, name: true } } },
-    orderBy: { createdAt: "asc" },
-  });
-  const byStudent = new Map<string, { name: string; pct: number }[]>();
-  for (const a of attempts) {
-    if (!a.quiz || a.maxScore <= 0) continue;
-    const pct = Math.round(((a.score ?? 0) / a.maxScore) * 100);
-    const list = byStudent.get(a.studentId) ?? [];
-    list.push({ name: a.student.name, pct });
-    byStudent.set(a.studentId, list);
-  }
-  const flagged: { name: string; drop: number }[] = [];
-  for (const [, series] of byStudent) {
-    if (series.length < 4) continue;
-    const prev = series.slice(0, Math.floor(series.length / 2));
-    const last = series.slice(Math.floor(series.length / 2));
-    const avg = (xs: { pct: number }[]) => Math.round(xs.reduce((s, x) => s + x.pct, 0) / xs.length);
-    const drop = avg(prev) - avg(last);
-    if (drop >= 15 && avg(last) < 65) flagged.push({ name: series[0].name, drop });
-  }
-  if (flagged.length) {
-    out.push({
-      id: "quiz_decline",
-      dimension: "ACADEMIC",
-      severity: flagged.length >= 5 ? "CRITICAL" : "WARNING",
-      what: `${flagged.length} طالب درجاتهم في الكويزات بتنزل باستمرار`,
-      where: flagged.slice(0, 3).map((f) => `${f.name} (-${f.drop}%)`).join("، "),
-      why: "متوسط النصف الأخير من كويزاته أقل من الأول بفرق واضح — مؤشر مبكر على ضعف فهم",
-      action: "راجع نتايج الكويزات، وكلم الطالب/ولي الأمر قبل الامتحان الكبير — الدعم المبكر أرخص من إعادة الفصل",
-      go: { view: "reports" },
-      data: { flagged: flagged.slice(0, 10) },
-    });
-  }
-}
-
 /** تشغيل كل القواعد — مرتبة بالخطورة */
 export async function runZakiRules(centerId: string): Promise<{ findings: ZakiFinding[]; at: string }> {
   const out: ZakiFinding[] = [];
@@ -283,7 +239,6 @@ export async function runZakiRules(centerId: string): Promise<{ findings: ZakiFi
     ruleUnclosedSessions(centerId, out),
     ruleMissingSessions(centerId, out),
     ruleDebtors(centerId, out),
-    ruleQuizDecline(centerId, out),
   ]);
   const order = { CRITICAL: 0, WARNING: 1, INFO: 2 } as const;
   out.sort((a, b) => order[a.severity] - order[b.severity]);

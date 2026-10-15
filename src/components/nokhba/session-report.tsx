@@ -10,9 +10,8 @@ import { toast } from "sonner";
 import { buildWaUrl, openWhatsAppHandoff } from "./wa";
 
 /* ============================================================
-   تقارير أولياء الأمور (WhatsApp) — نقل من المنصة الأساسية:
-   • مُنشئ الرسالة: رسالة الحاضر تختلف عن رسالة الغائب، وسطر الامتحان
-     يخص امتحان «هذه الحصة» بس (بيختفي كله لو مفيش امتحان/درجة).
+   تقارير أولياء الأمور (WhatsApp) — حضور وغياب فقط:
+   • مُنشئ الرسالة: رسالة الحاضر تختلف عن رسالة الغائب — بدون أي بيانات أكاديمية.
    • اختيار المستلمين: غائبون / حاضرون / الكل / تحديد يدوي — مفيش حاجة
      بتتبعت تلقائيًا؛ الإرسال يدوي واحد واحد عبر wa.me (iOS-safe).
 ============================================================ */
@@ -24,10 +23,6 @@ export type ReportStudent = {
   statusType: "present" | "absent" | "unmarked";
   statusLabel: string;
   phone: string | null;   // موبايل الطالب أو ولي الأمر (مُختار مسبقًا)
-  homeworkStatus: string | null; // DONE | PARTIAL | MISSING | null
-  examScore: number | null;
-  interactionPlus: number;
-  interactionMinus: number;
 };
 
 export type ReportContext = {
@@ -36,17 +31,6 @@ export type ReportContext = {
   groupName: string;
   grade: string;
   date: string; // YYYY-MM-DD
-  lessonTopic: string;
-  homeworkText: string;
-  videoLink: string;
-  examTitle: string | null;
-  examMaxScore: number | null;
-};
-
-const HW_LINE: Record<string, string> = {
-  DONE: "الواجب: تم الحل ✅",
-  PARTIAL: "الواجب: ناقص ⚠️",
-  MISSING: "الواجب: لم يتم الحل ❌",
 };
 
 function arDate(iso: string): string {
@@ -55,39 +39,24 @@ function arDate(iso: string): string {
   } catch { return iso; }
 }
 
-/** رسالة التقرير — نفس بنية المنصة الأساسية: كل سطر بيهبط لو مالوش داتا */
+/** رسالة التقرير — حضور فقط: رسالة الحاضر تختلف عن رسالة الغائب */
 export function buildReportMessage(s: ReportStudent, ctx: ReportContext): string {
   const groupLabel = [ctx.grade, ctx.groupName].filter((x) => x && x !== "—").join(" ");
   const isPresent = s.statusType === "present";
 
-  // سطر الامتحان — امتحان الحصة ده بس (قاعدة المنصة الأساسية: Task 41)
-  const examLine =
-    ctx.examTitle && s.examScore != null && ctx.examMaxScore
-      ? `درجة الامتحان: اختبار «${ctx.examTitle}» — ${s.examScore} من ${ctx.examMaxScore}${ctx.examMaxScore ? ` (${Math.round((s.examScore / ctx.examMaxScore) * 100)}%)` : ""}`
-      : "";
-
-  const hwLine = s.homeworkStatus ? HW_LINE[s.homeworkStatus] ?? "" : ctx.homeworkText ? `الواجب: ${ctx.homeworkText}` : "";
-  const topicLine = ctx.lessonTopic ? `موضوع الحصة: ${ctx.lessonTopic}` : "";
-
   if (isPresent) {
-    const details = [examLine, hwLine, topicLine].filter(Boolean).join("\n");
     return [
       `أهلًا حضرتك 🌟`,
       `${s.name} حضر حصة ${ctx.subject}${groupLabel ? ` (${groupLabel})` : ""} النهارده ✅`,
-      details,
       `شكرًا لمتابعتكم — ${ctx.centerName}.`,
     ].filter(Boolean).join("\n");
   }
 
-  // الغائب — بياخد رابط الفيديو لو موجود (تعويض)
   const lines = [
     `ولي أمر الطالب ${s.name}،`,
     `تم تسجيله غياب في حصة ${ctx.subject}${groupLabel ? ` (${groupLabel})` : ""} بتاريخ ${arDate(ctx.date)}.`,
+    `للاستفسار عن مواعيد وأماكن التعويض برجاء التواصل معنا — ${ctx.centerName}.`,
   ];
-  if (ctx.homeworkText && !hwLine) lines.push(`الواجب المطلوب: ${ctx.homeworkText}`);
-  else if (hwLine) lines.push(hwLine);
-  if (ctx.videoLink) lines.push(`رابط شرح الحصة: ${ctx.videoLink}`);
-  lines.push(`للاستفسار عن مواعيد وأماكن التعويض برجاء التواصل معنا — ${ctx.centerName}.`);
   return lines.filter(Boolean).join("\n");
 }
 
@@ -105,12 +74,11 @@ function Portal({ children }: { children: React.ReactNode }) {
   return createPortal(children, document.body);
 }
 
-export function RecipientPickerModal({ candidates, title, subtitle, preselect, examMax, onClose, onStart }: {
+export function RecipientPickerModal({ candidates, title, subtitle, preselect, onClose, onStart }: {
   candidates: ReportStudent[];
   title: string;
   subtitle: string;
   preselect: "absent" | "present" | "all" | "manual";
-  examMax: number | null;
   onClose: () => void;
   onStart: (items: ReportStudent[]) => void;
 }) {
@@ -185,7 +153,6 @@ export function RecipientPickerModal({ candidates, title, subtitle, preselect, e
                   <b className="block text-sm truncate">{c.name}</b>
                   <small className="text-[11px] font-bold text-muted-foreground">
                     <span className="nk-num" dir="ltr">{c.code}</span> · {c.statusLabel}
-                    {c.examScore != null && examMax ? ` · ${c.examScore} من ${examMax}` : ""}
                   </small>
                 </span>
                 <span className={cn("text-[10px] font-extrabold rounded-full px-2 py-1 shrink-0",
@@ -214,8 +181,6 @@ export function RecipientPickerModal({ candidates, title, subtitle, preselect, e
     </Portal>
   );
 }
-// ctx2Max اتشال — الدرجة النهائية بتتبعت كـ prop (examMax)
-
 /* ─────────────────────────── طابور الإرسال ─────────────────────────── */
 
 type QueueItemState = "PENDING" | "SENT" | "SKIPPED";

@@ -505,7 +505,7 @@ function CreateBatchDialog({ open, onClose, onCreated, user }: {
           <div className="space-y-1.5">
             <label htmlFor="batch-title" className="text-sm font-bold">اسم الدفعة (اختياري)</label>
             <input id="batch-title" value={title} onChange={(e) => setTitle(e.target.value)}
-              placeholder="مثلاً: تنبيه امتحانات الشهر"
+              placeholder="مثلاً: تنبيه تغيير مواعيد الحصص"
               className="flex h-11 w-full rounded-xl border border-input bg-card px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
           </div>
 

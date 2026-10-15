@@ -13,9 +13,6 @@ const TYPE_META: Record<string, { icon: string; label: string }> = {
   PAYMENT: { icon: "💰", label: "دفعة" },
   REFUND: { icon: "↩️", label: "استرداد" },
   ADJUSTMENT: { icon: "⚖️", label: "تسوية" },
-  EXAM: { icon: "📝", label: "امتحان" },
-  ASSIGNMENT: { icon: "📚", label: "واجب" },
-  QUIZ: { icon: "🧠", label: "كويز" },
   ATTENDANCE: { icon: "✅", label: "حضور" },
 };
 

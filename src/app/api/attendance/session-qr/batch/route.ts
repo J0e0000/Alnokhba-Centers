@@ -38,7 +38,6 @@ export const POST = handler(async (req: Request) => {
 
   // الدفعة تغطي دورة كاملة على كل الأكواد + هامش 5ث (لو مفيش ttl جاي من العميل)
   const batch = await issueSessionQrBatch({
-    scope: "CENTERS",
     sessionId,
     centerId: user.centerId,
     createdById: user.id,

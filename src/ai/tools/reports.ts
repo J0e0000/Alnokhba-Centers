@@ -65,17 +65,6 @@ register({
       lastPayment = last ? { amount: last.amount, at: last.createdAt.toISOString().slice(0, 10) } : null;
     }
 
-    // ==== آخر الكويزات ====
-    const quizzes = await db.quizAttempt.findMany({
-      where: { studentId: student.id, status: "GRADED", score: { not: null } },
-      select: { score: true, maxScore: true, createdAt: true, quiz: { select: { title: true } } },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    });
-    const quizRows = quizzes
-      .filter((q) => (q.maxScore ?? 0) > 0)
-      .map((q) => ({ title: q.quiz?.title ?? "كويز", pct: Math.round(((q.score ?? 0) / (q.maxScore ?? 1)) * 100) }));
-
     const rows: { label: string; value: string; tone?: "good" | "warn" | "bad" | "info" }[] = [
       { label: "نسبة الحضور", value: rate != null ? `${rate}% (${presentCount}/${total})` : "مفيش حضور", tone: rate != null && rate < 70 ? "warn" : "good" },
       { label: "الغياب المسجل", value: `${absentCount} مرة`, tone: absentCount >= 3 ? "bad" : "info" },
@@ -84,11 +73,6 @@ register({
       rows.push({ label: "الرصيد", value: `${Math.round(Math.abs(balancePiastres) / 100)} ${balancePiastres < 0 ? "ج عليه" : "ج له"}`, tone: balancePiastres < 0 ? "bad" : "good" });
       if (lastPayment) rows.push({ label: "آخر دفعة", value: `${Math.round(lastPayment.amount / 100)}ج — ${lastPayment.at}` });
     }
-    if (quizRows.length) {
-      const avg = Math.round(quizRows.reduce((s, q) => s + q.pct, 0) / quizRows.length);
-      rows.push({ label: "متوسط آخر كويزات", value: `${avg}% (${quizRows.length} كويز)`, tone: avg < 60 ? "warn" : "good" });
-    }
-
     return {
       summary: `تقرير ${student.name} (كود ${student.code})${student.grade?.name ? ` — ${student.grade.name}` : ""}: حضور ${rate != null ? rate + "%" : "—"}، غياب ${absentCount} مرة${hasFin && balancePiastres != null ? `، رصيد ${Math.round(Math.abs(balancePiastres) / 100) / 10 >= 0 ? Math.round(Math.abs(balancePiastres) / 100) : 0}ج` : ""}.`.replace("  ", " "),
       data: {
@@ -96,7 +80,6 @@ register({
         attendance: { total, presentCount, absentCount, rate },
         recentAbsences,
         ...(hasFin ? { balancePiastres, lastPayment } : {}),
-        quizzes: quizRows,
       },
       cards: [{
         type: "report",

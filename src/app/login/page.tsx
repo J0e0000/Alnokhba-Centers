@@ -22,7 +22,6 @@ export default function LoginPage() {
 
   const destFor = (u: SessionUser | null | undefined) => {
     if (!u) return "/login";
-    if (u.scope === "academia") return "/academia";
     const next = safeNext();
     if (next) return next; // مركزز → وجهة داخلية مطلوبة (حضور الموظفين)
     return "/app";

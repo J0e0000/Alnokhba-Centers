@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
-  Home, CalendarDays, Users, Wallet, LogOut, LogIn, UserRound, Smartphone,
-  Clock, MapPin, GraduationCap, BadgeCheck, Loader2, RefreshCw, Banknote,
-  ArrowDownLeft, ArrowUpRight, KeyRound, FileCheck2, ClipboardList,
+  Home, CalendarDays, Users, LogOut, LogIn, UserRound, Smartphone,
+  Clock, MapPin, GraduationCap, BadgeCheck, Loader2, RefreshCw, Send,
+  KeyRound, MessageSquareText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { normalizeDigits, formatTime12, formatDateAR } from "@/lib/normalize";
@@ -14,7 +14,6 @@ import { AlNokhbaMark } from "../shared";
 import { Tour } from "../tour";
 import { HelpButton } from "../help";
 import { TEACHER_TOUR } from "../help-content";
-import { TeacherExams, TeacherAssignments } from "./teaching";
 
 // ============================= API =============================
 
@@ -73,7 +72,7 @@ type HomeData = {
   todaySessions: TodaySession[];
   todayScheduled: { subject: string; groupName: string; gradeName: string; startTime: string; endTime: string; room: string | null }[];
   nextLesson: NextLesson | null;
-  stats: { groups: number; students: number; balance: number; thisMonthEarned: number; totalEarned: number };
+  stats: { groups: number; students: number };
 };
 
 type ScheduleData = {
@@ -84,40 +83,16 @@ type ScheduleData = {
     lessons: {
       subject: string; groupName: string; gradeName: string;
       room: string | null; startTime: string; endTime: string; isPast: boolean; isNow: boolean;
+      students: number;
     }[];
   }[];
   subjects: string[];
   empty: boolean;
 };
 
-type MoneyData = {
-  teacher: { name: string; center: CenterInfo } | null;
-  today: string;
-  stats: { balance: number; totalEarned: number; totalPaid: number; thisMonthEarned: number };
-  settlements: {
-    id: string; type: string; amount: number; date: string; note: string | null;
-    sessionDate: string | null; sessionTime: string | null;
-  }[];
-  groups: { id: string; name: string; subject: string; price: number; teacherPercent: number }[];
-};
-
-type StudentsData = {
-  teacher: { name: string; center: CenterInfo } | null;
-  groups: {
-    id: string; name: string; subject: string; gradeName: string; room: string | null;
-    students: { id: string; name: string; code: string }[];
-  }[];
-};
-
-type TabId = "home" | "schedule" | "students" | "money" | "exams" | "assignments";
+type TabId = "home" | "schedule" | "message";
 
 // ============================= Helpers =============================
-
-/** المبالغ من الداتابيز بالقروش (100 قرش = جنيه) — بنحوّلها جنيه للعرض */
-function fmtEgp(piastres: number): string {
-  const egp = Math.round(piastres) / 100;
-  return egp.toLocaleString("en-EG", { maximumFractionDigits: 2 });
-}
 
 // ============================= App =============================
 
@@ -243,23 +218,17 @@ export function TeacherPortalApp() {
         <div key={tab} className="nk-anim-view">
           {tab === "home" && <TeacherHome data={home} onRefresh={doRefresh} refreshing={refreshing} />}
           {tab === "schedule" && <TeacherSchedule />}
-          {tab === "students" && <TeacherStudents />}
-          {tab === "money" && <TeacherMoney />}
-          {tab === "exams" && <TeacherExams />}
-          {tab === "assignments" && <TeacherAssignments />}
+          {tab === "message" && <TeacherMessage teacherName={t.name} />}
         </div>
       </main>
 
-      {/* ===== bottom nav — 6 تابات: الرئيسية / امتحانات / واجبات / جدولي / طلابي / فلوسي ===== */}
+      {/* ===== bottom nav — 3 تابات: الرئيسية / جدولي / رسالة ===== */}
       <nav className="fixed bottom-0 inset-x-0 z-40 nk-portal-nav border-t" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 4px)" }} aria-label="تنقل المدرس">
-        <div className="mx-auto max-w-lg grid grid-cols-6 h-16">
+        <div className="mx-auto max-w-lg grid grid-cols-3 h-16">
           {([
             { id: "home", label: "الرئيسية", icon: <Home className="w-5 h-5" /> },
-            { id: "exams", label: "امتحانات", icon: <FileCheck2 className="w-5 h-5" /> },
-            { id: "assignments", label: "واجبات", icon: <ClipboardList className="w-5 h-5" /> },
             { id: "schedule", label: "جدولي", icon: <CalendarDays className="w-5 h-5" /> },
-            { id: "students", label: "طلابي", icon: <Users className="w-5 h-5" /> },
-            { id: "money", label: "فلوسي", icon: <Wallet className="w-5 h-5" /> },
+            { id: "message", label: "رسالة", icon: <MessageSquareText className="w-5 h-5" /> },
           ] as { id: TabId; label: string; icon: React.ReactNode }[]
           ).map((n) => (
             <button
@@ -376,7 +345,7 @@ function TeacherLogin({ onSuccess }: { onSuccess: () => void }) {
         </form>
 
         <p className="text-center text-[11px] text-muted-foreground mt-5 flex items-center justify-center gap-1.5">
-          <GraduationCap className="w-3.5 h-3.5" /> جوا بتشوف جدولك وطلابك ومستحقاتك
+          <GraduationCap className="w-3.5 h-3.5" /> جوا بتشوف جدولك وعدد طلابك وتبعت رسالة للإدارة
         </p>
       </div>
     </main>
@@ -390,7 +359,6 @@ function TeacherHome({ data, onRefresh, refreshing }: { data: HomeData; onRefres
   const first = t.name.replace(/^أ\.\s*/, "").split(" ")[0];
   const st = data.stats;
   const nl = data.nextLesson;
-  const bal = Math.round(st.balance); // قروش
 
   return (
     <div className="space-y-4 nk-anim-stagger">
@@ -410,41 +378,7 @@ function TeacherHome({ data, onRefresh, refreshing }: { data: HomeData; onRefres
         </button>
       </div>
 
-      {/* المستحقات */}
-      <section className={cn(
-        "rounded-2xl border p-4 flex items-center gap-3",
-        bal > 0 ? "bg-emerald-50/70 border-emerald-200" :
-        bal < 0 ? "bg-orange-50/70 border-orange-200" :
-        "nk-card",
-      )}>
-        <span className={cn(
-          "w-11 h-11 rounded-xl grid place-items-center shrink-0",
-          bal > 0 ? "bg-emerald-100 text-emerald-700" :
-          bal < 0 ? "bg-orange-100 text-orange-700" :
-          "bg-muted text-muted-foreground",
-        )}>
-          <Banknote className="w-5 h-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-xs font-extrabold text-muted-foreground">
-            {bal > 0 ? "مستحق ليك عند السنتر" : bal < 0 ? "دفعات زيادة ليك" : "حسابك متوازن"}
-          </h3>
-          <p className={cn(
-            "nk-num font-extrabold text-xl mt-0.5",
-            bal > 0 ? "text-emerald-700" : bal < 0 ? "text-orange-600" : "text-foreground",
-          )}>
-            {bal > 0 ? `${fmtEgp(bal)} ج` : bal < 0 ? `${fmtEgp(Math.abs(bal))} ج` : "0 ج"}
-            <span className="text-[10px] font-bold ms-2 align-middle text-muted-foreground">
-              من نصيبك في الحصص المقفولة
-            </span>
-          </p>
-          <p className="text-[10px] font-bold text-muted-foreground mt-1">
-            الشهر ده كسبت {fmtEgp(st.thisMonthEarned)} ج
-          </p>
-        </div>
-      </section>
-
-      {/* stats */}
+      {/* stats — عدد المجموعات والطلاب */}
       <section className="grid grid-cols-2 gap-3">
         <div className="nk-card rounded-2xl p-4">
           <div className="flex items-center gap-2 text-muted-foreground mb-1">
@@ -612,6 +546,9 @@ function TeacherSchedule() {
                       {l.gradeName}{l.room ? ` · ${l.room}` : ""} · {formatTime12(l.startTime)} — {formatTime12(l.endTime)}
                     </span>
                   </span>
+                  <span className="text-[10px] font-extrabold rounded-full px-2 py-0.5 bg-muted text-muted-foreground shrink-0 nk-num">
+                    {l.students} طالب
+                  </span>
                   {l.isNow && (
                     <span className="text-[10px] font-extrabold rounded-full px-2 py-0.5 nk-brand-bg text-white shrink-0">شغالة</span>
                   )}
@@ -625,205 +562,73 @@ function TeacherSchedule() {
   );
 }
 
-// ============================= Students =============================
+// ============================= Message (رسالة للإدارة) =============================
 
-function TeacherStudents() {
-  const [data, setData] = useState<StudentsData | null>(null);
-  const [openGroup, setOpenGroup] = useState<string | null>(null);
+function TeacherMessage({ teacherName }: { teacherName: string }) {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [sentCount, setSentCount] = useState(0);
 
-  useEffect(() => {
-    tapi<StudentsData>("/api/teacher-portal/students", { silent: true }).then(setData).catch(() => {});
-  }, []);
-
-  if (!data || !data.teacher) return <LoadingBlock />;
-
-  const totalStudents = data.groups.reduce((a, g) => a + g.students.length, 0);
-  if (data.groups.length === 0) {
-    return (
-      <div className="nk-card rounded-2xl p-8 text-center">
-        <Users className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-        <p className="font-extrabold">لسه مفيش مجموعات ليك</p>
-        <p className="text-sm text-muted-foreground font-bold mt-1">لما الإدارة تربط مجموعات بيك هتلاقي طلابك هنا.</p>
-      </div>
-    );
+  async function send() {
+    const t = text.trim();
+    if (t.length < 3) {
+      toast.error("اكتب الرسالة الأول (3 حروف على الأقل).");
+      return;
+    }
+    setBusy(true);
+    try {
+      await tapi("/api/teacher-portal/message", { method: "POST", body: { text: t } });
+      toast.success("وصلت الرسالة للإدارة ✅");
+      setText("");
+      setSentCount((n) => n + 1);
+    } catch { /* toast shown */ } finally { setBusy(false); }
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between px-1">
-        <h2 className="text-lg font-extrabold">طلابي</h2>
-        <span className="text-[11px] font-bold text-muted-foreground nk-num">
-          {data.groups.length} مجموعات · {totalStudents} طالب
-        </span>
+    <div className="space-y-3 nk-anim-view">
+      <div>
+        <h2 className="text-lg font-extrabold px-1">رسالة للإدارة</h2>
+        <p className="text-[11px] font-bold text-muted-foreground px-1 mt-0.5">
+          من {teacherName} — الرسالة بتوصل للمدير والاستقبال فورًا مع إشعار.
+        </p>
       </div>
-      {data.groups.map((g) => {
-        const open = openGroup === g.id;
-        return (
-          <div key={g.id} className="nk-card rounded-2xl overflow-hidden">
-            <button
-              onClick={() => setOpenGroup(open ? null : g.id)}
-              className="w-full flex items-center justify-between gap-2 p-4 text-start"
-            >
-              <div className="min-w-0">
-                <p className="font-extrabold truncate">{g.subject} — مجموعة {g.name}</p>
-                <p className="text-[10px] font-bold text-muted-foreground mt-0.5">
-                  {g.gradeName}{g.room ? ` · ${g.room}` : ""} · <span className="nk-num">{g.students.length}</span> طالب
-                </p>
-              </div>
-              <span className={cn("text-muted-foreground transition-transform text-xs font-extrabold", open && "rotate-180")}>
-                ▼
-              </span>
-            </button>
-            {open && (
-              <div className="border-t border-border px-4 py-2.5 space-y-1">
-                {g.students.length === 0 ? (
-                  <p className="text-xs font-bold text-muted-foreground py-2">مفيش طلاب مسجلين في المجموعة دي.</p>
-                ) : (
-                  g.students.map((st, i) => (
-                    <div key={st.id} className="flex items-center gap-3 py-1.5">
-                      <span className="w-6 h-6 rounded-lg bg-muted grid place-items-center text-[10px] font-extrabold text-muted-foreground nk-num shrink-0">
-                        {i + 1}
-                      </span>
-                      <span className="flex-1 text-sm font-bold truncate">{st.name}</span>
-                      <span className="text-[10px] font-extrabold text-muted-foreground nk-num">{st.code}</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-        );
-      })}
+
+      <section className="nk-card rounded-2xl p-4 space-y-3">
+        <textarea
+          className="w-full min-h-[140px] rounded-xl border border-border bg-card px-3.5 py-3 text-sm font-semibold resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          placeholder="اكتب رسالتك هنا... (مثال: الحصة بتاعة بكرة معداة ساعة، أو محتاج تأجيل حصة المجموعة A)"
+          value={text}
+          maxLength={1000}
+          onChange={(e) => setText(e.target.value)}
+          disabled={busy}
+          autoFocus
+        />
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[10px] font-bold text-muted-foreground nk-num">{text.length}/1000</span>
+          <button
+            onClick={send}
+            disabled={busy || text.trim().length < 3}
+            className="nk-btn-brand h-11 rounded-xl font-extrabold px-6 flex items-center justify-center gap-2 shadow active:scale-[0.99] disabled:opacity-50"
+          >
+            {busy ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : <Send className="w-4.5 h-4.5" />}
+            {busy ? "جاري الإرسال..." : "إرسال الرسالة"}
+          </button>
+        </div>
+      </section>
+
+      {sentCount > 0 && (
+        <p className="text-[11px] font-bold text-emerald-700 text-center">
+          بعت {sentCount} رسالة النهاردة — الإدارة هترد عليك لو في رد.
+        </p>
+      )}
       <p className="text-[10px] font-bold text-muted-foreground text-center px-4 leading-relaxed">
-        أرقام التواصل مش ظاهرة هنا — لو محتاج تتواصل مع طالب، راجع إدارة السنتر.
+        الرسائل دي للإدارة — لو عايز تبلغ أولياء الأمور بحاجة، كلّم الإدارة وهي هتبلغهم من الرسائل الرسمية.
       </p>
     </div>
   );
 }
 
-// ============================= Money =============================
-
-function TeacherMoney() {
-  const [data, setData] = useState<MoneyData | null>(null);
-
-  useEffect(() => {
-    tapi<MoneyData>("/api/teacher-portal/money", { silent: true }).then(setData).catch(() => {});
-  }, []);
-
-  if (!data || !data.teacher) return <LoadingBlock />;
-  const st = data.stats;
-
-  return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-extrabold px-1">فلوسي</h2>
-
-      {/* الرصيد */}
-      <section className={cn(
-        "nk-portal-card rounded-2xl border p-4 flex items-center gap-3",
-        st.balance > 0 ? "bg-emerald-50/70 border-emerald-200" :
-        st.balance < 0 ? "bg-orange-50/70 border-orange-200" :
-        "nk-card",
-      )}>
-        <span className={cn(
-          "w-11 h-11 rounded-xl grid place-items-center shrink-0",
-          st.balance > 0 ? "bg-emerald-100 text-emerald-700" :
-          st.balance < 0 ? "bg-orange-100 text-orange-700" :
-          "bg-muted text-muted-foreground",
-        )}>
-          <Banknote className="w-5 h-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-xs font-extrabold text-muted-foreground">
-            {st.balance > 0 ? "مستحق ليك" : st.balance < 0 ? "دفعت زيادة" : "متوازن"}
-          </h3>
-          <p className={cn(
-            "nk-num font-extrabold text-2xl mt-0.5",
-            st.balance > 0 ? "text-emerald-700" : st.balance < 0 ? "text-orange-600" : "text-foreground",
-          )}>
-            {st.balance > 0 ? `${fmtEgp(st.balance)} ج` : st.balance < 0 ? `${fmtEgp(Math.abs(st.balance))} ج` : "0 ج"}
-          </p>
-        </div>
-      </section>
-
-      {/* ملخص */}
-      <section className="grid grid-cols-3 gap-2">
-        <div className="nk-card rounded-2xl p-3 text-center">
-          <p className="text-[10px] font-extrabold text-muted-foreground">الشهر ده</p>
-          <p className="nk-num font-extrabold text-base mt-1 text-emerald-700">{fmtEgp(st.thisMonthEarned)} ج</p>
-        </div>
-        <div className="nk-card rounded-2xl p-3 text-center">
-          <p className="text-[10px] font-extrabold text-muted-foreground">إجمالي مكسبك</p>
-          <p className="nk-num font-extrabold text-base mt-1">{fmtEgp(st.totalEarned)} ج</p>
-        </div>
-        <div className="nk-card rounded-2xl p-3 text-center">
-          <p className="text-[10px] font-extrabold text-muted-foreground">اتصرف ليك</p>
-          <p className="nk-num font-extrabold text-base mt-1">{fmtEgp(st.totalPaid)} ج</p>
-        </div>
-      </section>
-
-      {/* نصيبك في كل مجموعة */}
-      <section className="nk-card rounded-2xl p-4 space-y-2">
-        <h3 className="text-xs font-extrabold text-muted-foreground">نصيبك في كل مجموعة</h3>
-        {data.groups.length === 0 ? (
-          <p className="text-xs font-bold text-muted-foreground">مفيش مجموعات لسه.</p>
-        ) : (
-          data.groups.map((g) => (
-            <div key={g.id} className="flex items-center justify-between gap-2 py-1.5 border-b border-border/60 last:border-0">
-              <span className="text-sm font-bold min-w-0 truncate">{g.subject} — {g.name}</span>
-              <span className="text-[11px] font-extrabold text-muted-foreground nk-num shrink-0">
-                {fmtEgp(g.price)} ج × <span className="nk-brand-text">{g.teacherPercent}%</span> ليك
-              </span>
-            </div>
-          ))
-        )}
-      </section>
-
-      {/* سجل الحركات */}
-      <section className="space-y-2">
-        <h3 className="text-xs font-extrabold text-muted-foreground px-1">سجل المستحقات والصرف</h3>
-        {data.settlements.length === 0 ? (
-          <div className="nk-card rounded-2xl p-6 text-center">
-            <p className="text-sm font-bold text-muted-foreground">مفيش حركات لسه — أول ما حصة تتقفل هتلاقى نصيبك هنا.</p>
-          </div>
-        ) : (
-          data.settlements.map((s) => {
-            const earned = s.type === "EARNED";
-            return (
-              <div key={s.id} className="nk-card rounded-2xl p-3.5 flex items-center gap-3">
-                <span className={cn(
-                  "w-9 h-9 rounded-xl grid place-items-center shrink-0",
-                  earned ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground",
-                )}>
-                  {earned ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-extrabold truncate">
-                    {earned ? "نصيب حصة" : "صرف / دفعة"}
-                    {s.sessionDate && (
-                      <span className="text-[10px] font-bold text-muted-foreground ms-1.5">{formatDateAR(s.sessionDate)}</span>
-                    )}
-                  </p>
-                  <p className="text-[10px] font-bold text-muted-foreground">
-                    {formatDateAR(s.date)}
-                    {s.sessionTime ? ` · ${s.sessionTime}` : ""}
-                    {s.note ? ` · ${s.note}` : ""}
-                  </p>
-                </div>
-                <span className={cn(
-                  "nk-num font-extrabold text-sm shrink-0",
-                  earned ? "text-emerald-700" : "text-orange-700",
-                )}>
-                  {earned ? "+" : "−"}{fmtEgp(Math.abs(s.amount))} ج
-                </span>
-              </div>
-            );
-          })
-        )}
-      </section>
-    </div>
-  );
-}
-
+// ============================= Loading =============================
 // ============================= Loading =============================
 
 function LoadingBlock() {

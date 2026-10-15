@@ -31,11 +31,8 @@ export const QR_SLOT_SECONDS = 10; // كل كود بيعيش 10 ثواني عل�
 export const QR_SLOT_GRACE_MS = 4_000; // الكود بيكمل شغال 4ث بعد ما يتنزل عن الشاشة (الـ claims اللي في الطريق)
 export const QR_ACTIVATION_GRACE_MS = 90_000; // تفعيل أول مرة (كود+موبايل) بياخد وقت — الطالب اللي فتح الرابط وهو حاضر مكانه محفوظ لمدة دقيقة ونص
 
-export type SessionQrScope = "CENTERS" | "ACADEMIA";
-
 /** توليد توكن جديد (أو rotate) لحصة مفتوحة — يُستدعى من شاشة الحصة/المدرس فقط */
 export async function issueSessionQr(opts: {
-  scope: SessionQrScope;
   sessionId: string;
   centerId: string | null;
   createdById: string;
@@ -44,7 +41,7 @@ export async function issueSessionQr(opts: {
 }): Promise<{ token: string; expiresAt: string; rotated: boolean }> {
   // rotate: قفل أي توكن نشط قديم لنفس الحصة
   const old = await db.sessionQRToken.findMany({
-    where: { sessionId: opts.sessionId, scope: opts.scope, isActive: true },
+    where: { sessionId: opts.sessionId, isActive: true },
     select: { id: true },
   });
   if (old.length) {
@@ -57,7 +54,6 @@ export async function issueSessionQr(opts: {
   const ttl = Math.max(QR_ROTATE_GRACE_MS + 5_000, opts.ttlMs ?? SESSION_QR_TTL_MS);
   const row = await db.sessionQRToken.create({
     data: {
-      scope: opts.scope,
       sessionId: opts.sessionId,
       centerId: opts.centerId,
       token,
@@ -78,7 +74,6 @@ export const QR_BATCH_SLOT_SECONDS = 5;
  *  الشاشة بتفل بينهم كل slotSeconds، فأي سكرين شوت بيمسك كود واحد بيموت مع الدفعة.
  *  كل دفعة جديدة بتقفل اللي قبلها بهامش QR_ROTATE_GRACE_MS (نفس عقد التدوير). */
 export async function issueSessionQrBatch(opts: {
-  scope: SessionQrScope;
   sessionId: string;
   centerId: string | null;
   createdById: string;
@@ -93,7 +88,7 @@ export async function issueSessionQrBatch(opts: {
   );
   // قفل أي توكن نشط قديم لنفس الحصة (نفس عقد issueSessionQr)
   const old = await db.sessionQRToken.findMany({
-    where: { sessionId: opts.sessionId, scope: opts.scope, isActive: true },
+    where: { sessionId: opts.sessionId, isActive: true },
     select: { id: true },
   });
   if (old.length) {
@@ -108,8 +103,7 @@ export async function issueSessionQrBatch(opts: {
     const token = randomBytes(20).toString("hex");
     const row = await db.sessionQRToken.create({
       data: {
-        scope: opts.scope,
-        sessionId: opts.sessionId,
+          sessionId: opts.sessionId,
         centerId: opts.centerId,
         token,
         isActive: true,
@@ -127,7 +121,6 @@ export async function issueSessionQrBatch(opts: {
  *  مدة السلوت + هامش شبكة صغير وبعده بيموت لوحده (اللي قبله بيموت قبله).
  *  أكتر من شاشة عرض في نفس اللحظة = عادي: كل كود بيعيش عمره القصير بنفسه. */
 export async function issueSessionQrSlot(opts: {
-  scope: SessionQrScope;
   sessionId: string;
   centerId: string | null;
   createdById: string;
@@ -140,7 +133,6 @@ export async function issueSessionQrSlot(opts: {
   const ttl = slotSeconds * 1000 + QR_SLOT_GRACE_MS;
   const row = await db.sessionQRToken.create({
     data: {
-      scope: opts.scope,
       sessionId: opts.sessionId,
       centerId: opts.centerId,
       token,
@@ -160,7 +152,6 @@ export async function issueSessionQrSlot(opts: {
  *  الأخطاء بتحمل code: EXPIRED (قديم منتهي) | INACTIVE (توكن اتدوّر = replay) | INVALID (شكل غلط) */
 export async function resolveSessionQr(token: string, opts?: { graceMs?: number }): Promise<{
   qrId: string;
-  scope: SessionQrScope;
   centerId: string | null;
   sessionId: string;
   sessionLabel: string;
@@ -185,21 +176,6 @@ export async function resolveSessionQr(token: string, opts?: { graceMs?: number 
     (e as ApiError & { code?: string }).code = "EXPIRED";
     throw e;
   }
-  if (qr.scope === "ACADEMIA") {
-    const s = await db.acaSession.findUnique({
-      where: { id: qr.sessionId },
-      include: { group: { include: { subject: true } } },
-    });
-    if (!s) throw new ApiError("الحصة دي مش موجودة.", 404);
-    return {
-      qrId: qr.id,
-      scope: "ACADEMIA",
-      centerId: null,
-      sessionId: s.id,
-      sessionLabel: `${s.group.subject.name} — ${s.date} ${s.startTime}`,
-      expiresAt: qr.expiresAt,
-    };
-  }
   const s = await db.sessionInstance.findUnique({
     where: { id: qr.sessionId },
     include: { group: { include: { subject: true, grade: true } } },
@@ -207,7 +183,6 @@ export async function resolveSessionQr(token: string, opts?: { graceMs?: number 
   if (!s) throw new ApiError("الحصة دي مش موجودة.", 404);
   return {
     qrId: qr.id,
-    scope: "CENTERS",
     centerId: s.centerId,
     sessionId: s.id,
     // حصص الحضور المفتوح مالهاش مجموعة — الاسم هو البطاقة

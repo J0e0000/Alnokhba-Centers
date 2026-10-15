@@ -150,7 +150,7 @@ export const POST = handler(async (req: Request) => {
     }).catch(() => {});
     throw new ApiError("كود الحضور ده مش معروف — امسح الكود اللي على شاشة الحصة.", 404);
   }
-  if (qr.scope !== "CENTERS" || !qr.centerId) throw new ApiError("الكود ده مش كود حضور سنترز.", 400);
+  if (!qr.centerId) throw new ApiError("الكود ده مش كود حضور سنترز.", 400);
 
   const live = qr.isActive && qr.expiresAt.getTime() >= Date.now();
   let grace = false;

@@ -22,7 +22,6 @@ export const GET = handler(async (_req: Request, ctx: Ctx) => {
         include: { student: { select: { id: true, name: true, code: true, status: true, phone: true, parentPhone: true } } },
         orderBy: { createdAt: "desc" },
       },
-      exam: { include: { scores: { select: { studentId: true, score: true } } } },
     },
   });
   if (!session) throw new ApiError("الحصة دي مش موجودة.", 404);
@@ -54,8 +53,6 @@ export const GET = handler(async (_req: Request, ctx: Ctx) => {
       price: session.price, teacherPercent: session.teacherPercent,
       studentSource: session.studentSource, studentCodeLength: session.studentCodeLength,
       allowUnregistered: session.allowUnregistered,
-      // تقرير الحصة (نقل من المنصة الأساسية): درس اليوم / الواجب / فيديو الشرح
-      lessonTopic: session.lessonTopic ?? "", homeworkText: session.homeworkText ?? "", videoLink: session.videoLink ?? "",
       // وقت البداية الفعلي = لحظة فتح الحصة
       openedAt: session.status !== "CANCELLED" ? session.createdAt.toISOString() : null,
       closedAt: session.closedAt,
@@ -69,52 +66,17 @@ export const GET = handler(async (_req: Request, ctx: Ctx) => {
       status: a.status, charged: a.charged, at: a.createdAt,
       method: a.method,
       phone: a.student?.phone ?? null, parentPhone: a.student?.parentPhone ?? null,
-      // التفاعل والواجب (نقل من المنصة الأساسية — للحاضرين بس)
-      homeworkStatus: a.homeworkStatus ?? null,
-      interactionPlus: a.interactionPlus, interactionMinus: a.interactionMinus,
       riskScore: a.riskScore,
       riskFlags: a.riskFlags ? ((): string[] => { try { return JSON.parse(a.riskFlags) as string[]; } catch { return []; } })() : [],
     })),
     absent,
-    // امتحان الحصة + درجاته (رصد جوه الحصة — نقل من المنصة الأساسية)
-    exam: session.exam
-      ? { id: session.exam.id, title: session.exam.title, maxScore: session.exam.maxScore }
-      : null,
-    examScores: session.exam
-      ? session.exam.scores.map((sc) => ({ studentId: sc.studentId, score: sc.score }))
-      : [],
   });
 });
 
-/** POST /api/sessions/[id] — actions: close | cancel | reopen (manager) | save-details (تقرير الحصة) */
+/** POST /api/sessions/[id] — actions: close | cancel | reopen (manager) */
 export const POST = handler(async (req: Request, ctx: Ctx) => {
   const { id } = await ctx.params;
-  const body = await readJson<{ action?: string; reason?: string; lessonTopic?: string; homeworkText?: string; videoLink?: string }>(req);
-
-  // ===== حفظ بيانات الحصة (درس اليوم / تفاصيل الواجب / رابط الفيديو) =====
-  // SAVE ≠ FINISH — بيتحفظ لحظيًا (autosave بتأخير 900ms من تاب التقرير).
-  // الحصة المفتوحة: أي موظف سنتر. المقفولة: المدير أو صاحب صلاحية تعديل الحضور (وضع تعديل حصة قديمة).
-  if (body.action === "save-details") {
-    const user = await requireCenterUser();
-    const session = await db.sessionInstance.findFirst({ where: { id, centerId: user.centerId } });
-    if (!session) throw new ApiError("الحصة دي مش موجودة.", 404);
-    if (session.status !== "OPEN" && !(user.role === "MANAGER" || hasPermission(user, "EDIT_ATTENDANCE"))) {
-      throw new ApiError("الحصة مقفولة — تعديل بياناتها للمدير بس.", 403);
-    }
-    const clean = (v: unknown, max: number) => {
-      const s = String(v ?? "").trim().slice(0, max);
-      return s || null;
-    };
-    await db.sessionInstance.update({
-      where: { id },
-      data: {
-        lessonTopic: clean(body.lessonTopic, 200),
-        homeworkText: clean(body.homeworkText, 500),
-        videoLink: clean(body.videoLink, 300),
-      },
-    });
-    return ok({ saved: true });
-  }
+  const body = await readJson<{ action?: string; reason?: string }>(req);
 
   if (body.action === "close") {
     // Close can be done by manager OR receptionist (spec: "authorized user presses قفل الحصة")

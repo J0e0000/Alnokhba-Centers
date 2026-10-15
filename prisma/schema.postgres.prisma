@@ -78,7 +78,6 @@ model Center {
   emergencyRecoveryImports EmergencyRecoveryImport[]
   approvalRequests ApprovalRequest[]
   staffNotifications StaffNotification[]
-  quizzes          Quiz[]
   sessionQrTokens  SessionQRToken[]
   capabilities     CenterCapability[]
   attendanceEvents AttendanceEvent[]
@@ -89,8 +88,6 @@ model Center {
   subscriptionEvents SubscriptionEvent[]
   backupRuns       BackupRun[]
   undoEntries      UndoEntry[]
-  exams            Exam[]
-  assignments      Assignment[]
   checkInAttempts  CheckInAttempt[]
 }
 
@@ -113,9 +110,6 @@ model User {
   // null = وراثة السنتر بالكامل. الـ false بيحجب القسم للحساب ده بس —
   // الـ true عمره ما بيفتح قسم مقفول من الخطة/الاشتراك/السنتر (fail-safe — تقييم في entitlements.ts)
   modules         String?
-  // ALNOKHBA ACADEMIA — product scope + granular academia permission overrides
-  scope           String   @default("centers") // "centers" | "academia"
-  acaPermissions  String? // JSON { "grades.edit": true, ... } — overrides for academia RBAC
   // بيانات طلب الانضمام (لما role = PENDING)
   phone           String?
   center          Center?  @relation(fields: [centerId], references: [id])
@@ -129,12 +123,6 @@ model User {
   staffNotifications StaffNotification[]
   preference       UserPreference?
   undoEntries      UndoEntry[]        @relation("UndoEntries")
-  acaTeacherGroups   AcaGroup[]         @relation("AcaTeacherGroups")
-  acaTeacherSessions AcaSession[]       @relation("AcaTeacherSessions")
-  acaStudentProfile  AcaStudentProfile?
-  acaRequestsMade    AcaRequest[]       @relation("AcaRequester")
-  acaRequestsDecided AcaRequest[]       @relation("AcaDecider")
-  acaNotifications   AcaNotification[]
   agentTasks       AgentTask[]
   agentMemories    AgentMemory[]
   createdAt      DateTime @default(now())
@@ -229,9 +217,6 @@ model Group {
   students       StudentGroup[]
   sessions       SessionInstance[]
   schedules      ScheduleSlot[]
-  quizzes        Quiz[]
-  exams          Exam[]
-  assignments    Assignment[]
 
   @@index([centerId])
 }
@@ -281,10 +266,6 @@ model Student {
   portalSessions StudentPortalSession[]
   studentNotifications StudentNotification[]
   pushSubs    PushSubscription[]
-  quizAttempts QuizAttempt[]
-  examAttempts ExamAttempt[]
-  assignmentSubmissions AssignmentSubmission[]
-  sessionExamScores SessionExamScore[]
   trustedDevice TrustedDeviceBinding?
 
   @@unique([centerId, code])
@@ -385,12 +366,6 @@ model SessionInstance {
   openedBy      String?
   closedBy      String?
   closedAt      DateTime?
-  // ===== تقرير الحصة (نقل من منصة النخبة الأساسية — workflow الحصص) =====
-  // درس اليوم + تفاصيل الواجب + رابط فيديو الشرح — بيتحفظوا بـ autosave من تاب التقرير،
-  // وبيدخلوا في رسائل واتساب لأولياء الأمور وبورتال الطالب.
-  lessonTopic   String?
-  homeworkText  String?
-  videoLink     String?
   // close-time aggregates (piastres)
   presentCount  Int?
   totalRevenue  Int?
@@ -400,43 +375,9 @@ model SessionInstance {
   center        Center    @relation(fields: [centerId], references: [id])
   group         Group?    @relation(fields: [groupId], references: [id])
   attendance    Attendance[]
-  exam          SessionExam?
 
   @@index([centerId, date])
   @@index([groupId, date])
-}
-
-// ===== امتحان الحصة (رصد درجات جوه الحصة — نقل من منصة النخبة الأساسية) =====
-// امتحان واحد لكل حصة (تبسيط مقصود لتجربة السنترز): عنوان + درجة نهائية،
-// ودرجة لكل طالب حاضر. الغايب مش بياخد درجة (صف مش بيتعمله upsert خالص).
-model SessionExam {
-  id        String   @id @default(cuid())
-  centerId  String
-  sessionId String   @unique
-  title     String
-  maxScore  Float
-  createdByName String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  session   SessionInstance @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  scores    SessionExamScore[]
-
-  @@index([centerId])
-}
-
-model SessionExamScore {
-  id        String   @id @default(cuid())
-  examId    String
-  studentId String
-  score     Float?
-  updatedByName String?
-  updatedAt DateTime @updatedAt
-  createdAt DateTime @default(now())
-  exam      SessionExam @relation(fields: [examId], references: [id], onDelete: Cascade)
-  student   Student?    @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  @@unique([examId, studentId])
-  @@index([examId])
 }
 
 model Attendance {
@@ -475,12 +416,6 @@ model Attendance {
   // مهما كان الجهاز — بيقفل الغش «هسجّل كود صاحبي الغايب من موبايلي».
   // للطلاب الحقيقيين (ليهم studentId) الحماية جاية من unique(sessionId, studentId) — فبنسيبهم null.
   attendanceCode String?
-  // ===== التفاعل والواجب (نقل من منصة النخبة الأساسية — workflow الحصص) =====
-  // للطلاب الحاضرين بس: الواجب 3 حالات (DONE مكتمل | PARTIAL ناقص | MISSING لم يتم)
-  // والتفاعل عدّاد ضغطات (＋ تفاعل / − مخالفة) — كل ضغطة بتتحفظ فورًا.
-  homeworkStatus  String? // null = لم يُرصد | DONE | PARTIAL | MISSING
-  interactionPlus  Int @default(0)
-  interactionMinus Int @default(0)
   createdAt  DateTime       @default(now())
   session    SessionInstance @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   student    Student?        @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -1093,374 +1028,6 @@ model StaffNotification {
 }
 
 // ###########################################################################
-// ============================ ALNOKHBA ACADEMIA ============================
-// ###########################################################################
-// Dedicated academic-management product built on the same identity system
-// (User/AuthSession) but a separate product scope ("academia").
-// Additive forward models — Centers tables above are untouched (spec §33).
-// Dates: YYYY-MM-DD strings. Times: "HH:MM" 24h. dayOfWeek: 0=Sunday..6=Saturday.
-
-model AcademicTerm {
-  id        String   @id @default(cuid())
-  name      String // "2026/2027 — الترم الأول"
-  type      String   @default("TERM") // YEAR | TERM | EXAM_PERIOD | HOLIDAY
-  startDate String // YYYY-MM-DD
-  endDate   String
-  isActive  Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  exams AcaExam[]
-
-  @@index([isActive])
-}
-
-// ----------------------------- CURRICULUM TREE -----------------------------
-// Subject → Unit → Topic → Lesson  (what the student has studied & how)
-
-model AcaSubject {
-  id        String   @id @default(cuid())
-  name      String // "الرياضيات"
-  code      String? // "MATH"
-  color     String   @default("#2563EB")
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-
-  units  AcaUnit[]
-  groups AcaGroup[]
-  exams  AcaExam[]
-
-  @@unique([name])
-}
-
-model AcaUnit {
-  id        String     @id @default(cuid())
-  subjectId String
-  title     String
-  order     Int        @default(0)
-  subject   AcaSubject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-
-  topics AcaTopic[]
-
-  @@index([subjectId, order])
-}
-
-model AcaTopic {
-  id      String  @id @default(cuid())
-  unitId  String
-  title   String
-  order   Int     @default(0)
-  unit    AcaUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
-
-  lessons  AcaLesson[]
-  exams    AcaExam[]
-  sessions AcaSession[]
-
-  @@index([unitId, order])
-}
-
-model AcaLesson {
-  id      String   @id @default(cuid())
-  topicId String
-  title   String
-  order   Int      @default(0)
-  topic   AcaTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
-
-  @@index([topicId, order])
-}
-
-// ----------------------------- PEOPLE -----------------------------
-// Teachers & students are platform Users (role TEACHER/STUDENT, scope=academia).
-
-model AcaStudentProfile {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  code        String   @unique // 5-digit student code
-  gradeName   String? // "الأول الثانوي"
-  parentName  String?
-  parentPhone String?
-  notes       String?
-  createdAt   DateTime @default(now())
-
-  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  enrollments  AcaEnrollment[]
-  attendance   AcaAttendance[]
-  interactions AcaInteraction[]
-  homework     AcaHomeworkRecord[]
-  examResults  AcaExamResult[]
-
-  @@index([code])
-}
-
-// ----------------------------- GROUPS / CLASSES -----------------------------
-
-model AcaGroup {
-  id              String   @id @default(cuid())
-  name            String // "الرياضيات — أولى ثانوي — A"
-  subjectId       String
-  teacherId       String // User (role TEACHER)
-  gradeName       String?
-  room            String?
-  capacity        Int      @default(20)
-  pricePerSession Int? // piastres (light financial layer, perm-gated)
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-
-  subject     AcaSubject          @relation(fields: [subjectId], references: [id])
-  teacher     User                @relation("AcaTeacherGroups", fields: [teacherId], references: [id])
-  schedules   AcaGroupSchedule[]
-  enrollments AcaEnrollment[]
-  sessions    AcaSession[]
-  exams       AcaExam[]
-  requests    AcaRequest[]
-
-  @@index([teacherId])
-  @@index([subjectId])
-}
-
-// ONE group may have MULTIPLE weekly occurrences — each independently
-// identifiable for sessions/attendance/history/rescheduling (spec §11).
-model AcaGroupSchedule {
-  id        String   @id @default(cuid())
-  groupId   String
-  dayOfWeek Int // 0=Sunday..6=Saturday
-  startTime String // "17:00"
-  endTime   String // "18:30"
-  room      String?
-  status    String   @default("ACTIVE") // ACTIVE | CANCELLED
-  createdAt DateTime @default(now())
-
-  group    AcaGroup     @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  sessions AcaSession[]
-
-  @@index([groupId, dayOfWeek])
-  @@index([dayOfWeek])
-}
-
-model AcaEnrollment {
-  id          String   @id @default(cuid())
-  groupId     String
-  studentId   String // AcaStudentProfile
-  customPrice Int? // override (piastres)
-  status      String   @default("ACTIVE") // ACTIVE | PAUSED | LEFT
-  enrolledAt  DateTime @default(now())
-
-  group   AcaGroup          @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  student AcaStudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  @@unique([groupId, studentId])
-  @@index([studentId, status])
-}
-
-// ----------------------------- SESSIONS -----------------------------
-// Lifecycle: SCHEDULED → STARTED → IN_PROGRESS → COMPLETED  (+ CANCELLED)
-// Resumable until explicitly completed (SAVE ≠ FINISH, spec §14).
-// workspace JSON: { stages: { attendance: "pending"|"done", ... }, notes }
-
-model AcaSession {
-  id            String    @id @default(cuid())
-  groupId       String
-  scheduleId    String? // source occurrence (null for makeup/manual)
-  date          String // YYYY-MM-DD
-  startTime     String
-  endTime       String
-  room          String?
-  teacherId     String // User — ownership for RBAC
-  topicId       String? // curriculum link
-  title         String?
-  status        String    @default("SCHEDULED") // SCHEDULED | STARTED | IN_PROGRESS | COMPLETED | CANCELLED
-  isMakeup      Boolean   @default(false)
-  workspace     String? // JSON stage state
-  notes         String?
-  startedAt     DateTime?
-  completedAt   DateTime?
-  completedById String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  group        AcaGroup            @relation(fields: [groupId], references: [id])
-  schedule     AcaGroupSchedule?   @relation(fields: [scheduleId], references: [id])
-  teacher      User                @relation("AcaTeacherSessions", fields: [teacherId], references: [id])
-  topic        AcaTopic?           @relation(fields: [topicId], references: [id])
-  attendance   AcaAttendance[]
-  interactions AcaInteraction[]
-  homework     AcaHomeworkRecord[]
-  exams        AcaExam[]
-
-  @@index([groupId, date])
-  @@index([date, status])
-  @@index([teacherId, date])
-}
-
-model AcaAttendance {
-  id         String      @id @default(cuid())
-  sessionId  String
-  studentId  String
-  status     String // PRESENT | ABSENT | LATE | EXCUSED
-  // طريقة التسجيل: MANUAL (شاشة الحصة) | SESSION_QR (QR الحصة المتنقل)
-  method     String      @default("MANUAL")
-  note       String?
-  markedById String
-  markedAt   DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-
-  session AcaSession        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  student AcaStudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  @@unique([sessionId, studentId])
-  @@index([studentId, status])
-}
-
-model AcaInteraction {
-  id        String   @id @default(cuid())
-  sessionId String
-  studentId String
-  rating    String // GREAT | GOOD | QUIET | DISRUPTIVE
-  note      String?
-  updatedAt DateTime @updatedAt
-
-  session AcaSession        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  student AcaStudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  @@unique([sessionId, studentId])
-  @@index([studentId, rating])
-}
-
-// Homework kept intentionally simple (spec §20): completed + score (+10/+5/-5)
-model AcaHomeworkRecord {
-  id        String   @id @default(cuid())
-  sessionId String
-  studentId String
-  completed Boolean  @default(false)
-  score     Int? // -5 | 5 | 10
-  note      String?
-  updatedAt DateTime @updatedAt
-
-  session AcaSession        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  student AcaStudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  @@unique([sessionId, studentId])
-  @@index([studentId, completed])
-}
-
-// ----------------------------- EXAMS & GRADES -----------------------------
-
-model AcaExam {
-  id        String   @id @default(cuid())
-  groupId   String
-  subjectId String
-  title     String // "كويز الوحدة الأول"
-  type      String   @default("QUIZ") // QUIZ | MIDTERM | FINAL | PRACTICAL | ASSIGNMENT
-  date      String // YYYY-MM-DD
-  maxScore  Int      @default(100)
-  sessionId String? // optional in-session link
-  termId    String?
-  topicId   String?
-  createdBy String
-  createdAt DateTime @default(now())
-
-  group   AcaGroup       @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  subject AcaSubject     @relation(fields: [subjectId], references: [id])
-  term    AcademicTerm?  @relation(fields: [termId], references: [id])
-  topic   AcaTopic?      @relation(fields: [topicId], references: [id])
-  results AcaExamResult[]
-  session AcaSession?    @relation(fields: [sessionId], references: [id])
-
-  @@index([groupId, date])
-  @@index([subjectId, date])
-}
-
-model AcaExamResult {
-  id          String   @id @default(cuid())
-  examId      String
-  studentId   String
-  score       Int? // null = not graded yet
-  note        String?
-  enteredById String
-  updatedAt   DateTime @updatedAt
-
-  exam    AcaExam           @relation(fields: [examId], references: [id], onDelete: Cascade)
-  student AcaStudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  @@unique([examId, studentId])
-  @@index([studentId])
-}
-
-// ----------------------------- OPERATIONS -----------------------------
-// Teacher requests → manager decisions (reschedule/cancel/makeup/substitute)
-
-model AcaRequest {
-  id            String    @id @default(cuid())
-  type          String // RESCHEDULE | CANCEL | MAKEUP | SUBSTITUTE | OTHER
-  payload       String // JSON { groupId, sessionId?, scheduleId?, newDate?, newStart?, newEnd?, reason }
-  status        String    @default("PENDING") // PENDING | APPROVED | REJECTED
-  requestedById String
-  groupId       String?
-  sessionId     String?
-  decidedById   String?
-  decidedAt     DateTime?
-  decisionNote  String?
-  createdAt     DateTime  @default(now())
-
-  group   AcaGroup? @relation(fields: [groupId], references: [id])
-  requester User    @relation("AcaRequester", fields: [requestedById], references: [id])
-  decider   User?   @relation("AcaDecider", fields: [decidedById], references: [id])
-
-  @@index([status, createdAt])
-  @@index([requestedById])
-}
-
-// Contextual notifications (absence report, schedule change, exam results…)
-
-model AcaNotification {
-  id        String    @id @default(cuid())
-  userId    String // recipient (staff or student)
-  type      String // ABSENCE | SCHEDULE_CHANGE | EXAM_RESULT | REQUEST | SYSTEM
-  title     String
-  body      String
-  data      String? // JSON { sessionId, groupId, studentId, ... }
-  readAt    DateTime?
-  createdAt DateTime  @default(now())
-
-  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, readAt])
-  @@index([userId, createdAt])
-}
-
-// ----------------------------- SMART INSIGHTS -----------------------------
-// Scheduled analytical layer (spec §29-30): findings → validation → materiality
-// → insight; stored results displayed under More → فريق التحليل only.
-
-model AcaInsightRun {
-  id          String    @id @default(cuid())
-  startedAt   DateTime  @default(now())
-  finishedAt  DateTime?
-  status      String    @default("RUNNING") // RUNNING | DONE | FAILED
-  stats       String? // JSON { findings, generated, skipped, … }
-  triggerById String?
-
-  insights AcaInsight[]
-
-  @@index([startedAt])
-}
-
-model AcaInsight {
-  id        String   @id @default(cuid())
-  dimension String // ACADEMIC | OPERATIONAL | FINANCIAL | STRATEGIC
-  severity  String   @default("INFO") // INFO | WARNING | CRITICAL
-  title     String
-  body      String
-  data      String? // JSON evidence
-  status    String   @default("NEW") // NEW | SEEN | DISMISSED
-  runId     String?
-  createdAt DateTime @default(now())
-
-  run AcaInsightRun? @relation(fields: [runId], references: [id])
-
-  @@index([status, createdAt])
-}
-
-// ###########################################################################
 // ====================== EXTENSIONS (spec-approved adds) ====================
 // ###########################################################################
 
@@ -1604,9 +1171,8 @@ model CheckInAttempt {
 
 model SessionQRToken {
   id            String   @id @default(cuid())
-  scope         String   @default("CENTERS") // CENTERS (SessionInstance) | ACADEMIA (AcaSession)
-  centerId      String? // null للـ ACADEMIA (مفيش multi-tenant هناك)
-  sessionId     String // SessionInstance.id أو AcaSession.id حسب scope
+  centerId      String?
+  sessionId     String // SessionInstance.id
   token         String   @unique // opaque random hex — هو اللي بيتشفر في QR
   isActive      Boolean  @default(true) // rotate = قفل القديم وإنشاء جديد
   expiresAt     DateTime // قصير العمر (دقائق)
@@ -1619,66 +1185,6 @@ model SessionQRToken {
 
   @@index([sessionId, isActive])
   @@index([centerId, createdAt])
-}
-
-// ============================= QUIZZES (كويزات بسيطة — مفيش بنك أسئلة) =============================
-// الأسئلة تابعة للكويز مباشرة عمدًا (spec §1) — مفيش Question Bank معماري.
-// الكويز تابع لمجموعة سنتر، والطلاب يحلوه من بورتال الطالب.
-
-model Quiz {
-  id            String    @id @default(cuid())
-  centerId      String
-  groupId       String
-  title         String
-  description   String?
-  status        String    @default("DRAFT") // DRAFT | PUBLISHED | CLOSED
-  durationMin   Int? // مدة الحل بالدقايق (اختياري)
-  opensAt       DateTime?
-  closesAt      DateTime?
-  createdById   String
-  createdByName String
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  center        Center    @relation(fields: [centerId], references: [id])
-  group         Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  questions     QuizQuestion[]
-  attempts      QuizAttempt[]
-
-  @@index([centerId, groupId, status])
-}
-
-model QuizQuestion {
-  id            String @id @default(cuid())
-  quizId        String
-  order         Int    @default(0)
-  text          String
-  type          String @default("MCQ") // MCQ | TRUE_FALSE | WRITTEN
-  options       String? // JSON array of strings (MCQ)
-  correctAnswer String? // MCQ: index "0".."n" | TRUE_FALSE: "true"/"false" | WRITTEN: null (تصحيح يدوي)
-  points        Int    @default(1)
-  quiz          Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
-
-  @@index([quizId, order])
-}
-
-model QuizAttempt {
-  id          String    @id @default(cuid())
-  quizId      String
-  studentId   String
-  answers     String? // JSON [{questionId, answer}]
-  score       Int? // مجموع النقاط المحسومة (null = لسه بيتصحح)
-  maxScore    Int       @default(0)
-  status      String    @default("IN_PROGRESS") // IN_PROGRESS | SUBMITTED | GRADED
-  submittedAt DateTime?
-  gradedAt    DateTime?
-  gradedById  String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  quiz        Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  @@unique([quizId, studentId])
-  @@index([studentId, status])
 }
 
 // ============================= SUBSCRIPTION EVENTS (سجل حياة الاشتراك) =============================
@@ -1769,176 +1275,6 @@ model UndoEntry {
 
   @@index([centerId, userId, createdAt])
   @@index([centerId, status, createdAt])
-}
-
-// ============================= ONLINE EXAMS (الامتحانات الإلكترونية) =============================
-// نظام امتحانات صارم (مختلف عن الكويزات البسيطة عن قصد):
-// - السيرفر هو مصدر الحقيقة: startedAt/expiresAt/الدرجة/الحالة — الجهاز للعرض بس
-// - المحاولة ليها ترتيب أسئلة واختيارات ثابت (shuffle لكل محاولة) بيتخزن عليها
-// - مفيش إجابة صحيحة بتتنشر للطالب قبل التسليم نهائيًا
-// - أحداث أمن المحاولة تتسجل server-side (Tab hidden / خروج فول سكرين / ...)
-
-model Exam {
-  id              String   @id @default(cuid())
-  centerId        String
-  groupId         String // الامتحان لمجموعة واحدة (زي الكويز) — المجموعة بتجيب المادة والصف
-  sessionId       String? // SessionInstance اختياري — امتحان مرتبط بحصة
-  title           String
-  instructions    String?
-  status          String   @default("DRAFT") // DRAFT | PUBLISHED | CLOSED
-  startAt         DateTime // نافذة توفر الامتحان (server time)
-  endAt           DateTime
-  durationMin     Int // مدة المحاولة بالدقايق — expiresAt = startedAt + durationMin
-  maxScore        Int      @default(0) // مجموع نقاط الأسئلة (denormalized عند الحفظ)
-  attemptsAllowed Int      @default(1) // MVP: 1 — السكيما جاهزة لأكتر
-  shuffleQuestions Boolean @default(false)
-  shuffleOptions   Boolean @default(false)
-  allowAnswerEdit  Boolean @default(true) // تعديل الإجابات قبل التسليم
-  securityMode     String  @default("WARNING") // WARNING (تنبيهات) | STRICT (إنهاء فوري للمحاولة)
-  reviewVideoUrl   String? // فيديو المراجعة والتصحيح — يظهر بعد التسليم
-  createdById      String
-  createdByName    String
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  center           Center   @relation(fields: [centerId], references: [id])
-  group            Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  questions        ExamQuestion[]
-  attempts         ExamAttempt[]
-
-  @@index([centerId, groupId, status])
-}
-
-model ExamQuestion {
-  id            String @id @default(cuid())
-  examId        String
-  order         Int    @default(0)
-  text          String
-  type          String @default("MCQ") // MCQ | TRUE_FALSE | NUM (رقمي موضوعي)
-  options       String? // JSON array of strings (MCQ)
-  correctAnswer String? // MCQ: index "0".."n" | TRUE_FALSE: "true"/"false" | NUM: "42"
-  points        Int    @default(1)
-  exam          Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
-
-  @@index([examId, order])
-}
-
-model ExamAttempt {
-  id            String    @id @default(cuid())
-  examId        String
-  studentId     String
-  centerId      String
-  attemptNo     Int       @default(1)
-  status        String    @default("IN_PROGRESS") // IN_PROGRESS | SUBMITTED | AUTO_SUBMITTED | INVALIDATED
-  startedAt     DateTime  @default(now()) // server clock — نهائي
-  expiresAt     DateTime // server clock — نهائي
-  submittedAt   DateTime?
-  score         Int?
-  questionOrder String // JSON [questionId,...] — ترتيب ثابت للمحاولة (shuffle)
-  optionOrder   String? // JSON { questionId: [origIdx,...] } — ترتيب الاختيارات المعروض
-  userAgent     String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  exam          Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
-  student       Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  answers       ExamAnswer[]
-  securityEvents ExamSecurityEvent[]
-
-  @@unique([examId, studentId]) // MVP: محاولة واحدة — attemptsAllowed للمرحلة الجاية
-  @@index([studentId, status])
-}
-
-model ExamAnswer {
-  id         String   @id @default(cuid())
-  attemptId  String
-  questionId String
-  answer     String // MCQ: displayed index | TRUE_FALSE: "true"/"false" | NUM: نص الرقم
-  savedAt    DateTime @default(now()) @updatedAt
-  attempt    ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
-
-  @@unique([attemptId, questionId])
-  @@index([attemptId])
-}
-
-model ExamSecurityEvent {
-  id        String   @id @default(cuid())
-  centerId  String
-  attemptId String
-  studentId String
-  type      String // EXAM_STARTED | RESUMED | ANSWER_SAVED | EXAM_SUBMITTED | EXAM_AUTO_SUBMITTED | TAB_HIDDEN | PAGE_LEFT | FULLSCREEN_EXIT | FOCUS_LOST | ATTEMPT_INVALIDATED
-  meta      String? // JSON — metadata آمنة بس (مفيش PII)
-  createdAt DateTime @default(now())
-  attempt   ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
-
-  @@index([centerId, createdAt])
-  @@index([attemptId])
-}
-
-// ============================= ASSIGNMENTS (الواجبات) =============================
-// الواجب مش امتحان: الطالب يسيب ويرجع ويكمل لحد آخر لحظة قبل الميعاد.
-// Mode A: ONLINE تصحيح آلي فوري. Mode B: FILE (تسليم ملف — المرحلة الجاية)
-// السكيما جاهزة للاتنين من دلوقتي عشان مفيش إعادة تصميم بعدين.
-
-model Assignment {
-  id             String   @id @default(cuid())
-  centerId       String
-  groupId        String
-  title          String
-  instructions   String?
-  mode           String   @default("ONLINE") // ONLINE (تصحيح آلي) | FILE (Phase 4)
-  status         String   @default("DRAFT") // DRAFT | PUBLISHED | CLOSED
-  deadline       DateTime // سيرفر بس — التسجيل بعد الميعاد مرفوض إلا لو allowLate
-  allowLate      Boolean  @default(false) // السماح بالتسليم المتأخر (يتعلّم late)
-  maxScore       Int      @default(0) // مجموع النقاط (ONLINE)
-  reviewVideoUrl String? // فيديو المراجعة — بعد التسليم/التصحيح
-  createdById    String
-  createdByName  String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  center         Center   @relation(fields: [centerId], references: [id])
-  group          Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  questions      AssignmentQuestion[]
-  submissions    AssignmentSubmission[]
-
-  @@index([centerId, groupId, status])
-}
-
-model AssignmentQuestion {
-  id            String @id @default(cuid())
-  assignmentId  String
-  order         Int    @default(0)
-  text          String
-  type          String @default("MCQ") // MCQ | TRUE_FALSE | NUM
-  options       String?
-  correctAnswer String?
-  points        Int    @default(1)
-  assignment    Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-
-  @@index([assignmentId, order])
-}
-
-model AssignmentSubmission {
-  id           String    @id @default(cuid())
-  assignmentId String
-  studentId    String
-  centerId     String
-  status       String    @default("DRAFT") // DRAFT | SUBMITTED | GRADED
-  answers      String? // JSON [{questionId, answer}] — مسودة قابلة للاستكمال (save/resume)
-  draftSavedAt DateTime?
-  submittedAt  DateTime?
-  late         Boolean   @default(false)
-  score        Int?
-  gradedAt     DateTime?
-  gradedById   String?
-  // Phase 4 (FILE mode) — جاهزة في السكيما من دلوقتي
-  fileUrl        String?
-  fileReplacedAt DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  student      Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  @@unique([assignmentId, studentId])
-  @@index([studentId, status])
 }
 
 // ============================================================

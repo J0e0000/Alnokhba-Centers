@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CalendarDays, Loader2, Ban, CheckCircle2, ChevronDown, Zap,
-  TrendingUp, TrendingDown, ClipboardList, FileCheck2, AlertTriangle,
+  TrendingUp, TrendingDown, AlertTriangle,
   UserPlus, Wallet, Users, Home,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,7 +20,6 @@ import type { ViewId } from "./shell";
    • 3 كروت إحصاء بالظبط: حصص اليوم · طلاب اليوم · إجراءات معلقة (زرار بيقفز للحصة).
    • كروت الحصص: شريط تقدم مرصد/إجمالي + شارة الحالة + الحصة القادمة مميزة.
    • تنبيه الرصد: حصص شغالة فيها طلاب لم يُرصدوا + زرار إكمال الرصد.
-   • الامتحانات: أحدث الامتحانات ككروت بنفس شكل الحصص.
    • تحتها محتوى السنترز المميز (محفوظ): ملخص تشغيلي للمدير + اختصارات + تنبيهات.
 ============================================================ */
 
@@ -41,12 +40,6 @@ type Suggestion = {
   price: number; teacherPercent: number; students: number;
 };
 type SessionsRes = { date: string; sessions: DaySession[]; suggestions: Suggestion[] };
-
-type ExamRow = {
-  id: string; title: string; status: string; groupId: string | null; groupName: string | null;
-  subject: string | null; maxScore: number; attemptsCount: number; questionsCount: number; avgPct: number | null;
-  createdAt: string;
-};
 
 type LegacyDash = {
   opsSummary?: {
@@ -135,7 +128,6 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
   const [selectedDay, setSelectedDay] = useState(todayISO);
   const dayIsToday = selectedDay === todayISO();
   const [data, setData] = useState<SessionsRes | null>(null);
-  const [exams, setExams] = useState<ExamRow[] | null>(null);
   const [legacy, setLegacy] = useState<LegacyDash | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
   const isManager = user.role === "MANAGER";
@@ -154,14 +146,6 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
     window.addEventListener("nk-sessions-changed", onChange);
     return () => { clearInterval(t); window.removeEventListener("nk-sessions-changed", onChange); };
   }, [load]);
-
-  const [examsAllowed, setExamsAllowed] = useState(false);
-  useEffect(() => {
-    // موديول الامتحانات مقفول للحساب ده؟ الـ API بيرجع 403 — نخبي القسم بدون ضجة
-    api<{ exams: ExamRow[] }>("/api/exams", { silent: true })
-      .then((d) => { setExams(d.exams ?? []); setExamsAllowed(true); })
-      .catch(() => setExamsAllowed(false));
-  }, []);
 
   useEffect(() => {
     if (!isManager) return;
@@ -404,49 +388,6 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
         </div>
       )}
 
-      {/* ===== الامتحانات — أحدث الامتحانات بنفس شكل كروت الحصص ===== */}
-      {examsAllowed && (
-        <div className="mt-2">
-          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 mb-3">
-            <h2 className="text-base font-extrabold m-0">الامتحانات</h2>
-            <button className="text-xs font-extrabold nk-brand-text bg-transparent border-0 p-0 cursor-pointer" onClick={() => setView("exams")}>
-              ＋ إنشاء امتحان
-            </button>
-          </div>
-          {!exams || exams.length === 0 ? (
-            <p className="text-xs font-bold text-muted-foreground m-0">
-              لا يوجد امتحانات بعد — امتحان إلكتروني للمجموعة بدرجات وتصحيح تلقائي.
-            </p>
-          ) : (
-            <div className="grid gap-2.5">
-              {exams.slice(0, 4).map((ex) => (
-                <button key={ex.id} className="nk-session-card text-start" onClick={() => setView("exams")} aria-label={`فتح الامتحان ${ex.title}`}>
-                  <span className="flex items-center gap-3 min-w-0">
-                    <span className="nk-session-icon shrink-0" aria-hidden><ClipboardList className="w-5 h-5" /></span>
-                    <span className="min-w-0">
-                      <b className="block text-[.9rem] truncate">{ex.title}</b>
-                      <small className="block text-[.72rem] text-muted-foreground font-bold mt-1 truncate">
-                        {ex.groupName ? `${ex.groupName} · ` : ""}<span className="nk-num">النهائي: {ex.maxScore}</span> · {ex.questionsCount} سؤال
-                      </small>
-                      <span className="flex items-center gap-2 mt-1.5">
-                        <span className="text-[.66rem] font-bold text-muted-foreground nk-num">{ex.attemptsCount} محاولة{ex.avgPct != null ? ` · متوسط ${Math.round(ex.avgPct)}%` : ""}</span>
-                      </span>
-                    </span>
-                  </span>
-                  <span className="flex flex-col items-end gap-1.5 shrink-0">
-                    <ExamPill status={ex.status} />
-                    <span className="text-[.68rem] font-extrabold nk-brand-text">{ex.status === "PUBLISHED" ? "متابعة ←" : "عرض ←"}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ===== محتوى السنترز المحفوظ (تحت مسار الحصص) ===== */}
-      {isManager && legacy?.opsSummary && <OpsSummaryStrip summary={legacy.opsSummary} openSession={openSession} setView={setView} />}
-
       {isManager && (legacy?.alerts?.length ?? 0) > 0 && (
         <div className="space-y-2">
           {legacy!.alerts!.map((a, i) => (
@@ -462,20 +403,16 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
       )}
 
       {isManager && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <BigAction icon={<Zap className="w-7 h-7" />} label="امسح الحضور" desc="كشف حصة شغالة" onClick={() => setView("scan")} primary />
           <BigAction icon={<Wallet className="w-6 h-6" />} label="تسجيل دفعة" desc="استلام فلوس" onClick={() => setView("payments")} />
           <BigAction icon={<UserPlus className="w-6 h-6" />} label="إضافة طالب" desc="تسجيل طالب جديد" onClick={() => setView("students")} />
-          <BigAction icon={<FileCheck2 className="w-6 h-6" />} label="الامتحانات" desc="إنشاء ومراجعة" onClick={() => setView("exams")} />
-          <BigAction icon={<ClipboardList className="w-6 h-6" />} label="الواجبات" desc="متابعة التسليم" onClick={() => setView("assignments")} />
         </div>
       )}
       {isTeacher && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <BigAction icon={<CalendarDays className="w-6 h-6" />} label="جدول النهاردة" desc={`${stats.sessionsCount} حصة`} onClick={() => setView("schedule")} />
-          <BigAction icon={<Zap className="w-6 h-6" />} label="الكويزات" desc="كويزات سريعة" onClick={() => setView("quizzes")} />
-          <BigAction icon={<FileCheck2 className="w-6 h-6" />} label="الامتحانات" desc="إنشاء ومتابعة" onClick={() => setView("exams")} primary />
-          <BigAction icon={<ClipboardList className="w-6 h-6" />} label="الواجبات" desc="واجبات إلكترونية" onClick={() => setView("assignments")} />
+        <div className="grid grid-cols-2 gap-3">
+          <BigAction icon={<CalendarDays className="w-6 h-6" />} label="جدول النهاردة" desc={`${stats.sessionsCount} حصة`} onClick={() => setView("schedule")} primary />
+          <BigAction icon={<Users className="w-6 h-6" />} label="طلابي" desc="متابعة الطلاب" onClick={() => setView("students")} />
         </div>
       )}
       {!isManager && !isTeacher && (
@@ -509,12 +446,6 @@ function StatusPill({ status }: { status: "OPEN" | "CLOSED" | "CANCELLED" | "PLA
   if (status === "CLOSED") return <span className="nk-pill-done">✓ منتهية</span>;
   if (status === "CANCELLED") return <span className="nk-pill-muted"><Ban className="w-3 h-3 inline" /> ملغاة</span>;
   return <span className="nk-pill-pending">○ لم تبدأ</span>;
-}
-
-function ExamPill({ status }: { status: string }) {
-  if (status === "PUBLISHED") return <span className="nk-pill-live">● منشورة</span>;
-  if (status === "CLOSED") return <span className="nk-pill-done">✓ مقفولة</span>;
-  return <span className="nk-pill-pending">○ مسودة</span>;
 }
 
 /** عنوان حصة من غير «— — —» */
