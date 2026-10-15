@@ -947,3 +947,19 @@ Work Log:
 
 Stage Summary:
 - المالك عنده دلوقتي مختبر حي على الإنتاج: https://alnokhba-centers-nine.vercel.app/ux-lab — يجرّب نفس الحصة في 3 مدارس تشغيل، يشوف عدادات نقراته الحية، يقارن الأرقام المُقاسة، ويسجل اختياره (محلي وقابل للتراجع). قراره مش بيتطبق على الإنتاج تلقائيًا. Backlog المتبقي: k6 (ينتظر staging)، شاشة سجل تدقيق الاستحقاقات + ربط جهاز الطالب الدائم (كود)، deployment cleanup (حذف الإصدارات ذات env الميت).
+
+---
+Task ID: UXLAB-2 (owner decision processed: quick → quickplus)
+Agent: main (Super Z)
+Task: Owner registered lab choice via "نسخ الملخص للشات": السريعة (quick) + comment = likes simplicity (users aren't super users) + 2 asks: (1) one-click QR (2) notifications simplified to binary حاضر/غايب. Build the refined variant in the lab for re-test; no production product changes without explicit approval.
+
+Work Log:
+- DECISION RECORD baked into lab home (OWNER_DECISION const: option/date/note/asks) — banner shows "قرارك المسجّل + تنفيذت في «السريعة+» تحت ✓". Choice stays reversible via تبويب اختياري (localStorage nk-uxlab-choice untouched).
+- NEW OPTION "quickplus" (السريعة+, 4th option): src/components/ux-lab/option-quick-plus.tsx (365 lines). = original Quick flow untouched (4-click happy path) + owner ask 1: "QR بضغطة" button → portal overlay w/ REAL QR canvas (qrcode lib, payload = https://example.com/uxlab/slot-N — IANA-reserved, 100% synthetic), 10s slot rotation w/ countdown + progress bar + amber ≤3s (mirrors prod session-qr-card concept), "محاكاة طالب مسح الكود" inside overlay → simulateSelfCheckin, Escape + backdrop + X close, data-lab-scope on portal so clicks count. + owner ask 2: binary notifications card — toggle (default on), live preview "لو قفلت دلوقتي: هيتبعت N إشعار غياب — أسماء", ONE fixed template «ابنكم {name} اتسجل غايب النهاردة في حصة الفيزياء.», explicit "المتأخر/بعذر يدخلوا تحت حاضر — تبسيط قرارك" + "محاكاة بس مفيش رسالة حقيقية"; summary phase shows sent-notifications line.
+- WIRED: types.ts OptionId+OPTION_META, store.tsx states/metrics/resetAll + saveChoice toast via OPTION_META, lab-root (tab, OPTION_ICONS QrCode, render branch, hero "4 تصاميم", decision banner, 4 cards md:grid-cols-2 w/ quickplus ring-highlighted), choice.tsx (4 radio options lg:grid-cols-4), compare.tsx (4 columns; quickplus mirrors quick numbers: 4/6/2/0/1 clicks-transitions-fields-decisions + new row "إشعارات أولياء الأمور: ثنائي vs متعدد الحالات").
+- QA: tsc src=0, eslint 0/0 (fixed react-hooks v6 set-state-in-effect: slot init moved to open/close event handlers, interval-only effect), build OK (/ux-lab static ○). Browser-verified full flow: open→QR overlay(canvas+countdown)→2 simulated scans→Escape→binary preview "10 إشعار غياب"→علّم الكل→"مفيش أي غياب"→unmark 1→"1 إشعار — كريم أشرف زكي"→toggle off/on→lock confirm (11/0/0/1, 825ج=11×75)→summary "اتبعث 1 إشعار غياب ✓". Mobile 390px scrollW=390 no overflow, QR overlay fits, dark mode via .dark class clean (QR stays white = scannable). ISOLATION: performance resource entries /api/ = 0 ✓.
+- DEPLOYED: 8670f40 → origin/main → production. Verified NEW build serving (chunk 26chy-nl7yup_ contains quickplus/QR بضغطة/حاضر أو غايب بس/example.com/uxlab/slot-/نسختك المعدّلة), db-status 200 postgres, login 200. Sandbox artifact: dozens of files mode-changed 644→755 (no content) — normalized only committed files; secrets files (.dbhost/.dbref) untouched, never committed.
+- NOTE: deployment cleanup pending (token vanished again — sandbox pattern #6); keep live+rollback rule stands.
+
+Stage Summary:
+- المالك عنده دلوقتي "السريعة+" لايف على /ux-lab: نفس السريعة اللي اختارها + QR بضغطة (كود بيتجدد 10ث محاكاة) + إشعار حاضر/غايب بس بقالب واحد، وشريط قراره المسجّل ظاهر في المختبر. عزلة 100% (صفر /api، صفر كتابة). الخطوة الجاية: تجربة المالك → لو وافق صراحةً نطبقها على المنتج الحقيقي (session-live + إشعارات) مع خطة rollback. Backlog: k6 (staging)، شاشة تدقيق الاستحقاقات + ربط الجهاز الدائم، deployment cleanup (token).
