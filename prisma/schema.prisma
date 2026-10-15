@@ -278,6 +278,7 @@ model Student {
   quizAttempts QuizAttempt[]
   examAttempts ExamAttempt[]
   assignmentSubmissions AssignmentSubmission[]
+  sessionExamScores SessionExamScore[]
   trustedDevice TrustedDeviceBinding?
 
   @@unique([centerId, code])
@@ -378,6 +379,12 @@ model SessionInstance {
   openedBy      String?
   closedBy      String?
   closedAt      DateTime?
+  // ===== تقرير الحصة (نقل من منصة النخبة الأساسية — workflow الحصص) =====
+  // درس اليوم + تفاصيل الواجب + رابط فيديو الشرح — بيتحفظوا بـ autosave من تاب التقرير،
+  // وبيدخلوا في رسائل واتساب لأولياء الأمور وبورتال الطالب.
+  lessonTopic   String?
+  homeworkText  String?
+  videoLink     String?
   // close-time aggregates (piastres)
   presentCount  Int?
   totalRevenue  Int?
@@ -387,9 +394,43 @@ model SessionInstance {
   center        Center    @relation(fields: [centerId], references: [id])
   group         Group?    @relation(fields: [groupId], references: [id])
   attendance    Attendance[]
+  exam          SessionExam?
 
   @@index([centerId, date])
   @@index([groupId, date])
+}
+
+// ===== امتحان الحصة (رصد درجات جوه الحصة — نقل من منصة النخبة الأساسية) =====
+// امتحان واحد لكل حصة (تبسيط مقصود لتجربة السنترز): عنوان + درجة نهائية،
+// ودرجة لكل طالب حاضر. الغايب مش بياخد درجة (صف مش بيتعمله upsert خالص).
+model SessionExam {
+  id        String   @id @default(cuid())
+  centerId  String
+  sessionId String   @unique
+  title     String
+  maxScore  Float
+  createdByName String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  session   SessionInstance @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  scores    SessionExamScore[]
+
+  @@index([centerId])
+}
+
+model SessionExamScore {
+  id        String   @id @default(cuid())
+  examId    String
+  studentId String
+  score     Float?
+  updatedByName String?
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  exam      SessionExam @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student   Student?    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, studentId])
+  @@index([examId])
 }
 
 model Attendance {
@@ -428,6 +469,12 @@ model Attendance {
   // مهما كان الجهاز — بيقفل الغش «هسجّل كود صاحبي الغايب من موبايلي».
   // للطلاب الحقيقيين (ليهم studentId) الحماية جاية من unique(sessionId, studentId) — فبنسيبهم null.
   attendanceCode String?
+  // ===== التفاعل والواجب (نقل من منصة النخبة الأساسية — workflow الحصص) =====
+  // للطلاب الحاضرين بس: الواجب 3 حالات (DONE مكتمل | PARTIAL ناقص | MISSING لم يتم)
+  // والتفاعل عدّاد ضغطات (＋ تفاعل / − مخالفة) — كل ضغطة بتتحفظ فورًا.
+  homeworkStatus  String? // null = لم يُرصد | DONE | PARTIAL | MISSING
+  interactionPlus  Int @default(0)
+  interactionMinus Int @default(0)
   createdAt  DateTime       @default(now())
   session    SessionInstance @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   student    Student?        @relation(fields: [studentId], references: [id], onDelete: Cascade)

@@ -17,6 +17,7 @@ import { StudentSearchBar } from "./student-search";
 import { StudentCardPrint } from "./cards";
 import { SmartPhoneInput } from "./smart-phone-input";
 import { buildWaUrl, openWhatsAppHandoff } from "./wa";
+import { SendQueueModal, type ReportStudent } from "./session-report";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -96,6 +97,8 @@ export function StudentsView({ user, openNew, onOpenNewConsumed, onOpenProfile }
       toast.error("المتصفح منع النسخ — انسخ الأرقام يدوي من كارت الطالب.");
     }
   };
+  // رسالة واتساب للمحددين (نقل من المنصة الأساسية: اكتب مرة → تخصص لكل طالب → إرسال يدوي)
+  const [bulkMsgOpen, setBulkMsgOpen] = useState(false);
   const shownIds = useMemo(() => new Set(data?.students.map((s) => s.id) ?? []), [data]);
   // لو الفلتر اتغير واختار طلاب مش موجودين → نظّف
   useEffect(() => {
@@ -320,12 +323,29 @@ export function StudentsView({ user, openNew, onOpenNewConsumed, onOpenProfile }
             >
               <MessageSquareText className="w-4.5 h-4.5" /> نسخ الأرقام
             </button>
+            <button
+              onClick={() => { if (selected.size === 0) { toast.error("اختار طالب على الأقل."); return; } setBulkMsgOpen(true); }}
+              disabled={selected.size === 0}
+              title="اكتب الرسالة مرة واحدة — بتتخصص باسم كل طالب"
+              className="rounded-xl px-4 py-2.5 font-extrabold text-sm border border-[color-mix(in_srgb,var(--c-primary)_35%,white)] dark:border-[color-mix(in_srgb,var(--c-primary)_57%,#0d1420)] bg-card nk-brand-text flex items-center gap-2 active:scale-[0.98] disabled:opacity-50"
+            >
+              <MessageCircle className="w-4.5 h-4.5" /> رسالة
+            </button>
             <button onClick={exitSelect} className="rounded-xl border border-border bg-card p-2.5 text-muted-foreground hover:bg-muted/50" title="إلغاء">
               <XCircle className="w-5 h-5" />
             </button>
           </div>
         </div>
       )}
+
+      <BulkMessageDialog
+        open={bulkMsgOpen}
+        onClose={() => setBulkMsgOpen(false)}
+        rows={rows.filter((s) => selected.has(s.id)).map((s) => ({
+          id: s.id, name: s.name, code: s.code, phone: s.phone ?? s.parentPhone,
+        }))}
+        centerName={user.center?.name ?? ""}
+      />
 
       <StudentCardPrint open={!!cardIds} onClose={() => setCardIds(null)} studentIds={cardIds ?? []} center={user.center} />
 
@@ -1380,6 +1400,98 @@ function BulkAddDialog({ open, onClose, onSaved, centerName }: {
             )}
           </>
         )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ============================================================
+   رسالة واتساب للمحددين (نقل من المنصة الأساسية — CustomMessageModal):
+   اكتب الرسالة مرة واحدة → بتتخصص لكل طالب ({studentName} {code} {center})
+   → طابور إرسال يدوي (wa.me واحد واحد — مفيش حاجة بتتبعت تلقائيًا).
+============================================================ */
+function BulkMessageDialog({ open, onClose, rows, centerName }: {
+  open: boolean;
+  onClose: () => void;
+  rows: { id: string; name: string; code: string; phone: string | null }[];
+  centerName: string;
+}) {
+  const [text, setText] = useState("");
+  const [queue, setQueue] = useState<ReportStudent[] | null>(null);
+
+  const withPhone = rows.filter((r) => r.phone && r.phone.trim());
+  const preview = text
+    .replaceAll("{studentName}", withPhone[0]?.name ?? "اسم الطالب")
+    .replaceAll("{code}", withPhone[0]?.code ?? "الكود")
+    .replaceAll("{center}", centerName);
+
+  const start = () => {
+    if (text.trim().length < 2) { toast.error("اكتب الرسالة الأول."); return; }
+    if (withPhone.length === 0) { toast.error("المحددين دول مفيش فيهم رقم موبايل."); return; }
+    const items: ReportStudent[] = withPhone.map((r) => ({
+      studentId: r.id, name: r.name, code: r.code,
+      statusType: "present", statusLabel: "محدد",
+      phone: r.phone, homeworkStatus: null, examScore: null,
+      interactionPlus: 0, interactionMinus: 0,
+    }));
+    setQueue(items);
+  };
+
+  if (queue) {
+    return (
+      <SendQueueModal
+        items={queue}
+        customMessage={(s) => text
+          .replaceAll("{studentName}", s.name)
+          .replaceAll("{code}", s.code)
+          .replaceAll("{center}", centerName)}
+        onClose={() => { setQueue(null); onClose(); }}
+      />
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => (!v ? onClose() : undefined)}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><MessageCircle className="w-5 h-5 nk-brand-text" /> رسالة واتساب — {rows.length} طالب</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <label htmlFor="bulk-msg" className="text-sm font-bold">
+              الرسالة — بتتخصص لكل طالب تلقائيًا
+            </label>
+            <textarea
+              id="bulk-msg"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              className="w-full min-h-[110px] rounded-xl border-2 border-input bg-card px-3.5 py-2.5 font-semibold text-sm resize-none"
+              placeholder={"مثلاً:\nتنبيه لـ {studentName} — الحصة بكرة الساعة 5. 🌟\n{center}"}
+            />
+            <div className="flex flex-wrap gap-1.5">
+              {["{studentName}", "{code}", "{center}"].map((v) => (
+                <button key={v} onClick={() => setText((t) => `${t}${v}`)} className="nk-wf-ghost nk-num" dir="ltr">{v}</button>
+              ))}
+            </div>
+          </div>
+          {text.trim() && (
+            <div>
+              <p className="text-[11px] font-extrabold text-muted-foreground mb-1.5">معاينة (لأول طالب عنده رقم):</p>
+              <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/20 p-3.5 whitespace-pre-wrap text-[13px] leading-relaxed font-semibold">
+                {preview}
+              </div>
+            </div>
+          )}
+          <p className="text-[11px] font-bold text-muted-foreground">
+            {withPhone.length} من {rows.length} عندهم رقم — الإرسال يدوي واحد واحد عبر واتساب، ومفيش حاجة بتتبعت تلقائيًا.
+          </p>
+          <div className="flex gap-2">
+            <button onClick={start} className="flex-1 nk-brand-bg text-white font-extrabold rounded-xl py-3 shadow active:scale-[0.99]">
+              متابعة — تجهيز {withPhone.length} رسالة
+            </button>
+            <button onClick={onClose} className="rounded-xl border border-border bg-card font-bold px-5">إلغاء</button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
