@@ -12,14 +12,16 @@ import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/students?q=&status=&groupId=&page= — search & list (tenant-scoped)
- *  Server-side pagination — الحد الأقصى 50/صفحة وترتيب ثابت (deterministic) */
+/** GET /api/students?q=&status=&gradeId=&groupId=&page= — search & list (tenant-scoped)
+ *  Server-side pagination — الحد الأقصى 50/صفحة وترتيب ثابت (deterministic)
+ *  فلاتر المرحلة والمجموعة (فكرة الريبو المرجعي: فلتر مرحلة مقسّم + فلتر مجموعة) */
 export const GET = handler(async (req: Request) => {
   const user = await requireCenterUser();
   const url = new URL(req.url);
   const q = cleanRaw(url.searchParams.get("q") ?? "").trim();
   const status = url.searchParams.get("status") ?? "";
   const groupId = url.searchParams.get("groupId") ?? "";
+  const gradeId = url.searchParams.get("gradeId") ?? "";
   const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10) || 1);
   const pageSize = Math.min(50, Math.max(1, parseInt(url.searchParams.get("pageSize") ?? "24", 10) || 24));
 
@@ -35,6 +37,7 @@ export const GET = handler(async (req: Request) => {
     ];
   }
   if (groupId) where.registrations = { some: { groupId, status: "ACTIVE" } };
+  if (gradeId) where.gradeId = gradeId;
 
   const [total, students] = await Promise.all([
     db.student.count({ where }),
