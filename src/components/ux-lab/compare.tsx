@@ -12,45 +12,61 @@ import { Scale, FlaskConical, Info } from "lucide-react";
 type Cell = { v: string | number; hint?: string };
 
 /* أرقام الحد الأدنى النظري — اتحققت منها بمتصفح آلي (ابدأ → علّم → قفل → تأكيد) */
-const ROWS: { label: string; quick: Cell; guided: Cell; cockpit: Cell; measured?: boolean }[] = [
+const ROWS: { label: string; quickplus: Cell; quick: Cell; guided: Cell; cockpit: Cell; measured?: boolean }[] = [
   { label: "نقرات الحد الأدنى لإتمام حصة كاملة (كلهم حاضر)", measured: true,
+    quickplus: { v: 4, hint: "افتح + الكل حاضر + قفل + تأكيد — الـ QR اختياري مش مطلوب" },
     quick: { v: 4, hint: "افتح + الكل حاضر + قفل + تأكيد" },
     guided: { v: 17, hint: "افتح + 12 علامة فردية + إتمام حضور + تخطي ملاحظات + إنهاء + تأكيد" },
     cockpit: { v: 4, hint: "افتح + الكل حاضر + قفل + تأكيد" } },
   { label: "نقرات مع 2 استثناء (متأخر + غايب)", measured: true,
+    quickplus: { v: 6 },
     quick: { v: 6 }, guided: { v: 17 }, cockpit: { v: 6 } },
   { label: "انتقالات شاشات/مراحل", measured: true,
+    quickplus: { v: 2, hint: "نفس السريعة — فتح/قفل كود الـ QR بضغطتين اختياريين فوق كده" },
     quick: { v: 2, hint: "قائمة ← شاشة الحصة ← الخلاصة" },
     guided: { v: 5, hint: "قائمة + 3 مراحل + خلاصة" },
     cockpit: { v: 2, hint: "نفس السريعة — بس من غير أي شاشة إضافية أثناء العمل" } },
-  { label: "حقول مطلوبة (إجبارية)", measured: true, quick: { v: 0 }, guided: { v: 0 }, cockpit: { v: 0 } },
+  { label: "حقول مطلوبة (إجبارية)", measured: true, quickplus: { v: 0 }, quick: { v: 0 }, guided: { v: 0 }, cockpit: { v: 0 } },
   { label: "قرارات مفروضة على المستخدم في الحد الأدنى", measured: true,
+    quickplus: { v: 1, hint: "تأكيد القفل — والـ QR والإشعار توايقل مش إجباري" },
     quick: { v: 1, hint: "تأكيد القفل" }, guided: { v: 15, hint: "12 حالة حضور + إتمام/تخطي/إنهاء + تأكيد" }, cockpit: { v: 1, hint: "تأكيد القفل" } },
   { label: "استرجاع من انقطاع شبكة", measured: true,
+    quickplus: { v: "طابور تلقائي + تزامن عند الرجوع" },
     quick: { v: "طابور تلقائي + تزامن عند الرجوع" }, guided: { v: "طابور تلقائي + تزامن عند الرجوع" }, cockpit: { v: "طابور تلقائي + تزامن عند الرجوع" } },
   { label: "خطر سجل ناقص/مكرر",
+    quickplus: { v: "منخفض", hint: "حمايات السريعة كاملة + كود بيتجدد كل 10 ثواني فيمنع إعادة استخدام الصورة" },
     quick: { v: "منخفض", hint: "قفل مرفوض بصفر حضور + منع تكرار نفس الحالة" },
     guided: { v: "الأقل", hint: "إتمام صريح لكل مرحلة + شرط حضور قبل الإنهاء" },
     cockpit: { v: "منخفض", hint: "نفس حمايات السريعة + الملخص ظاهر دايمًا" } },
   { label: "موبايل 390px", measured: true,
+    quickplus: { v: "ممتاز", hint: "شريط قفل ثابت + كود QR ملء الكارت بضغطة (مقاس ثابت ينفع للبروجيكتور)" },
     quick: { v: "ممتاز", hint: "شريط قفل ثابت أسفل" }, guided: { v: "جيد", hint: "أزرار التقييم بتلتف" }, cockpit: { v: "ممتاز", hint: "شريط ملخص مضغوط فوق + قفل ثابت" } },
   { label: "لوحة مفاتيح / وصولية", measured: true,
+    quickplus: { v: "كامل", hint: "كل الأزرار focusable + aria-pressed + Escape يقفل الكود" },
     quick: { v: "كامل", hint: "كل الأزرار focusable + aria-pressed" },
     guided: { v: "كامل", hint: "tablist + aria-selected" },
     cockpit: { v: "كامل", hint: "نفس السريعة + aria-live للعدادات" } },
+  { label: "إشعارات أولياء الأمور",
+    quickplus: { v: "ثنائي: حاضر أو غايب بس", hint: "طلب المالك — قالب واحد ثابت، مفيش حالات تانية" },
+    quick: { v: "متعدد الحالات (افتراضي)", hint: "حاضر/متأخر/بعذر/غايب" },
+    guided: { v: "متعدد الحالات (افتراضي)", hint: "حاضر/متأخر/بعذر/غايب" },
+    cockpit: { v: "متعدد الحالات (افتراضي)", hint: "حاضر/متأخر/بعذر/غايب" } },
   { label: "مناسب لمين؟",
+    quickplus: { v: "قرار المالك: الاستقبال والمدرس المشغول — بساطة السريعة + QR بضغطة + إشعار مبسط" },
     quick: { v: "الاستقبال والمدرس المشغول — سرعة فوق كل حاجة" },
     guided: { v: "السنتر اللي عايز انضباط وملاحظات تربوية منتظمة" },
     cockpit: { v: "المدير/المدرس اللي عايز يبص للكل ويقرر فورًا" } },
   { label: "متى تختار بديل تاني؟",
-    quick: { v: "لو محتاج إلزام تسجيل ملاحظات تربوية → المُوجَّهة" },
-    guided: { v: "لو السرعة أهم من الإرشاد → السريعة أو القمرة" },
-    cockpit: { v: "لو الشاشة صغيرة ومحتاج بسّاطة قصوى → السريعة" } },
+    quickplus: { v: "لو عايز إشعارات متعددة الحالات أو تدفق مرحلي بإرشاد → الأصلية أو المُوجَّهة" },
+    quick: { v: "لو محتاج QR فوري وإشعار مبسط → السريعة+، أو إلزام ملاحظات → المُوجَّهة" },
+    guided: { v: "لو السرعة أهم من الإرشاد → السريعة+ أو القمرة" },
+    cockpit: { v: "لو الشاشة صغيرة ومحتاج بسّاطة قصوى → السريعة+" } },
 ];
 
 export default function Compare() {
   const lab = useLab();
   const cols: { id: OptionId; label: string }[] = [
+    { id: "quickplus", label: OPTION_META.quickplus.name },
     { id: "quick", label: OPTION_META.quick.name },
     { id: "guided", label: OPTION_META.guided.name },
     { id: "cockpit", label: OPTION_META.cockpit.name },
@@ -59,7 +75,7 @@ export default function Compare() {
   return (
     <div className="nk-anim-in" data-lab-scope>
       <div className="nk-card rounded-3xl p-5">
-        <h3 className="font-extrabold text-lg flex items-center gap-2"><Scale className="w-5 h-5 text-primary" /> مقارنة البدائل الثلاثة</h3>
+        <h3 className="font-extrabold text-lg flex items-center gap-2"><Scale className="w-5 h-5 text-primary" /> مقارنة البدائل الأربعة</h3>
         <p className="text-sm text-muted-foreground mt-1">
           نفس السيناريو بالظبط: <b>12 طالبًا · فيزياء ثانوية · <span dir="ltr" className="nk-num">75</span> ج</b> — الأرقام الموسومة
           <Badge variant="secondary" className="mx-1">مُقاس</Badge>طلعت من تشغيل فعلي بالمتصفح لكل بديل، والباقي فرضيات مسماة.
@@ -69,7 +85,7 @@ export default function Compare() {
           <table className="w-full text-sm border-separate" style={{ borderSpacing: "0 6px" }}>
             <thead>
               <tr className="text-start">
-                <th className="text-start font-extrabold p-2 w-[34%]">المقياس</th>
+                <th className="text-start font-extrabold p-2 w-[24%] min-w-[130px]">المقياس</th>
                 {cols.map((c) => (
                   <th key={c.id} className="text-center font-extrabold p-2">
                     <span className={cn("inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1",

@@ -13,12 +13,23 @@ import { SCENARIO, STUDENTS } from "./scenario";
 import Compare from "./compare";
 import ChoiceCard from "./choice";
 import OptionQuick from "./option-quick";
+import OptionQuickPlus from "./option-quick-plus";
 import OptionGuided from "./option-guided";
 import OptionCockpit from "./option-cockpit";
-import { FlaskConical, ShieldCheck, Scale, Zap, ListChecks, Gauge, Home as HomeIcon, RotateCcw, WifiOff, MousePointerClick, Route, Timer, BookOpenCheck, Trash2 } from "lucide-react";
+import { FlaskConical, ShieldCheck, Scale, Zap, QrCode, ListChecks, Gauge, Home as HomeIcon, RotateCcw, WifiOff, MousePointerClick, Route, Timer, BookOpenCheck, Trash2, BadgeCheck } from "lucide-react";
+
+/* قرار المالك المسجّل من الجولة السابقة (15/10/2026 · 6:57 ص) — نسخة السريعة+ مبنيّة عليه حرفيًا.
+   القرار قابل للتراجع في أي وقت من تبويب «اختياري» — ومش بيتطبق على الإنتاج غير بموافقة صريحة. */
+const OWNER_DECISION = {
+  at: "15/10/2026 · 6:57 ص",
+  option: "السريعة (quick)",
+  note: "عجبته جدًا لأنها بسيطة ومباشرة ومفيهاش أسئلة كتير — اللي بيستخدمها مش سوبر يوزر",
+  asks: ["إضافة QR للحصة — يبقى بضغطة واحدة", "تبسيط الإشعارات الذكية لاتنيني: حاضر أو غايب بس"],
+};
 
 const OPTION_ICONS: Record<OptionId, React.ReactNode> = {
   quick: <Zap className="w-5 h-5" />,
+  quickplus: <QrCode className="w-5 h-5" />,
   guided: <ListChecks className="w-5 h-5" />,
   cockpit: <Gauge className="w-5 h-5" />,
 };
@@ -52,10 +63,11 @@ function LabInner() {
     lab.bumpClicks(id);
   }
 
-  const optMetrics = active === "quick" || active === "guided" || active === "cockpit" ? lab.metrics(active) : null;
+  const optMetrics = active === "quick" || active === "quickplus" || active === "guided" || active === "cockpit" ? lab.metrics(active) : null;
 
   const tabs: { key: typeof active; label: string; icon: React.ReactNode }[] = [
     { key: "home", label: "المختبر", icon: <HomeIcon className="w-4 h-4" /> },
+    { key: "quickplus", label: "السريعة+", icon: <QrCode className="w-4 h-4" /> },
     { key: "quick", label: "السريعة", icon: <Zap className="w-4 h-4" /> },
     { key: "guided", label: "المُوجَّهة", icon: <ListChecks className="w-4 h-4" /> },
     { key: "cockpit", label: "القمرة", icon: <Gauge className="w-4 h-4" /> },
@@ -135,6 +147,7 @@ function LabInner() {
       {/* المحتوى */}
       <main className="max-w-5xl mx-auto px-3 py-4 pb-16">
         {active === "home" && <Home />}
+        {active === "quickplus" && <OptionQuickPlus />}
         {active === "quick" && <OptionQuick />}
         {active === "guided" && <OptionGuided />}
         {active === "cockpit" && <OptionCockpit />}
@@ -149,6 +162,7 @@ function LabInner() {
 function Home() {
   const lab = useLab();
   const cards: { id: OptionId; body: string; best: string }[] = [
+    { id: "quickplus", body: "السريعة الأصلية زي ما هي بالظبط — مضافة عليها طلباك: زرار QR واحد بيفتح كود بيتجدد كل 10 ثواني، وإشعار أولياء أمور بقانون واحد: حاضر أو غايب. مفيش أي سؤال زيادة.", best: "قرارك المختار — الاستقبال والمدرس المشغول" },
     { id: "quick", body: "افتراض «الكل حاضر» بضغطة، وتصلّح الاستثناءات بس، وتقفل من نفس الشاشة. مصممة لأقل نقرات ممكنة.", best: "الاستقبال والمدرس المشغول" },
     { id: "guided", body: "3 مراحل واضحة (حضور ← ملاحظات ← مراجعة) بإتمام صريح لكل مرحلة، والقفل مش بيحصل غير لما الحضور يتسجل.", best: "الانضباط والتوثيق التربوي" },
     { id: "cockpit", body: "شاشة حية واحدة: القائمة + العدادات + القفل قدامك في نفس اللحظة — صفر انتقالات، والتفاصيل تحت كتمة.", best: "الإشراف اللحظي واتخاذ القرار" },
@@ -160,8 +174,9 @@ function Home() {
         <h1 className="text-2xl font-extrabold flex items-center gap-2"><FlaskConical className="w-6 h-6" /> مختبر تدفّق الحصة — النخبة</h1>
         <p className="text-sm mt-2 opacity-90 leading-relaxed">
           نفس الحصة الاصطناعية ({SCENARIO.groupName} · {SCENARIO.teacherName} · {SCENARIO.room} · {SCENARIO.time}) شغالة في
-          <b> 3 تصاميم تشغيلية مختلفة</b>. جرّب كل بديل من أول فتح الحصة لحد القفل والخلاصة، شوف عدادات نقراتك الحية،
-          قارن الأرقام المُقاسة، وسجّل اختيارك بتعليق — القرار مش بيتطبق على الإنتاج غير لما توافق بنفسك بعدين.
+          <b> 4 تصاميم تشغيلية</b>: 3 مدارس مختلفة + «السريعة+» المبنية على قرارك المسجّل. جرّب كل بديل من أول فتح الحصة
+          لحد القفل والخلاصة، شوف عدادات نقراتك الحية، قارن الأرقام المُقاسة، وسجّل اختيارك بتعليق — القرار مش بيتطبق
+          على الإنتاج غير لما توافق بنفسك بعدين.
         </p>
         <div className="flex flex-wrap gap-1.5 mt-3">
           <span className="nk-badge" style={{ background: "rgba(255,255,255,.18)", color: "#fff" }}>❌ مفيش صور ثابتة — كله تفاعلي فعلي</span>
@@ -171,9 +186,33 @@ function Home() {
         </div>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-3">
+      {/* شريط قرار المالك المسجّل — مصدر بناء السريعة+ */}
+      <div className="nk-card rounded-3xl p-4 mb-3 border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/20">
+        <div className="flex items-start gap-3">
+          <span className="w-10 h-10 rounded-2xl bg-emerald-600 grid place-items-center text-white shrink-0"><BadgeCheck className="w-5 h-5" /></span>
+          <div className="min-w-0">
+            <h3 className="font-extrabold text-sm flex items-center gap-2 flex-wrap">
+              قرارك المسجّل: {OWNER_DECISION.option}
+              <span className="text-[11px] font-bold text-muted-foreground">({OWNER_DECISION.at})</span>
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{OWNER_DECISION.note}</p>
+            <ul className="mt-2 space-y-1">
+              {OWNER_DECISION.asks.map((a) => (
+                <li key={a} className="text-xs font-bold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />{a} — <span className="text-emerald-700 dark:text-emerald-300">تنفيذت في «السريعة+» تحت ✓</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-[11px] text-muted-foreground mt-2">
+              جرّبها ولو عجبتك بنطبّقها على المنتج الحقيقي بعد موافقتك الصريحة بس — والقرار ده قابل للتراجع في أي وقت.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-3">
         {cards.map((c) => (
-          <div key={c.id} className="nk-card rounded-3xl p-4 flex flex-col">
+          <div key={c.id} className={c.id === "quickplus" ? "nk-card rounded-3xl p-4 flex flex-col ring-2 ring-emerald-500/40" : "nk-card rounded-3xl p-4 flex flex-col"}>
             <div className="flex items-center gap-2 mb-2">
               <span className="w-10 h-10 rounded-2xl nk-brand-grad grid place-items-center text-white shrink-0">{OPTION_ICONS[c.id]}</span>
               <div>

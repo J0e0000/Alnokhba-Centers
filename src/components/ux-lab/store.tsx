@@ -6,7 +6,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
-  emptyMetrics, emptyOptionState, OptionId, OptionState, Metrics, LabChoice, AttStatus, MarkMethod,
+  emptyMetrics, emptyOptionState, OptionId, OptionState, Metrics, LabChoice, AttStatus, MarkMethod, OPTION_META,
 } from "./types";
 import { STUDENTS as STUDENTS_ALL } from "./scenario";
 
@@ -56,11 +56,13 @@ export function LabProvider({ children }: { children: React.ReactNode }) {
   const [active, setActive] = useState<OptionId | "compare" | "home" | "choice">("home");
   const [states, setStates] = useState<Record<OptionId, OptionState>>({
     quick: emptyOptionState(),
+    quickplus: emptyOptionState(),
     guided: emptyOptionState(),
     cockpit: emptyOptionState(),
   });
   const [metricsMap, setMetricsMap] = useState<Record<OptionId, Metrics>>({
     quick: emptyMetrics(),
+    quickplus: emptyMetrics(),
     guided: emptyMetrics(),
     cockpit: emptyMetrics(),
   });
@@ -275,8 +277,8 @@ export function LabProvider({ children }: { children: React.ReactNode }) {
   }, [patch, setM]);
 
   const resetAll = useCallback(() => {
-    setStates({ quick: emptyOptionState(), guided: emptyOptionState(), cockpit: emptyOptionState() });
-    setMetricsMap({ quick: emptyMetrics(), guided: emptyMetrics(), cockpit: emptyMetrics() });
+    setStates({ quick: emptyOptionState(), quickplus: emptyOptionState(), guided: emptyOptionState(), cockpit: emptyOptionState() });
+    setMetricsMap({ quick: emptyMetrics(), quickplus: emptyMetrics(), guided: emptyMetrics(), cockpit: emptyMetrics() });
     setOffline(false);
   }, []);
 
@@ -285,7 +287,7 @@ export function LabProvider({ children }: { children: React.ReactNode }) {
     const next: LabChoice = { option, comment: comment.trim(), savedAt: Date.now() };
     setChoice(next);
     try { localStorage.setItem(CHOICE_KEY, JSON.stringify(next)); } catch { /* تجاهل */ }
-    if (option) toast.success(`اتسجل اختيارك: ${option === "quick" ? "السريعة" : option === "guided" ? "المُوجَّهة" : "قمرة القيادة"} ✓`);
+    if (option) toast.success(`اتسجل اختيارك: ${OPTION_META[option].name} ✓`);
     else toast.info("اتمسح الاختيار");
   }, []);
 
