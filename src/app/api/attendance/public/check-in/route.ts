@@ -8,6 +8,7 @@ import { assessCheckInRisk, STAFF_NOTIFY_SCORE, riskSummary, type RiskFlag } fro
 import { recordAttendanceEvent } from "@/lib/attendance-core";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { effectivePrice } from "@/lib/finance";
+import { formatDateAR, formatTime12 } from "@/lib/normalize";
 import { notifyStudentsAttendance } from "@/lib/notify";
 import { notifyStaff } from "@/lib/staff-notify";
 import { evaluateTrustedDevice, bindTrustedDevice, touchTrustedDevice } from "@/lib/trusted-devices";
@@ -217,9 +218,11 @@ export const POST = handler(async (req: Request) => {
   let matchedStudentId: string | null = null;
   let matchedStudent: { id: string; name: string; code: string } | null = null;
   let charge: number | null = null; // null = من غير خصم (مفتوح/غير مسجل)
+  // تسمية الحصة في الإشعارات — بتاريخ ووقت عربي مقروء (مش ISO خام)
+  const sessionLabelFmt = `${formatDateAR(session.date)} · ${formatTime12(session.startTime)}`;
   let sessionLabel = isOpen
-    ? `${session.name ?? "حصة"} — ${session.date} ${session.startTime}`
-    : `${session.group?.subject.name ?? session.name ?? "حصة"} — ${session.date} ${session.startTime}`;
+    ? `${session.name ?? "حصة"} — ${sessionLabelFmt}`
+    : `${session.group?.subject.name ?? session.name ?? "حصة"} — ${sessionLabelFmt}`;
   let mismatchNote: string | null = null;
 
   // ===== 6) وضع الحضور المفتوح (spec §1B): اسم + كود بطول الحصة — من غير أي كشف =====
@@ -234,7 +237,7 @@ export const POST = handler(async (req: Request) => {
       await attempt({ centerId: qr.centerId, sessionId: session.id, outcome: "INVALID_CODE_LENGTH", studentCode: code, studentName: rawName });
       return ok({ ok: false, reason: "INVALID_CODE_LENGTH", message: `الكود لازم يكون ${expectedLen} أرقام بالظبط — اتأكد واكتبه تاني.` });
     }
-    sessionLabel = `${session.name ?? "حصة"} — ${session.date} ${session.startTime}`;
+    sessionLabel = `${session.name ?? "حصة"} — ${sessionLabelFmt}`;
   } else {
     // ===== 7) وضع الكشف (ROSTER): الكود هو المعرف الأساسي — الاسم فحص ناعم (spec §21) =====
     const student = await db.student.findFirst({ where: { centerId: qr.centerId, code } });
@@ -245,7 +248,7 @@ export const POST = handler(async (req: Request) => {
           await attempt({ centerId: qr.centerId, sessionId: session.id, outcome: "INVALID_NAME", studentCode: code });
           return ok({ ok: false, reason: "INVALID_NAME", message: "اكتب اسمك الكامل (حرفين على الأقل) وسجّل تاني." });
         }
-        sessionLabel = `${session.group?.subject.name ?? session.name ?? "حصة"} — ${session.date} ${session.startTime}`;
+        sessionLabel = `${session.group?.subject.name ?? session.name ?? "حصة"} — ${sessionLabelFmt}`;
       } else {
         await attempt({ centerId: qr.centerId, sessionId: session.id, outcome: "INVALID_STUDENT", studentCode: code, studentName: rawName || null });
         return ok({ ok: false, reason: "INVALID_STUDENT", message: "الكود ده مش معروف — اتأكد من كودك أو كلّم الاستقبال." });

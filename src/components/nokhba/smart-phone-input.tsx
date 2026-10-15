@@ -34,10 +34,10 @@ export function SmartPhoneInput({
 }) {
   return (
     <div className={cn("relative", className)} dir="ltr">
-      {/* +2 ثابتة — بتظهر قبل الرقم أوتوماتيك زي ما المالك طلب */}
+      {/* +2 ثابتة — شريحة واضحة قبل الرقم، منفصلة عن الأرقام عشان متتقراش كجزء منها */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 pr-1.5 text-sm font-extrabold nk-num text-muted-foreground select-none"
+        className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 pr-2.5 text-sm font-extrabold nk-num text-muted-foreground select-none border-r border-border"
       >
         +2
       </span>
@@ -49,15 +49,21 @@ export function SmartPhoneInput({
         className={cn(
           "w-full h-11 rounded-xl border-2 bg-card px-3.5 font-semibold text-sm nk-num focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition",
           hasError ? "border-rose-300 focus-visible:ring-rose-400" : "border-input",
-          "pl-10",
+          "pl-13",
         )}
         value={value}
         placeholder={placeholder}
         autoFocus={autoFocus}
         disabled={disabled}
         onChange={(e) => {
-          // تطبيع ذكي غير مدمّر: أرقام عربية/دولية/مسافات كلها تتظبط — الأرقام نفسها ما بتضيعش
+          // تطبيع ذكي غير مدمّر: أرقام عربية/دولية/مسافات كلها تتظبط —
+          // والرقم اللي ناقص الصفر الأول (1xxxxxxxxx) بيتكمّل فورًا وأنت بتكتب
           onChange(smartPhoneDigits(e.target.value).slice(0, 11));
+        }}
+        onBlur={(e) => {
+          // أمان إضافي عند الخروج من الحقل — الرقم دايمًا بصيغته الوطنية الكاملة
+          const done = smartPhoneDigits(e.target.value);
+          if (done !== e.target.value) onChange(done.slice(0, 11));
         }}
       />
     </div>

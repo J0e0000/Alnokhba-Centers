@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Bell, CheckCheck, ClipboardCheck, UserPlus, Scale, Loader2, UserCheck, Send } from "lucide-react";
+import { Bell, CheckCheck, ClipboardCheck, UserPlus, Scale, Loader2, UserCheck, Send, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "./lib";
 import {
@@ -44,6 +44,7 @@ export function StaffNotificationsBell({ variant = "center" }: { variant?: "cent
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(false);
   const [primed, setPrimed] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -98,6 +99,13 @@ export function StaffNotificationsBell({ variant = "center" }: { variant?: "cent
     }
   }
 
+  /** التفاصيل — فتح/قفل نص الإشعار كامل في مكانه من غير ما تغادر البوب أوفر */
+  function toggleDetails(id: string) {
+    setExpandedId((cur) => (cur === id ? null : id));
+    const n = items.find((x) => x.id === id);
+    if (n && !n.read) void markOne(n.id);
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -139,32 +147,56 @@ export function StaffNotificationsBell({ variant = "center" }: { variant?: "cent
             </p>
           ) : (
             <ul className="divide-y divide-border">
-              {items.map((n) => (
-                <li key={n.id}>
-                  <button
-                    onClick={() => onPick(n)}
-                    className={cn(
-                      "w-full text-start px-4 py-3 flex items-start gap-3 transition hover:bg-muted/50",
-                      !n.read && "bg-sky-50/60 dark:bg-sky-950/60",
-                    )}
-                  >
-                    <span className={cn(
-                      "w-8 h-8 rounded-xl grid place-items-center shrink-0",
-                      !n.read ? "nk-brand-grad text-white" : "bg-muted text-muted-foreground",
-                    )}>
-                      {TYPE_ICON[n.type] ?? TYPE_ICON.SYSTEM}
-                    </span>
-                    <span className="flex-1 min-w-0">
-                      <span className="block text-[13px] font-extrabold truncate">{n.title}</span>
-                      <span className="block text-[11px] text-muted-foreground font-semibold leading-relaxed line-clamp-2">{n.body}</span>
-                      <span className="block text-[10px] text-muted-foreground/80 font-bold mt-0.5">
-                        {new Date(n.createdAt).toLocaleString("ar-EG", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                    </span>
-                    {!n.read && <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0 mt-1.5" aria-hidden />}
-                  </button>
-                </li>
-              ))}
+              {items.map((n) => {
+                const expanded = expandedId === n.id;
+                return (
+                  <li key={n.id} className={cn(!n.read && "bg-sky-50/60 dark:bg-sky-950/60")}>
+                    <div className="flex items-start gap-3 px-4 py-3">
+                      <button
+                        onClick={() => onPick(n)}
+                        className={cn(
+                          "w-8 h-8 rounded-xl grid place-items-center shrink-0 transition",
+                          !n.read ? "nk-brand-grad text-white" : "bg-muted text-muted-foreground",
+                        )}
+                        aria-label={n.title}
+                      >
+                        {TYPE_ICON[n.type] ?? TYPE_ICON.SYSTEM}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <button onClick={() => onPick(n)} className="w-full text-start">
+                          <span className="block text-[13px] font-extrabold">{n.title}</span>
+                          <span className={cn(
+                            "block text-[11px] text-muted-foreground font-semibold leading-relaxed",
+                            !expanded && "line-clamp-2",
+                          )}>{n.body}</span>
+                        </button>
+                        {expanded && n.link && (
+                          <button
+                            onClick={() => onPick(n)}
+                            className="mt-1.5 text-[11px] font-extrabold nk-brand-text hover:underline flex items-center gap-1"
+                          >
+                            فتح الشاشة المرتبطة ←
+                          </button>
+                        )}
+                        <span className="block text-[10px] text-muted-foreground/80 font-bold mt-0.5">
+                          {new Date(n.createdAt).toLocaleString("ar-EG", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                      <div className="flex flex-col items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => toggleDetails(n.id)}
+                          className="w-6 h-6 rounded-lg grid place-items-center text-muted-foreground hover:bg-muted transition"
+                          aria-label={expanded ? "اقفل التفاصيل" : "التفاصيل"}
+                          title={expanded ? "اقفل التفاصيل" : "شوف التفاصيل كلها"}
+                        >
+                          <ChevronDown className={cn("w-4 h-4 transition-transform", expanded && "rotate-180")} />
+                        </button>
+                        {!n.read && <span className="w-2 h-2 rounded-full bg-rose-500" aria-hidden />}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
