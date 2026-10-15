@@ -8,11 +8,13 @@ import {
   Plus, Trash2, ClipboardPaste,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatPhoneIntl, smartPhoneDigits } from "@/lib/normalize";
 import { api, fmt, normalizeDigits, prefetchApi, STUDENT_STATUS, type SessionUser } from "./lib";
 import { PageHeader, Chip, BalanceChip, EmptyState, Loading, CardsSkeleton } from "./shared";
 import { ContactActions } from "./contact-actions";
 import { StudentSearchBar } from "./student-search";
 import { StudentCardPrint } from "./cards";
+import { SmartPhoneInput } from "./smart-phone-input";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -215,7 +217,7 @@ export function StudentsView({ user, openNew, onOpenNewConsumed, onOpenProfile }
                 <div className="flex items-center justify-between gap-2">
                   <BalanceChip balance={s.balance} />
                   <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-semibold">
-                    {s.phone ? <><Phone className="w-3 h-3" /> <span className="nk-num" dir="ltr">{s.phone}</span></> : <>{s.subjects.length} مادة</>}
+                    {s.phone ? <><Phone className="w-3 h-3" /> <span className="nk-num" dir="ltr">{formatPhoneIntl(s.phone)}</span></> : <>{s.subjects.length} مادة</>}
                   </span>
                 </div>
                 {/* تواصل مباشر: اتصال/واتساب للطالب + ولي الأمر (spec §2) */}
@@ -408,8 +410,7 @@ export function StudentFormDialog({ open, onClose, onSaved, user }: {
 
             <div className="grid grid-cols-2 gap-3">
               <Field label="موبايل الطالب" required error={errors.phone} ref={errors.phone ? firstErrorRef : undefined}>
-                <input dir="ltr" inputMode="numeric" className={inputCls(!!errors.phone)} value={form.phone}
-                  onChange={(e) => set("phone", normalizeDigits(e.target.value).replace(/[^\d]/g, "").slice(0, 11))} placeholder="01xxxxxxxxx" />
+                <SmartPhoneInput value={form.phone} hasError={!!errors.phone} onChange={(v) => set("phone", v)} />
               </Field>
               <Field
                 label="اسم ولي الأمر"
@@ -434,8 +435,7 @@ export function StudentFormDialog({ open, onClose, onSaved, user }: {
 
             <div className="grid grid-cols-2 gap-3">
               <Field label="موبايل ولي الأمر" required error={errors.parentPhone} ref={errors.parentPhone ? firstErrorRef : undefined}>
-                <input dir="ltr" inputMode="numeric" className={inputCls(!!errors.parentPhone)} value={form.parentPhone}
-                  onChange={(e) => set("parentPhone", normalizeDigits(e.target.value).replace(/[^\d]/g, "").slice(0, 11))} placeholder="01xxxxxxxxx" />
+                <SmartPhoneInput value={form.parentPhone} hasError={!!errors.parentPhone} onChange={(v) => set("parentPhone", v)} />
               </Field>
               <Field label="المرحلة الدراسية" required error={errors.gradeId} ref={errors.gradeId ? firstErrorRef : undefined}>
                 <select className={inputCls(!!errors.gradeId)} value={form.gradeId} onChange={(e) => { set("gradeId", e.target.value); set("groupIds", []); }}>
@@ -537,7 +537,7 @@ export function inputCls(hasError: boolean): string {
 type QuickRow = { key: number; name: string; phone: string; parentName: string; parentPhone: string; parentTouched: boolean };
 let quickRowKey = 0;
 const emptyQuickRow = (): QuickRow => ({ key: ++quickRowKey, name: "", phone: "", parentName: "", parentPhone: "", parentTouched: false });
-const digitsOnly = (s: string) => normalizeDigits(s).replace(/\D/g, "");
+const digitsOnly = (s: string) => smartPhoneDigits(s);
 const isEgyptianMobile = (s: string) => /^01[0125]\d{8}$/.test(s);
 
 function BulkAddDialog({ open, onClose, onSaved }: {
@@ -754,12 +754,10 @@ function BulkAddDialog({ open, onClose, onSaved }: {
                   <input dir="rtl" className={cn(inputCls(false), "h-10 text-sm")} value={r.name}
                     onChange={(e) => setName(r, e.target.value)}
                     placeholder={`صف ${i + 1} — اسم الطالب بالكامل`} />
-                  <input dir="ltr" inputMode="numeric" className={cn(inputCls(false), "h-10 text-sm")} value={r.phone}
-                    onChange={(e) => patch(r.key, { phone: digitsOnly(e.target.value).slice(0, 11) })}
-                    placeholder="01xxxxxxxxx" />
-                  <input dir="ltr" inputMode="numeric" className={cn(inputCls(false), "h-10 text-sm")} value={r.parentPhone}
-                    onChange={(e) => patch(r.key, { parentPhone: digitsOnly(e.target.value).slice(0, 11) })}
-                    placeholder="01xxxxxxxxx" />
+                  <SmartPhoneInput className="h-10 [&>input]:h-10 [&>input]:text-sm" value={r.phone}
+                    onChange={(v) => patch(r.key, { phone: v })} placeholder="01xxxxxxxxx" />
+                  <SmartPhoneInput className="h-10 [&>input]:h-10 [&>input]:text-sm" value={r.parentPhone}
+                    onChange={(v) => patch(r.key, { parentPhone: v })} placeholder="01xxxxxxxxx" />
                   <input dir="rtl" className={cn(inputCls(false), "h-10 text-sm hidden sm:block", !r.parentTouched && r.parentName && "text-muted-foreground")}
                     value={r.parentName}
                     onChange={(e) => patch(r.key, { parentName: e.target.value, parentTouched: e.target.value.trim().length > 0 })}

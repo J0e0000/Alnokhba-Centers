@@ -12,6 +12,7 @@ import { normalizeDigits, formatTime12, dayNameAR, formatDateAR } from "@/lib/no
 import { defaultCapabilityMap, type CapabilityMap } from "@/lib/capabilities";
 import { applyCenterBranding } from "../lib";
 import { AlNokhbaMark } from "../shared";
+import { SmartPhoneInput } from "../smart-phone-input";
 import { Tour } from "../tour";
 import { HelpButton } from "../help";
 import { STUDENT_TOUR } from "../help-content";
@@ -285,6 +286,17 @@ export function PortalApp() {
     let alive = true;
     void (async () => {
       try {
+        // ===== ديب-لينك QR: /portal?qr=<توكن> — طلب المالك «ابعت qr link» =====
+        // لينك الطالب بيفتح البورتال مسجّل على طول من غير كود ولا موبايل.
+        let qrToken: string | null = null;
+        try { qrToken = new URLSearchParams(window.location.search).get("qr"); } catch { /* ignore */ }
+        if (qrToken) {
+          try {
+            await papi("/api/portal", { method: "POST", body: { action: "qr-login", token: qrToken }, silent: true });
+          } catch { /* توكن غلط/قديم — نكمل لشاشة الدخول العادية */ }
+          // نشيل التوكن من العنوان — ميتنسخش ويتبعت بالغلط
+          try { window.history.replaceState(null, "", "/portal"); } catch { /* ignore */ }
+        }
         const d = await papi<HomeData>("/api/portal", { silent: true });
         if (!alive) return;
         if (!d.student) {
@@ -554,18 +566,8 @@ function PortalLogin({ onSuccess }: { onSuccess: () => void }) {
             <label htmlFor="pphone" className="text-sm font-bold flex items-center gap-1.5">
               <Smartphone className="w-4 h-4 text-muted-foreground" /> رقم الموبايل
             </label>
-            <input
-              id="pphone"
-              dir="ltr"
-              inputMode="numeric"
-              className="flex h-12 w-full rounded-xl border border-input bg-card px-4 text-start font-semibold nk-num focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              placeholder="01xxxxxxxxx"
-              value={phone}
-              autoComplete="off"
-              onChange={(e) => setPhone(normalizeDigits(e.target.value).replace(/\D/g, "").slice(0, 13))}
-              disabled={busy}
-            />
-            <p className="text-[10px] font-bold text-muted-foreground">رقم الطالب أو ولي الأمر المتسجّل عند السنتر.</p>
+            <SmartPhoneInput id="pphone" value={phone} onChange={setPhone} disabled={busy} className="[&>input]:h-12 [&>input]:text-base" />
+            <p className="text-[10px] font-bold text-muted-foreground">رقم الطالب أو ولي الأمر المتسجّل عند السنتر — بأي صيغة (+2 لوحدها).</p>
           </div>
 
           <button

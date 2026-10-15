@@ -3,16 +3,19 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
-  ChevronRight, Phone, User, Printer, School, StickyNote, BookOpen, Clock,
+  ChevronRight, Phone, User, Printer, School, StickyNote, BookOpen, Clock, QrCode,
   Wallet, TrendingDown, TrendingUp, MessageCircle, Pencil, Loader2, Scale, Undo2, ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatPhoneIntl } from "@/lib/normalize";
 import {
   api, fmt, fmtE, formatDateAR, formatTime12, balanceLabel, STUDENT_STATUS, TXN_LABEL,
   ATTENDANCE_LABEL, PAY_METHOD_LABEL, userCan, userCanRequest, type SessionUser,
 } from "./lib";
 import { PageHeader, Chip, BalanceChip, SectionCard, Loading, EmptyState, Stat, MoneyStat, InfoRow } from "./shared";
 import { ContactActions } from "./contact-actions";
+import { SmartPhoneInput } from "./smart-phone-input";
+import { StudentQrLinkModal } from "./student-qr-link";
 import { PaymentPanel } from "./scan";
 import { TransactionPrintButton } from "./receipt-actions";
 import { StudentFormDialog } from "./students";
@@ -23,7 +26,7 @@ import {
 
 type Profile = {
   student: {
-    id: string; code: string; name: string; phone: string | null; parentName: string | null;
+    id: string; code: string; qrToken: string; name: string; phone: string | null; parentName: string | null;
     parentPhone: string | null; grade: string | null; school: string | null; status: string;
     notes: string | null; createdAt: string;
   };
@@ -44,6 +47,7 @@ export function StudentProfileView({ user, studentId, onBack }: {
 }) {
   const [data, setData] = useState<Profile | null>(null);
   const [cardOpen, setCardOpen] = useState(false);
+  const [qrLinkOpen, setQrLinkOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [requestOpen, setRequestOpen] = useState(false);
@@ -69,7 +73,12 @@ export function StudentProfileView({ user, studentId, onBack }: {
         action={
           <div className="flex items-center gap-2 flex-wrap justify-end">
             <ContactActions target={s} size="md" showLabels />
-            <button onClick={() => setCardOpen(true)} className="nk-brand-bg text-white font-extrabold rounded-xl px-3.5 py-2.5 shadow flex items-center gap-1.5 text-sm active:scale-[0.98]">
+            {/* «خليني اقدر ابعت qr link زرار واضح» — طلب المالك: زرار واحد واضح يفتح اللينك والـ QR والإرسال */}
+            <button onClick={() => setQrLinkOpen(true)} title="لينك بورتال الطالب — QR + إرسال واتساب + نسخ"
+              className="nk-brand-bg text-white font-extrabold rounded-xl px-3.5 py-2.5 shadow flex items-center gap-1.5 text-sm active:scale-[0.98]">
+              <QrCode className="w-4 h-4" /> لينك QR
+            </button>
+            <button onClick={() => setCardOpen(true)} className="border border-border bg-card font-extrabold rounded-xl px-3.5 py-2.5 flex items-center gap-1.5 text-sm active:scale-[0.98]">
               <Printer className="w-4 h-4" /> الكارت
             </button>
             <button onClick={() => setEditOpen(true)} className="border border-border bg-card font-bold rounded-xl px-3.5 py-2.5 flex items-center gap-1.5 text-sm">
@@ -93,9 +102,9 @@ export function StudentProfileView({ user, studentId, onBack }: {
           {/* موبايل: بيانات الطالب فوق و QR تحتها في النص — قبل كده كانوا جنب بعض وعمود البيانات بيتضغط لحرفين في السطر */}
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
             <div className="flex-1 min-w-0 w-full">
-              <InfoRow label="موبايل الطالب" value={s.phone ? <a href={`tel:${s.phone}`} className="nk-brand-text nk-num" dir="ltr">{s.phone}</a> : "—"} />
+              <InfoRow label="موبايل الطالب" value={s.phone ? <a href={`tel:${s.phone}`} className="nk-brand-text nk-num" dir="ltr">{formatPhoneIntl(s.phone)}</a> : "—"} />
               <InfoRow label="ولي الأمر" value={s.parentName ?? "—"} />
-              <InfoRow label="موبايل ولي الأمر" value={s.parentPhone ? <a href={`tel:${s.parentPhone}`} className="nk-brand-text nk-num" dir="ltr">{s.parentPhone}</a> : "—"} />
+              <InfoRow label="موبايل ولي الأمر" value={s.parentPhone ? <a href={`tel:${s.parentPhone}`} className="nk-brand-text nk-num" dir="ltr">{formatPhoneIntl(s.parentPhone)}</a> : "—"} />
               <InfoRow label="المدرسة" value={s.school ?? "—"} />
               <InfoRow label="الحالة" value={<span className={cn("text-xs font-bold rounded-full border px-2 py-0.5", STUDENT_STATUS[s.status]?.cls)}>{STUDENT_STATUS[s.status]?.label}</span>} />
               <InfoRow label="مسجل من" value={formatDateAR(s.createdAt.slice(0, 10))} />
@@ -233,6 +242,13 @@ export function StudentProfileView({ user, studentId, onBack }: {
       </SectionCard>
 
       {/* dialogs */}
+      <StudentQrLinkModal
+        open={qrLinkOpen}
+        onOpenChange={setQrLinkOpen}
+        student={{ name: s.name, code: s.code, phone: s.phone, parentPhone: s.parentPhone, qrToken: s.qrToken }}
+        centerName={user.center?.name}
+      />
+
       <StudentCardPrint open={cardOpen} onClose={() => setCardOpen(false)} studentIds={[s.id]} center={user.center} />
 
       <StudentEditDialog open={editOpen} onClose={() => setEditOpen(false)} profile={data} onSaved={() => { setEditOpen(false); setReload((k) => k + 1); }} />
@@ -527,11 +543,11 @@ function StudentEditDialog({ open, onClose, profile, onSaved }: {
         <div className="space-y-3">
           <input className="w-full h-11 rounded-xl border-2 border-input bg-card px-3.5 font-semibold text-sm" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="الاسم" />
           <div className="grid grid-cols-2 gap-3">
-            <input dir="ltr" inputMode="numeric" className="w-full h-11 rounded-xl border-2 border-input bg-card px-3.5 font-semibold text-sm nk-num" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/[^\d]/g, "").slice(0, 11) })} placeholder="موبايل الطالب" />
+            <SmartPhoneInput value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="موبايل الطالب" />
             <input className="w-full h-11 rounded-xl border-2 border-input bg-card px-3.5 font-semibold text-sm" value={form.parentName} onChange={(e) => setForm({ ...form, parentName: e.target.value })} placeholder="ولي الأمر" />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <input dir="ltr" inputMode="numeric" className="w-full h-11 rounded-xl border-2 border-input bg-card px-3.5 font-semibold text-sm nk-num" value={form.parentPhone} onChange={(e) => setForm({ ...form, parentPhone: e.target.value.replace(/[^\d]/g, "").slice(0, 11) })} placeholder="موبايل ولي الأمر" />
+            <SmartPhoneInput value={form.parentPhone} onChange={(v) => setForm({ ...form, parentPhone: v })} placeholder="موبايل ولي الأمر" />
             <input className="w-full h-11 rounded-xl border-2 border-input bg-card px-3.5 font-semibold text-sm" value={form.school} onChange={(e) => setForm({ ...form, school: e.target.value })} placeholder="المدرسة" />
           </div>
           <select className="w-full h-11 rounded-xl border-2 border-input bg-card px-3.5 font-semibold text-sm" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>

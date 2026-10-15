@@ -82,13 +82,30 @@ async function portalProgress(studentId: string, centerId: string) {
 
 // ============================= POST — دخول / خروج =============================
 
-type LoginBody = { action?: string; code?: string; phone?: string };
+type LoginBody = { action?: string; code?: string; phone?: string; token?: string };
 
 export const POST = handler(async (req: Request) => {
   const body = await readJson<LoginBody>(req);
 
   if (body.action === "logout") {
     await destroyPortalSession();
+    return ok({ ok: true });
+  }
+
+  // ===== دخول بلينك QR (طلب المالك: «ابعت qr link») =====
+  // التوكن هو نفس توكن كارت الطالب (48 حرف عشوائي) — اللي معاه اللينك هو الطالب/ولي أمره.
+  // نفس سقف الـ rate-limit بتاع الدخول العادي — مفيش سماح إضافي للـ brute force.
+  if (body.action === "qr-login") {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+    rateLimit(`portal-login:${ip}`, 12, 600_000);
+    const token = String(body.token ?? "").trim().toLowerCase();
+    if (!/^[0-9a-f]{32,64}$/.test(token)) throw new ApiError("اللينك ده مش شكله لينك طالب — اتأكد منه وجرب تاني.", 401);
+    const student = await db.student.findFirst({
+      where: { qrToken: token, status: "ACTIVE", center: { status: "ACTIVE" } },
+      select: { id: true },
+    });
+    if (!student) throw new ApiError("اللينك ده مش شغال — ممكن الطالب يكون متوقف أو اللينك قديم. كلّم الاستقبال.", 401);
+    await createPortalSession(student.id);
     return ok({ ok: true });
   }
 
