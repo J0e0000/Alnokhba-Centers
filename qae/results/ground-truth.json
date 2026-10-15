@@ -1,0 +1,4929 @@
+{
+  "generatedAt": "2026-10-15T05:16:24.583Z",
+  "window": {
+    "from": "2026-09-15",
+    "to": "2026-10-14"
+  },
+  "centers": {
+    "qae-c01": {
+      "centerId": "cmv9363yb0000vacblh3oidnj",
+      "name": "QAE1 سنتر الجودة 01",
+      "window": {
+        "from": "2026-09-15",
+        "to": "2026-10-14"
+      },
+      "counts": {
+        "students": 120,
+        "newStudents": 2,
+        "groups": 8,
+        "teachers": 6,
+        "sessions": 70,
+        "closed": 63,
+        "open": 6,
+        "cancelled": 1,
+        "attendance": 982,
+        "present": 910,
+        "late": 43,
+        "excused": 29,
+        "attendanceRate": 0.9705,
+        "chargesCount": 953,
+        "chargesSum": -7767100,
+        "paymentsCount": 205,
+        "paymentsSum": 5149700,
+        "receipts": 205,
+        "expenses": 5,
+        "expensesSum": 64400,
+        "settlementsEARNED": 3217650,
+        "settlementsPAID": 1770000,
+        "announcements": 3,
+        "studentNotifications": 191,
+        "queueItems": 220,
+        "notificationAttempts": 205,
+        "corrections": 0,
+        "audit": 228,
+        "quizzes": 3,
+        "quizAttempts": 60,
+        "exams": 2,
+        "examAttempts": 19,
+        "bookSales": 18,
+        "bookSalesSum": 219500
+      },
+      "debtors": {
+        "count": 109,
+        "top10": [
+          {
+            "studentId": "cmv936454009qvacb6jw0zg4j",
+            "name": "شريف شعبان الغريب",
+            "code": "10557",
+            "balance": -59600
+          },
+          {
+            "studentId": "cmv93643d004gvacbkfr1d01c",
+            "name": "هاني السيد طنطاوي",
+            "code": "10515",
+            "balance": -57000
+          },
+          {
+            "studentId": "cmv93647e00g4vacbzg8pbvv0",
+            "name": "علي عادل منصور",
+            "code": "10610",
+            "balance": -54000
+          },
+          {
+            "studentId": "cmv936439003uvacb39dnb1ol",
+            "name": "عبدالله السيد الدسوقي",
+            "code": "10509",
+            "balance": -49200
+          },
+          {
+            "studentId": "cmv93646l00eyvacbpa0yjg4s",
+            "name": "مصطفى شعبان الغريب",
+            "code": "10601",
+            "balance": -48800
+          },
+          {
+            "studentId": "cmv93642z0030vacbeu2efwsg",
+            "name": "زياد عبد الرحمن رشاد",
+            "code": "10503",
+            "balance": -48200
+          },
+          {
+            "studentId": "cmv93644e007avacbv8alqocr",
+            "name": "خالد هشام إبراهيم",
+            "code": "10537",
+            "balance": -44800
+          },
+          {
+            "studentId": "cmv9364400060vacbjtkzvm8s",
+            "name": "سيف عصام زكي",
+            "code": "10527",
+            "balance": -44200
+          },
+          {
+            "studentId": "cmv936432003cvacbufukault",
+            "name": "باسم مجدي الغريب",
+            "code": "10505",
+            "balance": -44000
+          },
+          {
+            "studentId": "cmv936451009cvacbr1uw7q18",
+            "name": "أنس عادل فؤاد",
+            "code": "10554",
+            "balance": -44000
+          }
+        ]
+      },
+      "lowestAttendanceGroups": [
+        {
+          "groupId": "cmv9363z30026vacbj9ncgrnt",
+          "name": "ح",
+          "subject": "كيمياء",
+          "sessions": 9,
+          "registrations": 23,
+          "attended": 147,
+          "rate": 0.7101
+        },
+        {
+          "groupId": "cmv9363yt001ivacb4h34yoiz",
+          "name": "د",
+          "subject": "إنجليزي",
+          "sessions": 9,
+          "registrations": 19,
+          "attended": 127,
+          "rate": 0.7427
+        },
+        {
+          "groupId": "cmv9363yv001ovacb8lakpgon",
+          "name": "هـ",
+          "subject": "عربي",
+          "sessions": 9,
+          "registrations": 19,
+          "attended": 127,
+          "rate": 0.7427
+        }
+      ],
+      "highestAttendanceGroups": [
+        {
+          "groupId": "cmv9363yp0016vacbs4geaeqz",
+          "name": "ب",
+          "subject": "فيزياء",
+          "sessions": 9,
+          "registrations": 9,
+          "attended": 69,
+          "rate": 0.8519
+        },
+        {
+          "groupId": "cmv9363z0001uvacbt4mpmap1",
+          "name": "و",
+          "subject": "رياضيات",
+          "sessions": 7,
+          "registrations": 22,
+          "attended": 125,
+          "rate": 0.8117
+        },
+        {
+          "groupId": "cmv9363z10020vacbrl49ubzf",
+          "name": "ز",
+          "subject": "فيزياء",
+          "sessions": 9,
+          "registrations": 13,
+          "attended": 94,
+          "rate": 0.8034
+        }
+      ],
+      "quizSeries": [
+        {
+          "quizId": "cqaemv9366212xu1kcr",
+          "title": "كويز رياضيات — رقم 1",
+          "attempts": 20,
+          "avgScore": 3.7,
+          "maxScore": 5
+        },
+        {
+          "quizId": "cqaemv9366232yk9493",
+          "title": "كويز رياضيات — رقم 2",
+          "attempts": 20,
+          "avgScore": 3.5,
+          "maxScore": 5
+        },
+        {
+          "quizId": "cqaemv9366242za759s",
+          "title": "كويز رياضيات — رقم 3",
+          "attempts": 20,
+          "avgScore": 2.7,
+          "maxScore": 5
+        }
+      ],
+      "daily": [
+        {
+          "date": "2026-09-15",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 33,
+          "charges": 32,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-16",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 50,
+          "charges": 49,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-17",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 23,
+          "charges": 23,
+          "payments": 9,
+          "paymentsSum": 78400
+        },
+        {
+          "date": "2026-09-18",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 9,
+          "paymentsSum": 79300
+        },
+        {
+          "date": "2026-09-19",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 39,
+          "charges": 36,
+          "payments": 13,
+          "paymentsSum": 169700
+        },
+        {
+          "date": "2026-09-20",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 47,
+          "charges": 44,
+          "payments": 8,
+          "paymentsSum": 120500
+        },
+        {
+          "date": "2026-09-21",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 29,
+          "charges": 27,
+          "payments": 13,
+          "paymentsSum": 259100
+        },
+        {
+          "date": "2026-09-22",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 42,
+          "charges": 41,
+          "payments": 14,
+          "paymentsSum": 249400
+        },
+        {
+          "date": "2026-09-23",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 52,
+          "charges": 51,
+          "payments": 10,
+          "paymentsSum": 248100
+        },
+        {
+          "date": "2026-09-24",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 30,
+          "charges": 27,
+          "payments": 13,
+          "paymentsSum": 257400
+        },
+        {
+          "date": "2026-09-25",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 8,
+          "paymentsSum": 203800
+        },
+        {
+          "date": "2026-09-26",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 37,
+          "charges": 37,
+          "payments": 1,
+          "paymentsSum": 9200
+        },
+        {
+          "date": "2026-09-27",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 46,
+          "charges": 46,
+          "payments": 3,
+          "paymentsSum": 44000
+        },
+        {
+          "date": "2026-09-28",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 26,
+          "charges": 23,
+          "payments": 2,
+          "paymentsSum": 28800
+        },
+        {
+          "date": "2026-09-29",
+          "sessions": 3,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 38,
+          "charges": 37,
+          "payments": 5,
+          "paymentsSum": 96200
+        },
+        {
+          "date": "2026-09-30",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 51,
+          "charges": 49,
+          "payments": 3,
+          "paymentsSum": 72400
+        },
+        {
+          "date": "2026-10-01",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 26,
+          "charges": 25,
+          "payments": 7,
+          "paymentsSum": 248700
+        },
+        {
+          "date": "2026-10-02",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 2,
+          "paymentsSum": 66900
+        },
+        {
+          "date": "2026-10-03",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 40,
+          "charges": 39,
+          "payments": 9,
+          "paymentsSum": 395100
+        },
+        {
+          "date": "2026-10-04",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 51,
+          "charges": 50,
+          "payments": 7,
+          "paymentsSum": 196600
+        },
+        {
+          "date": "2026-10-05",
+          "sessions": 2,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 28,
+          "charges": 27,
+          "payments": 12,
+          "paymentsSum": 327800
+        },
+        {
+          "date": "2026-10-06",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 39,
+          "charges": 38,
+          "payments": 12,
+          "paymentsSum": 452200
+        },
+        {
+          "date": "2026-10-07",
+          "sessions": 3,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 51,
+          "charges": 50,
+          "payments": 13,
+          "paymentsSum": 415000
+        },
+        {
+          "date": "2026-10-08",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 25,
+          "charges": 25,
+          "payments": 12,
+          "paymentsSum": 460200
+        },
+        {
+          "date": "2026-10-09",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 7,
+          "paymentsSum": 212200
+        },
+        {
+          "date": "2026-10-10",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 37,
+          "charges": 36,
+          "payments": 1,
+          "paymentsSum": 26000
+        },
+        {
+          "date": "2026-10-11",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 45,
+          "charges": 44,
+          "payments": 2,
+          "paymentsSum": 118500
+        },
+        {
+          "date": "2026-10-12",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 1,
+          "attendance": 10,
+          "charges": 10,
+          "payments": 2,
+          "paymentsSum": 121600
+        },
+        {
+          "date": "2026-10-13",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 38,
+          "charges": 38,
+          "payments": 4,
+          "paymentsSum": 81200
+        },
+        {
+          "date": "2026-10-14",
+          "sessions": 3,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 49,
+          "charges": 49,
+          "payments": 4,
+          "paymentsSum": 111400
+        }
+      ]
+    },
+    "qae-c02": {
+      "centerId": "cmv93647p00hbvacbvb36cz8b",
+      "name": "QAE1 سنتر الجودة 02",
+      "window": {
+        "from": "2026-09-15",
+        "to": "2026-10-14"
+      },
+      "counts": {
+        "students": 110,
+        "newStudents": 3,
+        "groups": 7,
+        "teachers": 5,
+        "sessions": 61,
+        "closed": 58,
+        "open": 3,
+        "cancelled": 0,
+        "attendance": 815,
+        "present": 739,
+        "late": 48,
+        "excused": 28,
+        "attendanceRate": 0.9656,
+        "chargesCount": 787,
+        "chargesSum": -6217700,
+        "paymentsCount": 191,
+        "paymentsSum": 3961900,
+        "receipts": 191,
+        "expenses": 5,
+        "expensesSum": 70200,
+        "settlementsEARNED": 3074605,
+        "settlementsPAID": 1975000,
+        "announcements": 4,
+        "studentNotifications": 406,
+        "queueItems": 206,
+        "notificationAttempts": 191,
+        "corrections": 1,
+        "audit": 216,
+        "quizzes": 3,
+        "quizAttempts": 60,
+        "exams": 1,
+        "examAttempts": 5,
+        "bookSales": 0,
+        "bookSalesSum": 0
+      },
+      "debtors": {
+        "count": 102,
+        "top10": [
+          {
+            "studentId": "cmv9364bv00krvacbsrz97upl",
+            "name": "سيف عادل سليم",
+            "code": "11009",
+            "balance": -65500
+          },
+          {
+            "studentId": "cmv9364bn00jxvacbc4vwf9ui",
+            "name": "أنس السيد الغريب",
+            "code": "11002",
+            "balance": -55300
+          },
+          {
+            "studentId": "cmv9364d000orvacbtz08d8ga",
+            "name": "محمود عصام زكي",
+            "code": "11041",
+            "balance": -54700
+          },
+          {
+            "studentId": "cmv9364e100tjvacbwijc4bgs",
+            "name": "محمد سيد قنديل",
+            "code": "11081",
+            "balance": -53900
+          },
+          {
+            "studentId": "cmv9364dv00stvacb3p9lwiaz",
+            "name": "كريم كامل رشاد",
+            "code": "11075",
+            "balance": -53700
+          },
+          {
+            "studentId": "cmv9364cj00mvvacbynudmydu",
+            "name": "عبدالله رجب الغريب",
+            "code": "11027",
+            "balance": -49900
+          },
+          {
+            "studentId": "cmv9364eu00wdvacbpia1zcct",
+            "name": "خالد رمضان خير الله",
+            "code": "11107",
+            "balance": -49400
+          },
+          {
+            "studentId": "cmv9364c600ljvacb0mno2l8o",
+            "name": "حسن عبد الرحمن الجندي",
+            "code": "11016",
+            "balance": -48500
+          },
+          {
+            "studentId": "cmv9364cr00nnvacbel7jzj17",
+            "name": "أحمد رمضان خير الله",
+            "code": "11033",
+            "balance": -48300
+          },
+          {
+            "studentId": "cmv9364c300ldvacbdt33k7qw",
+            "name": "هاني عصام رشاد",
+            "code": "11014",
+            "balance": -46500
+          }
+        ]
+      },
+      "lowestAttendanceGroups": [
+        {
+          "groupId": "cmv93648000ifvacbams3zsv9",
+          "name": "ب",
+          "subject": "فيزياء",
+          "sessions": 9,
+          "registrations": 22,
+          "attended": 138,
+          "rate": 0.697
+        },
+        {
+          "groupId": "cmv93648400ixvacbr2ao25j4",
+          "name": "هـ",
+          "subject": "عربي",
+          "sessions": 9,
+          "registrations": 18,
+          "attended": 113,
+          "rate": 0.6975
+        },
+        {
+          "groupId": "cmv93647y00i9vacbbvsupz2z",
+          "name": "أ",
+          "subject": "رياضيات",
+          "sessions": 9,
+          "registrations": 23,
+          "attended": 146,
+          "rate": 0.7053
+        }
+      ],
+      "highestAttendanceGroups": [
+        {
+          "groupId": "cmv93648600j3vacb89sdcg0f",
+          "name": "و",
+          "subject": "رياضيات",
+          "sessions": 8,
+          "registrations": 13,
+          "attended": 82,
+          "rate": 0.7885
+        },
+        {
+          "groupId": "cmv93648300irvacbwlpalmys",
+          "name": "د",
+          "subject": "إنجليزي",
+          "sessions": 9,
+          "registrations": 14,
+          "attended": 99,
+          "rate": 0.7857
+        },
+        {
+          "groupId": "cmv93648800j9vacbd6lpnfh6",
+          "name": "ز",
+          "subject": "فيزياء",
+          "sessions": 9,
+          "registrations": 19,
+          "attended": 129,
+          "rate": 0.7544
+        }
+      ],
+      "quizSeries": [
+        {
+          "quizId": "cqaemv9366am5xa1l8",
+          "title": "كويز رياضيات — رقم 1",
+          "attempts": 20,
+          "avgScore": 3.65,
+          "maxScore": 5
+        },
+        {
+          "quizId": "cqaemv9366an5y0k389",
+          "title": "كويز رياضيات — رقم 2",
+          "attempts": 20,
+          "avgScore": 3.55,
+          "maxScore": 5
+        },
+        {
+          "quizId": "cqaemv9366ao5yq3n5m",
+          "title": "كويز رياضيات — رقم 3",
+          "attempts": 20,
+          "avgScore": 2.85,
+          "maxScore": 5
+        }
+      ],
+      "daily": [
+        {
+          "date": "2026-09-15",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 32,
+          "charges": 30,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-16",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 46,
+          "charges": 45,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-17",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 26,
+          "charges": 26,
+          "payments": 2,
+          "paymentsSum": 23000
+        },
+        {
+          "date": "2026-09-18",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 9,
+          "paymentsSum": 110200
+        },
+        {
+          "date": "2026-09-19",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 24,
+          "charges": 23,
+          "payments": 10,
+          "paymentsSum": 117500
+        },
+        {
+          "date": "2026-09-20",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 39,
+          "charges": 39,
+          "payments": 18,
+          "paymentsSum": 207500
+        },
+        {
+          "date": "2026-09-21",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 22,
+          "charges": 22,
+          "payments": 14,
+          "paymentsSum": 206700
+        },
+        {
+          "date": "2026-09-22",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 32,
+          "charges": 31,
+          "payments": 14,
+          "paymentsSum": 220100
+        },
+        {
+          "date": "2026-09-23",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 37,
+          "charges": 36,
+          "payments": 13,
+          "paymentsSum": 247300
+        },
+        {
+          "date": "2026-09-24",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 20,
+          "charges": 19,
+          "payments": 3,
+          "paymentsSum": 61600
+        },
+        {
+          "date": "2026-09-25",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 5,
+          "paymentsSum": 70700
+        },
+        {
+          "date": "2026-09-26",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 30,
+          "charges": 29,
+          "payments": 4,
+          "paymentsSum": 40700
+        },
+        {
+          "date": "2026-09-27",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 43,
+          "charges": 42,
+          "payments": 4,
+          "paymentsSum": 69400
+        },
+        {
+          "date": "2026-09-28",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 19,
+          "charges": 18,
+          "payments": 1,
+          "paymentsSum": 5000
+        },
+        {
+          "date": "2026-09-29",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 32,
+          "charges": 31,
+          "payments": 1,
+          "paymentsSum": 18600
+        },
+        {
+          "date": "2026-09-30",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 38,
+          "charges": 36,
+          "payments": 2,
+          "paymentsSum": 41300
+        },
+        {
+          "date": "2026-10-01",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 27,
+          "charges": 27,
+          "payments": 3,
+          "paymentsSum": 58500
+        },
+        {
+          "date": "2026-10-02",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 6,
+          "paymentsSum": 142500
+        },
+        {
+          "date": "2026-10-03",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 27,
+          "charges": 26,
+          "payments": 12,
+          "paymentsSum": 352100
+        },
+        {
+          "date": "2026-10-04",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 43,
+          "charges": 42,
+          "payments": 9,
+          "paymentsSum": 217000
+        },
+        {
+          "date": "2026-10-05",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 21,
+          "charges": 20,
+          "payments": 17,
+          "paymentsSum": 429800
+        },
+        {
+          "date": "2026-10-06",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 26,
+          "charges": 26,
+          "payments": 10,
+          "paymentsSum": 375200
+        },
+        {
+          "date": "2026-10-07",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 46,
+          "charges": 43,
+          "payments": 5,
+          "paymentsSum": 140800
+        },
+        {
+          "date": "2026-10-08",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 29,
+          "charges": 28,
+          "payments": 7,
+          "paymentsSum": 246100
+        },
+        {
+          "date": "2026-10-09",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 5,
+          "paymentsSum": 88600
+        },
+        {
+          "date": "2026-10-10",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 22,
+          "charges": 21,
+          "payments": 5,
+          "paymentsSum": 114600
+        },
+        {
+          "date": "2026-10-11",
+          "sessions": 3,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 40,
+          "charges": 37,
+          "payments": 7,
+          "paymentsSum": 248400
+        },
+        {
+          "date": "2026-10-12",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 26,
+          "charges": 24,
+          "payments": 2,
+          "paymentsSum": 29600
+        },
+        {
+          "date": "2026-10-13",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 26,
+          "charges": 24,
+          "payments": 2,
+          "paymentsSum": 59000
+        },
+        {
+          "date": "2026-10-14",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 42,
+          "charges": 42,
+          "payments": 1,
+          "paymentsSum": 20100
+        }
+      ]
+    },
+    "qae-c03": {
+      "centerId": "cmv9364ex00wovacb2pazb92a",
+      "name": "QAE1 سنتر الجودة 03",
+      "window": {
+        "from": "2026-09-15",
+        "to": "2026-10-14"
+      },
+      "counts": {
+        "students": 100,
+        "newStudents": 4,
+        "groups": 6,
+        "teachers": 5,
+        "sessions": 52,
+        "closed": 47,
+        "open": 3,
+        "cancelled": 2,
+        "attendance": 749,
+        "present": 678,
+        "late": 44,
+        "excused": 27,
+        "attendanceRate": 0.964,
+        "chargesCount": 722,
+        "chargesSum": -5273300,
+        "paymentsCount": 181,
+        "paymentsSum": 3251000,
+        "receipts": 181,
+        "expenses": 5,
+        "expensesSum": 77200,
+        "settlementsEARNED": 2602625,
+        "settlementsPAID": 1745000,
+        "announcements": 3,
+        "studentNotifications": 45,
+        "queueItems": 192,
+        "notificationAttempts": 181,
+        "corrections": 0,
+        "audit": 198,
+        "quizzes": 3,
+        "quizAttempts": 60,
+        "exams": 1,
+        "examAttempts": 12,
+        "bookSales": 0,
+        "bookSalesSum": 0
+      },
+      "debtors": {
+        "count": 95,
+        "top10": [
+          {
+            "studentId": "cmv9364li018evacbqagfxuls",
+            "name": "هاني رجب خير الله",
+            "code": "11582",
+            "balance": -56500
+          },
+          {
+            "studentId": "cmv9364kb0148vacbxhtf0s05",
+            "name": "إبراهيم شعبان الشناوي",
+            "code": "11546",
+            "balance": -56000
+          },
+          {
+            "studentId": "cmv9364jq0118vacb6o1ymdwp",
+            "name": "خالد عبد الرحمن الشناوي",
+            "code": "11520",
+            "balance": -55000
+          },
+          {
+            "studentId": "cmv9364jk010gvacb7o5seamz",
+            "name": "كريم رجب حسنين",
+            "code": "11514",
+            "balance": -50400
+          },
+          {
+            "studentId": "cmv9364je00zgvacbycj8m9c6",
+            "name": "زياد السيد بدوي",
+            "code": "11506",
+            "balance": -49500
+          },
+          {
+            "studentId": "cmv9364ld017wvacbdptuih98",
+            "name": "خالد مجدي حسنين",
+            "code": "11578",
+            "balance": -48300
+          },
+          {
+            "studentId": "cmv9364jx012gvacb3qk9z37m",
+            "name": "شريف مجدي عبد الله",
+            "code": "11531",
+            "balance": -46500
+          },
+          {
+            "studentId": "cmv9364lk018ovacbsvexp21s",
+            "name": "خالد السيد الحديدي",
+            "code": "11584",
+            "balance": -42000
+          },
+          {
+            "studentId": "cmv9364km0158vacbfckow8kg",
+            "name": "أنس عصام الجندي",
+            "code": "11554",
+            "balance": -41000
+          },
+          {
+            "studentId": "cmv9364la017mvacbs5ukai7n",
+            "name": "كريم الأمير سليم",
+            "code": "11576",
+            "balance": -34100
+          }
+        ]
+      },
+      "lowestAttendanceGroups": [
+        {
+          "groupId": "cmv9364fp00xmvacbvjosng7j",
+          "name": "أ",
+          "subject": "رياضيات",
+          "sessions": 8,
+          "registrations": 30,
+          "attended": 178,
+          "rate": 0.7417
+        },
+        {
+          "groupId": "cmv9364fu00yavacbbpz7s70b",
+          "name": "هـ",
+          "subject": "عربي",
+          "sessions": 9,
+          "registrations": 11,
+          "attended": 74,
+          "rate": 0.7475
+        },
+        {
+          "groupId": "cmv9364fr00xyvacbg7r10yuj",
+          "name": "ج",
+          "subject": "كيمياء",
+          "sessions": 8,
+          "registrations": 16,
+          "attended": 97,
+          "rate": 0.7578
+        }
+      ],
+      "highestAttendanceGroups": [
+        {
+          "groupId": "cmv9364fq00xsvacbqgip10j9",
+          "name": "ب",
+          "subject": "فيزياء",
+          "sessions": 9,
+          "registrations": 23,
+          "attended": 167,
+          "rate": 0.8068
+        },
+        {
+          "groupId": "cmv9364fv00ygvacbuzy3bdw0",
+          "name": "و",
+          "subject": "رياضيات",
+          "sessions": 8,
+          "registrations": 21,
+          "attended": 129,
+          "rate": 0.7679
+        },
+        {
+          "groupId": "cmv9364ft00y4vacbv1yarjvm",
+          "name": "د",
+          "subject": "إنجليزي",
+          "sessions": 8,
+          "registrations": 17,
+          "attended": 104,
+          "rate": 0.7647
+        }
+      ],
+      "quizSeries": [
+        {
+          "quizId": "cqaemv9366io8b2jqlc",
+          "title": "كويز رياضيات — رقم 1",
+          "attempts": 20,
+          "avgScore": 3.9,
+          "maxScore": 5
+        },
+        {
+          "quizId": "cqaemv9366ip8bs1vv3",
+          "title": "كويز رياضيات — رقم 2",
+          "attempts": 20,
+          "avgScore": 3.25,
+          "maxScore": 5
+        },
+        {
+          "quizId": "cqaemv9366ip8ci4kxn",
+          "title": "كويز رياضيات — رقم 3",
+          "attempts": 20,
+          "avgScore": 2.65,
+          "maxScore": 5
+        }
+      ],
+      "daily": [
+        {
+          "date": "2026-09-15",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 27,
+          "charges": 25,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-16",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 41,
+          "charges": 39,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-17",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 30,
+          "charges": 28,
+          "payments": 6,
+          "paymentsSum": 77800
+        },
+        {
+          "date": "2026-09-18",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 11,
+          "paymentsSum": 80600
+        },
+        {
+          "date": "2026-09-19",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 30,
+          "charges": 29,
+          "payments": 14,
+          "paymentsSum": 112800
+        },
+        {
+          "date": "2026-09-20",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 36,
+          "charges": 36,
+          "payments": 14,
+          "paymentsSum": 205000
+        },
+        {
+          "date": "2026-09-21",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 21,
+          "charges": 21,
+          "payments": 8,
+          "paymentsSum": 98000
+        },
+        {
+          "date": "2026-09-22",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 28,
+          "charges": 26,
+          "payments": 12,
+          "paymentsSum": 162600
+        },
+        {
+          "date": "2026-09-23",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 36,
+          "charges": 35,
+          "payments": 12,
+          "paymentsSum": 168800
+        },
+        {
+          "date": "2026-09-24",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 24,
+          "charges": 24,
+          "payments": 5,
+          "paymentsSum": 78500
+        },
+        {
+          "date": "2026-09-25",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 6,
+          "paymentsSum": 78700
+        },
+        {
+          "date": "2026-09-26",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 24,
+          "charges": 24,
+          "payments": 1,
+          "paymentsSum": 10000
+        },
+        {
+          "date": "2026-09-27",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 1,
+          "attendance": 20,
+          "charges": 20,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-28",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 29,
+          "charges": 28,
+          "payments": 1,
+          "paymentsSum": 9000
+        },
+        {
+          "date": "2026-09-29",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 24,
+          "charges": 22,
+          "payments": 2,
+          "paymentsSum": 17000
+        },
+        {
+          "date": "2026-09-30",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 1,
+          "attendance": 15,
+          "charges": 15,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-10-01",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 28,
+          "charges": 28,
+          "payments": 5,
+          "paymentsSum": 99400
+        },
+        {
+          "date": "2026-10-02",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 5,
+          "paymentsSum": 125600
+        },
+        {
+          "date": "2026-10-03",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 31,
+          "charges": 30,
+          "payments": 9,
+          "paymentsSum": 182900
+        },
+        {
+          "date": "2026-10-04",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 33,
+          "charges": 33,
+          "payments": 10,
+          "paymentsSum": 253700
+        },
+        {
+          "date": "2026-10-05",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 31,
+          "charges": 28,
+          "payments": 20,
+          "paymentsSum": 552100
+        },
+        {
+          "date": "2026-10-06",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 26,
+          "charges": 24,
+          "payments": 14,
+          "paymentsSum": 405400
+        },
+        {
+          "date": "2026-10-07",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 31,
+          "charges": 29,
+          "payments": 5,
+          "paymentsSum": 97200
+        },
+        {
+          "date": "2026-10-08",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 30,
+          "charges": 30,
+          "payments": 10,
+          "paymentsSum": 245400
+        },
+        {
+          "date": "2026-10-09",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 4,
+          "paymentsSum": 75800
+        },
+        {
+          "date": "2026-10-10",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 25,
+          "charges": 24,
+          "payments": 2,
+          "paymentsSum": 18400
+        },
+        {
+          "date": "2026-10-11",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 35,
+          "charges": 33,
+          "payments": 3,
+          "paymentsSum": 57300
+        },
+        {
+          "date": "2026-10-12",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 33,
+          "charges": 33,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-10-13",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 26,
+          "charges": 24,
+          "payments": 2,
+          "paymentsSum": 39000
+        },
+        {
+          "date": "2026-10-14",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 35,
+          "charges": 34,
+          "payments": 0,
+          "paymentsSum": 0
+        }
+      ]
+    },
+    "qae-c04": {
+      "centerId": "cmv9364m401apvacbqf7rgena",
+      "name": "QAE1 سنتر الجودة 04",
+      "window": {
+        "from": "2026-09-15",
+        "to": "2026-10-14"
+      },
+      "counts": {
+        "students": 100,
+        "newStudents": 2,
+        "groups": 6,
+        "teachers": 5,
+        "sessions": 52,
+        "closed": 50,
+        "open": 1,
+        "cancelled": 1,
+        "attendance": 754,
+        "present": 681,
+        "late": 45,
+        "excused": 28,
+        "attendanceRate": 0.9629,
+        "chargesCount": 726,
+        "chargesSum": -5200200,
+        "paymentsCount": 174,
+        "paymentsSum": 3446100,
+        "receipts": 174,
+        "expenses": 5,
+        "expensesSum": 67000,
+        "settlementsEARNED": 2472310,
+        "settlementsPAID": 2145000,
+        "announcements": 4,
+        "studentNotifications": 384,
+        "queueItems": 168,
+        "notificationAttempts": 174,
+        "corrections": 2,
+        "audit": 188,
+        "quizzes": 3,
+        "quizAttempts": 60,
+        "exams": 1,
+        "examAttempts": 20,
+        "bookSales": 0,
+        "bookSalesSum": 0
+      },
+      "debtors": {
+        "count": 83,
+        "top10": [
+          {
+            "studentId": "cmv9364qw01ipvacb6kxzs6ep",
+            "name": "زياد سعيد الحديدي",
+            "code": "12046",
+            "balance": -59200
+          },
+          {
+            "studentId": "cmv9364qn01h5vacbhu05fjvs",
+            "name": "أنس رجب خير الله",
+            "code": "12034",
+            "balance": -51800
+          },
+          {
+            "studentId": "cmv9364qc01fbvacbomk3t3rc",
+            "name": "زياد جمال رشاد",
+            "code": "12020",
+            "balance": -50000
+          },
+          {
+            "studentId": "cmv9364qi01gdvacbi4k5r8or",
+            "name": "حسين فتحي الشريف",
+            "code": "12028",
+            "balance": -49100
+          },
+          {
+            "studentId": "cmv9364py01d3vacbonkgbbbw",
+            "name": "إبراهيم فتحي حسنين",
+            "code": "12002",
+            "balance": -45600
+          },
+          {
+            "studentId": "cmv9364qa01ezvacb7uzrjksx",
+            "name": "هاني رمضان منصور",
+            "code": "12017",
+            "balance": -44700
+          },
+          {
+            "studentId": "cmv9364ru01nxvacb0u764be6",
+            "name": "هاني فتحي الجندي",
+            "code": "12091",
+            "balance": -42900
+          },
+          {
+            "studentId": "cmv9364qf01fvvacbesj76t1o",
+            "name": "محمد هشام الحديدي",
+            "code": "12024",
+            "balance": -37500
+          },
+          {
+            "studentId": "cmv9364r701kjvacbhkeh6zro",
+            "name": "باسم رمضان الدسوقي",
+            "code": "12062",
+            "balance": -37100
+          },
+          {
+            "studentId": "cmv9364r901kpvacb334jmz57",
+            "name": "سيف كامل الشناوي",
+            "code": "12063",
+            "balance": -34000
+          }
+        ]
+      },
+      "lowestAttendanceGroups": [
+        {
+          "groupId": "cmv9364mf01bzvacbgrogtmk8",
+          "name": "ج",
+          "subject": "كيمياء",
+          "sessions": 8,
+          "registrations": 14,
+          "attended": 70,
+          "rate": 0.625
+        },
+        {
+          "groupId": "cmv9364mc01bnvacbr2bi7i48",
+          "name": "أ",
+          "subject": "رياضيات",
+          "sessions": 9,
+          "registrations": 26,
+          "attended": 168,
+          "rate": 0.7179
+        },
+        {
+          "groupId": "cmv9364mg01c5vacb9yw7rw5j",
+          "name": "د",
+          "subject": "إنجليزي",
+          "sessions": 9,
+          "registrations": 17,
+          "attended": 119,
+          "rate": 0.7778
+        }
+      ],
+      "highestAttendanceGroups": [
+        {
+          "groupId": "cmv9364mj01chvacbm05wx9np",
+          "name": "و",
+          "subject": "رياضيات",
+          "sessions": 8,
+          "registrations": 13,
+          "attended": 83,
+          "rate": 0.7981
+        },
+        {
+          "groupId": "cmv9364mi01cbvacb8jxrym0v",
+          "name": "هـ",
+          "subject": "عربي",
+          "sessions": 9,
+          "registrations": 18,
+          "attended": 127,
+          "rate": 0.784
+        },
+        {
+          "groupId": "cmv9364md01btvacbertivklv",
+          "name": "ب",
+          "subject": "فيزياء",
+          "sessions": 8,
+          "registrations": 30,
+          "attended": 187,
+          "rate": 0.7792
+        }
+      ],
+      "quizSeries": [
+        {
+          "quizId": "cqaemv9366phaz4dq43",
+          "title": "كويز رياضيات — رقم 1",
+          "attempts": 20,
+          "avgScore": 3.6,
+          "maxScore": 5
+        },
+        {
+          "quizId": "cqaemv9366piazuea9r",
+          "title": "كويز رياضيات — رقم 2",
+          "attempts": 20,
+          "avgScore": 2.9,
+          "maxScore": 5
+        },
+        {
+          "quizId": "cqaemv9366pib0kepzm",
+          "title": "كويز رياضيات — رقم 3",
+          "attempts": 20,
+          "avgScore": 2.75,
+          "maxScore": 5
+        }
+      ],
+      "daily": [
+        {
+          "date": "2026-09-15",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 33,
+          "charges": 33,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-16",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 33,
+          "charges": 33,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-17",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 18,
+          "charges": 18,
+          "payments": 3,
+          "paymentsSum": 16900
+        },
+        {
+          "date": "2026-09-18",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 8,
+          "paymentsSum": 108600
+        },
+        {
+          "date": "2026-09-19",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 36,
+          "charges": 36,
+          "payments": 10,
+          "paymentsSum": 95600
+        },
+        {
+          "date": "2026-09-20",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 30,
+          "charges": 30,
+          "payments": 12,
+          "paymentsSum": 146800
+        },
+        {
+          "date": "2026-09-21",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 18,
+          "charges": 18,
+          "payments": 10,
+          "paymentsSum": 96700
+        },
+        {
+          "date": "2026-09-22",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 34,
+          "charges": 31,
+          "payments": 15,
+          "paymentsSum": 217700
+        },
+        {
+          "date": "2026-09-23",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 33,
+          "charges": 33,
+          "payments": 10,
+          "paymentsSum": 169800
+        },
+        {
+          "date": "2026-09-24",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 19,
+          "charges": 19,
+          "payments": 7,
+          "paymentsSum": 125100
+        },
+        {
+          "date": "2026-09-25",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 4,
+          "paymentsSum": 54600
+        },
+        {
+          "date": "2026-09-26",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 42,
+          "charges": 41,
+          "payments": 4,
+          "paymentsSum": 35100
+        },
+        {
+          "date": "2026-09-27",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 35,
+          "charges": 31,
+          "payments": 3,
+          "paymentsSum": 41700
+        },
+        {
+          "date": "2026-09-28",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 17,
+          "charges": 16,
+          "payments": 2,
+          "paymentsSum": 21300
+        },
+        {
+          "date": "2026-09-29",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 41,
+          "charges": 40,
+          "payments": 3,
+          "paymentsSum": 52800
+        },
+        {
+          "date": "2026-09-30",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 32,
+          "charges": 30,
+          "payments": 3,
+          "paymentsSum": 72500
+        },
+        {
+          "date": "2026-10-01",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 23,
+          "charges": 22,
+          "payments": 2,
+          "paymentsSum": 36000
+        },
+        {
+          "date": "2026-10-02",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 7,
+          "paymentsSum": 197700
+        },
+        {
+          "date": "2026-10-03",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 38,
+          "charges": 36,
+          "payments": 5,
+          "paymentsSum": 147000
+        },
+        {
+          "date": "2026-10-04",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 31,
+          "charges": 30,
+          "payments": 11,
+          "paymentsSum": 332700
+        },
+        {
+          "date": "2026-10-05",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 19,
+          "charges": 18,
+          "payments": 4,
+          "paymentsSum": 125900
+        },
+        {
+          "date": "2026-10-06",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 1,
+          "attendance": 15,
+          "charges": 14,
+          "payments": 8,
+          "paymentsSum": 238400
+        },
+        {
+          "date": "2026-10-07",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 33,
+          "charges": 28,
+          "payments": 5,
+          "paymentsSum": 173400
+        },
+        {
+          "date": "2026-10-08",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 18,
+          "charges": 17,
+          "payments": 13,
+          "paymentsSum": 320500
+        },
+        {
+          "date": "2026-10-09",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 9,
+          "paymentsSum": 291200
+        },
+        {
+          "date": "2026-10-10",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 39,
+          "charges": 39,
+          "payments": 7,
+          "paymentsSum": 119100
+        },
+        {
+          "date": "2026-10-11",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 30,
+          "charges": 28,
+          "payments": 4,
+          "paymentsSum": 81500
+        },
+        {
+          "date": "2026-10-12",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 21,
+          "charges": 21,
+          "payments": 2,
+          "paymentsSum": 49400
+        },
+        {
+          "date": "2026-10-13",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 36,
+          "charges": 35,
+          "payments": 2,
+          "paymentsSum": 48500
+        },
+        {
+          "date": "2026-10-14",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 30,
+          "charges": 29,
+          "payments": 1,
+          "paymentsSum": 29600
+        }
+      ]
+    },
+    "qae-c05": {
+      "centerId": "cmv9364s101ouvacb4gjs68hr",
+      "name": "QAE1 سنتر الجودة 05",
+      "window": {
+        "from": "2026-09-15",
+        "to": "2026-10-14"
+      },
+      "counts": {
+        "students": 95,
+        "newStudents": 4,
+        "groups": 6,
+        "teachers": 4,
+        "sessions": 52,
+        "closed": 51,
+        "open": 1,
+        "cancelled": 0,
+        "attendance": 804,
+        "present": 744,
+        "late": 40,
+        "excused": 20,
+        "attendanceRate": 0.9751,
+        "chargesCount": 784,
+        "chargesSum": -6188700,
+        "paymentsCount": 176,
+        "paymentsSum": 3989200,
+        "receipts": 176,
+        "expenses": 5,
+        "expensesSum": 93000,
+        "settlementsEARNED": 2727145,
+        "settlementsPAID": 2160000,
+        "announcements": 4,
+        "studentNotifications": 411,
+        "queueItems": 186,
+        "notificationAttempts": 176,
+        "corrections": 1,
+        "audit": 194,
+        "quizzes": 3,
+        "quizAttempts": 60,
+        "exams": 2,
+        "examAttempts": 20,
+        "bookSales": 0,
+        "bookSalesSum": 0
+      },
+      "debtors": {
+        "count": 92,
+        "top10": [
+          {
+            "studentId": "cmv9364wr01vqvacbfho85s4g",
+            "name": "طارق السيد قنديل",
+            "code": "12538",
+            "balance": -83200
+          },
+          {
+            "studentId": "cmv9364y2021svacbgqamth72",
+            "name": "كريم مجدي سمير",
+            "code": "12586",
+            "balance": -76900
+          },
+          {
+            "studentId": "cmv9364xz021cvacbrptn6ikx",
+            "name": "عمر السيد سمير",
+            "code": "12583",
+            "balance": -53800
+          },
+          {
+            "studentId": "cmv9364wg01tuvacbwxaznpm2",
+            "name": "محمود سيد خير الله",
+            "code": "12523",
+            "balance": -52500
+          },
+          {
+            "studentId": "cmv9364wl01uqvacbpj6q9upc",
+            "name": "هاني سعيد الدسوقي",
+            "code": "12530",
+            "balance": -48600
+          },
+          {
+            "studentId": "cmv9364xi01yqvacbcplnnny1",
+            "name": "أحمد رمضان الغريب",
+            "code": "12560",
+            "balance": -48600
+          },
+          {
+            "studentId": "cmv9364x601xsvacbfv1ddx38",
+            "name": "مصطفى الأمير الشريف",
+            "code": "12554",
+            "balance": -47700
+          },
+          {
+            "studentId": "cmv9364y9022qvacb50aw6lxb",
+            "name": "محمد مجدي منصور",
+            "code": "12593",
+            "balance": -43200
+          },
+          {
+            "studentId": "cmv9364wb01t6vacbuyush3vz",
+            "name": "علي مجدي سليم",
+            "code": "12518",
+            "balance": -41000
+          },
+          {
+            "studentId": "cmv9364y4021yvacb56hbd1hn",
+            "name": "زياد مجدي طنطاوي",
+            "code": "12587",
+            "balance": -40200
+          }
+        ]
+      },
+      "lowestAttendanceGroups": [
+        {
+          "groupId": "cmv9364s801pwvacb315mbf5k",
+          "name": "ب",
+          "subject": "فيزياء",
+          "sessions": 9,
+          "registrations": 29,
+          "attended": 182,
+          "rate": 0.6973
+        },
+        {
+          "groupId": "cmv9364s901q2vacblak6y7iv",
+          "name": "ج",
+          "subject": "كيمياء",
+          "sessions": 8,
+          "registrations": 16,
+          "attended": 90,
+          "rate": 0.7031
+        },
+        {
+          "groupId": "cmv9364s601pqvacbiy0kjqd9",
+          "name": "أ",
+          "subject": "رياضيات",
+          "sessions": 9,
+          "registrations": 31,
+          "attended": 199,
+          "rate": 0.7133
+        }
+      ],
+      "highestAttendanceGroups": [
+        {
+          "groupId": "cmv9364sc01qkvacbrshcoh2i",
+          "name": "و",
+          "subject": "رياضيات",
+          "sessions": 8,
+          "registrations": 16,
+          "attended": 100,
+          "rate": 0.7813
+        },
+        {
+          "groupId": "cmv9364sa01q8vacb5wken3v1",
+          "name": "د",
+          "subject": "إنجليزي",
+          "sessions": 9,
+          "registrations": 18,
+          "attended": 122,
+          "rate": 0.7531
+        },
+        {
+          "groupId": "cmv9364sb01qevacb1rd9v6qv",
+          "name": "هـ",
+          "subject": "عربي",
+          "sessions": 9,
+          "registrations": 17,
+          "attended": 111,
+          "rate": 0.7255
+        }
+      ],
+      "quizSeries": [
+        {
+          "quizId": "cqaemv9366wpdu18idi",
+          "title": "كويز رياضيات — رقم 1",
+          "attempts": 20,
+          "avgScore": 3.6,
+          "maxScore": 5
+        },
+        {
+          "quizId": "cqaemv9366wqdur3kb3",
+          "title": "كويز رياضيات — رقم 2",
+          "attempts": 20,
+          "avgScore": 3.2,
+          "maxScore": 5
+        },
+        {
+          "quizId": "cqaemv9366wrdvhjuz6",
+          "title": "كويز رياضيات — رقم 3",
+          "attempts": 20,
+          "avgScore": 2.15,
+          "maxScore": 5
+        }
+      ],
+      "daily": [
+        {
+          "date": "2026-09-15",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 29,
+          "charges": 29,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-16",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 40,
+          "charges": 39,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-17",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 20,
+          "charges": 20,
+          "payments": 3,
+          "paymentsSum": 36700
+        },
+        {
+          "date": "2026-09-18",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 9,
+          "paymentsSum": 96200
+        },
+        {
+          "date": "2026-09-19",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 28,
+          "charges": 24,
+          "payments": 11,
+          "paymentsSum": 113300
+        },
+        {
+          "date": "2026-09-20",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 32,
+          "charges": 32,
+          "payments": 17,
+          "paymentsSum": 189200
+        },
+        {
+          "date": "2026-09-21",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 26,
+          "charges": 24,
+          "payments": 13,
+          "paymentsSum": 267800
+        },
+        {
+          "date": "2026-09-22",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 37,
+          "charges": 35,
+          "payments": 8,
+          "paymentsSum": 155000
+        },
+        {
+          "date": "2026-09-23",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 36,
+          "charges": 36,
+          "payments": 9,
+          "paymentsSum": 189800
+        },
+        {
+          "date": "2026-09-24",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 23,
+          "charges": 23,
+          "payments": 7,
+          "paymentsSum": 128600
+        },
+        {
+          "date": "2026-09-25",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 7,
+          "paymentsSum": 108800
+        },
+        {
+          "date": "2026-09-26",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 34,
+          "charges": 33,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-27",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 42,
+          "charges": 42,
+          "payments": 2,
+          "paymentsSum": 30200
+        },
+        {
+          "date": "2026-09-28",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 27,
+          "charges": 25,
+          "payments": 1,
+          "paymentsSum": 9000
+        },
+        {
+          "date": "2026-09-29",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 31,
+          "charges": 31,
+          "payments": 2,
+          "paymentsSum": 24400
+        },
+        {
+          "date": "2026-09-30",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 33,
+          "charges": 33,
+          "payments": 3,
+          "paymentsSum": 24400
+        },
+        {
+          "date": "2026-10-01",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 25,
+          "charges": 25,
+          "payments": 2,
+          "paymentsSum": 59000
+        },
+        {
+          "date": "2026-10-02",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 7,
+          "paymentsSum": 156900
+        },
+        {
+          "date": "2026-10-03",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 32,
+          "charges": 30,
+          "payments": 7,
+          "paymentsSum": 195500
+        },
+        {
+          "date": "2026-10-04",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 34,
+          "charges": 33,
+          "payments": 7,
+          "paymentsSum": 236300
+        },
+        {
+          "date": "2026-10-05",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 23,
+          "charges": 23,
+          "payments": 14,
+          "paymentsSum": 417000
+        },
+        {
+          "date": "2026-10-06",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 31,
+          "charges": 31,
+          "payments": 9,
+          "paymentsSum": 253300
+        },
+        {
+          "date": "2026-10-07",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 34,
+          "charges": 34,
+          "payments": 13,
+          "paymentsSum": 533500
+        },
+        {
+          "date": "2026-10-08",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 24,
+          "charges": 23,
+          "payments": 7,
+          "paymentsSum": 243200
+        },
+        {
+          "date": "2026-10-09",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 9,
+          "paymentsSum": 270600
+        },
+        {
+          "date": "2026-10-10",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 34,
+          "charges": 34,
+          "payments": 3,
+          "paymentsSum": 67100
+        },
+        {
+          "date": "2026-10-11",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 33,
+          "charges": 33,
+          "payments": 3,
+          "paymentsSum": 84600
+        },
+        {
+          "date": "2026-10-12",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 22,
+          "charges": 22,
+          "payments": 3,
+          "paymentsSum": 98800
+        },
+        {
+          "date": "2026-10-13",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 37,
+          "charges": 35,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-10-14",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 37,
+          "charges": 35,
+          "payments": 0,
+          "paymentsSum": 0
+        }
+      ]
+    },
+    "qae-c06": {
+      "centerId": "cmv9364yc0231vacbw1xtv78c",
+      "name": "QAE1 سنتر الجودة 06",
+      "window": {
+        "from": "2026-09-15",
+        "to": "2026-10-14"
+      },
+      "counts": {
+        "students": 105,
+        "newStudents": 4,
+        "groups": 7,
+        "teachers": 5,
+        "sessions": 61,
+        "closed": 54,
+        "open": 4,
+        "cancelled": 3,
+        "attendance": 804,
+        "present": 731,
+        "late": 37,
+        "excused": 36,
+        "attendanceRate": 0.9552,
+        "chargesCount": 768,
+        "chargesSum": -5698200,
+        "paymentsCount": 190,
+        "paymentsSum": 3851400,
+        "receipts": 190,
+        "expenses": 5,
+        "expensesSum": 107200,
+        "settlementsEARNED": 3038350,
+        "settlementsPAID": 2525000,
+        "announcements": 3,
+        "studentNotifications": 66,
+        "queueItems": 194,
+        "notificationAttempts": 190,
+        "corrections": 0,
+        "audit": 213,
+        "quizzes": 3,
+        "quizAttempts": 60,
+        "exams": 1,
+        "examAttempts": 16,
+        "bookSales": 0,
+        "bookSalesSum": 0
+      },
+      "debtors": {
+        "count": 96,
+        "top10": [
+          {
+            "studentId": "cmv93653j029dvacbbxye8dy7",
+            "name": "أنس شعبان إبراهيم",
+            "code": "13033",
+            "balance": -74200
+          },
+          {
+            "studentId": "cmv93653k029nvacbtv62d1s9",
+            "name": "باسم رجب الشريف",
+            "code": "13035",
+            "balance": -50600
+          },
+          {
+            "studentId": "cmv93653s02azvacbj0gwh92s",
+            "name": "باسم عصام زكي",
+            "code": "13046",
+            "balance": -50200
+          },
+          {
+            "studentId": "cmv93653w02brvacbaxg5gol1",
+            "name": "محمد الأمير منصور",
+            "code": "13052",
+            "balance": -50100
+          },
+          {
+            "studentId": "cmv93655c02hjvacbh53vbjgx",
+            "name": "محمود مجدي قنديل",
+            "code": "13101",
+            "balance": -48300
+          },
+          {
+            "studentId": "cmv936538027lvacbew4515lm",
+            "name": "عمر الأمير عوض",
+            "code": "13019",
+            "balance": -42900
+          },
+          {
+            "studentId": "cmv93654502d7vacbqu9zyin8",
+            "name": "سيف هشام سمير",
+            "code": "13064",
+            "balance": -42600
+          },
+          {
+            "studentId": "cmv93654s02frvacboksskuq6",
+            "name": "شريف سيد بدوي",
+            "code": "13086",
+            "balance": -42100
+          },
+          {
+            "studentId": "cmv93655a02h9vacbd0xh7n4q",
+            "name": "خالد رجب زكي",
+            "code": "13099",
+            "balance": -41700
+          },
+          {
+            "studentId": "cmv93653z02c9vacbz9lzbr8y",
+            "name": "يوسف شعبان منصور",
+            "code": "13056",
+            "balance": -41700
+          }
+        ]
+      },
+      "lowestAttendanceGroups": [
+        {
+          "groupId": "cmv9364za024nvacbir9bbpg5",
+          "name": "هـ",
+          "subject": "عربي",
+          "sessions": 9,
+          "registrations": 9,
+          "attended": 53,
+          "rate": 0.6543
+        },
+        {
+          "groupId": "cmv9364zb024tvacbddpprshf",
+          "name": "و",
+          "subject": "رياضيات",
+          "sessions": 8,
+          "registrations": 11,
+          "attended": 64,
+          "rate": 0.7273
+        },
+        {
+          "groupId": "cmv9364zd024zvacbcjwmnm0z",
+          "name": "ز",
+          "subject": "فيزياء",
+          "sessions": 9,
+          "registrations": 17,
+          "attended": 117,
+          "rate": 0.7647
+        }
+      ],
+      "highestAttendanceGroups": [
+        {
+          "groupId": "cmv9364z50245vacbdgt54j90",
+          "name": "ب",
+          "subject": "فيزياء",
+          "sessions": 8,
+          "registrations": 26,
+          "attended": 169,
+          "rate": 0.8125
+        },
+        {
+          "groupId": "cmv9364z8024hvacblsviwyqx",
+          "name": "د",
+          "subject": "إنجليزي",
+          "sessions": 8,
+          "registrations": 21,
+          "attended": 135,
+          "rate": 0.8036
+        },
+        {
+          "groupId": "cmv9364z7024bvacb7rejiemc",
+          "name": "ج",
+          "subject": "كيمياء",
+          "sessions": 8,
+          "registrations": 16,
+          "attended": 99,
+          "rate": 0.7734
+        }
+      ],
+      "quizSeries": [
+        {
+          "quizId": "cqaemv936740gi8hgs8",
+          "title": "كويز رياضيات — رقم 1",
+          "attempts": 20,
+          "avgScore": 3.8,
+          "maxScore": 5
+        },
+        {
+          "quizId": "cqaemv936741giy96mk",
+          "title": "كويز رياضيات — رقم 2",
+          "attempts": 20,
+          "avgScore": 3.3,
+          "maxScore": 5
+        },
+        {
+          "quizId": "cqaemv936742gjo1hjl",
+          "title": "كويز رياضيات — رقم 3",
+          "attempts": 20,
+          "avgScore": 2.5,
+          "maxScore": 5
+        }
+      ],
+      "daily": [
+        {
+          "date": "2026-09-15",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 26,
+          "charges": 24,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-16",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 44,
+          "charges": 42,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-17",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 17,
+          "charges": 17,
+          "payments": 3,
+          "paymentsSum": 18800
+        },
+        {
+          "date": "2026-09-18",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 4,
+          "paymentsSum": 51400
+        },
+        {
+          "date": "2026-09-19",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 26,
+          "charges": 26,
+          "payments": 11,
+          "paymentsSum": 125900
+        },
+        {
+          "date": "2026-09-20",
+          "sessions": 3,
+          "closed": 1,
+          "cancelled": 2,
+          "attendance": 11,
+          "charges": 9,
+          "payments": 12,
+          "paymentsSum": 111600
+        },
+        {
+          "date": "2026-09-21",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 20,
+          "charges": 19,
+          "payments": 8,
+          "paymentsSum": 96000
+        },
+        {
+          "date": "2026-09-22",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 1,
+          "attendance": 5,
+          "charges": 5,
+          "payments": 13,
+          "paymentsSum": 229900
+        },
+        {
+          "date": "2026-09-23",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 53,
+          "charges": 50,
+          "payments": 9,
+          "paymentsSum": 125200
+        },
+        {
+          "date": "2026-09-24",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 20,
+          "charges": 19,
+          "payments": 10,
+          "paymentsSum": 159400
+        },
+        {
+          "date": "2026-09-25",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 4,
+          "paymentsSum": 66500
+        },
+        {
+          "date": "2026-09-26",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 27,
+          "charges": 26,
+          "payments": 2,
+          "paymentsSum": 12000
+        },
+        {
+          "date": "2026-09-27",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 55,
+          "charges": 54,
+          "payments": 5,
+          "paymentsSum": 64800
+        },
+        {
+          "date": "2026-09-28",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 21,
+          "charges": 21,
+          "payments": 5,
+          "paymentsSum": 61500
+        },
+        {
+          "date": "2026-09-29",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 30,
+          "charges": 29,
+          "payments": 2,
+          "paymentsSum": 41700
+        },
+        {
+          "date": "2026-09-30",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 49,
+          "charges": 44,
+          "payments": 4,
+          "paymentsSum": 44200
+        },
+        {
+          "date": "2026-10-01",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 22,
+          "charges": 20,
+          "payments": 5,
+          "paymentsSum": 58500
+        },
+        {
+          "date": "2026-10-02",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 7,
+          "paymentsSum": 166000
+        },
+        {
+          "date": "2026-10-03",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 28,
+          "charges": 25,
+          "payments": 6,
+          "paymentsSum": 87600
+        },
+        {
+          "date": "2026-10-04",
+          "sessions": 3,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 48,
+          "charges": 47,
+          "payments": 9,
+          "paymentsSum": 250700
+        },
+        {
+          "date": "2026-10-05",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 23,
+          "charges": 23,
+          "payments": 7,
+          "paymentsSum": 234400
+        },
+        {
+          "date": "2026-10-06",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 26,
+          "charges": 23,
+          "payments": 12,
+          "paymentsSum": 331400
+        },
+        {
+          "date": "2026-10-07",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 51,
+          "charges": 50,
+          "payments": 11,
+          "paymentsSum": 310800
+        },
+        {
+          "date": "2026-10-08",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 21,
+          "charges": 21,
+          "payments": 4,
+          "paymentsSum": 150900
+        },
+        {
+          "date": "2026-10-09",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 7,
+          "paymentsSum": 212100
+        },
+        {
+          "date": "2026-10-10",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 26,
+          "charges": 26,
+          "payments": 9,
+          "paymentsSum": 267700
+        },
+        {
+          "date": "2026-10-11",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 55,
+          "charges": 53,
+          "payments": 5,
+          "paymentsSum": 103200
+        },
+        {
+          "date": "2026-10-12",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 19,
+          "charges": 18,
+          "payments": 5,
+          "paymentsSum": 162300
+        },
+        {
+          "date": "2026-10-13",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 28,
+          "charges": 27,
+          "payments": 7,
+          "paymentsSum": 151000
+        },
+        {
+          "date": "2026-10-14",
+          "sessions": 3,
+          "closed": 3,
+          "cancelled": 0,
+          "attendance": 53,
+          "charges": 50,
+          "payments": 4,
+          "paymentsSum": 155900
+        }
+      ]
+    },
+    "qae-c07": {
+      "centerId": "cmv93655h02i0vacbyrg2k7vk",
+      "name": "QAE1 سنتر الجودة 07",
+      "window": {
+        "from": "2026-09-15",
+        "to": "2026-10-14"
+      },
+      "counts": {
+        "students": 90,
+        "newStudents": 4,
+        "groups": 5,
+        "teachers": 4,
+        "sessions": 44,
+        "closed": 42,
+        "open": 2,
+        "cancelled": 0,
+        "attendance": 792,
+        "present": 738,
+        "late": 25,
+        "excused": 29,
+        "attendanceRate": 0.9634,
+        "chargesCount": 763,
+        "chargesSum": -5544800,
+        "paymentsCount": 172,
+        "paymentsSum": 3669000,
+        "receipts": 172,
+        "expenses": 5,
+        "expensesSum": 124000,
+        "settlementsEARNED": 2606990,
+        "settlementsPAID": 2195000,
+        "announcements": 3,
+        "studentNotifications": 170,
+        "queueItems": 166,
+        "notificationAttempts": 172,
+        "corrections": 0,
+        "audit": 187,
+        "quizzes": 3,
+        "quizAttempts": 60,
+        "exams": 1,
+        "examAttempts": 7,
+        "bookSales": 0,
+        "bookSalesSum": 0
+      },
+      "debtors": {
+        "count": 82,
+        "top10": [
+          {
+            "studentId": "cmv93659t02nevacbwu6s539l",
+            "name": "حسن رجب رشاد",
+            "code": "13528",
+            "balance": -80200
+          },
+          {
+            "studentId": "cmv9365ah02rmvacb1vyzd6vg",
+            "name": "أنس شعبان منصور",
+            "code": "13562",
+            "balance": -71200
+          },
+          {
+            "studentId": "cmv93659y02oavacb5i7crorh",
+            "name": "سيف الأمير طنطاوي",
+            "code": "13536",
+            "balance": -65800
+          },
+          {
+            "studentId": "cmv9365a402pivacbeax8jf0n",
+            "name": "محمد جمال الشريف",
+            "code": "13545",
+            "balance": -60400
+          },
+          {
+            "studentId": "cmv93659c02kmvacbg1qg91po",
+            "name": "حسن عصام الشريف",
+            "code": "13505",
+            "balance": -49800
+          },
+          {
+            "studentId": "cmv9365af02revacbwrcm1ztx",
+            "name": "هاني سعيد زكي",
+            "code": "13560",
+            "balance": -48300
+          },
+          {
+            "studentId": "cmv9365ao02syvacb0l5zm72l",
+            "name": "خالد عصام قنديل",
+            "code": "13572",
+            "balance": -43400
+          },
+          {
+            "studentId": "cmv9365az02v6vacbqdemj59w",
+            "name": "طارق سيد سمير",
+            "code": "13589",
+            "balance": -42000
+          },
+          {
+            "studentId": "cmv93659i02lovacbz1p8pfc8",
+            "name": "زياد فتحي قنديل",
+            "code": "13514",
+            "balance": -41800
+          },
+          {
+            "studentId": "cmv93659j02m0vacbe5el3649",
+            "name": "باسم السيد رشاد",
+            "code": "13516",
+            "balance": -39600
+          }
+        ]
+      },
+      "lowestAttendanceGroups": [
+        {
+          "groupId": "cmv93655r02j8vacbn82l02uf",
+          "name": "ج",
+          "subject": "كيمياء",
+          "sessions": 8,
+          "registrations": 17,
+          "attended": 95,
+          "rate": 0.6985
+        },
+        {
+          "groupId": "cmv93655o02iwvacbscqybt4x",
+          "name": "أ",
+          "subject": "رياضيات",
+          "sessions": 9,
+          "registrations": 37,
+          "attended": 243,
+          "rate": 0.7297
+        },
+        {
+          "groupId": "cmv93655p02j2vacboe3ccijo",
+          "name": "ب",
+          "subject": "فيزياء",
+          "sessions": 9,
+          "registrations": 30,
+          "attended": 208,
+          "rate": 0.7704
+        }
+      ],
+      "highestAttendanceGroups": [
+        {
+          "groupId": "cmv93655u02jkvacbi2x0egwu",
+          "name": "هـ",
+          "subject": "عربي",
+          "sessions": 9,
+          "registrations": 14,
+          "attended": 99,
+          "rate": 0.7857
+        },
+        {
+          "groupId": "cmv93655s02jevacbfz1jkign",
+          "name": "د",
+          "subject": "إنجليزي",
+          "sessions": 9,
+          "registrations": 21,
+          "attended": 147,
+          "rate": 0.7778
+        },
+        {
+          "groupId": "cmv93655p02j2vacboe3ccijo",
+          "name": "ب",
+          "subject": "فيزياء",
+          "sessions": 9,
+          "registrations": 30,
+          "attended": 208,
+          "rate": 0.7704
+        }
+      ],
+      "quizSeries": [
+        {
+          "quizId": "cqaemv9367bij2f5dq0",
+          "title": "كويز رياضيات — رقم 1",
+          "attempts": 20,
+          "avgScore": 3.65,
+          "maxScore": 5
+        },
+        {
+          "quizId": "cqaemv9367bjj352wyi",
+          "title": "كويز رياضيات — رقم 2",
+          "attempts": 20,
+          "avgScore": 3.05,
+          "maxScore": 5
+        },
+        {
+          "quizId": "cqaemv9367bkj3vewed",
+          "title": "كويز رياضيات — رقم 3",
+          "attempts": 20,
+          "avgScore": 2.65,
+          "maxScore": 5
+        }
+      ],
+      "daily": [
+        {
+          "date": "2026-09-15",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 35,
+          "charges": 34,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-16",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 47,
+          "charges": 43,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-17",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 11,
+          "charges": 11,
+          "payments": 7,
+          "paymentsSum": 63300
+        },
+        {
+          "date": "2026-09-18",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 7,
+          "paymentsSum": 71100
+        },
+        {
+          "date": "2026-09-19",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 30,
+          "charges": 29,
+          "payments": 11,
+          "paymentsSum": 124500
+        },
+        {
+          "date": "2026-09-20",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 45,
+          "charges": 45,
+          "payments": 9,
+          "paymentsSum": 108300
+        },
+        {
+          "date": "2026-09-21",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 9,
+          "charges": 9,
+          "payments": 12,
+          "paymentsSum": 146900
+        },
+        {
+          "date": "2026-09-22",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 31,
+          "charges": 31,
+          "payments": 9,
+          "paymentsSum": 140200
+        },
+        {
+          "date": "2026-09-23",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 43,
+          "charges": 42,
+          "payments": 11,
+          "paymentsSum": 206000
+        },
+        {
+          "date": "2026-09-24",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 11,
+          "charges": 10,
+          "payments": 12,
+          "paymentsSum": 280200
+        },
+        {
+          "date": "2026-09-25",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 3,
+          "paymentsSum": 40000
+        },
+        {
+          "date": "2026-09-26",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 32,
+          "charges": 30,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-27",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 44,
+          "charges": 41,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-28",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 13,
+          "charges": 13,
+          "payments": 1,
+          "paymentsSum": 8300
+        },
+        {
+          "date": "2026-09-29",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 33,
+          "charges": 31,
+          "payments": 2,
+          "paymentsSum": 53600
+        },
+        {
+          "date": "2026-09-30",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 41,
+          "charges": 40,
+          "payments": 5,
+          "paymentsSum": 56300
+        },
+        {
+          "date": "2026-10-01",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 11,
+          "charges": 11,
+          "payments": 7,
+          "paymentsSum": 251100
+        },
+        {
+          "date": "2026-10-02",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 5,
+          "paymentsSum": 136200
+        },
+        {
+          "date": "2026-10-03",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 37,
+          "charges": 36,
+          "payments": 4,
+          "paymentsSum": 113700
+        },
+        {
+          "date": "2026-10-04",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 42,
+          "charges": 40,
+          "payments": 7,
+          "paymentsSum": 146800
+        },
+        {
+          "date": "2026-10-05",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 13,
+          "charges": 12,
+          "payments": 15,
+          "paymentsSum": 465800
+        },
+        {
+          "date": "2026-10-06",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 34,
+          "charges": 31,
+          "payments": 8,
+          "paymentsSum": 170900
+        },
+        {
+          "date": "2026-10-07",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 43,
+          "charges": 41,
+          "payments": 6,
+          "paymentsSum": 199200
+        },
+        {
+          "date": "2026-10-08",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 13,
+          "charges": 13,
+          "payments": 7,
+          "paymentsSum": 231600
+        },
+        {
+          "date": "2026-10-09",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 6,
+          "paymentsSum": 193300
+        },
+        {
+          "date": "2026-10-10",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 40,
+          "charges": 40,
+          "payments": 6,
+          "paymentsSum": 198200
+        },
+        {
+          "date": "2026-10-11",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 38,
+          "charges": 37,
+          "payments": 5,
+          "paymentsSum": 144200
+        },
+        {
+          "date": "2026-10-12",
+          "sessions": 1,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 14,
+          "charges": 14,
+          "payments": 2,
+          "paymentsSum": 21900
+        },
+        {
+          "date": "2026-10-13",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 35,
+          "charges": 34,
+          "payments": 2,
+          "paymentsSum": 26000
+        },
+        {
+          "date": "2026-10-14",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 47,
+          "charges": 45,
+          "payments": 3,
+          "paymentsSum": 71400
+        }
+      ]
+    },
+    "qae-c08": {
+      "centerId": "cmv9365b102vbvacb5e08pd81",
+      "name": "QAE1 سنتر الجودة 08",
+      "window": {
+        "from": "2026-09-15",
+        "to": "2026-10-14"
+      },
+      "counts": {
+        "students": 100,
+        "newStudents": 3,
+        "groups": 6,
+        "teachers": 5,
+        "sessions": 52,
+        "closed": 47,
+        "open": 3,
+        "cancelled": 2,
+        "attendance": 705,
+        "present": 645,
+        "late": 35,
+        "excused": 25,
+        "attendanceRate": 0.9645,
+        "chargesCount": 680,
+        "chargesSum": -5609800,
+        "paymentsCount": 167,
+        "paymentsSum": 3825900,
+        "receipts": 167,
+        "expenses": 5,
+        "expensesSum": 116300,
+        "settlementsEARNED": 2637190,
+        "settlementsPAID": 2445000,
+        "announcements": 3,
+        "studentNotifications": 147,
+        "queueItems": 176,
+        "notificationAttempts": 167,
+        "corrections": 1,
+        "audit": 189,
+        "quizzes": 3,
+        "quizAttempts": 60,
+        "exams": 2,
+        "examAttempts": 25,
+        "bookSales": 0,
+        "bookSalesSum": 0
+      },
+      "debtors": {
+        "count": 87,
+        "top10": [
+          {
+            "studentId": "cmv9365gm0369vacbrjzx2u0d",
+            "name": "طارق الأمير سليم",
+            "code": "14074",
+            "balance": -76900
+          },
+          {
+            "studentId": "cmv9365g2033fvacbq6hy54dg",
+            "name": "يوسف جمال طنطاوي",
+            "code": "14051",
+            "balance": -44900
+          },
+          {
+            "studentId": "cmv9365h40387vacbqazoaiyf",
+            "name": "محمد سيد الغريب",
+            "code": "14091",
+            "balance": -44800
+          },
+          {
+            "studentId": "cmv9365gq036pvacblkuikix8",
+            "name": "أنس عادل زكي",
+            "code": "14078",
+            "balance": -44600
+          },
+          {
+            "studentId": "cmv9365fa02ztvacbqnw8rwni",
+            "name": "عبدالله مجدي رشاد",
+            "code": "14020",
+            "balance": -42100
+          },
+          {
+            "studentId": "cmv9365gf035bvacb0iq1glml",
+            "name": "محمد عبد الرحمن الدسوقي",
+            "code": "14067",
+            "balance": -41200
+          },
+          {
+            "studentId": "cmv9365fh030hvacbf8mvxqfs",
+            "name": "إبراهيم هشام الجندي",
+            "code": "14025",
+            "balance": -41200
+          },
+          {
+            "studentId": "cmv9365gg035hvacbtloyksj3",
+            "name": "علي السيد سليم",
+            "code": "14068",
+            "balance": -38800
+          },
+          {
+            "studentId": "cmv9365fk030zvacbmoj5aef6",
+            "name": "حسين الأمير عبد الله",
+            "code": "14029",
+            "balance": -38200
+          },
+          {
+            "studentId": "cmv9365fc02zzvacbq5vzsgny",
+            "name": "حسن كامل الدسوقي",
+            "code": "14021",
+            "balance": -36900
+          }
+        ]
+      },
+      "lowestAttendanceGroups": [
+        {
+          "groupId": "cmv9365b502wlvacbv7a0qtv5",
+          "name": "ج",
+          "subject": "كيمياء",
+          "sessions": 8,
+          "registrations": 18,
+          "attended": 101,
+          "rate": 0.7014
+        },
+        {
+          "groupId": "cmv9365b702x3vacbpmjody0e",
+          "name": "و",
+          "subject": "رياضيات",
+          "sessions": 8,
+          "registrations": 15,
+          "attended": 88,
+          "rate": 0.7333
+        },
+        {
+          "groupId": "cmv9365b402w9vacbhrfh1uao",
+          "name": "أ",
+          "subject": "رياضيات",
+          "sessions": 8,
+          "registrations": 25,
+          "attended": 148,
+          "rate": 0.74
+        }
+      ],
+      "highestAttendanceGroups": [
+        {
+          "groupId": "cmv9365b602wrvacblnz62ors",
+          "name": "د",
+          "subject": "إنجليزي",
+          "sessions": 9,
+          "registrations": 16,
+          "attended": 116,
+          "rate": 0.8056
+        },
+        {
+          "groupId": "cmv9365b702wxvacbwhxsyt6p",
+          "name": "هـ",
+          "subject": "عربي",
+          "sessions": 9,
+          "registrations": 13,
+          "attended": 89,
+          "rate": 0.7607
+        },
+        {
+          "groupId": "cmv9365b502wfvacb5171rbui",
+          "name": "ب",
+          "subject": "فيزياء",
+          "sessions": 8,
+          "registrations": 27,
+          "attended": 163,
+          "rate": 0.7546
+        }
+      ],
+      "quizSeries": [
+        {
+          "quizId": "cqaemv9367idlefidva",
+          "title": "كويز رياضيات — رقم 1",
+          "attempts": 20,
+          "avgScore": 3.55,
+          "maxScore": 5
+        },
+        {
+          "quizId": "cqaemv9367iflf581fn",
+          "title": "كويز رياضيات — رقم 2",
+          "attempts": 20,
+          "avgScore": 2.9,
+          "maxScore": 5
+        },
+        {
+          "quizId": "cqaemv9367iglfvfioc",
+          "title": "كويز رياضيات — رقم 3",
+          "attempts": 20,
+          "avgScore": 2.7,
+          "maxScore": 5
+        }
+      ],
+      "daily": [
+        {
+          "date": "2026-09-15",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 32,
+          "charges": 32,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-16",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 1,
+          "attendance": 12,
+          "charges": 12,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-17",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 24,
+          "charges": 23,
+          "payments": 3,
+          "paymentsSum": 28500
+        },
+        {
+          "date": "2026-09-18",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 6,
+          "paymentsSum": 63900
+        },
+        {
+          "date": "2026-09-19",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 29,
+          "charges": 29,
+          "payments": 7,
+          "paymentsSum": 90200
+        },
+        {
+          "date": "2026-09-20",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 30,
+          "charges": 29,
+          "payments": 6,
+          "paymentsSum": 64200
+        },
+        {
+          "date": "2026-09-21",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 23,
+          "charges": 23,
+          "payments": 9,
+          "paymentsSum": 113800
+        },
+        {
+          "date": "2026-09-22",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 1,
+          "attendance": 11,
+          "charges": 11,
+          "payments": 15,
+          "paymentsSum": 227400
+        },
+        {
+          "date": "2026-09-23",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 31,
+          "charges": 30,
+          "payments": 16,
+          "paymentsSum": 261600
+        },
+        {
+          "date": "2026-09-24",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 24,
+          "charges": 23,
+          "payments": 4,
+          "paymentsSum": 66600
+        },
+        {
+          "date": "2026-09-25",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 8,
+          "paymentsSum": 98400
+        },
+        {
+          "date": "2026-09-26",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 31,
+          "charges": 30,
+          "payments": 2,
+          "paymentsSum": 20000
+        },
+        {
+          "date": "2026-09-27",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 31,
+          "charges": 30,
+          "payments": 2,
+          "paymentsSum": 32900
+        },
+        {
+          "date": "2026-09-28",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 22,
+          "charges": 22,
+          "payments": 5,
+          "paymentsSum": 66400
+        },
+        {
+          "date": "2026-09-29",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 29,
+          "charges": 28,
+          "payments": 2,
+          "paymentsSum": 56500
+        },
+        {
+          "date": "2026-09-30",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 35,
+          "charges": 32,
+          "payments": 2,
+          "paymentsSum": 19600
+        },
+        {
+          "date": "2026-10-01",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 22,
+          "charges": 20,
+          "payments": 5,
+          "paymentsSum": 115700
+        },
+        {
+          "date": "2026-10-02",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 7,
+          "paymentsSum": 276600
+        },
+        {
+          "date": "2026-10-03",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 33,
+          "charges": 30,
+          "payments": 3,
+          "paymentsSum": 71000
+        },
+        {
+          "date": "2026-10-04",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 31,
+          "charges": 28,
+          "payments": 6,
+          "paymentsSum": 204900
+        },
+        {
+          "date": "2026-10-05",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 25,
+          "charges": 23,
+          "payments": 6,
+          "paymentsSum": 190100
+        },
+        {
+          "date": "2026-10-06",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 30,
+          "charges": 29,
+          "payments": 8,
+          "paymentsSum": 281500
+        },
+        {
+          "date": "2026-10-07",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 31,
+          "charges": 31,
+          "payments": 11,
+          "paymentsSum": 321100
+        },
+        {
+          "date": "2026-10-08",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 27,
+          "charges": 27,
+          "payments": 14,
+          "paymentsSum": 455400
+        },
+        {
+          "date": "2026-10-09",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 6,
+          "paymentsSum": 180600
+        },
+        {
+          "date": "2026-10-10",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 33,
+          "charges": 32,
+          "payments": 4,
+          "paymentsSum": 123900
+        },
+        {
+          "date": "2026-10-11",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 31,
+          "charges": 30,
+          "payments": 5,
+          "paymentsSum": 195800
+        },
+        {
+          "date": "2026-10-12",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 22,
+          "charges": 22,
+          "payments": 3,
+          "paymentsSum": 110900
+        },
+        {
+          "date": "2026-10-13",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 24,
+          "charges": 23,
+          "payments": 1,
+          "paymentsSum": 41000
+        },
+        {
+          "date": "2026-10-14",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 32,
+          "charges": 31,
+          "payments": 1,
+          "paymentsSum": 47400
+        }
+      ]
+    },
+    "qae-c09": {
+      "centerId": "cmv9365hd0396vacb0ekpsghs",
+      "name": "QAE1 سنتر الجودة 09",
+      "window": {
+        "from": "2026-09-15",
+        "to": "2026-10-14"
+      },
+      "counts": {
+        "students": 85,
+        "newStudents": 4,
+        "groups": 5,
+        "teachers": 4,
+        "sessions": 44,
+        "closed": 42,
+        "open": 1,
+        "cancelled": 1,
+        "attendance": 707,
+        "present": 656,
+        "late": 29,
+        "excused": 22,
+        "attendanceRate": 0.9689,
+        "chargesCount": 685,
+        "chargesSum": -5652600,
+        "paymentsCount": 163,
+        "paymentsSum": 3800100,
+        "receipts": 163,
+        "expenses": 5,
+        "expensesSum": 91400,
+        "settlementsEARNED": 2996110,
+        "settlementsPAID": 2615000,
+        "announcements": 2,
+        "studentNotifications": 26,
+        "queueItems": 164,
+        "notificationAttempts": 163,
+        "corrections": 0,
+        "audit": 178,
+        "quizzes": 3,
+        "quizAttempts": 60,
+        "exams": 1,
+        "examAttempts": 12,
+        "bookSales": 0,
+        "bookSalesSum": 0
+      },
+      "debtors": {
+        "count": 81,
+        "top10": [
+          {
+            "studentId": "cmv9365nc03l4vacb7qdkjpwn",
+            "name": "حسين عصام حسنين",
+            "code": "14581",
+            "balance": -77600
+          },
+          {
+            "studentId": "cmv9365nd03lavacbo78nl88j",
+            "name": "كريم سعيد الشريف",
+            "code": "14582",
+            "balance": -52300
+          },
+          {
+            "studentId": "cmv9365n703k6vacb9j3y8pct",
+            "name": "حسن شعبان الحديدي",
+            "code": "14574",
+            "balance": -44700
+          },
+          {
+            "studentId": "cmv9365my03iqvacbiakoccys",
+            "name": "مصطفى شعبان إبراهيم",
+            "code": "14563",
+            "balance": -43000
+          },
+          {
+            "studentId": "cmv9365lq03cyvacb5ekij6wb",
+            "name": "زياد عصام الغريب",
+            "code": "14515",
+            "balance": -42400
+          },
+          {
+            "studentId": "cmv9365lo03civacbyz6bz2a4",
+            "name": "سيف سعيد إبراهيم",
+            "code": "14512",
+            "balance": -41300
+          },
+          {
+            "studentId": "cmv9365m603f6vacbz9nbz4nw",
+            "name": "زياد مجدي فؤاد",
+            "code": "14533",
+            "balance": -41200
+          },
+          {
+            "studentId": "cmv9365m903fovacbawv2yzdt",
+            "name": "يوسف سعيد إبراهيم",
+            "code": "14537",
+            "balance": -38800
+          },
+          {
+            "studentId": "cmv9365lw03duvacbt9sm66mc",
+            "name": "يوسف هشام طنطاوي",
+            "code": "14522",
+            "balance": -38500
+          },
+          {
+            "studentId": "cmv9365n903kmvacb9pdtxg5m",
+            "name": "حسن سيد إبراهيم",
+            "code": "14577",
+            "balance": -38500
+          }
+        ]
+      },
+      "lowestAttendanceGroups": [
+        {
+          "groupId": "cmv9365hn03aqvacbrisqojd4",
+          "name": "هـ",
+          "subject": "عربي",
+          "sessions": 9,
+          "registrations": 17,
+          "attended": 96,
+          "rate": 0.6275
+        },
+        {
+          "groupId": "cmv9365hm03akvacb31sr4gcm",
+          "name": "د",
+          "subject": "إنجليزي",
+          "sessions": 9,
+          "registrations": 26,
+          "attended": 172,
+          "rate": 0.735
+        },
+        {
+          "groupId": "cmv9365hk03aevacbd9pvow87",
+          "name": "ج",
+          "subject": "كيمياء",
+          "sessions": 8,
+          "registrations": 11,
+          "attended": 69,
+          "rate": 0.7841
+        }
+      ],
+      "highestAttendanceGroups": [
+        {
+          "groupId": "cmv9365hj03a8vacbs30ats50",
+          "name": "ب",
+          "subject": "فيزياء",
+          "sessions": 8,
+          "registrations": 26,
+          "attended": 165,
+          "rate": 0.7933
+        },
+        {
+          "groupId": "cmv9365hi03a2vacbxjvmw8zc",
+          "name": "أ",
+          "subject": "رياضيات",
+          "sessions": 9,
+          "registrations": 29,
+          "attended": 205,
+          "rate": 0.7854
+        },
+        {
+          "groupId": "cmv9365hk03aevacbd9pvow87",
+          "name": "ج",
+          "subject": "كيمياء",
+          "sessions": 8,
+          "registrations": 11,
+          "attended": 69,
+          "rate": 0.7841
+        }
+      ],
+      "quizSeries": [
+        {
+          "quizId": "cqaemv9367pbnrn4yw0",
+          "title": "كويز رياضيات — رقم 1",
+          "attempts": 20,
+          "avgScore": 3.7,
+          "maxScore": 5
+        },
+        {
+          "quizId": "cqaemv9367pcnsd5y2g",
+          "title": "كويز رياضيات — رقم 2",
+          "attempts": 20,
+          "avgScore": 3.1,
+          "maxScore": 5
+        },
+        {
+          "quizId": "cqaemv9367pdnt35qr0",
+          "title": "كويز رياضيات — رقم 3",
+          "attempts": 20,
+          "avgScore": 2.5,
+          "maxScore": 5
+        }
+      ],
+      "daily": [
+        {
+          "date": "2026-09-15",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 29,
+          "charges": 29,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-16",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 49,
+          "charges": 47,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-17",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 8,
+          "charges": 8,
+          "payments": 7,
+          "paymentsSum": 83100
+        },
+        {
+          "date": "2026-09-18",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 12,
+          "paymentsSum": 112900
+        },
+        {
+          "date": "2026-09-19",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 29,
+          "charges": 29,
+          "payments": 8,
+          "paymentsSum": 82400
+        },
+        {
+          "date": "2026-09-20",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 42,
+          "charges": 41,
+          "payments": 8,
+          "paymentsSum": 109900
+        },
+        {
+          "date": "2026-09-21",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 8,
+          "charges": 8,
+          "payments": 8,
+          "paymentsSum": 180400
+        },
+        {
+          "date": "2026-09-22",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 32,
+          "charges": 29,
+          "payments": 15,
+          "paymentsSum": 286700
+        },
+        {
+          "date": "2026-09-23",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 35,
+          "charges": 33,
+          "payments": 9,
+          "paymentsSum": 188800
+        },
+        {
+          "date": "2026-09-24",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 10,
+          "charges": 10,
+          "payments": 7,
+          "paymentsSum": 97300
+        },
+        {
+          "date": "2026-09-25",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 4,
+          "paymentsSum": 41500
+        },
+        {
+          "date": "2026-09-26",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 31,
+          "charges": 29,
+          "payments": 1,
+          "paymentsSum": 5000
+        },
+        {
+          "date": "2026-09-27",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 45,
+          "charges": 45,
+          "payments": 2,
+          "paymentsSum": 50700
+        },
+        {
+          "date": "2026-09-28",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 10,
+          "charges": 9,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-29",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 32,
+          "charges": 31,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-30",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 42,
+          "charges": 42,
+          "payments": 4,
+          "paymentsSum": 113000
+        },
+        {
+          "date": "2026-10-01",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 8,
+          "charges": 7,
+          "payments": 7,
+          "paymentsSum": 213500
+        },
+        {
+          "date": "2026-10-02",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 6,
+          "paymentsSum": 170700
+        },
+        {
+          "date": "2026-10-03",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 1,
+          "attendance": 10,
+          "charges": 9,
+          "payments": 5,
+          "paymentsSum": 164800
+        },
+        {
+          "date": "2026-10-04",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 44,
+          "charges": 42,
+          "payments": 8,
+          "paymentsSum": 165400
+        },
+        {
+          "date": "2026-10-05",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 10,
+          "charges": 10,
+          "payments": 9,
+          "paymentsSum": 344300
+        },
+        {
+          "date": "2026-10-06",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 35,
+          "charges": 33,
+          "payments": 8,
+          "paymentsSum": 275100
+        },
+        {
+          "date": "2026-10-07",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 39,
+          "charges": 38,
+          "payments": 8,
+          "paymentsSum": 228600
+        },
+        {
+          "date": "2026-10-08",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 6,
+          "charges": 6,
+          "payments": 9,
+          "paymentsSum": 310200
+        },
+        {
+          "date": "2026-10-09",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 9,
+          "paymentsSum": 247100
+        },
+        {
+          "date": "2026-10-10",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 34,
+          "charges": 32,
+          "payments": 3,
+          "paymentsSum": 70400
+        },
+        {
+          "date": "2026-10-11",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 42,
+          "charges": 41,
+          "payments": 1,
+          "paymentsSum": 65600
+        },
+        {
+          "date": "2026-10-12",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 9,
+          "charges": 9,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-10-13",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 29,
+          "charges": 29,
+          "payments": 3,
+          "paymentsSum": 110600
+        },
+        {
+          "date": "2026-10-14",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 39,
+          "charges": 39,
+          "payments": 2,
+          "paymentsSum": 82100
+        }
+      ]
+    },
+    "qae-c10": {
+      "centerId": "cmv9365nf03lnvacbease2lgc",
+      "name": "QAE1 سنتر الجودة 10",
+      "window": {
+        "from": "2026-09-15",
+        "to": "2026-10-14"
+      },
+      "counts": {
+        "students": 90,
+        "newStudents": 4,
+        "groups": 5,
+        "teachers": 4,
+        "sessions": 44,
+        "closed": 41,
+        "open": 1,
+        "cancelled": 2,
+        "attendance": 705,
+        "present": 636,
+        "late": 43,
+        "excused": 26,
+        "attendanceRate": 0.9631,
+        "chargesCount": 679,
+        "chargesSum": -5730200,
+        "paymentsCount": 155,
+        "paymentsSum": 3665600,
+        "receipts": 155,
+        "expenses": 5,
+        "expensesSum": 104900,
+        "settlementsEARNED": 2714695,
+        "settlementsPAID": 2370000,
+        "announcements": 3,
+        "studentNotifications": 231,
+        "queueItems": 164,
+        "notificationAttempts": 155,
+        "corrections": 0,
+        "audit": 173,
+        "quizzes": 3,
+        "quizAttempts": 57,
+        "exams": 2,
+        "examAttempts": 16,
+        "bookSales": 0,
+        "bookSalesSum": 0
+      },
+      "debtors": {
+        "count": 82,
+        "top10": [
+          {
+            "studentId": "cmv9365ss03tfvacbi6tidcdl",
+            "name": "إبراهيم عادل فؤاد",
+            "code": "15049",
+            "balance": -84500
+          },
+          {
+            "studentId": "cmv9365sj03rxvacbnheanwv3",
+            "name": "يوسف جمال الدسوقي",
+            "code": "15036",
+            "balance": -75100
+          },
+          {
+            "studentId": "cmv9365t303v1vacbn2ds2v4o",
+            "name": "هاني مجدي إبراهيم",
+            "code": "15062",
+            "balance": -69200
+          },
+          {
+            "studentId": "cmv9365t703vnvacbg3b9wbok",
+            "name": "أنس فتحي رشاد",
+            "code": "15067",
+            "balance": -61800
+          },
+          {
+            "studentId": "cmv9365tr03wpvacbjrvllj77",
+            "name": "سيف عصام الحديدي",
+            "code": "15076",
+            "balance": -60500
+          },
+          {
+            "studentId": "cmv9365t403vbvacbo5l6ltvy",
+            "name": "عبدالله سيد عبد الله",
+            "code": "15064",
+            "balance": -55100
+          },
+          {
+            "studentId": "cmv9365s703qfvacb1scs485v",
+            "name": "محمود عبد الرحمن حسنين",
+            "code": "15024",
+            "balance": -51900
+          },
+          {
+            "studentId": "cmv9365ts03wxvacbzmzbdlqe",
+            "name": "هاني هشام حسنين",
+            "code": "15078",
+            "balance": -47400
+          },
+          {
+            "studentId": "cmv9365tp03whvacbqtcaqzkd",
+            "name": "هاني الأمير سليم",
+            "code": "15074",
+            "balance": -47200
+          },
+          {
+            "studentId": "cmv9365sa03qpvacbilu8c3jb",
+            "name": "عبدالله شعبان الغريب",
+            "code": "15026",
+            "balance": -44500
+          }
+        ]
+      },
+      "lowestAttendanceGroups": [
+        {
+          "groupId": "cmv9365nk03mpvacb7n2pytln",
+          "name": "ب",
+          "subject": "فيزياء",
+          "sessions": 9,
+          "registrations": 34,
+          "attended": 227,
+          "rate": 0.7418
+        },
+        {
+          "groupId": "cmv9365o603mvvacbfjw9ouhf",
+          "name": "ج",
+          "subject": "كيمياء",
+          "sessions": 8,
+          "registrations": 22,
+          "attended": 131,
+          "rate": 0.7443
+        },
+        {
+          "groupId": "cmv9365oa03n7vacb7wnqyx9t",
+          "name": "هـ",
+          "subject": "عربي",
+          "sessions": 8,
+          "registrations": 12,
+          "attended": 72,
+          "rate": 0.75
+        }
+      ],
+      "highestAttendanceGroups": [
+        {
+          "groupId": "cmv9365nj03mjvacb4ay04s7r",
+          "name": "أ",
+          "subject": "رياضيات",
+          "sessions": 8,
+          "registrations": 19,
+          "attended": 119,
+          "rate": 0.7829
+        },
+        {
+          "groupId": "cmv9365o803n1vacbqizvx3gf",
+          "name": "د",
+          "subject": "إنجليزي",
+          "sessions": 9,
+          "registrations": 23,
+          "attended": 156,
+          "rate": 0.7536
+        },
+        {
+          "groupId": "cmv9365oa03n7vacb7wnqyx9t",
+          "name": "هـ",
+          "subject": "عربي",
+          "sessions": 8,
+          "registrations": 12,
+          "attended": 72,
+          "rate": 0.75
+        }
+      ],
+      "quizSeries": [
+        {
+          "quizId": "cqaemv9367voq5ac1qu",
+          "title": "كويز رياضيات — رقم 1",
+          "attempts": 19,
+          "avgScore": 3.89,
+          "maxScore": 5
+        },
+        {
+          "quizId": "cqaemv9367vpq5zl8i3",
+          "title": "كويز رياضيات — رقم 2",
+          "attempts": 19,
+          "avgScore": 2.79,
+          "maxScore": 5
+        },
+        {
+          "quizId": "cqaemv9367vpq6oiu6h",
+          "title": "كويز رياضيات — رقم 3",
+          "attempts": 19,
+          "avgScore": 2.53,
+          "maxScore": 5
+        }
+      ],
+      "daily": [
+        {
+          "date": "2026-09-15",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 29,
+          "charges": 27,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-16",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 29,
+          "charges": 27,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-17",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 15,
+          "charges": 14,
+          "payments": 4,
+          "paymentsSum": 27200
+        },
+        {
+          "date": "2026-09-18",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 9,
+          "paymentsSum": 110600
+        },
+        {
+          "date": "2026-09-19",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 1,
+          "attendance": 22,
+          "charges": 21,
+          "payments": 3,
+          "paymentsSum": 30800
+        },
+        {
+          "date": "2026-09-20",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 33,
+          "charges": 31,
+          "payments": 13,
+          "paymentsSum": 190200
+        },
+        {
+          "date": "2026-09-21",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 17,
+          "charges": 17,
+          "payments": 6,
+          "paymentsSum": 81800
+        },
+        {
+          "date": "2026-09-22",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 34,
+          "charges": 32,
+          "payments": 9,
+          "paymentsSum": 133300
+        },
+        {
+          "date": "2026-09-23",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 1,
+          "attendance": 15,
+          "charges": 15,
+          "payments": 10,
+          "paymentsSum": 237700
+        },
+        {
+          "date": "2026-09-24",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 12,
+          "charges": 10,
+          "payments": 5,
+          "paymentsSum": 101900
+        },
+        {
+          "date": "2026-09-25",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 4,
+          "paymentsSum": 45600
+        },
+        {
+          "date": "2026-09-26",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 33,
+          "charges": 33,
+          "payments": 0,
+          "paymentsSum": 0
+        },
+        {
+          "date": "2026-09-27",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 32,
+          "charges": 32,
+          "payments": 3,
+          "paymentsSum": 40000
+        },
+        {
+          "date": "2026-09-28",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 16,
+          "charges": 16,
+          "payments": 5,
+          "paymentsSum": 95400
+        },
+        {
+          "date": "2026-09-29",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 33,
+          "charges": 30,
+          "payments": 3,
+          "paymentsSum": 112300
+        },
+        {
+          "date": "2026-09-30",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 36,
+          "charges": 35,
+          "payments": 6,
+          "paymentsSum": 99100
+        },
+        {
+          "date": "2026-10-01",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 19,
+          "charges": 19,
+          "payments": 4,
+          "paymentsSum": 73300
+        },
+        {
+          "date": "2026-10-02",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 6,
+          "paymentsSum": 189800
+        },
+        {
+          "date": "2026-10-03",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 35,
+          "charges": 34,
+          "payments": 5,
+          "paymentsSum": 107600
+        },
+        {
+          "date": "2026-10-04",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 30,
+          "charges": 27,
+          "payments": 6,
+          "paymentsSum": 155100
+        },
+        {
+          "date": "2026-10-05",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 16,
+          "charges": 16,
+          "payments": 3,
+          "paymentsSum": 57300
+        },
+        {
+          "date": "2026-10-06",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 33,
+          "charges": 33,
+          "payments": 7,
+          "paymentsSum": 206500
+        },
+        {
+          "date": "2026-10-07",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 33,
+          "charges": 33,
+          "payments": 16,
+          "paymentsSum": 525300
+        },
+        {
+          "date": "2026-10-08",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 18,
+          "charges": 18,
+          "payments": 6,
+          "paymentsSum": 237300
+        },
+        {
+          "date": "2026-10-09",
+          "sessions": 0,
+          "closed": 0,
+          "cancelled": 0,
+          "attendance": 0,
+          "charges": 0,
+          "payments": 3,
+          "paymentsSum": 113900
+        },
+        {
+          "date": "2026-10-10",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 39,
+          "charges": 38,
+          "payments": 5,
+          "paymentsSum": 194600
+        },
+        {
+          "date": "2026-10-11",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 35,
+          "charges": 35,
+          "payments": 5,
+          "paymentsSum": 160900
+        },
+        {
+          "date": "2026-10-12",
+          "sessions": 1,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 18,
+          "charges": 17,
+          "payments": 4,
+          "paymentsSum": 148400
+        },
+        {
+          "date": "2026-10-13",
+          "sessions": 2,
+          "closed": 2,
+          "cancelled": 0,
+          "attendance": 41,
+          "charges": 37,
+          "payments": 4,
+          "paymentsSum": 151200
+        },
+        {
+          "date": "2026-10-14",
+          "sessions": 2,
+          "closed": 1,
+          "cancelled": 0,
+          "attendance": 32,
+          "charges": 32,
+          "payments": 1,
+          "paymentsSum": 38500
+        }
+      ]
+    }
+  }
+}

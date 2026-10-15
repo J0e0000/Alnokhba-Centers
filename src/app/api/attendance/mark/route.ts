@@ -101,7 +101,7 @@ export const POST = handler(async (req: Request) => {
         sum += charge;
       }
       return sum;
-    });
+    }, { timeout: 15000, maxWait: 10000 });
 
     // أحداث الحضور الموحدة (طريقة واحدة لكل الأشخاص) — للطريقة/التدقيق
     await Promise.all(toMark.map((r) => recordAttendanceEvent({
@@ -228,7 +228,7 @@ export const POST = handler(async (req: Request) => {
       });
     }
     return { alreadyAttended: false, attendance, charged: charge };
-  });
+  }, { timeout: 15000, maxWait: 10000 });
 
   if (!result.alreadyAttended) {
     await recordAttendanceEvent({

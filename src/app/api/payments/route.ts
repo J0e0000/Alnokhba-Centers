@@ -202,8 +202,10 @@ export const GET = handler(async (req: Request) => {
   where.type = { in: ["PAYMENT", "REFUND"] };
   if (from || to) {
     // حدود أيام القاهرة بالظبط — المعاملات بعد نص الليل تيجي في يومها الصح
+    // F6 fix: sentinel السنة 275760 كان بيكسر Prisma/SQLite — 9999 آمن ومجرب
+    const MAX_TS = new Date("9999-12-31T23:59:59.000Z");
     const start = from ? cairoDayBounds(from).start : new Date(0);
-    const end = to ? cairoDayBounds(to).end : new Date(8640000000000000);
+    const end = to ? cairoDayBounds(to).end : MAX_TS;
     where.createdAt = { gte: start, lte: end };
   }
 

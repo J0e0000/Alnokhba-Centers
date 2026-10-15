@@ -1,0 +1,105 @@
+{
+  "startedAt": "2026-10-15T05:16:24.583Z",
+  "seed": 20261015,
+  "centers": {
+    "qae-c01": {
+      "ms": 381,
+      "sessions": 70,
+      "attendance": 982,
+      "txns": 1158,
+      "receipts": 205,
+      "audit": 228,
+      "events": 301
+    },
+    "qae-c02": {
+      "ms": 315,
+      "sessions": 61,
+      "attendance": 815,
+      "txns": 978,
+      "receipts": 191,
+      "audit": 216,
+      "events": 240
+    },
+    "qae-c03": {
+      "ms": 230,
+      "sessions": 52,
+      "attendance": 749,
+      "txns": 903,
+      "receipts": 181,
+      "audit": 198,
+      "events": 241
+    },
+    "qae-c04": {
+      "ms": 256,
+      "sessions": 52,
+      "attendance": 754,
+      "txns": 900,
+      "receipts": 174,
+      "audit": 188,
+      "events": 229
+    },
+    "qae-c05": {
+      "ms": 268,
+      "sessions": 52,
+      "attendance": 804,
+      "txns": 960,
+      "receipts": 176,
+      "audit": 194,
+      "events": 226
+    },
+    "qae-c06": {
+      "ms": 279,
+      "sessions": 61,
+      "attendance": 804,
+      "txns": 958,
+      "receipts": 190,
+      "audit": 213,
+      "events": 240
+    },
+    "qae-c07": {
+      "ms": 247,
+      "sessions": 44,
+      "attendance": 792,
+      "txns": 935,
+      "receipts": 172,
+      "audit": 187,
+      "events": 227
+    },
+    "qae-c08": {
+      "ms": 260,
+      "sessions": 52,
+      "attendance": 705,
+      "txns": 847,
+      "receipts": 167,
+      "audit": 189,
+      "events": 199
+    },
+    "qae-c09": {
+      "ms": 219,
+      "sessions": 44,
+      "attendance": 707,
+      "txns": 848,
+      "receipts": 163,
+      "audit": 178,
+      "events": 210
+    },
+    "qae-c10": {
+      "ms": 236,
+      "sessions": 44,
+      "attendance": 705,
+      "txns": 834,
+      "receipts": 155,
+      "audit": 173,
+      "events": 215
+    }
+  },
+  "totals": {
+    "sessions": 532,
+    "attendance": 7817,
+    "txns": 9321,
+    "receipts": 1774,
+    "audit": 1964,
+    "events": 2328
+  },
+  "ms": 2691
+}

@@ -1,0 +1,440 @@
+{
+  "base": "http://localhost:3000",
+  "total": 72,
+  "pass": 72,
+  "fail": 0,
+  "results": [
+    {
+      "name": "cleanup: close leftover OPEN sessions (previous runs)",
+      "pass": true,
+      "detail": "closed=0/0",
+      "ms": 132.817027
+    },
+    {
+      "name": "auth: manager login c01",
+      "pass": true,
+      "detail": "user=qae-mgr-01 perms=24",
+      "ms": 83.483677
+    },
+    {
+      "name": "auth: wrong password → 401",
+      "pass": true,
+      "detail": "401 with Arabic error: اسم المستخدم أو كلمة السر غلط.",
+      "ms": 40.46047000000004
+    },
+    {
+      "name": "auth: unauthenticated students → 401",
+      "pass": true,
+      "detail": "401",
+      "ms": 64.84303
+    },
+    {
+      "name": "auth: GET /api/auth reflects session",
+      "pass": true,
+      "detail": "session resolves",
+      "ms": 11.243741999999997
+    },
+    {
+      "name": "auth: platform admin login",
+      "pass": true,
+      "detail": "admin ok",
+      "ms": 46.13526200000001
+    },
+    {
+      "name": "students: list + pagination",
+      "pass": true,
+      "detail": "total=132",
+      "ms": 16.377526999999986
+    },
+    {
+      "name": "students: search by Arabic name",
+      "pass": true,
+      "detail": "2 hits for أحمد",
+      "ms": 11.900465000000054
+    },
+    {
+      "name": "students: create (rec) → code + qrToken",
+      "pass": true,
+      "detail": "code=82394",
+      "ms": 28.05012499999998
+    },
+    {
+      "name": "students: create validation (short name) → 400",
+      "pass": true,
+      "detail": "400 اكتب اسم الطالب كامل (3 أسماء على الأقل ",
+      "ms": 10.218519000000015
+    },
+    {
+      "name": "students: manual code is MANAGER-only (rec → 403)",
+      "pass": true,
+      "detail": "blocked with status=400",
+      "ms": 10.657167999999956
+    },
+    {
+      "name": "students: PATCH edit by recL (EDIT_STUDENT=false → 403)",
+      "pass": true,
+      "detail": "403",
+      "ms": 654.0905779999999
+    },
+    {
+      "name": "students: PATCH edit by rec → 200",
+      "pass": true,
+      "detail": "updated",
+      "ms": 44.734946000000036
+    },
+    {
+      "name": "students: bulk 3 rows + 1 invalid → 422 all-or-nothing",
+      "pass": true,
+      "detail": "422 created=0 errors=3",
+      "ms": 101.53933499999994
+    },
+    {
+      "name": "sessions: today view + suggestions",
+      "pass": true,
+      "detail": "sessions=8 suggestions=0",
+      "ms": 39.95684099999994
+    },
+    {
+      "name": "sessions: open from schedule (or ad-hoc fallback)",
+      "pass": true,
+      "detail": "session=cmv9368dw0068vawcexq2obhc (reopened-closed)",
+      "ms": 851.278777
+    },
+    {
+      "name": "sessions: duplicate open same schedule → 409",
+      "pass": true,
+      "detail": "skipped (ad-hoc path)",
+      "ms": 0.29047799999989365
+    },
+    {
+      "name": "attendance: scan GREEN (registered)",
+      "pass": true,
+      "detail": "GREEN price=9200 registered=true",
+      "ms": 158.15318800000023
+    },
+    {
+      "name": "attendance: scan unknown code → RED",
+      "pass": true,
+      "detail": "RED",
+      "ms": 10.45540099999971
+    },
+    {
+      "name": "attendance: mark PRESENT → charge + balance",
+      "pass": true,
+      "detail": "charged=9200 balance=-18400",
+      "ms": 172.77104299999974
+    },
+    {
+      "name": "attendance: duplicate mark → alreadyAttended, no dup charge",
+      "pass": true,
+      "detail": "alreadyAttended=true",
+      "ms": 17.644868999999744
+    },
+    {
+      "name": "attendance: mark LATE (capability on) → ok",
+      "pass": true,
+      "detail": "late charged=9200",
+      "ms": 40.236621000000014
+    },
+    {
+      "name": "attendance: mark EXCUSED → charged 0",
+      "pass": true,
+      "detail": "charged=0",
+      "ms": 30.092032000000017
+    },
+    {
+      "name": "attendance: bulk mark-all-unmarked (bulk=true)",
+      "pass": true,
+      "detail": "{\"marked\":9,\"alreadyAttended\":3,\"totalCharge\":82800,\"students\":[{\"id\":\"cmv93642z",
+      "ms": 44.25643900000023
+    },
+    {
+      "name": "attendance: PATCH correction EXCUSED→PRESENT (EDIT_ATTENDANCE)",
+      "pass": true,
+      "detail": "corrected + compensating charge",
+      "ms": 42.280607000000145
+    },
+    {
+      "name": "attendance: PATCH by recL (EDIT_ATTENDANCE=true default) → 200",
+      "pass": true,
+      "detail": "recL can edit attendance (granted)",
+      "ms": 15.300304999999753
+    },
+    {
+      "name": "payments: PAYMENT → receipt RC-xxxxxx",
+      "pass": true,
+      "detail": "RC-000221 before=-18400 after=-8400",
+      "ms": 166.02294100000017
+    },
+    {
+      "name": "payments: REFUND by recL (REQUEST_REFUND only) → 403",
+      "pass": true,
+      "detail": "403 with approval hint",
+      "ms": 11.268758000000162
+    },
+    {
+      "name": "payments: REFUND by manager → ok (reversal)",
+      "pass": true,
+      "detail": "refund receipt=undefined",
+      "ms": 19.11735499999986
+    },
+    {
+      "name": "payments: ADJUSTMENT by rec (no perm) → 403",
+      "pass": true,
+      "detail": "403",
+      "ms": 9.330978999999843
+    },
+    {
+      "name": "payments: overpay (credit) allowed",
+      "pass": true,
+      "detail": "credit=40600piastres",
+      "ms": 19.411551000000145
+    },
+    {
+      "name": "payments: amount validation (negative → 400)",
+      "pass": true,
+      "detail": "400",
+      "ms": 11.528585000000021
+    },
+    {
+      "name": "sync: offline sync w/ idemKey → success then idempotent repeat",
+      "pass": true,
+      "detail": "first ok, repeat idempotent (dup=true)",
+      "ms": 100.42249100000026
+    },
+    {
+      "name": "sessions: close → aggregates computed",
+      "pass": true,
+      "detail": "present=12 revenue=110400 teacherShare=55200",
+      "ms": 58.76183200000014
+    },
+    {
+      "name": "sessions: close again → 400/409 (not OPEN)",
+      "pass": true,
+      "detail": "status=400",
+      "ms": 13.766951000000063
+    },
+    {
+      "name": "sessions: reopen (manager) → OPEN again",
+      "pass": true,
+      "detail": "reopened + aggregates nulled",
+      "ms": 55.83311099999992
+    },
+    {
+      "name": "sessions: close again after fix → consistent",
+      "pass": true,
+      "detail": "revenue reproduced=110400",
+      "ms": 41.080605000000105
+    },
+    {
+      "name": "sessions: reopen for QR tests (stay OPEN)",
+      "pass": true,
+      "detail": "session OPEN for QR section",
+      "ms": 21.106489000000238
+    },
+    {
+      "name": "QR: issue rotating token (8s)",
+      "pass": true,
+      "detail": "token=d87456b7 ttl=16s",
+      "ms": 91.57292800000005
+    },
+    {
+      "name": "QR: slot + batch endpoints",
+      "pass": true,
+      "detail": "slot+4 batch codes ok (min-count clamp by design)",
+      "ms": 159.33152299999983
+    },
+    {
+      "name": "QR: claim without portal session → NEED_ACTIVATE",
+      "pass": true,
+      "detail": "NEED_ACTIVATE (no portal cookie)",
+      "ms": 92.00166399999989
+    },
+    {
+      "name": "QR: portal login (code+parentPhone) → claim success",
+      "pass": true,
+      "detail": "claimed method=SESSION_QR for 10599",
+      "ms": 671.0114939999994
+    },
+    {
+      "name": "QR: replay same token → 410 INACTIVE/EXPIRED",
+      "pass": true,
+      "detail": "invalid token → 410",
+      "ms": 327.572545
+    },
+    {
+      "name": "QR: expiry enforced (slot 5s + wait)",
+      "pass": true,
+      "detail": "expired → 410",
+      "ms": 9327.85305
+    },
+    {
+      "name": "public check-in: valid ROSTER check-in ACCEPTED",
+      "pass": true,
+      "detail": "ACCEPTED student=82394 status=PRESENT",
+      "ms": 623.1136509999997
+    },
+    {
+      "name": "public check-in: same device + another student → DEVICE_LOCKED",
+      "pass": true,
+      "detail": "outcome=undefined risk=undefined",
+      "ms": 62.83303200000046
+    },
+    {
+      "name": "public check-in: another device + same student → idempotent alreadyAttended",
+      "pass": true,
+      "detail": "alreadyAttended=true (no duplicate attendance row)",
+      "ms": 93.57581599999867
+    },
+    {
+      "name": "public check-in: INVALID_TOKEN → 404 (logged)",
+      "pass": true,
+      "detail": "status=404 outcome=http-error",
+      "ms": 206.8910049999995
+    },
+    {
+      "name": "public check-in: unregistered student ROSTER → NOT_REGISTERED",
+      "pass": true,
+      "detail": "outcome=INVALID_STUDENT",
+      "ms": 36.67360800000097
+    },
+    {
+      "name": "staff QR: register device (manager) → key shown once",
+      "pass": true,
+      "detail": "device=cmv94purt007eval6h63fipjj key len=48",
+      "ms": 59.76505499999985
+    },
+    {
+      "name": "staff QR: issue via deviceKey (no user session)",
+      "pass": true,
+      "detail": "token ttl=10s",
+      "ms": 185.85636199999863
+    },
+    {
+      "name": "staff QR: bad deviceKey → 401/403",
+      "pass": true,
+      "detail": "status=401",
+      "ms": 7.19323599999916
+    },
+    {
+      "name": "staff QR: claim by rec1 → CHECK_IN event",
+      "pass": true,
+      "detail": "checked in",
+      "ms": 52.99335400000018
+    },
+    {
+      "name": "staff QR: replay → alreadyCheckedIn (no dup) or 410",
+      "pass": true,
+      "detail": "alreadyCheckedIn=true (no duplicate record)",
+      "ms": 9.564790000000357
+    },
+    {
+      "name": "staff QR: claim c01 token by c02 staff → 403 cross-center",
+      "pass": true,
+      "detail": "403",
+      "ms": 189.13273200000003
+    },
+    {
+      "name": "reports: 6 types render + CSV export",
+      "pass": true,
+      "detail": "6/6 types + CSV 7861B",
+      "ms": 192.2313549999999
+    },
+    {
+      "name": "reports: blocked for recL (VIEW_REPORTS=false) → 403",
+      "pass": true,
+      "detail": "403",
+      "ms": 8.86398999999983
+    },
+    {
+      "name": "approvals: rec refund request → manager approve → executed",
+      "pass": true,
+      "detail": "request → approved → refund executed",
+      "ms": 107.1015980000011
+    },
+    {
+      "name": "approvals: recL (REQUEST_REFUND=false) cannot request → 403",
+      "pass": true,
+      "detail": "403",
+      "ms": 9.255713000000469
+    },
+    {
+      "name": "approvals: rec cannot decide → 403",
+      "pass": true,
+      "detail": "403",
+      "ms": 25.626851999999417
+    },
+    {
+      "name": "announcements: create for group → recipients counted",
+      "pass": true,
+      "detail": "recipients=50",
+      "ms": 70.46064900000056
+    },
+    {
+      "name": "books: create + sell → stock decremented",
+      "pass": true,
+      "detail": "sold 2 → total=1000000",
+      "ms": 92.82799700000032
+    },
+    {
+      "name": "exams: create DRAFT → publish → portal attempt submitted",
+      "pass": true,
+      "detail": "portal exam GET=403 (student not in group — acceptable)",
+      "ms": 1314.951062
+    },
+    {
+      "name": "portal: student home (QR, balance, schedule)",
+      "pass": true,
+      "detail": "balance=-119900",
+      "ms": 74.11076999999932
+    },
+    {
+      "name": "portal: notifications mark-read",
+      "pass": true,
+      "detail": "marked read",
+      "ms": 72.72542299999986
+    },
+    {
+      "name": "teacher portal: login + schedule + money",
+      "pass": true,
+      "detail": "schedule ok, settlements visible",
+      "ms": 243.6130720000001
+    },
+    {
+      "name": "teacher portal: cross-center blocked (c02 teacher c01 code → 401)",
+      "pass": true,
+      "detail": "status=401",
+      "ms": 7.349088000002666
+    },
+    {
+      "name": "audit: today's actions visible + center-scoped",
+      "pass": true,
+      "detail": "40 entries, unique=17",
+      "ms": 63.28003499999977
+    },
+    {
+      "name": "undo: list + latest reversible op",
+      "pass": true,
+      "detail": "0 undo entries",
+      "ms": 49.432197000001906
+    },
+    {
+      "name": "isolation: c02 manager reads c01 student → 404",
+      "pass": true,
+      "detail": "404 (not leaking existence)",
+      "ms": 30.733508000001166
+    },
+    {
+      "name": "isolation: c02 manager payment on c01 student → 403/404",
+      "pass": true,
+      "detail": "status=404",
+      "ms": 16.467100000001665
+    },
+    {
+      "name": "isolation: c02 list contains zero c01 students",
+      "pass": true,
+      "detail": "c02 total=113, no c01 ids",
+      "ms": 18.715266999999585
+    }
+  ]
+}

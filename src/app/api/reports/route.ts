@@ -1,7 +1,8 @@
 import { db } from "@/lib/db";
 import { ok, handler } from "@/lib/api";
 import { requireModule } from "@/lib/entitlements";
-import { requireCenterUser } from "@/lib/auth";
+import { requireCenterUser, ApiError } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { todayStr, cairoDateStr, cairoDayBounds } from "@/lib/normalize";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +42,14 @@ export const GET = handler(async (req: Request) => {
   const teacherId = url.searchParams.get("teacherId") || "";
   const studentId = url.searchParams.get("studentId") || "";
   const isExport = url.searchParams.get("export") === "csv";
+
+  // صلاحيات التقارير — سيرفري (spec §5): VIEW_REPORTS للمشاهدة، EXPORT_REPORTS للتصدير
+  if (!hasPermission(user, "VIEW_REPORTS")) {
+    throw new ApiError("التقارير محتاجة صلاحية «عرض التقارير» — كلم مدير السنتر.", 403);
+  }
+  if (isExport && !hasPermission(user, "EXPORT_REPORTS")) {
+    throw new ApiError("تصدير التقارير محتاج صلاحية «تصدير التقارير» — كلم مدير السنتر.", 403);
+  }
 
   let title = "";
   let columns: Col[] = [];
