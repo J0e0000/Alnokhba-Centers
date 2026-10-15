@@ -1,0 +1,510 @@
+/* ============================================================
+   إضافة دفعة سريعة — workflow موحّد (دمج الريبو المرجعي + مميزات النخبة):
+   ١) اكتب الصفوف (أو الصق قايمة جاهزة) — نفس سرعة «السريعة»
+   ٢) تحقق من الكل → مراجعة سريعة للدفعة قبل الحفظ (فكرة الريبو المرجعي)
+   ٣) احفظ الجميع مرة واحدة (all-or-nothing على السيرفر)
+   ٤) 🎉 شاشة النتيجة: لينك بورتال جاهز لكل طالب + واتساب/نسخ بالمحدد
+      — مفيش حاجة بتتبعت تلقائي أبدًا (فكرة الريبو المرجعي spec 5-7)
+   ============================================================ */
+type QuickRow = { key: number; name: string; phone: string; parentName: string; parentPhone: string; parentTouched: boolean };
+type BulkResultStudent = { id: string; name: string; code: string; qrToken: string; phone: string };
+let quickRowKey = 0;
+const emptyQuickRow = (): QuickRow => ({ key: ++quickRowKey, name: "", phone: "", parentName: "", parentPhone: "", parentTouched: false });
+const digitsOnly = (s: string) => smartPhoneDigits(s);
+const isEgyptianMobile = (s: string) => /^01[0125]\d{8}$/.test(s);
+
+// لينك بورتال الطالب (بيشفّر اللينك الكامل مش التوكن الخام — زي StudentQrLinkModal)
+function buildPortalLink(qrToken: string): string {
+  return typeof window === "undefined" ? "" : `${window.location.origin}/portal?qr=${qrToken}`;
+}
+// رسالة الدخول — نفس صياغة StudentQrLinkModal عشان الرسايل تبقى موحّدة في التطبيق كله
+function buildPortalMessage(name: string, link: string, centerName: string | null): string {
+  const first = name.trim().split(/\s+/)[0] ?? name;
+  return [
+    `أهلًا ${first}،`,
+    `ده لينك بورتالك في ${centerName || "السنتر"} — بيفتح من غير تسجيل دخول:`,
+    link,
+    "احتفظ باللينك ده — رصيدك وجدولك وواجباتك كلها فيه في أي وقت.",
+  ].join("\n");
+}
+// نسخ احتياطي (المتصفحات القديمة) — نفس fallback StudentQrLinkModal
+async function copyText(text: string): Promise<boolean> {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      const ok = document.execCommand("copy"); ta.remove(); return ok;
+    } catch { return false; }
+  }
+}
+
+function BulkAddDialog({ open, onClose, onSaved, centerName }: {
+  open: boolean;
+  onClose: () => void;
+  onSaved: (count: number) => void;
+  centerName: string | null;
+}) {
+  const academics = useAcademics();
+  // wizard: edit → review → saving → result (فكرة الريبو المرجعي)
+  const [step, setStep] = useState<"edit" | "review" | "saving" | "result">("edit");
+  const [gradeId, setGradeId] = useState("");
+  const [groupIds, setGroupIds] = useState<string[]>([]);
+  const [rows, setRows] = useState<QuickRow[]>([]);
+  const [pasteMode, setPasteMode] = useState(false);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [errs, setErrs] = useState<Record<number, string>>({});
+  // شاشة النتيجة
+  const [created, setCreated] = useState<BulkResultStudent[]>([]);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [linkFilter, setLinkFilter] = useState<"all" | "phone" | "nophone">("all");
+  const finishedRef = useRef(false);
+
+  // لما يتفتح: صفوف فاضية جاهزة للكتابة فورًا
+  useEffect(() => {
+    if (!open) return;
+    finishedRef.current = false;
+    setErrs({}); setPasteMode(false); setText(""); setGroupIds([]);
+    setRows(Array.from({ length: 4 }, emptyQuickRow));
+    setStep("edit"); setCreated([]); setPicked(new Set()); setLinkFilter("all");
+  }, [open]);
+
+  // المرحلة الافتراضية أول ما المراحل توصل — من غير ما نمسح اختيار المستخدم
+  useEffect(() => {
+    if (!open || !academics) return;
+    setGradeId((g) => g || (academics.grades[1]?.id ?? academics.grades[0]?.id ?? ""));
+  }, [open, academics]);
+
+  const gradeGroups = useMemo(
+    () => academics?.groups.filter((g) => !gradeId || g.gradeId === gradeId) ?? [],
+    [academics, gradeId]
+  );
+  const gradeName = academics?.grades.find((g) => g.id === gradeId)?.name ?? "";
+
+  function patch(key: number, changes: Partial<QuickRow>) {
+    setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...changes } : r)));
+    setErrs((e) => {
+      if (!e[key]) return e;
+      const { [key]: _drop, ...rest } = e;
+      return rest;
+    });
+  }
+
+  const addRow = () => setRows((rs) => (rs.length >= 100 ? rs : [...rs, emptyQuickRow()]));
+  const removeRow = (key: number) => setRows((rs) => {
+    const next = rs.filter((r) => r.key !== key);
+    return next.length ? next : Array.from({ length: 2 }, emptyQuickRow);
+  });
+
+  // استنتاج اسم ولي الأمر من اسم الطالب (نفس استنتاج الإضافة الفردية)
+  function setName(r: QuickRow, v: string) {
+    if (!r.parentTouched) {
+      const parts = v.trim().split(/\s+/).filter(Boolean);
+      const dad = parts.length >= 2 ? parts[1] : "";
+      patch(r.key, { name: v, parentName: dad });
+    } else {
+      patch(r.key, { name: v });
+    }
+  }
+
+  const filled = rows.filter((r) => r.name.trim() || digitsOnly(r.phone) || digitsOnly(r.parentPhone));
+
+  function validate(): boolean {
+    const e: Record<number, string> = {};
+    filled.forEach((r, i) => {
+      const no = i + 1;
+      const name = r.name.trim();
+      if (name.replace(/\s/g, "").length < 6) { e[r.key] = `صف ${no}: الاسم قصير — اكتب الاسم كامل (3 أسماء زي: أحمد محمد علي).`; return; }
+      const ph = digitsOnly(r.phone);
+      const pp = digitsOnly(r.parentPhone);
+      if (!ph && !pp) { e[r.key] = `صف ${no}: اكتب رقم موبايل واحد على الأقل (طالب أو ولي أمر).`; return; }
+      if (ph && !isEgyptianMobile(ph)) { e[r.key] = `صف ${no}: موبايل الطالب لازم 11 رقم يبدأ بـ 010/011/012/015.`; return; }
+      if (pp && !isEgyptianMobile(pp)) { e[r.key] = `صف ${no}: موبايل ولي الأمر لازم 11 رقم يبدأ بـ 010/011/012/015.`; return; }
+    });
+    setErrs(e);
+    return Object.keys(e).length === 0;
+  }
+
+  // خطوة ٢: تحقق من الكل → مراجعة (التحقق قبل الحفظ — فكرة الريبو المرجعي)
+  function goReview() {
+    if (filled.length === 0) { toast.error("اكتب طالب واحد على الأقل — صف لكل طالب."); return; }
+    if (!validate()) { toast.error("في صفوف فيها بيانات ناقصة أو غلط — اتصححها الأول."); return; }
+    setStep("review");
+  }
+
+  // خطوة ٣: حفظ الجميع — all-or-nothing على السيرفر
+  async function save() {
+    // بنحتفظ بمفتاح كل صف بالترتيب عشان أخطاء السيرفر (أرقام الصفوف) ترجع للصف الصح
+    const payload = filled.map((r) => ({
+      key: r.key,
+      data: {
+        name: r.name.trim(),
+        phone: digitsOnly(r.phone),
+        parentName: r.parentName.trim(),
+        parentPhone: digitsOnly(r.parentPhone),
+        gradeId: gradeId || undefined,
+        groupIds,
+      },
+    }));
+    setBusy(true);
+    try {
+      const res = await api<{ created: number; students: BulkResultStudent[] }>("/api/students/bulk", {
+        method: "POST",
+        body: { students: payload.map((p) => p.data) },
+      });
+      const list = res.students ?? [];
+      setCreated(list);
+      setPicked(new Set(list.filter((s) => s.phone).map((s) => s.id)));
+      setLinkFilter("all");
+      setStep("result");
+    } catch (err) {
+      // أخطاء الصفوف من السيرفر (422) → رجوع للتعديل مع تمييز الصفوف نفسها بالأحمر
+      const data = (err as Error & { data?: { errors?: { row: number; message: string }[] } }).data;
+      if (data?.errors?.length) {
+        const e: Record<number, string> = {};
+        for (const re of data.errors) {
+          const target = payload[re.row - 1];
+          if (target) e[target.key] = `صف ${re.row}: ${re.message}`;
+        }
+        setErrs(e);
+      }
+      setStep("edit");
+    } finally { setBusy(false); }
+  }
+
+  // ===== شاشة النتيجة — إجراءات لينك البورتال لكل طالب =====
+  const visibleCreated = created.filter((s) => {
+    if (linkFilter === "phone") return !!s.phone;
+    if (linkFilter === "nophone") return !s.phone;
+    return true;
+  });
+  const phoneCount = created.filter((s) => !!s.phone).length;
+  const pickedReady = created.filter((s) => picked.has(s.id) && s.phone);
+
+  function togglePicked(id: string) {
+    setPicked((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }
+
+  // واتساب لطالب واحد — handoff بيفهم iOS والديسكتوب، ولو الـ popup اتقفل بنسخ الرسالة
+  function sendOne(s: BulkResultStudent) {
+    const link = buildPortalLink(s.qrToken);
+    const msg = buildPortalMessage(s.name, link, centerName);
+    const ok = openWhatsAppHandoff(buildWaUrl(s.phone, msg));
+    if (!ok) {
+      void copyText(`${s.name}\n${msg}`);
+      toast.info("واتساب اتقفل من المتصفح — نسخنا رسالة الطالب، الصقها في الشات");
+    }
+  }
+
+  // نسخ رسائل المحددين — الإرسال بإيدك انت، مفيش حاجة بتتبعت تلقائي أبدًا
+  async function copyPickedMessages() {
+    if (!pickedReady.length) { toast.error("اختار طلاب عندهم رقم موبايل الأول."); return; }
+    const allText = pickedReady
+      .map((s) => `${s.name}\n${buildPortalMessage(s.name, buildPortalLink(s.qrToken), centerName)}`)
+      .join("\n\n———\n\n");
+    const ok = await copyText(allText);
+    if (ok) toast.success(`رسايل ${pickedReady.length} طالب اتنسخت — الصقها في واتساب.`);
+    else toast.error("المتصفح منع النسخ — انسخ كل رسالة لوحدها.");
+  }
+
+  // خلاص → onSaved بيقفل وبيحدّث القائمة (شغّال من زرار خلاص وX برضه)
+  function finish() {
+    if (finishedRef.current) { onClose(); return; }
+    finishedRef.current = true;
+    onSaved(created.length);
+  }
+  function handleClose() {
+    if (step === "result" && created.length > 0) { finish(); return; }
+    onClose();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto nk-scroll">
+        {step === "result" ? (
+          /* ============================================================
+             شاشة النتيجة 🎉 (فكرة الريبو المرجعي spec 5-7 مدموجة مع لينك
+             بورتال النخبة): اختيار لكل طالب + فلاتر + واتساب/نسخ + معاينة
+             ============================================================ */
+          <div className="space-y-3">
+            <div className="text-center space-y-1 pt-1">
+              <span className="inline-grid place-items-center w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 mx-auto">
+                <PartyPopper className="w-7 h-7" />
+              </span>
+              <h3 className="text-base font-black m-0">تم تسجيل {created.length} طالب بنجاح!</h3>
+              <p className="text-xs text-muted-foreground font-bold m-0 mt-1">
+                لينك بورتال جاهز لكل طالب تحت — اختار مين يستلمه. مفيش حاجة اتبعتت تلقائي أبدًا.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              {([
+                ["all", `الكل (${created.length})`],
+                ["phone", `عندهم رقم (${phoneCount})`],
+                ["nophone", `من غير رقم (${created.length - phoneCount})`],
+              ] as const).map(([key, label]) => (
+                <button key={key} onClick={() => setLinkFilter(key)}
+                  className={cn("rounded-full border px-3 py-1.5 text-xs font-bold transition",
+                    linkFilter === key ? "nk-brand-bg text-white border-transparent" : "bg-card border-border text-muted-foreground")}>
+                  {label}
+                </button>
+              ))}
+              <button onClick={() => setPicked(new Set(visibleCreated.filter((s) => s.phone).map((s) => s.id)))}
+                className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-bold text-muted-foreground">
+                <CheckSquare className="w-3.5 h-3.5 inline me-1" /> تحديد الظاهرين
+              </button>
+            </div>
+
+            <div className="grid gap-1.5 max-h-64 overflow-y-auto nk-scroll">
+              {visibleCreated.map((s) => {
+                const isPicked = picked.has(s.id) && !!s.phone;
+                return (
+                  <div key={s.id} className={cn(
+                    "flex items-center gap-2 rounded-xl border-2 p-2.5 transition",
+                    isPicked ? "border-transparent nk-brand-bg-soft ring-2 ring-[var(--c-primary)]" : "border-border bg-card"
+                  )}>
+                    <input type="checkbox" className="w-4.5 h-4.5 accent-[var(--c-primary)] cursor-pointer shrink-0"
+                      checked={isPicked} disabled={!s.phone} onChange={() => togglePicked(s.id)} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-extrabold truncate m-0">{s.name}</p>
+                      <p className="text-[11px] font-bold text-muted-foreground m-0">
+                        كود <span className="nk-num">{s.code}</span>
+                        {s.phone ? <> · <span className="nk-num" dir="ltr">{formatPhoneIntl(s.phone)}</span></> : " · مفيش رقم واتساب صحيح"}
+                      </p>
+                    </div>
+                    {s.phone ? (
+                      <span className="flex items-center gap-1 shrink-0">
+                        <button onClick={() => sendOne(s)} title="ابعت لينك البورتال واتساب"
+                          className="w-9 h-9 rounded-lg bg-[#25D366] text-white grid place-items-center active:scale-95 transition">
+                          <MessageCircle className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            const ok = await copyText(`${s.name}\n${buildPortalMessage(s.name, buildPortalLink(s.qrToken), centerName)}`);
+                            if (ok) toast.success(`رسالة ${s.name.split(/\s+/)[0]} اتنسخت`);
+                            else toast.error("المتصفح منع النسخ");
+                          }}
+                          title="نسخ رسالة الطالب"
+                          className="w-9 h-9 rounded-lg border border-border bg-card grid place-items-center text-muted-foreground active:scale-95 transition">
+                          <Copy className="w-4 h-4" />
+                        </button>
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold text-muted-foreground border border-border rounded-full px-2 py-1 shrink-0">بلا رقم</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* معاينة رسالة أول طالب محدد (سياق قبل النسخ — فكرة الريبو المرجعي) */}
+            {pickedReady[0] && (
+              <div className="rounded-xl p-3 text-[11px] leading-6 whitespace-pre-line bg-muted/50 border border-border">
+                <b className="block mb-1 text-[10px] text-muted-foreground">معاينة رسالة {pickedReady[0].name.split(/\s+/)[0]}:</b>
+                {buildPortalMessage(pickedReady[0].name, buildPortalLink(pickedReady[0].qrToken), centerName)}
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border">
+              <button onClick={() => void copyPickedMessages()} disabled={pickedReady.length === 0}
+                className="flex-1 min-w-36 rounded-xl border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,white)] dark:border-[color-mix(in_srgb,var(--c-primary)_57%,#0d1420)] bg-card nk-brand-text font-extrabold py-3 flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50">
+                <Copy className="w-4.5 h-4.5" /> نسخ رسائل المحدد ({pickedReady.length})
+              </button>
+              <button onClick={() => finish()}
+                className="flex-1 min-w-36 nk-brand-bg text-white rounded-xl py-3 font-extrabold flex items-center justify-center gap-2 shadow active:scale-[0.98]">
+                <Check className="w-4.5 h-4.5" /> خلاص — تمام
+              </button>
+            </div>
+            <p className="text-[10px] font-bold text-muted-foreground m-0 flex items-start gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              الإرسال بإيدك انت: زرار الواتساب بيفتح شات الطالب والرسالة جاهزة — ولينك كل طالب بيتفتح من غير تسجيل دخول.
+            </p>
+          </div>
+        ) : (
+          /* ============================================================
+             edit / review / saving — نفس فورم «السريعة» بس بخطوة مراجعة
+             ============================================================ */
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><Layers className="w-5 h-5 nk-brand-text" /> إضافة دفعة سريعة</DialogTitle>
+            </DialogHeader>
+
+            <p className="text-[12px] font-bold text-muted-foreground leading-relaxed">
+              {step === "edit" && "صف لكل طالب: الاسم + موبايل الطالب + موبايل ولي الأمر — رقم واحد كفاية لو التاني فاضي. وبعد التعبئة اضغط «تحقق من الكل» تراجع قبل الحفظ."}
+              {step === "review" && "كل الصفوف سليمة ✓ — بص على الملخص واضغط «احفظ الجميع». أي خطأ على السيرفر هيرجعك للتعديل من غير ما حاجة تتسجل."}
+            </p>
+
+            {step === "edit" && (
+              <>
+                {/* المرحلة والمجموعات — مرة واحدة للدفعة كلها بدل سؤال كل صف */}
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Field label="المرحلة الدراسية (للدفعة كلها)">
+                    <select className={inputCls(false)} value={gradeId} onChange={(e) => { setGradeId(e.target.value); setGroupIds([]); }}>
+                      <option value="">بدون مرحلة — تقدر تضيفها بعدين</option>
+                      {(academics?.grades ?? []).map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                    </select>
+                  </Field>
+                </div>
+                {gradeId && gradeGroups.length > 0 && (
+                  <Field label="المجموعات (اختياري — كل الطلبة هيتسجلوا فيها)">
+                    <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto nk-scroll">
+                      {gradeGroups.map((g) => {
+                        const on = groupIds.includes(g.id);
+                        return (
+                          <button key={g.id} type="button"
+                            onClick={() => setGroupIds(on ? groupIds.filter((x) => x !== g.id) : [...groupIds, g.id])}
+                            className={cn(
+                              "rounded-full border px-3 py-1.5 text-xs font-bold transition",
+                              on ? "nk-brand-bg text-white border-transparent" : "bg-card border-border text-muted-foreground"
+                            )}>
+                            {g.subject} — {g.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </Field>
+                )}
+              </>
+            )}
+
+            {step === "review" && (
+              <div className="rounded-2xl border-2 border-dashed border-border bg-muted/30 p-3 space-y-2">
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold">
+                  <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5 nk-brand-text" /> {filled.length} طالب</span>
+                  <span className="flex items-center gap-1"><GraduationCap className="w-3.5 h-3.5 nk-brand-text" /> {gradeName || "من غير مرحلة"}</span>
+                  {groupIds.length > 0 && <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5 nk-brand-text" /> {groupIds.length} مجموعة</span>}
+                  <span className="flex items-center gap-1"><MessageCircle className="w-3.5 h-3.5 nk-brand-text" /> {filled.filter((r) => digitsOnly(r.phone)).length} عندهم رقم طالب</span>
+                </div>
+                <div className="max-h-40 overflow-y-auto nk-scroll grid gap-1">
+                  {filled.map((r, i) => (
+                    <div key={r.key} className="flex items-center justify-between gap-2 text-xs font-bold bg-card rounded-lg px-2.5 py-1.5 border border-border/60">
+                      <span className="truncate">{i + 1}. {r.name.trim()}</span>
+                      <span className="text-muted-foreground nk-num" dir="ltr">{formatPhoneIntl(digitsOnly(r.phone) || digitsOnly(r.parentPhone))}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {step === "saving" && (
+              <div className="py-10 grid place-items-center gap-2 text-muted-foreground">
+                <Loader2 className="w-7 h-7 animate-spin nk-brand-text" />
+                <p className="text-sm font-extrabold">جاري حفظ الجميع — ثواني...</p>
+              </div>
+            )}
+
+            {step === "edit" && (pasteMode ? (
+              <div className="space-y-2">
+                <textarea
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  rows={8}
+                  dir="rtl"
+                  placeholder={"يوسف السيد إبراهيم، 01012345678، 01555555555\nمريم أحمد علي، 01198765432\nمصطفى كامل، 01234567890، أحمد كامل، 01098765432"}
+                  className="w-full rounded-xl border border-border bg-card p-3 font-bold text-[13px] leading-relaxed focus:outline-none focus:ring-2 nk-focus"
+                />
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold text-muted-foreground">
+                    سطر لكل طالب — الفواصل: فاصلة / تاب / | — والصيغة القديمة (باسم ولي الأمر) بتتفهم لوحدها.
+                  </span>
+                  <button onClick={applyPaste} className="nk-brand-bg text-white rounded-xl px-4 py-2.5 font-extrabold text-sm shrink-0 active:scale-[0.98]">
+                    املأ الصفوف
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="hidden sm:grid sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_32px] gap-2 px-1 text-[11px] font-bold text-muted-foreground">
+                  <span>اسم الطالب</span><span>موبايل الطالب</span><span>موبايل ولي الأمر</span><span>اسم ولي الأمر (أوتوماتيك)</span><span />
+                </div>
+                {rows.map((r, i) => {
+                  const err = errs[r.key];
+                  return (
+                    <div key={r.key} className={cn(
+                      "grid gap-2 rounded-xl border-2 p-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_32px] sm:items-center transition",
+                      err ? "border-rose-300 bg-rose-50/40" : "border-border bg-card"
+                    )}>
+                      <input dir="rtl" className={cn(inputCls(false), "h-10 text-sm")} value={r.name}
+                        onChange={(e) => setName(r, e.target.value)}
+                        placeholder={`صف ${i + 1} — اسم الطالب بالكامل`} />
+                      <SmartPhoneInput className="h-10 [&>input]:h-10 [&>input]:text-sm" value={r.phone}
+                        onChange={(v) => patch(r.key, { phone: v })} placeholder="01xxxxxxxxx" />
+                      <SmartPhoneInput className="h-10 [&>input]:h-10 [&>input]:text-sm" value={r.parentPhone}
+                        onChange={(v) => patch(r.key, { parentPhone: v })} placeholder="01xxxxxxxxx" />
+                      <input dir="rtl" className={cn(inputCls(false), "h-10 text-sm hidden sm:block", !r.parentTouched && r.parentName && "text-muted-foreground")}
+                        value={r.parentName}
+                        onChange={(e) => patch(r.key, { parentName: e.target.value, parentTouched: e.target.value.trim().length > 0 })}
+                        placeholder="بيتكتب لوحده" />
+                      <button onClick={() => removeRow(r.key)} title="شيل الصف"
+                        className="justify-self-end sm:justify-self-center rounded-lg p-1.5 text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 transition">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <button onClick={addRow} disabled={rows.length >= 100}
+                    className="rounded-xl border border-border bg-card px-3.5 py-2.5 font-extrabold text-sm flex items-center gap-1.5 active:scale-[0.98] disabled:opacity-50">
+                    <Plus className="w-4 h-4 nk-brand-text" /> صف جديد
+                  </button>
+                  <button onClick={() => { setPasteMode(true); }}
+                    className="text-[12px] font-extrabold text-muted-foreground underline underline-offset-4 flex items-center gap-1 hover:text-foreground transition">
+                    <ClipboardPaste className="w-3.5 h-3.5" /> عندك قايمة جاهزة؟ الصقها هنا
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {/* أخطاء الصفوف — من العميل أو من السيرفر */}
+            {step === "edit" && Object.values(errs).some(Boolean) && (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 dark:border-rose-900 dark:bg-rose-950/30 p-3 space-y-1 max-h-28 overflow-y-auto nk-scroll">
+                {Object.values(errs).filter(Boolean).map((m, i) => (
+                  <p key={i} className="text-xs font-bold text-rose-700 dark:text-rose-300">{m}</p>
+                ))}
+              </div>
+            )}
+
+            {step !== "saving" && (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[12px] font-extrabold text-muted-foreground nk-num">
+                  {step === "edit" && `${filled.length} طالب جاهزين للتسجيل${rows.length > filled.length ? ` (${rows.length - filled.length} فاضيين)` : ""}`}
+                  {step === "review" && `جاهزين للحفظ: ${filled.length} طالب`}
+                </span>
+                <div className="flex items-center gap-2">
+                  {step === "edit" ? (
+                    <button onClick={onClose} disabled={busy} className="rounded-xl border border-border bg-card px-4 py-2.5 font-extrabold text-sm">
+                      إلغاء
+                    </button>
+                  ) : (
+                    <button onClick={() => setStep("edit")} disabled={busy} className="rounded-xl border border-border bg-card px-4 py-2.5 font-extrabold text-sm">
+                      رجوع للتعديل
+                    </button>
+                  )}
+                  {step === "edit" ? (
+                    <button
+                      onClick={goReview}
+                      disabled={busy || filled.length === 0}
+                      className="nk-brand-bg text-white rounded-xl px-5 py-2.5 font-extrabold text-sm shadow active:scale-[0.98] disabled:opacity-50 flex items-center gap-2"
+                    >
+                      <CheckSquare className="w-4 h-4" /> تحقق من الكل ({filled.length})
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => { void save(); }}
+                      disabled={busy}
+                      className="nk-brand-bg text-white rounded-xl px-5 py-2.5 font-extrabold text-sm shadow active:scale-[0.98] disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {busy && <Loader2 className="w-4 h-4 animate-spin" />} احفظ الجميع ({filled.length})
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
