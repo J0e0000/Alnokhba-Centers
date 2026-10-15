@@ -2,12 +2,13 @@
 /* مختبر تجربة المستخدم — الأنواع المشتركة
    كل البيانات هنا اصطناعية بالكامل وصفر اتصال بالسيرفر. */
 
-export type OptionId = "quick" | "guided" | "cockpit";
+export type OptionId = "quick" | "quickplus" | "guided" | "cockpit";
 
 export const OPTION_META: Record<OptionId, { name: string; pitch: string; icon: string }> = {
-  quick:   { name: "السريعة",     pitch: "افتراضات ذكية + استثناءات فقط — أقل نقرات ممكنة",  icon: "zap" },
-  guided:  { name: "المُوجَّهة",   pitch: "مراحل واضحة بإرشاد كامل — صفر حاجة بتتساب",        icon: "list" },
-  cockpit: { name: "قمرة القيادة", pitch: "شاشة حية واحدة — كل حاجة قدامك في نفس اللحظة",    icon: "gauge" },
+  quick:     { name: "السريعة",     pitch: "افتراضات ذكية + استثناءات فقط — أقل نقرات ممكنة",  icon: "zap" },
+  quickplus: { name: "السريعة+",    pitch: "نسخة قرار المالك: السريعة زي ما هي + QR بضغطة + إشعار حاضر أو غايب بس", icon: "qr" },
+  guided:    { name: "المُوجَّهة",   pitch: "مراحل واضحة بإرشاد كامل — صفر حاجة بتتساب",        icon: "list" },
+  cockpit:   { name: "قمرة القيادة", pitch: "شاشة حية واحدة — كل حاجة قدامك في نفس اللحظة",    icon: "gauge" },
 };
 
 export type AttStatus = "PRESENT" | "LATE" | "EXCUSED";

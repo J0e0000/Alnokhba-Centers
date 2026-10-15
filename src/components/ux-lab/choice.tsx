@@ -24,7 +24,7 @@ export default function ChoiceCard() {
     setComment(lab.choice.comment);
   }
 
-  const options: OptionId[] = ["quick", "guided", "cockpit"];
+  const options: OptionId[] = ["quickplus", "quick", "guided", "cockpit"];
 
   async function copySummary() {
     const c = lab.choice;
@@ -46,7 +46,7 @@ export default function ChoiceCard() {
         القرار بيتخزن في المتصفح ده بس (localStorage) — <b className="text-foreground">مش بيغير أي حاجة في الإنتاج</b>، وتقدر تمسحه أو تغيّره في أي وقت.
       </p>
 
-      <div className="grid sm:grid-cols-3 gap-2 mt-4" role="radiogroup" aria-label="اختيار البديل">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-4" role="radiogroup" aria-label="اختيار البديل">
         {options.map((id) => (
           <button
             key={id}
