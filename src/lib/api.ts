@@ -21,10 +21,15 @@ export function handler<A extends unknown[]>(
       if (e instanceof ApiError) return fail(e.message, e.status);
       const msg = e instanceof Error ? e.message : String(e);
       console.error("[api-error]", msg);
+      // TEMP-DIAG-REVERT-ME: تفاصيل الخطأ في الاستجابة مؤقتًا لتشخيص 500 الإنتاج — يتشال فور الانتهاء
+      const diag =
+        e instanceof Error
+          ? `${e.name}|${(e as { code?: string }).code ?? "-"}|${msg.slice(0, 240)}`
+          : String(e).slice(0, 240);
       if (/unique constraint/i.test(msg)) {
         return fail("القيمة دي موجودة قبل كده — مش هنعملها تاني.", 409);
       }
-      return fail("حصل خطأ غير متوقع في السيرفر — جرب تاني.", 500);
+      return NextResponse.json({ error: "حصل خطأ غير متوقع في السيرفر — جرب تاني.", diag }, { status: 500 });
     }
   };
 }
