@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { api, applyCenterBranding, prefetchApi, type SessionUser } from "./lib";
+import { api, applyCenterBranding, prefetchApi, userCan, type SessionUser } from "./lib";
 import { AlNokhbaMark, ThemeToggle } from "./shared";
 import { Tour } from "./tour";
 import { HelpButton } from "./help";
@@ -126,10 +126,12 @@ const TABS: TabDef[] = [
   { id: "settings", label: "الإعدادات", icon: <Settings className="w-5 h-5" />, subs: ["settings"] },
 ];
 
-/** الوظائف المسموحة لكل دور — نفس قواعد النظام القديم بالظبط */
+/** الوظائف المسموحة لكل دور — نفس قواعد النظام القديم بالظبط
+ *  الاستقبال: «التقارير» مش في القائمة تاريخيًا — بس كانت متاحة بالرابط المباشر
+ *  للي عنده VIEW_REPORTS (الافتراضي) — دلوقتي الناف بيعكس الصلاحية الفعلية بدل ما يحجبها جامد */
 const ROLE_ALLOWED: Record<"MANAGER" | "RECEPTIONIST" | "TEACHER", ViewId[]> = {
   MANAGER: TABS.flatMap((t) => t.subs),
-  RECEPTIONIST: ["home", "today", "scan", "students", "payments", "books", "messages", "schedule", "teachers"],
+  RECEPTIONIST: ["home", "today", "scan", "students", "payments", "books", "messages", "schedule", "teachers", "reports"],
   TEACHER: ["home", "schedule"],
 };
 
@@ -158,6 +160,13 @@ export const VIEW_TO_MODULE: Partial<Record<ViewId, import("@/lib/modules").Modu
   settings: "settings",
 };
 
+/** خريطة الشاشة ← الصلاحية الدقيقة المطلوبة عشان تتعرض في الناف أصلًا.
+ *  السيرفر بيفحص دايمًا — ده بس عشان الناف ميوعدش بلينك هيترفض منه.
+ *  المدير عنده كل الصلاحيات فمايتأثرش، والاستقبال الافتراضي فيه VIEW_REPORTS أصلاً. */
+const VIEW_TO_PERM: Partial<Record<ViewId, string>> = {
+  reports: "VIEW_REPORTS",
+};
+
 export function CenterShell({
   user,
   onLogout,
@@ -180,11 +189,15 @@ export function CenterShell({
     if (!userModules) return base; // قبل تحميل الأقسام — متفلترش (مفيش وميض)
     return base
       .map((t) => ({ ...t, subs: t.subs.filter((v) => {
+        // الصلاحيات الدقيقة: شاشة محتاجة صلاحية مش متاحة → متتعرضش أصلًا
+        // (السيرفر بيرفض كمان — دي بس عشان الناف مايوعدش بحاجة مرفوضة)
+        const perm = VIEW_TO_PERM[v];
+        if (perm && !userCan(user, perm)) return false;
         const mod = VIEW_TO_MODULE[v];
         return !mod || userModules[mod]?.enabled !== false;
       }) }))
       .filter((t) => t.subs.length > 0);
-  }, [role, userModules]);
+  }, [role, userModules, user]);
   const activeTab = useMemo(() => tabOfView(view, role), [view, role]);
   const center = user.center!;
   const [moreOpen, setMoreOpen] = useState(false);
