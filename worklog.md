@@ -23,3 +23,24 @@ Stage Summary:
 - teacher portal = «حضرتك جاي إمتى + عدد الطلاب فيها كذا + رسالة» بالحرف
 - commit: e8de7ba
 - ملاحظة للاصلاح لاحقًا: scripts/ القديمة (capacity-load.ts إلخ) فيها أخطاء TS خارج البناء — مرتبطة بالميزات المحذوفة
+
+---
+Task ID: teachers-tab-plus-simplify
+Agent: Super Z (main agent)
+Task: «حط tab للمدرسين» + تبسيط السيستم ككل (دمج صفحات، تقليل تعقيد، تحسين واجهات) — مالي + حضور فقط.
+
+Work Log:
+- اكتشفت أن db/custom.db كان فاضي تاني (0 users) → استرجعت db-backup-20261015/custom.db (43.5MB) وطبقت عليها schema الحالي بـ prisma db push → رجعت البيانات كاملة (5 users، 5000 طالب، 37488 حضور، 37000 حركة، 30 مدرس، 60 slot). رست كلمة سر qae-mgr-99 / qae-rec-99 → Qae#2026 (الحقل passwordHash).
+- shell.tsx: إعادة هيكلة التنقل — ViewId: operations اتشال، teachers اتضاف (أيقونة Presentation، ليفل «المدرسين»). TABS الجديدة (7): الرئيسية [home] · اليوم [today, scan, approvals, emergency] · الطلاب [students, messages] · المالية [payments, accounting, books, reports] · المدرسين [teachers] · الحصص [schedule, groups] · الإعدادات [settings]. TabId type اتحدث، ROLE_ALLOWED: الاستقبال اتضاف له teachers، ناف الموبايل بقى 5 تابات + المزيد (grid-cols-6)، بانر الترحيب اتحدث + مفتاح localStorage nk-seen-restructure-v2، VIEW_PREFETCH: teachers/accounting.
+- جديد /api/teachers (requireCenterUser): كارت كل مدرس = الحصة الجاية بحساب توقيت القاهرة (النهاردة/بكرة/اسم اليوم/الاسبوع الجاي + startTime/endTime/قاعة) + عدد طلاب المجموعة + حصص الأسبوع + إجمالي الطلاب + subjects/grades/groups + payable (مدير فقط من TeacherSettlement groupBy) + summary. الترتيب: اللي عنده حصة النهاردة الأول.
+- جديد teachers.tsx (TeachersView): PageHeader + إحصائيات (مدرس نشط/حصص الأسبوع/إجمالي الطلاب/مستحقات معلقة للمدير) + بحث بالاسم/المادة + كروت (الاسم + الحصة الجاية بخلفية brand-soft + عداد الطلاب + chips + واتساب بضغطة بـ buildWaUrl/openWhatsAppHandoff + اتصال tel) + PayRow صرف مستحقات فوري (مدير فقط، مبلغ متعب مسبقًا، POST /api/accounting pay-teacher). تحديث دوري كل 60 ثانية.
+- app.tsx: case "teachers" + حذف OperationsView. command-palette.tsx: navIds اتحدثت (operations → teachers) للمدير والاستقبال. حذف operations.tsx نهائيًا (القاعات أصلًا في الجداول RoomsDialog + تنبيهات التعارض في schedule API؛ الطوارئ بقت في تاب اليوم).
+- اختبار e2e بالمتصفح (agent-browser): login qae-mgr-99 → السايدبار = 7 تابات الجديدة ✓ · تاب المدرسين بي render 30 كارت بالحصة الجاية وعداد الطلاب ✓ · المالية: شيبس الدفع/الحسابات/الكتب/التقارير كلها بتشتغل ✓ · الطوارئ جوه اليوم ✓ · موبايل 390px: 5 تابات + المزيد (الحصص/الإعدادات) ✓ · اختبار صرف حقيقي: عملت EARNED 500ج → الزرار ظهر بالمبلغ المتعب → صرف → PAID −50000 + centerTransaction TEACHER_PAYOUT → نضّفت بيانات الاختبار ✓ · صفر أخطاء console، tsc src = 0، eslint نظيف.
+- ملاحظة: tsc errors في scripts/ و skills/ قديمة وخارج البناء (معروفة من التاسك اللي فات).
+
+Stage Summary:
+- المدرسين ليهم تاب كامل: «حضرتك جاي إمتى + عدد الطلاب فيها كذا + واتساب/اتصال + مستحقاته وصرفها بضغطة» — نفس فلسفة بورتال المدرس بس من ناحية الإدارة.
+- المالية اتوحدت في تاب واحد (كانت متفرقة في 3 تابات: الدفع جوه الطلاب، الحسابات جوه القاعات والتشغيل، التقارير لوحدها).
+- تاب «القاعات والتشغيل» اتمسح خالص (صفحة أقل)، و«الطلاب والمعلمين» بقت «الطلاب» بصراحة (كان الاسم بيوعد بحاجة مش موجودة).
+- التنقل: 7 تابات لكن بتوزيع منطقي — الموبايل بيعرض الخمسة اليومية (رئيسية/يوم/طلاب/مالية/مدرسين) والباقي في «المزيد».
+- البيانات التشغيلية سليمة 100% بعد استرجاع الـ DB.
