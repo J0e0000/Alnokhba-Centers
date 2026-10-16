@@ -1,8 +1,10 @@
 // e2e لجدول v2 — تعارض/تأكيد/قفل تزامن — على الـ dev server
 // تشغيل: bun scripts/qae/schedule_v2_e2e.mjs
 const BASE = process.env.QAE_BASE || "http://127.0.0.1:3000";
-const MGR = { username: "qae-mgr-ob", password: "Qae#2026" };
-const CID = "cmvbb396y0000ovy9n6gmecjy"; // QAE1 (dev)
+// بيانات حسب البيئة: dev = QAE1 (qae-mgr-ob) · إنتاج = سنتر الاختبار qae-c99-stress (qae-mgr-99)
+const isProd = !BASE.includes("127.0.0.1") && !BASE.includes("localhost");
+const MGR = { username: isProd ? "qae-mgr-99" : "qae-mgr-ob", password: "Qae#2026" };
+const CID = isProd ? "cmvaippgj0000py23e2mm9ewz" : "cmvbb396y0000ovy9n6gmecjy";
 
 let cookie = "";
 let pass = 0, fail = 0;
