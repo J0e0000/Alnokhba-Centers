@@ -1,0 +1,31 @@
+{
+  "startedAt": "2026-10-16T15:24:55.920Z",
+  "today": "2026-10-16",
+  "lastSessionDate": "2026-10-17",
+  "days": [],
+  "closedStaleOpen": 0,
+  "openedNextDay": 0,
+  "totals": {
+    "sessions": 0,
+    "cancelled": 0,
+    "attendance": 0,
+    "charges": 0,
+    "chargesSum": 0,
+    "topups": 0,
+    "topupsSum": 0
+  },
+  "nextDay": "2026-10-17",
+  "dbAfter": {
+    "sessions": 250,
+    "attendance": 37458,
+    "txns": 40378,
+    "maxDate": "2026-10-17",
+    "openFutureSessions": 10
+  },
+  "inserted": {
+    "sessions": 0,
+    "attendance": 0,
+    "transactions": 0
+  },
+  "ms": 4436
+}
