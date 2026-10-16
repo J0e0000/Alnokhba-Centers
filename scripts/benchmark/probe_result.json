@@ -2,7 +2,7 @@
   "ok": true,
   "sdk_version": "0.0.18",
   "init_ms": 1,
-  "call_ms": 514,
+  "call_ms": 298,
   "answer": "391",
   "deterministic_check": "PASS (17*23=391)",
   "model_meta": "glm-4-plus",

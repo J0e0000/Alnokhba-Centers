@@ -6,7 +6,7 @@
 //  - Logs model, latency, tokens, raw response
 import { DatabaseSync } from 'node:sqlite';
 import ZAI from 'z-ai-web-dev-sdk';
-import { writeFileSync, appendFileSync } from 'fs';
+import { writeFileSync, appendFileSync, readFileSync } from 'fs';
 
 const DB_PATH = '/home/z/my-project/benchmark/benchmark.db';
 const db = new DatabaseSync(DB_PATH);
@@ -26,6 +26,7 @@ const CONC = parseInt(arg('--concurrency', '2'), 10);
 const GAP = parseInt(arg('--gap', '500'), 10); // ms between request launches
 const LIMIT = parseInt(arg('--limit', '0'), 10); // 0 = no limit
 const ONLY_FILE = arg('--only-file', ''); // file with one task id per line
+const QUEUE_FILE = arg('--queue-file', ''); // priority order: process pending tasks in this order first
 const SPLITS = arg('--splits', ''); // comma list filter
 
 // register run
@@ -42,6 +43,12 @@ if (ONLY_FILE) {
   const ids = new Set(readFileSync(ONLY_FILE, 'utf8').split('\n').map(s => s.trim()).filter(Boolean));
   tasks = tasks.filter(t => ids.has(t.task_id));
 }
+if (QUEUE_FILE) {
+  // order pending tasks by priority queue (stratified subset first), then any remaining
+  const prio = readFileSync(QUEUE_FILE, 'utf8').split('\n').map(s => s.trim()).filter(Boolean);
+  const prioSet = new Map(prio.map((id, i) => [id, i]));
+  tasks.sort((a, b) => (prioSet.has(a.task_id) ? prioSet.get(a.task_id) : 1e9) - (prioSet.has(b.task_id) ? prioSet.get(b.task_id) : 1e9));
+}
 if (LIMIT > 0) tasks = tasks.slice(0, LIMIT);
 
 console.log(`run=${RUN_ID} config=${CONFIG} pending=${tasks.length} (already ok: ${done.size})`);
@@ -56,6 +63,10 @@ const insResult = db.prepare(`INSERT OR REPLACE INTO results
 let okCount = 0, errCount = 0, tokenSum = 0;
 // global pause: any 429 pauses ALL launches for a while (prevents retry storms)
 let pauseUntil = 0;
+// AIMD adaptive gap: find sustainable rate automatically
+let gapMs = parseInt(arg('--gap', '2000'), 10);
+const GAP_MIN = 1200, GAP_MAX = 10000;
+let okStreak = 0;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function callTarget(taskId, prompt) {
@@ -65,15 +76,21 @@ async function callTarget(taskId, prompt) {
     // respect global pause window before every attempt
     while (Date.now() < pauseUntil) await sleep(Math.min(pauseUntil - Date.now(), 5000));
     try {
-      const completion = await zai.chat.completions.create({
-        messages: [
-          { role: 'assistant', content: SYSTEM_PROMPT },
-          { role: 'user', content: prompt },
-        ],
-        thinking: { type: 'disabled' },
-      });
+      // hard per-call timeout — a hanging SDK call must not stall the whole run
+      const completion = await Promise.race([
+        zai.chat.completions.create({
+          messages: [
+            { role: 'assistant', content: SYSTEM_PROMPT },
+            { role: 'user', content: prompt },
+          ],
+          thinking: { type: 'disabled' },
+        }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('CALL_TIMEOUT_90S')), 90000)),
+      ]);
       const content = completion.choices?.[0]?.message?.content;
       if (!content || !String(content).trim()) throw new Error('EMPTY_RESPONSE');
+      // additive increase on success (every 10 OKs, shrink gap 8%)
+      if (++okStreak % 10 === 0) gapMs = Math.max(GAP_MIN, Math.round(gapMs * 0.92));
       return {
         status: 'ok',
         raw_response: String(content),
@@ -87,7 +104,9 @@ async function callTarget(taskId, prompt) {
       const redacted = msg.replace(/sk-\S+/g, 'sk-REDACTED').replace(/Bearer\s+\S+/gi, 'Bearer REDACTED').slice(0, 200);
       const is429 = /429|too many/i.test(msg);
       if (is429) {
-        // global cooldown: everyone pauses 45s; this attempt waits its backoff too
+        // multiplicative decrease + global cooldown (45s)
+        gapMs = Math.min(GAP_MAX, Math.round(gapMs * 1.6));
+        okStreak = 0;
         pauseUntil = Math.max(pauseUntil, Date.now() + 45000);
       }
       if (attempt === backoffs.length) return { status: 'error', raw_response: null, latency_ms: Date.now() - t0, prompt_tokens: null, completion_tokens: null, error_redacted: redacted };
@@ -97,26 +116,25 @@ async function callTarget(taskId, prompt) {
 }
 
 async function runBatch(batch, batchNo) {
-  // paced launch: concurrency N with GAP between launches (429-friendly)
-  const results = [];
+  // paced launch: concurrency N with gapMs between launches (429-friendly)
+  // per-task persistence: each result is written to SQLite immediately on completion
   let idx = 0;
   const workers = Array.from({ length: Math.min(CONC, batch.length) }, async () => {
     while (idx < batch.length) {
       const my = idx++;
-      if (my > 0 && GAP > 0) await new Promise(r => setTimeout(r, GAP));
-      const r = await callTarget(batch[my].task_id, batch[my].task_prompt);
-      results[my] = { t: batch[my], r };
+      if (my > 0 && gapMs > 0) await sleep(gapMs);
+      const t = batch[my];
+      const r = await callTarget(t.task_id, t.task_prompt);
+      insResult.run(RUN_ID, t.task_id, r.status, r.raw_response, r.latency_ms, r.prompt_tokens, r.completion_tokens, r.error_redacted, new Date().toISOString());
+      if (r.status === 'ok') { okCount++; tokenSum += (r.prompt_tokens ?? 0) + (r.completion_tokens ?? 0); }
+      else errCount++;
+      console.log(`  ${t.task_id}: ${r.status} ${r.latency_ms}ms${r.status === 'error' ? ' ERR=' + (r.error_redacted ?? '').slice(0, 80) : ''}`);
+      appendFileSync(LOG, `${t.task_id}: ${r.status}\n`);
     }
   });
   await Promise.all(workers);
-  for (const { t, r } of results) {
-    insResult.run(RUN_ID, t.task_id, r.status, r.raw_response, r.latency_ms, r.prompt_tokens, r.completion_tokens, r.error_redacted, new Date().toISOString());
-    if (r.status === 'ok') { okCount++; tokenSum += (r.prompt_tokens ?? 0) + (r.completion_tokens ?? 0); }
-    else errCount++;
-  }
-  const lat = results.map(x => x.r.latency_ms);
-  console.log(`batch ${batchNo}: +${batch.length} (ok=${okCount} err=${errCount}) lat_avg=${Math.round(lat.reduce((a, b) => a + b, 0) / lat.length)}ms tokens_total=${tokenSum}`);
-  appendFileSync(LOG, `batch ${batchNo}: ${batch.map(b => b.task_id).join(',')} | ok=${results.filter(x => x.r.status === 'ok').length}/25\n`);
+  console.log(`batch ${batchNo}: done (session ok=${okCount} err=${errCount})`);
+  appendFileSync(LOG, `batch ${batchNo}: done\n`);
 }
 
 const totalBatches = Math.ceil(tasks.length / BATCH);
