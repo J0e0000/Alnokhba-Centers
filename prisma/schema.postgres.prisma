@@ -327,6 +327,10 @@ model ScheduleSlot {
   room      String?
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+  // قفل التزامن (optimistic locking) — PATCH بيتفشل بـ 409 لو حد تاني عدّل السلوت من بعد ما المستخدم فتحه
+  updatedAt DateTime @updatedAt
+  // آخر تعارض اتعدي رغم التحذير — سجل التدقيق بيسجل التفاصيل (actor/timestamp/reason)
+  lastOverrideAt DateTime?
   center    Center   @relation(fields: [centerId], references: [id])
   group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
