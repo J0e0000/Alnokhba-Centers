@@ -24,7 +24,8 @@ export function handler<A extends unknown[]>(
       if (/unique constraint/i.test(msg)) {
         return fail("القيمة دي موجودة قبل كده — مش هنعملها تاني.", 409);
       }
-      return fail("حصل خطأ غير متوقع في السيرفر — جرب تاني.", 500);
+      // TEMP-DIAG: expose signature (revert after diagnosis)
+      return fail("حصل خطأ غير متوقع في السيرفر — جرب تاني. [" + msg.slice(0, 180) + "]", 500);
     }
   };
 }
