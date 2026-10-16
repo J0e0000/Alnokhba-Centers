@@ -324,3 +324,21 @@ Stage Summary:
 - الأوفلاين اتصلح من جذرين: الربط الناقص (HTML package dead code) + syntax error كان بيخلي الحزمة معلقة للأبد — الحزمة بتتنزّل HTML شغال + بديل إكسل موجود
 - الصلاحيات: 9 إصلاحات مطبقة ومتحقق منها — الرفض سيرفر-سايد مش إخفاء زرار
 - إنتاج Supabase اتحدّث بأمان (عمودين) — جاهز للنشر
+
+---
+Task ID: phase2-timetable-offline (إغلاق)
+Agent: Super Z (main agent)
+Task: نشر الإنتاج + إصلاح 500 الجدول على فيرسل.
+
+Work Log:
+- أول نشر (54fef65): /api/schedule رجّع 500 على الإنتاج بينما dev سليم — TEMP-DIAG كشف التوقيع: «Cannot read properties of undefined (reading 'toISOString')»
+- الجذر: المشروع بيولّد prisma/schema.postgres.prisma من schema.prisma عبر scripts/build_postgres_schema.py — وأنا عدّلت sqlite بس → الـ client على فيرسل من غير الحقول الجديدة → s.updatedAt undefined
+- الحل: إعادة توليد postgres variant (المولّد الرسمي) + النشر — vercel-build.sh نفسه بيعمل db push additive على الإنتاج عبر session pooler (5432) فالأمان مطمون
+- ملاحظة: تعديل package.json build (prisma generate) ارتُد — vercel-build.sh هو buildCommand الفعلي مش npm run build
+- TEMP-DIAG ارتُد بعد التشخيص (نفس بروتوكول الجلسة اللي فاتت)
+- تحقق إنتاج نهائي: schedule 200 (60 سلوت + updatedAt) · stale PATCH → 409 ✓ · e2e الكامل 15/15 على الإنتاج (سنتر الاختبار qae-c99-stress بس) · متصفح: الجدول بالدارك مود — أخضر (مفيش تعارض) وأصفر (تعارض مدرس/قاعة) + lanes + 7 بلوكات ✓ · حزمة الأوفلاين HTML 4.2MB بتنزّل من صفحة الطوارئ ✓
+- schedule_v2_e2e.mjs بقى بيكتشف البيئة تلقائيًا (dev: qae-mgr-ob/QAE1 · prod: qae-mgr-99/qae-c99-stress)
+
+Stage Summary:
+- كل شيء عايش على الإنتاج: الجدول التفاعلي v2 + الحزمة الأوفلاين الموقعة + إصلاحات الصلاحيات الـ9
+- مراكز المالك الحقيقية لم تُمس — كل الكتابة على سنتر الاختبار
