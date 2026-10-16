@@ -1,18 +1,322 @@
-run=baseline-v1 config=sysprompt-v1 pending=971 (already ok: 29)
-batch 1: +25 (ok=25 err=0) lat_avg=1325ms tokens_total=3524
+run=baseline-v1 config=sysprompt-v1 pending=921 (already ok: 79)
+  T0096: ok 768ms
+  T0081: ok 687ms
+  T0082: ok 818ms
+  T0086: ok 714ms
+  T0097: ok 1252ms
+  T0098: ok 1102ms
+  T0088: ok 1530ms
+  T0094: ok 1453ms
+  T0083: ok 1480ms
+  T0092: ok 5336ms
+  T0091: ok 927ms
+  T0089: ok 4930ms
+  T0111: ok 8697ms
+  T0106: ok 6681ms
+  T0103: ok 920ms
+  T0109: ok 901ms
+  T0131: ok 4960ms
+  T0127: ok 3741ms
+  T0104: ok 639ms
+  T0133: ok 1387ms
+  T0102: ok 1123ms
+  T0101: ok 819ms
+  T0107: ok 1148ms
+  T0117: ok 1808ms
+  T0152: ok 1457ms
+batch 1: done (session ok=25 err=0)
+  T0151: ok 291ms
+  T0162: ok 662ms
+  T0156: ok 520ms
+  T0157: ok 713ms
+  T0167: ok 766ms
+  T0182: ok 1024ms
+  T0159: ok 582ms
+  T0166: ok 280ms
+  T0183: ok 1196ms
+  T0161: ok 324ms
+  T0181: ok 303ms
+  T0202: ok 976ms
+  T0207: ok 934ms
+  T0201: ok 775ms
+  T0212: ok 777ms
+  T0206: ok 720ms
+  T0221: ok 703ms
+  T0222: ok 942ms
+  T0217: ok 1149ms
+  T0211: ok 379ms
+  T0214: ok 1729ms
+  T0204: ok 964ms
+  T0232: ok 1412ms
+  T0262: ok 637ms
+  T0251: ok 538ms
+batch 2: done (session ok=50 err=0)
+  T0256: ok 678ms
+  T0252: ok 502ms
+  T0261: ok 390ms
+  T0253: ok 938ms
+  T0259: ok 728ms
+  T0281: ok 564ms
+  T0257: ok 834ms
+  T0272: ok 475ms
+  T0286: ok 476ms
+  T0263: ok 1018ms
+  T0307: ok 1027ms
+  T0301: ok 402ms
+  T0312: ok 911ms
+  T0311: ok 898ms
+  T0306: ok 560ms
+  T0326: ok 1563ms
+  T0323: ok 1137ms
+  T0332: ok 1700ms
+  T0302: ok 475ms
+  T0341: ok 365ms
+  T0315: ok 1493ms
+  T0333: ok 1352ms
+  T0362: ok 1908ms
+  T0351: ok 1710ms
+  T0356: ok 1299ms
+batch 3: done (session ok=75 err=0)
+  T0383: ok 1818ms
+  T0377: ok 1115ms
+  T0376: ok 1490ms
+  T0364: ok 12576ms
+  T0359: ok 1594ms
+  T0352: ok 1694ms
+  T0367: ok 1848ms
+  T0361: ok 2995ms
+  T0357: ok 1509ms
+  T0411: ok 1308ms
+  T0402: ok 8644ms
+  T0412: ok 1985ms
+  T0407: ok 1803ms
+  T0401: ok 1804ms
+  T0409: ok 3063ms
 Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
     at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
     at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:68:26)
-    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:107:17
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
     at async Promise.all (index 0)
-    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:111:3)
-    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:124:3
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+  T0415: ok 46883ms
+  T0432: ok 1809ms
+  T0406: ok 2543ms
+  T0422: ok 2628ms
+  T0446: ok 12911ms
+  T0436: ok 1272ms
+  T0456: ok 5882ms
+  T0452: ok 5737ms
+  T0462: ok 1362ms
+  T0457: ok 6293ms
+batch 4: done (session ok=100 err=0)
+  T0461: ok 2733ms
+  T0465: ok 27394ms
+  T0476: ok 1513ms
+  T0483: ok 2037ms
+  T0451: ok 12168ms
+  T0496: ok 1046ms
+  T0463: ok 1596ms
+  T0480: ok 1423ms
+  T0507: ok 932ms
+  T0506: ok 759ms
+  T0512: ok 889ms
+  T0511: ok 659ms
+  T0517: ok 1152ms
+  T0509: ok 2160ms
+  T0546: ok 2141ms
+  T0531: ok 599ms
+  T0533: ok 1379ms
+  T0505: ok 3178ms
+  T0502: ok 870ms
+  T0501: ok 5029ms
 Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
     at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
     at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:68:26)
-    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:107:17
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
     at async Promise.all (index 0)
-    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:111:3)
-    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:124:3
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
+    at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
+    at async Promise.all (index 0)
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
+    at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
+    at async Promise.all (index 0)
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
+    at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
+    at async Promise.all (index 0)
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
+    at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
+    at async Promise.all (index 0)
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+  T0562: ok 241680ms
+  T0556: ok 561ms
+  T0552: ok 1474ms
+  T0561: ok 1096ms
+  T0573: ok 2328ms
+batch 5: done (session ok=125 err=0)
+  T0553: ok 2723ms
+  T0564: ok 1707ms
+  T0567: ok 8873ms
+  T0551: ok 2444ms
+  T0554: ok 2006ms
+  T0557: ok 1054ms
+  T0565: ok 1344ms
+  T0612: ok 1113ms
+  T0601: ok 5088ms
+  T0611: ok 271ms
+  T0602: ok 887ms
+  T0603: ok 1111ms
+  T0627: ok 1340ms
+Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
+    at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
+    at async Promise.all (index 0)
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
+    at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
+    at async Promise.all (index 0)
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
+    at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
+    at async Promise.all (index 0)
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
+    at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
+    at async Promise.all (index 0)
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
+    at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
+    at async Promise.all (index 0)
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
+    at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
+    at async Promise.all (index 0)
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+  T0631: error 240192ms ERR=API request failed with status 429: {"error":"Too many requests, please try agai
+Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
+    at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
+    at async Promise.all (index 0)
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
+    at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
+    at async Promise.all (index 0)
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
+    at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
+    at async Promise.all (index 0)
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
+    at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
+    at async Promise.all (index 0)
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
+    at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
+    at async Promise.all (index 0)
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
+    at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
+    at async Promise.all (index 0)
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+  T0626: error 275167ms ERR=API request failed with status 429: {"error":"Too many requests, please try agai
+Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
+    at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
+    at async Promise.all (index 0)
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
+    at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
+    at async Promise.all (index 0)
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
+    at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
+    at async Promise.all (index 0)
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3
+Failed to make API request: Error: API request failed with status 429: {"error":"Too many requests, please try again later"}
+    at ZAI.createChatCompletion (file:///home/z/my-project/node_modules/z-ai-web-dev-sdk/dist/index.js:103:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async callTarget (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:80:26)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:127:17
+    at async Promise.all (index 0)
+    at async runBatch (file:///home/z/my-project/scripts/benchmark/run_bank.mjs:135:3)
+    at async file:///home/z/my-project/scripts/benchmark/run_bank.mjs:142:3

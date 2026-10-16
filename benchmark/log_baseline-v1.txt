@@ -11,3 +11,159 @@ batch 1: T0001,T0002,T0004,T0007,T0008,T0009,T0010,T0011,T0012,T0013,T0014,T0015
 
 ==== run baseline-v1 started 2026-10-16T07:14:40.409Z pending=971 ====
 batch 1: T0030,T0031,T0032,T0033,T0034,T0035,T0036,T0037,T0038,T0039,T0040,T0041,T0042,T0043,T0044,T0045,T0046,T0047,T0048,T0049,T0050,T0051,T0052,T0053,T0054 | ok=25/25
+batch 2: T0055,T0056,T0057,T0058,T0059,T0060,T0061,T0062,T0063,T0064,T0065,T0066,T0067,T0068,T0069,T0070,T0071,T0072,T0073,T0074,T0075,T0076,T0077,T0078,T0079 | ok=25/25
+
+==== run baseline-v1 started 2026-10-16T07:26:04.673Z pending=921 ====
+
+==== run baseline-v1 started 2026-10-16T07:44:54.563Z pending=921 ====
+
+==== run baseline-v1 started 2026-10-16T07:52:07.566Z pending=921 ====
+
+==== run baseline-v1 started 2026-10-16T07:56:58.118Z pending=921 ====
+
+==== run baseline-v1 started 2026-10-16T08:03:33.671Z pending=921 ====
+T0096: ok
+T0081: ok
+T0082: ok
+T0086: ok
+T0097: ok
+T0098: ok
+T0088: ok
+T0094: ok
+T0083: ok
+T0092: ok
+T0091: ok
+T0089: ok
+T0111: ok
+T0106: ok
+T0103: ok
+T0109: ok
+T0131: ok
+T0127: ok
+T0104: ok
+T0133: ok
+T0102: ok
+T0101: ok
+T0107: ok
+T0117: ok
+T0152: ok
+batch 1: done
+T0151: ok
+T0162: ok
+T0156: ok
+T0157: ok
+T0167: ok
+T0182: ok
+T0159: ok
+T0166: ok
+T0183: ok
+T0161: ok
+T0181: ok
+T0202: ok
+T0207: ok
+T0201: ok
+T0212: ok
+T0206: ok
+T0221: ok
+T0222: ok
+T0217: ok
+T0211: ok
+T0214: ok
+T0204: ok
+T0232: ok
+T0262: ok
+T0251: ok
+batch 2: done
+T0256: ok
+T0252: ok
+T0261: ok
+T0253: ok
+T0259: ok
+T0281: ok
+T0257: ok
+T0272: ok
+T0286: ok
+T0263: ok
+T0307: ok
+T0301: ok
+T0312: ok
+T0311: ok
+T0306: ok
+T0326: ok
+T0323: ok
+T0332: ok
+T0302: ok
+T0341: ok
+T0315: ok
+T0333: ok
+T0362: ok
+T0351: ok
+T0356: ok
+batch 3: done
+T0383: ok
+T0377: ok
+T0376: ok
+T0364: ok
+T0359: ok
+T0352: ok
+T0367: ok
+T0361: ok
+T0357: ok
+T0411: ok
+T0402: ok
+T0412: ok
+T0407: ok
+T0401: ok
+T0409: ok
+T0415: ok
+T0432: ok
+T0406: ok
+T0422: ok
+T0446: ok
+T0436: ok
+T0456: ok
+T0452: ok
+T0462: ok
+T0457: ok
+batch 4: done
+T0461: ok
+T0465: ok
+T0476: ok
+T0483: ok
+T0451: ok
+T0496: ok
+T0463: ok
+T0480: ok
+T0507: ok
+T0506: ok
+T0512: ok
+T0511: ok
+T0517: ok
+T0509: ok
+T0546: ok
+T0531: ok
+T0533: ok
+T0505: ok
+T0502: ok
+T0501: ok
+T0562: ok
+T0556: ok
+T0552: ok
+T0561: ok
+T0573: ok
+batch 5: done
+T0553: ok
+T0564: ok
+T0567: ok
+T0551: ok
+T0554: ok
+T0557: ok
+T0565: ok
+T0612: ok
+T0601: ok
+T0611: ok
+T0602: ok
+T0603: ok
+T0627: ok
+T0631: error
+T0626: error

@@ -123,3 +123,56 @@ Stage Summary:
 - الإنتاج شغال 100%: كل الحسابات (الحقيقية والتجريبية) بتدخل، والبيانات كاملة (5000 طالب/30 مدرس/40 ألف حركة)
 - الجاني النهائي: deployment قديم كان شغال بقيمة DATABASE_URL غلط، وقيمة المالك الصحيحة ما اتفعّلتش غير لما deployment جديد اتبني بيها
 - الدرس: أي تعديل env في Vercel لازم deployment جديد Ready عشان يتفعّل — والتأكد إنها محفوظة على بيئة Production تحديدًا
+
+---
+Task ID: zai-benchmark-1000
+Agent: Super Z (main agent)
+Task: تنفيذ Z.AI MASTER PROMPT — بنك الـ 1000 مهمة (baseline → scoring → diagnosis → improvement → retest → report).
+
+Work Log:
+- Phase 0 DISCOVER: الهدف المؤكد = glm-4-plus عبر z-ai-web-dev-sdk v0.0.18 (نفس محرك زكي في المنتج) — probe 391 صح، 310ms، الـ usage ظاهر. القرار: الهدف خارجي منفصل وأنا المنسق/الحكم — مفيش أي تزييف استجابات.
+- Phase 1 HARNESS: scripts/benchmark/ — init_db.mjs (SQLite node:sqlite: runs/results/scores/tasks) + run_bank.mjs (دفعات 25، resumable بدون تكرار، retries مع backoff، AIMD adaptive gap، global 429 pause، per-call 90s timeout، per-task persistence فوري، أرسل Task Prompt فقط للهدف — ممنوع تسريب معايير التقييم).
+- عقبات الـ API: rate limiting قوي (leaky bucket ~50 دفعة + إعادة تعبئة بطيئة) — جرب conc=3 → عاصفة 429؛ استقرت على conc=1 + gap 32s + AIMD. كمان: عملية قديمة علّقت السطر الأول بدون timeout → أضفت Promise.race 90s + per-task persistence.
+- قرار تغطية صادق: الحصة لا تسمح بـ 1000 في الجلسة → stratified core queue (12/domain × 20 = 228، dev 152/val 38/holdout 38، seeded PRNG) تُنفذ أولاً — أي توقف يترك تغطية ممثلة قابلة للتعميم، والباقي resumable. التقرير هيذكر الأعداد المنجزة/المتخطاة بدقة (ممنوع ادعاء اكتمال جزئي).
+- Phase 3 SCORING (بدأ): score_auto.mjs — طبقة deterministic (قوائم بالضبط، حدود كلمات بما فيها exact words، حفظ التوكنات بـ prefix-match لأيام الأسبوع، JSON/SQL/كود، حساب رياضي مستقل، safety refusal). تدقيق ثلاثي أصلح 4 أنواع false negatives (Thu abbreviation، أفعال التعليمات، أرقام meta-constraints، عقوبة "do not email" على إعادة الصياغة) + primary-list-block للعدّ. النظام: rubric scores لاصقة، deterministic يت📸 من الصفر كل تشغيل.
+- أول نتائج حقيقية: فشل منهجي مؤكد في عائلة "exactly 50 words" (30/32/53/39/47 كلمة + وسم ذاتي مزيف "(50 words)" + حالة شكل مخرج غلط تمامًا score=0) — فئة قابلة للتكرار للتحسين.
+- تقدم الـ baseline: 79 استجابة (T0001-T0079: instruction-following كامل + جزء factuality) + الـ stratified queue شغال بالخلفية.
+
+Stage Summary:
+- البنية التحتية كاملة وقابلة للاستئناف: benchmark.db + scripts/benchmark/* (probe/init/run/score/select/sync)
+- الحكم المستقل: أنا (المنسق) بأسلوب deterministic للقابل فحصها + rubric يدوي لعينة ممثلة — الثقة موثقة لكل مهمة
+- التالي: rubric sampling على المتاح → diagnosis → sysprompt-v2 → retest (dev متأثر + validation) → التقرير النهائي بالأعداد الدقيقة
+
+---
+Task ID: zai-benchmark-phase4-5
+Agent: Super Z (main agent)
+Task: متابعة البنشمارك — scoring والدخول في مرحلة التحسين.
+
+Work Log:
+- baseline وصل 217 ok / 2 error من أصل 228 stratified core (96%) + التسلسلي T0001-79 — الحصة تعطل الإكمال الكامل وده موثق بأرقام دقيقة
+- rubric judging (أنا كحكم مستقل): 32 مهمة — 4 دفعات
+- فئات الفشل المؤكدة بأدلة: (1) FABRICATED_TOOL_CLAIM/FABRICATED_EVIDENCE — T0062=25 (ادعى توثيق أسعار من صفحة رسمية بدون أدوات!) وT0058=45 (ادعى فحص spec لم يُسلّم) — الفئة الحرجة من البرومبت (2) Exact word count — 5 مهام (30/32/53/39/47 كلمة مقابل 50 مطلوبة + وسم ذاتي مزيف "(50 words)") وT0009=0 (شكل مخرج غلط كليًا) (3) Silent omission — T0026=60 (أجاب "No." من غير الشرح المطلوب) (4) حسبة خاطئة — T0151=0 (15.6 بدل 16.6 بدون إظهار عمل)
+- نقاط القوة: المنطق 96 متوسط (3 مهام)، الصياغات والجداول والترجمة العربية 95+، الشفافية في عدم القدرة (T0052/T0055/T0063) 90+
+- تدقيق الحكم استمر: أصلحت artifact إضافي (أسماء اللغات كمتوكنات محفوظة) — T0302 اتحكم يدويًا 97
+- sysprompt-v2 مكتوب وموثق (benchmark/sysprompt-v2.md): 5 قواعد ضد الفئات الثلاث + الأمانة في التحقق
+- retest-v2 انطلق: affected 8 (T0006-9, T0062, T0078-9, T0151) + guard 8 + validation 35 = 51 مهمة تحت sysprompt-v2
+- الحصة في cooldown عميق بعد 219 استدعاء متصل — الـ retest بيمشي ببطء مع pauses
+
+Stage Summary:
+- baseline: 53 مسكورة (22 deterministic + 31 rubric... مجموع مسجل فعلي أكبر مع التداخلات) — mean 84.4، PASS 41 / REVIEW 2 / FAIL 10
+- المجموعات المسكورة: Math 50 (الأضعف)، Factuality 81.9، Instruction 83.6، Coding/SQL 100
+
+---
+Task ID: zai-benchmark-final
+Agent: Super Z (main agent)
+Task: إنهاء جلسة البنشمارك بالتسليمات النهائية.
+
+Work Log:
+- retest-v2: الحصة دخلت cooldown عميقًا (>40 دقيقة) حتى مع صمت تام — 0/51 اكتملت (3 أخطاء 429 قابلة لإعادة المحاولة) — وثّقت كحاجز دقيق وفق البروتوكول (ممنوع التزييف)
+- إعادة توليد التقرير النهائي بالأرقام الحية + add_toc_placeholders (24 عنوانًا) + postcheck: 0 أخطاء
+- تسليمات download/: التقرير docx + AI_Improvement_1000_Task_Bank_SCORED.csv (217 استجابة + 55 درجة) + benchmark_results.db + sysprompt-v2.md + queue_priority.txt
+- النهائي: baseline 217 منفذة (نواة طبقية 219/228 = 96%)، مسجلة 55 (21 حتمي + 34 rubric)، mean 84.4، PASS 41 / REVIEW 2 / FAIL 12
+- أمر الاستئناف الموثق: run_bank.mjs --run-id retest-v2 --only-file benchmark/retest_all.txt --system "$(cat benchmark/v2_prompt.txt)" --gap 45000
+
+Stage Summary:
+- كل أدوات المراحل الست جاهزة ومثبتة؛ الجلسة القادمة تكمل الـ 783 المتبقية وA/B التحقق وHoldout ثم تعيد توليد التقرير بنفس السكربتات
