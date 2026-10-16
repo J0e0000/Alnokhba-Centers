@@ -45,12 +45,7 @@ async function wipeQae() {
   await db.notificationAttempt.deleteMany({ where: { centerId: { in: ids } } });
   await db.messageQueueItem.deleteMany({ where: { centerId: { in: ids } } });
   await db.announcement.deleteMany({ where: { centerId: { in: ids } } });
-  await db.examAttempt.deleteMany({ where: { centerId: { in: ids } } });
-  await db.examQuestion.deleteMany({ where: { exam: { centerId: { in: ids } } } });
-  await db.exam.deleteMany({ where: { centerId: { in: ids } } });
-  await db.quizAttempt.deleteMany({ where: { quiz: { centerId: { in: ids } } } });
-  await db.quizQuestion.deleteMany({ where: { quiz: { centerId: { in: ids } } } });
-  await db.quiz.deleteMany({ where: { centerId: { in: ids } } });
+  // (quiz/exam models removed from schema — financial-only descope)
   await db.bookSale.deleteMany({ where: { centerId: { in: ids } } });
   await db.book.deleteMany({ where: { centerId: { in: ids } } });
   await db.studentPortalSession.deleteMany({ where: { student: { centerId: { in: ids } } } });
@@ -86,8 +81,7 @@ async function wipeQae() {
   await db.undoEntry.deleteMany({ where: { userId: { in: userIds } } });
   await db.auditLog.deleteMany({ where: { userId: { in: userIds } } });
   await db.staffNotification.deleteMany({ where: { userId: { in: userIds } } });
-  await db.acaStudentProfile.deleteMany({ where: { userId: { in: userIds } } });
-  await db.acaNotification.deleteMany({ where: { userId: { in: userIds } } });
+  // (aca* models removed from schema — financial-only descope)
   await db.teamMember.deleteMany({ where: { userId: { in: userIds } } });
   await db.user.deleteMany({ where: { id: { in: userIds } } });
   await db.center.deleteMany({ where: { id: { in: ids } } });
@@ -163,7 +157,7 @@ async function seedCenter(spec: CenterSpec, ctx: Ctx, manifest: Manifest) {
       u = await db.user.create({
       data: {
         username, passwordHash: hashPasswordSync(PWD), name: `QAE1 ${username}`,
-        role, centerId: center.id, isActive: true, scope: "centers",
+        role, centerId: center.id, isActive: true,
         permissions: perms ? JSON.stringify({ grants: perms }) : undefined,
       },
     });
@@ -185,22 +179,23 @@ async function seedCenter(spec: CenterSpec, ctx: Ctx, manifest: Manifest) {
   });
   await mkUser(`qae-tch-${spec.n}`, "TEACHER");
 
-  // students
+  // students — batched with explicit IDs (fast over remote pooler)
   const codeStart = 10000 + Number(spec.n) * 500; // 5-digit codes (portal requires exactly 5)
   const students: { id: string; code: string; name: string; active: boolean; groupIds: string[]; priceOv: (number | null)[] }[] = [];
+  const studentRows: any[] = [];
+  const regRows: any[] = [];
   for (let i = 0; i < spec.students; i++) {
     const name = studentName(rng);
     const grade = pick(rng, grades);
     const status = chance(rng, 0.03) ? "ARCHIVED" : chance(rng, 0.04) ? "PAUSED" : "ACTIVE";
     const code = String(codeStart + i);
-    const s = await db.student.create({
-      data: {
-        centerId: center.id, code, qrToken: qrToken(), name,
-        phone: synthPhone(rng), parentName: `ولي أمر ${name.split(" ")[0]}`,
-        parentPhone: synthPhone(rng), gradeId: grade.id, school: pick(rng, ["مدرسة النيل الإعدادية","مدرسة الحرية الثانوية","مدرسة المستقبل","مدرسة الأمل"]),
-        status, notes: chance(rng, 0.1) ? "بيانات اصطناعية QAE1" : null,
-        createdAt: new Date(Date.now() - ri(rng, 40, 120) * 86_400_000),
-      },
+    const id = `qae${spec.n}s${String(i).padStart(5, "0")}`;
+    studentRows.push({
+      id, centerId: center.id, code, qrToken: qrToken(), name,
+      phone: synthPhone(rng), parentName: `ولي أمر ${name.split(" ")[0]}`,
+      parentPhone: synthPhone(rng), gradeId: grade.id, school: pick(rng, ["مدرسة النيل الإعدادية","مدرسة الحرية الثانوية","مدرسة المستقبل","مدرسة الأمل"]),
+      status, notes: chance(rng, 0.1) ? "بيانات اصطناعية QAE1" : null,
+      createdAt: new Date(Date.now() - ri(rng, 40, 120) * 86_400_000),
     });
     // registrations: 75% one group, 25% two (ACTIVE students only)
     const regs: { g: (typeof groups)[number]; ov: number | null }[] = [];
@@ -210,9 +205,16 @@ async function seedCenter(spec: CenterSpec, ctx: Ctx, manifest: Manifest) {
       for (const g of shuffled) regs.push({ g, ov: chance(rng, 0.05) ? g.price - 1000 : null });
     }
     for (const r of regs) {
-      await db.studentGroup.create({ data: { studentId: s.id, groupId: r.g.id, priceOverride: r.ov, registeredBy: users[`qae-mgr-${spec.n}`] } });
+      regRows.push({ id: `qae${spec.n}sg${String(i).padStart(5, "0")}${r.g.id.slice(-6)}`, studentId: id, groupId: r.g.id, priceOverride: r.ov, registeredBy: users[`qae-mgr-${spec.n}`] });
     }
-    students.push({ id: s.id, code, name, active: status === "ACTIVE", groupIds: regs.map((r) => r.g.id), priceOv: regs.map((r) => r.ov) });
+    students.push({ id, code, name, active: status === "ACTIVE", groupIds: regs.map((r) => r.g.id), priceOv: regs.map((r) => r.ov) });
+  }
+  for (let i = 0; i < studentRows.length; i += 500) {
+    await db.student.createMany({ data: studentRows.slice(i, i + 500) as any });
+    process.stdout.write(`  students ${Math.min(i + 500, studentRows.length)}/${studentRows.length}\n`);
+  }
+  for (let i = 0; i < regRows.length; i += 500) {
+    await db.studentGroup.createMany({ data: regRows.slice(i, i + 500) as any });
   }
 
   manifest.centers.push({
@@ -267,11 +269,7 @@ async function main() {
     process.exit(0);
   }
 
-  // platform admin
-  const admin = await db.user.create({
-    data: { username: "qae-admin", passwordHash: hashPasswordSync(PWD), name: "QAE1 Admin", role: "ADMIN", centerId: null, isActive: true, scope: "centers" },
-  });
-  manifest.adminId = admin.id;
+  // (لا platform-admin في الإنتاج — حساب أدمن منصة بباسورد معروف = ثغرة على السنترات الحقيقية)
 
   // plan + subscription for c03 (quota path) — maxStudents 200, spec 100 students
   const c03 = manifest.centers.find((c) => c.slug === "qae-c03");
