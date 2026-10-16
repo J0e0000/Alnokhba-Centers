@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Sparkles, X, Send, Mic, MicOff, Maximize2, Minimize2, History, CircleHelp,
+  Sparkles, X, Send, Mic, MicOff, Maximize2, Minimize2, History,
   BrainCircuit, Loader2, WifiOff, GraduationCap, ListChecks, Lightbulb,
   Volume2, VolumeX, ThumbsUp, ThumbsDown, EyeOff,
 } from "lucide-react";
@@ -161,8 +161,10 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
   const [open, setOpen] = useState(false);
   const [hidden, setHidden] = useState(false); // زكي متخفي — تاب صغير في الركن بس (تجربة «ميبقاش عائق»)
   const [fullscreen, setFullscreen] = useState(false);
-  const [mode, setMode] = useState<"chat" | "tasks" | "help" | "tutorial">("chat");
+  const [mode, setMode] = useState<"chat" | "tasks" | "tutorial">("chat");
   const [insightsOpen, setInsightsOpen] = useState(false);
+  const [presetQuestions, setPresetQuestions] = useState<{ key: string; label: string }[]>([]); // الأسئلة الجاهزة — جوه الشات علطول
+  const [presetBusy, setPresetBusy] = useState<string | null>(null);
   const [items, setItems] = useState<ChatItem[]>([]);
   const [state, setState] = useState<string>("IDLE");
   const [running, setRunning] = useState(false);
@@ -421,6 +423,35 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
   const retry = useCallback(() => {
     if (lastUserText.current) send(lastUserText.current);
   }, [send]);
+
+  /* ---------- الأسئلة الجاهزة جوه الشات (بدل لوحة الاستفهام المنفصلة) ----------
+     بتتحمّل مرة واحدة لما زكي يفتح — بضغطة تجاوب حتمي فوري من غير ما يروح للموديل. */
+  useEffect(() => {
+    if (!open || presetQuestions.length) return;
+    api<{ questions: { key: string; label: string }[] }>("/api/zaki?questions=1", { silent: true })
+      .then((d) => setPresetQuestions(d.questions ?? []))
+      .catch(() => {});
+  }, [open, presetQuestions.length]);
+
+  const askPreset = useCallback(async (key: string, label: string) => {
+    if (presetBusy || running) return;
+    setPresetBusy(key);
+    push({ id: crypto.randomUUID(), kind: "user", text: label });
+    try {
+      const a = await api<{ title: string; body: string; items?: { label: string; sub?: string }[] }>(
+        "/api/zaki",
+        { method: "POST", body: { q: key } },
+      );
+      const itemsText = (a.items ?? []).slice(0, 5).map((i) => `• ${i.label}${i.sub ? ` — ${i.sub}` : ""}`).join("\n");
+      const text = [a.title, a.body, itemsText].filter(Boolean).join("\n");
+      push({ id: crypto.randomUUID(), kind: "agent", text });
+      speak(text);
+    } catch {
+      push({ id: crypto.randomUUID(), kind: "error", text: "مش قادر أوصل للسيرفر دلوقتي — جرب تاني." });
+    } finally {
+      setPresetBusy(null);
+    }
+  }, [presetBusy, running, push, speak]);
 
   const decide = useCallback(async (decision: "confirm" | "cancel") => {
     if (!taskIdRef.current || confirmBusy) return;
@@ -784,9 +815,6 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
                 <button onClick={() => { setMode("tasks"); void loadTasks(); }} aria-label="المهام" className="p-1.5 md:p-2 rounded-xl hover:bg-white/15 shrink-0">
                   <History className="w-4 h-4 md:w-4.5 md:h-4.5" />
                 </button>
-                <button onClick={() => setMode("help")} aria-label="طريقة الاستخدام" className="p-1.5 md:p-2 rounded-xl hover:bg-white/15 shrink-0">
-                  <CircleHelp className="w-4 h-4 md:w-4.5 md:h-4.5" />
-                </button>
                 {!fullscreen && (
                   <button onClick={() => setFullscreen(true)} aria-label="شاشة كاملة" className="p-1.5 md:p-2 rounded-xl hover:bg-white/15 md:hidden shrink-0">
                     <Maximize2 className="w-4 h-4 md:w-4.5 md:h-4.5" />
@@ -823,11 +851,6 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
                 {/* ==== البرنامج التعليمي ==== */}
                 {mode === "tutorial" && <Tutorial onFinish={finishTutorial} onSkip={finishTutorial} />}
 
-                {/* ==== المساعدة ==== */}
-                {mode === "help" && (
-                  <HelpView onPick={(t) => send(t)} />
-                )}
-
                 {/* ==== تاريخ المهام ==== */}
                 {mode === "tasks" && (
                   <TasksView tasks={tasks} onOpen={openTask} onBack={() => setMode("chat")} />
@@ -842,11 +865,32 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
                           <div className="mx-auto w-fit">
                             <ZakiRobot state={robotState} size={112} ariaLabel="زكي — مساعدك الذكي" />
                           </div>
-                          <p className="font-black text-base">أنا زكي</p>
-                          <p className="text-xs font-bold text-muted-foreground leading-relaxed max-w-[26ch] mx-auto">
-                            قولّي عايز تعمل إيه — هفهم الطلب وأساعدك تنفذه جوه النظام.
+                          <p className="font-black text-base">أنا زكي — وكيل سنترك</p>
+                          <p className="text-[11px] font-bold text-muted-foreground leading-relaxed max-w-[32ch] mx-auto">
+                            اسألني عن أي حاجة في سنترك — غياب، مديونية، تحصيل، حصص، مصروفات، مستحقات المدرسين، مبيعات الكتب — وهجاوبك بأرقام حقيقية من الداتا.
                           </p>
+                          <p className="text-[11px] font-bold text-muted-foreground leading-relaxed max-w-[32ch] mx-auto">
+                            وكمان بنفّذ شغل فعلي: تسجيل دفعة، تعديل حضور، إلغاء حصة، رسالة لمدرس — وبطلب تأكيدك قبل أي خطوة حساسة.
+                          </p>
+                          <p className="text-[10px] font-extrabold nk-brand-text">اكتب بأي صيغة تريحك — هفهمك حتى لو الجملة مش مطابقة حرفيًا.</p>
                         </div>
+                        {presetQuestions.length > 0 && (
+                          <div className="space-y-1.5">
+                            <p className="text-[10px] font-black text-muted-foreground text-center">أسئلة جاهزة — إجابة فورية</p>
+                            <div className="flex flex-wrap gap-1.5 justify-center">
+                              {presetQuestions.map((p) => (
+                                <button
+                                  key={p.key}
+                                  onClick={() => askPreset(p.key, p.label)}
+                                  disabled={presetBusy === p.key}
+                                  className="rounded-full nk-brand-bg text-white px-3 py-2 text-[11px] font-extrabold active:scale-[0.97] transition disabled:opacity-60"
+                                >
+                                  {presetBusy === p.key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : p.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         <div className="flex flex-wrap gap-1.5 justify-center">
                           {EXAMPLES.map((ex) => (
                             <button
@@ -1128,41 +1172,6 @@ function Tutorial({ onFinish, onSkip }: { onFinish: () => void; onSkip: () => vo
         <button onClick={onSkip} className="rounded-xl px-3 py-2.5 text-xs font-extrabold text-muted-foreground underline underline-offset-2">
           تخطي
         </button>
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================
-   المساعدة الدائمة — ٥ أنواع طلبات (spec §36)
-============================================================ */
-function HelpView({ onPick }: { onPick: (t: string) => void }) {
-  const types: { icon: string; title: string; desc: string; example: string }[] = [
-    { icon: "اسألني", title: "اسألني", desc: "أسئلة عن داتا سنترك", example: "مين غاب أكتر من 3 مرات؟" },
-    { icon: "دورلي", title: "دورلي", desc: "بحث سريع", example: "هاتلي أحمد محمد." },
-    { icon: "حلللي", title: "حلللي", desc: "تحليل واتجاهات", example: "مين مستواه نازل الشهر ده؟" },
-    { icon: "اعمللي", title: "اعمللي", desc: "تنفيذ بتأكيد", example: "سجل أحمد في Group B." },
-    { icon: "تابعلي", title: "تابعلي", desc: "متابعة دورية", example: "قولي مين محتاج متابعة الأسبوع ده." },
-  ];
-  return (
-    <div className="space-y-3">
-      <p className="font-black text-sm text-center">تقدر تطلب مني ٥ أنواع من الحاجات</p>
-      {types.map((t) => (
-        <div key={t.title} className="rounded-2xl border border-border bg-card p-3 space-y-1.5">
-          <p className="font-black text-xs">{t.title} — <span className="font-bold text-muted-foreground">{t.desc}</span></p>
-          <button
-            onClick={() => onPick(t.example)}
-            className="text-[11px] font-extrabold nk-brand-text underline underline-offset-2"
-          >
-            جرّب: «{t.example}»
-          </button>
-        </div>
-      ))}
-      <div className="rounded-2xl border border-dashed border-border p-3 space-y-1">
-        <p className="font-black text-xs">زكي بياخد مساحة على الشاشة؟</p>
-        <p className="text-[11px] font-bold text-muted-foreground leading-relaxed">
-          اضغط أيقونة العين <EyeOff className="w-3 h-3 inline" /> فوق — هيتخفي بالكامل ويسيب تاب صغير في ركن الشاشة ترجع بيه في أي وقت (أو اضغط Ctrl+Shift+Z).
-        </p>
       </div>
     </div>
   );
