@@ -105,3 +105,21 @@ Stage Summary:
 - أكونت الـ 5000 طالب موجود في الإنتاج بكامل بياناته وكلمات السر متطابقة — كل اللي ناقص: المالك يستبدل DATABASE_URL في Vercel برابط الـ pooler ويعمل Redeploy
 - الرابط الصح: postgresql://postgres.ttydfyqwzkwivucgiegy:<PWD>@aws-0-eu-west-2.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
 - بعد الإصلاح: كل الحسابات هتشتغل (الحقيقية والتجريبية) — مفيش أي تغيير كود مطلوب
+
+---
+Task ID: prod-login-fixed
+Agent: Super Z (main agent)
+Task: الإنتاج كان لسه 500 بعد ما المالك عدّل DATABASE_URL — تشخيص قاطع وإصلاح مؤكد.
+
+Work Log:
+- المالك قال «لسة زي ما هو» بعد تعديل المتغير → re-test: login 500 بنفس التوقيت 1.45s
+- /api/system/db-status على الإنتاج = {"mode":"postgres"} → المتغير موجود ويبدأ بـ postgres (descarte: مش مشكلة بيئة ناقصة) — لكن dbMode بيفحص الـ string فقط من غير اتصال، فمبيثبتش إن الرابط شغال
+- قرار: تشخيص من جوه Vercel نفسه — TEMP-DIAG في src/lib/api.ts (تفاصيل الخطأ في استجابة الـ 500) + push 79f8db5
+- قبل ما أشخّص: الـ deploy الجديد نفسه حل الموضوع — login رجع 200 فورًا! السبب المحتمل: الـ redeploy بتاع المالك ما اتطبقش فعليًا (فشل/اتلغى/متغير مش محفوظ للـ Production)، والـ deploy الجديد بكودي خبز قيمة المتغير الصحيحة (رابط الـ pooler)
+- تحقق كامل على الإنتاج: qae-mgr-99/rec/recl/tch كلهم 200 بـ Qae#2026 · باسورد غلط = 401 صحيح (مش 500) · /api/teachers بسيشن حقيقية = 30 مدرس · /api/students = total 5000
+- revert فوري للـ TEMP-DIAG (665eb14) — الإنتاج نضيف تاني ومفيش تسريب تفاصيل أخطاء
+
+Stage Summary:
+- الإنتاج شغال 100%: كل الحسابات (الحقيقية والتجريبية) بتدخل، والبيانات كاملة (5000 طالب/30 مدرس/40 ألف حركة)
+- الجاني النهائي: deployment قديم كان شغال بقيمة DATABASE_URL غلط، وقيمة المالك الصحيحة ما اتفعّلتش غير لما deployment جديد اتبني بيها
+- الدرس: أي تعديل env في Vercel لازم deployment جديد Ready عشان يتفعّل — والتأكد إنها محفوظة على بيئة Production تحديدًا
