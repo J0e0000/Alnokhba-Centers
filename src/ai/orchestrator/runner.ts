@@ -9,6 +9,7 @@ import { buildAgentContext, type AgentClientContext, type AgentContextSnapshot }
 import { getTool, authorizeAndValidate, availableToolsFor } from "../tools";
 import { ToolError, CONFIRM_POLICY, type ToolOutput, type AgentCard } from "../tools/types";
 import { fallbackPlan, fallbackUnknown, type AgentTurn } from "./fallback";
+import { resolveZakiKey, answerZaki } from "@/lib/zaki";
 import { getBudgetState, persistLlmUsage } from "../usage";
 import { setLastStudent } from "../memory/memory";
 import { normalizeAr } from "@/lib/arabic";
@@ -346,6 +347,24 @@ async function agentLoop(opts: {
     // ردود جاهزة (تحية/شكر/رفض أمني)، متابعة وسط مهمة، أو طلب قصير وواضح (≤ 6 كلمات).
     // أي طلب أطول/أحر بيروح للموديل الأول، والمخ الحتمي بيبقى شبكة الأمان لو الموديل فشل.
     // NK_AGENT_BRAIN_FIRST=1 بيرجّع الترتيب القديم بالكامل.
+
+    // ==== مسار الأسئلة الجاهزة (يخمّن الجملة) — أول جولة من غير أدوات متشغلة ====
+    // عتبة قوية (score ≥ 6): جملة مرادف صريحة أو زوج كلمات مؤكد بس — عشان ميخطفش
+    // أسئلة تحليلية أعمق بيحسن يجاوب عليها المخ الحتمي أو الموديل.
+    if (iterations === 1 && observations.length === 0 && !llmDriven) {
+      const presetKey = resolveZakiKey(userText, 6);
+      if (presetKey) {
+        const ans = await answerZaki(user.centerId, presetKey);
+        const itemsText = ans.items.slice(0, 5).map((i) => `• ${i.label}${i.sub ? ` — ${i.sub}` : ""}`).join("\n");
+        const text = [ans.title, ans.body, itemsText].filter(Boolean).join("\n");
+        const msgId = await persistMessage(taskId, "assistant", "result", { text });
+        emit({ type: "message", id: msgId, kind: "text", text });
+        await db.agentTask.update({ where: { id: taskId }, data: { status: "COMPLETED", provider: "preset" } }).catch(() => {});
+        emit({ type: "done", status: "COMPLETED" });
+        return;
+      }
+    }
+
     const brainPlan = fallbackPlan(userText, { selectedStudent: ctx.selectedStudent, lastStudent: ctx.lastStudent, goal: taskGoal }, observations);
     const llm = budgetExceeded ? null : await getLLM(user.centerId);
     // مهمة بدأها الموديل بتكمل بالموديل ما دام متوصل — المخ مبيسبقهاش عشان ميخطفهاش في النص؛

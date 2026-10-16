@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { todayStr } from "@/lib/normalize";
+import { normalizeAr } from "@/lib/arabic";
 
 /* ============================================================
    ZAKI — المساعد الذكي للنخبة (spec §4)
@@ -311,30 +312,136 @@ export const ZAKI_QUESTIONS: { key: string; label: string }[] = [
   { key: "open_sessions", label: "في حصص لسه مفتوحة؟" },
 ];
 
+/* ------------------------------------------------------------
+   تخمين الجملة (طلب المالك: «خليه يحاول يخمن الجملة عشان تبقى أريح»)
+   أي صيغة قريبة من سؤال جاهز → نفس الإجابة الحتمية بدل «سؤال مش معروف».
+   المطابقة على النص المطبَّع (همزات/تاء مربوطة/تشكيل/أرقام) —
+   جملة مرادفة قوية أو كلمة مفتاحية واضحة واحدة كفاية.
+------------------------------------------------------------ */
+const ZAKI_ALIASES: Record<string, string[]> = {
+  top_absent_group: [
+    "مجموعة غيابها", "اعلي مجموعة", "اكتر مجموعة غياب", "مجموعة بتغيب",
+    "ترتيب المجموعات", "نسبه حضور المجموعات", "احسن مجموعه", "اضعف مجموعه",
+    "مجموعه غيابها كتير", "انهي مجموعه غياب",
+  ],
+  repeat_absentees: [
+    "غيابهم متكرر", "غياب متكرر", "غيابات متكرره", "متعودين علي الغياب",
+    "بيغيابوا كتير", "بيغيبوا كتير", "بيغيب كتير", "غيابهم كتير",
+    "غيابات كتير", "اكتر طلاب غياب", "اكتر طالب غياب", "كثيرين الغياب",
+    "متكرر", "بيغيب", "بيغياب",
+  ],
+  today_collection: [
+    "تحصيل النهارده", "تحصيل اليوم", "التحصيل النهارده", "التحصيل اليوم",
+    "وصل كام", "اتجمع كام", "كام اتجمع", "كام وصل", "فلوس النهارده",
+    "مدفوعات اليوم", "كشف اليوم", "الخرين النهارده",
+    "تحصيل", "اتجمع",
+  ],
+  debtors: [
+    "مدينين", "مديونيه", "عليهم فلوس", "عليه فلوس", "عليها فلوس",
+    "رصيد سالب", "معلقين", "متاخرين في الدفع", "اللي عليهم",
+    "اكبر مديونيه", "مديون",
+  ],
+  open_sessions: [
+    "حصص مفتوحه", "حصه مفتوحه", "لسه مفتوحه", "مفتوحه لسه",
+    "حصص شغاله", "حصه شغاله", "مفيش اغلاق", "حصص لسه",
+    "مفتوحه",
+  ],
+};
+
+/** كلمات عامة ممنوع تعتبر إشارة مطابقة لوحدها («مين المجموعات الطلاب فلوس») — بكل صيغ «الـ» */
+const ZAKI_STOP = new Set([
+  "مين", "ايه", "عندنا", "عندك", "اللي", "في", "من", "علي", "عن", "كام",
+  "هات", "هاتلي", "قولي", "اذكر", "بالترتيب", "بي", "لل", "ده", "دي",
+  "مجموعه", "مجموعات", "طلاب", "طالب", "طالبات", "فلوس", "حصص", "حصه",
+  "اليوم", "النهارده", "لحد", "كده", "ازاي", "ليه", "فين", "معايا", "عند",
+  "الطلاب", "المدينين", "المجموعات", "الحصص", "الغياب", "الطالبات",
+]);
+
+/** أزواج كلمات مع بعض بتأكد النية («اكتر + غايب» = اللي بيغيابوا كتير) — مش لازم يكونوا جنب بعض */
+const ZAKI_PAIRS: Record<string, string[][]> = {
+  repeat_absentees: [
+    ["اكتر", "غياب"], ["اكتر", "غايب"], ["اكتر", "غيابات"],
+    ["اعلي", "غياب"], ["اعلي", "غايب"], ["اعلي", "غيابات"],
+    ["كتير", "غياب"], ["كتير", "غايب"], ["كتير", "غيابات"],
+    ["نسبه", "غياب"],
+  ],
+  top_absent_group: [
+    ["مجموعه", "غايبه"], ["مجموعه", "بتغيب"],
+  ],
+};
+
+export function resolveZakiKey(q: string, minScore = 3): string | null {
+  const raw = String(q ?? "").trim();
+  if (!raw) return null;
+  // مفتاح مباشر (الواجهة بتبعته)
+  if (ZAKI_QUESTIONS.some((p) => p.key === raw)) return raw;
+  const n = normalizeAr(raw);
+  if (!n) return null;
+  // الصيغة الرسمية بالظبط
+  for (const p of ZAKI_QUESTIONS) {
+    if (normalizeAr(p.label) === n) return p.key;
+  }
+  const words = new Set(n.split(" "));
+  let best: { key: string; score: number } | null = null;
+  const scoreOf = (key: string): number => {
+    let score = 0;
+    for (const a of ZAKI_ALIASES[key] ?? []) {
+      const na = normalizeAr(a);
+      if (na && n.includes(na)) score += na.split(" ").length * 3;
+    }
+    // كلمات الليبل القوية (مشتقة من السؤال الرسمي — بغير الكلمات العامة)
+    const label = normalizeAr(ZAKI_QUESTIONS.find((p) => p.key === key)?.label ?? "");
+    for (const w of label.split(" ")) {
+      if (w.length >= 3 && !ZAKI_STOP.has(w) && words.has(w)) score += 3;
+    }
+    for (const pair of ZAKI_PAIRS[key] ?? []) {
+      if (pair.every((w) => words.has(w))) score += pair.length * 3;
+    }
+    return score;
+  };
+  for (const key of Object.keys(ZAKI_ALIASES)) {
+    const score = scoreOf(key);
+    if (score > (best?.score ?? 0)) best = { key, score };
+  }
+  for (const key of Object.keys(ZAKI_PAIRS)) {
+    const score = scoreOf(key);
+    if (score > (best?.score ?? 0)) best = { key, score };
+  }
+  return best && best.score >= minScore ? best.key : null;
+}
+
 export async function answerZaki(centerId: string, key: string): Promise<ZakiAnswer> {
   if (key === "top_absent_group") {
-    const sessions = await db.sessionInstance.findMany({
-      where: { centerId, date: { gte: daysAgo(today(), 30) }, status: { not: "CANCELLED" } },
-      select: { id: true, groupId: true, group: { select: { name: true, subject: { select: { name: true } } } } },
+    // المجموعات بترتيب إنشائها (زي ترتيب جدول Group في القاعدة) — عشان التعادل بين النِسَب يتحسم
+    // بنفس ترتيب التقارير الرسمية، والصيغة «مادة (اسم المجموعة)» زي التقارير بالظبط.
+    const groups = await db.group.findMany({
+      where: { centerId },
+      select: { id: true, name: true, subject: { select: { name: true } } },
     });
     const byGroup = new Map<string, { name: string; subject: string; present: number; total: number }>();
-    for (const s of sessions) {
-      if (s.groupId && s.group && !byGroup.has(s.groupId)) byGroup.set(s.groupId, { name: s.group.name, subject: s.group.subject.name, present: 0, total: 0 });
-    }
-    if (byGroup.size) {
-      const att = await db.attendance.findMany({
-        where: { sessionId: { in: sessions.map((s) => s.id) } },
-        select: { sessionId: true, status: true },
+    for (const g of groups) byGroup.set(g.id, { name: g.name, subject: g.subject.name, present: 0, total: 0 });
+    if (groups.length) {
+      const sessions = await db.sessionInstance.findMany({
+        where: { centerId, date: { gte: daysAgo(today(), 30) }, status: { not: "CANCELLED" }, groupId: { in: groups.map((g) => g.id) } },
+        select: { id: true, groupId: true },
       });
-      const sid2gid = new Map(sessions.map((s) => [s.id, s.groupId]));
-      for (const a of att) {
-        const gid = sid2gid.get(a.sessionId);
-        if (!gid) continue;
-        const g = byGroup.get(gid)!;
-        g.total += 1;
-        if (a.status === "PRESENT" || a.status === "LATE") g.present += 1;
+      if (sessions.length) {
+        const att = await db.attendance.findMany({
+          where: { sessionId: { in: sessions.map((s) => s.id) } },
+          select: { sessionId: true, status: true },
+        });
+        const sid2gid = new Map(sessions.map((s) => [s.id, s.groupId]));
+        for (const a of att) {
+          const gid = sid2gid.get(a.sessionId);
+          if (!gid) continue;
+          const g = byGroup.get(gid);
+          if (!g) continue;
+          g.total += 1;
+          if (a.status === "PRESENT" || a.status === "LATE") g.present += 1;
+        }
       }
     }
+    const glabel = (g: { subject: string; name: string }) => `${g.subject} (${g.name})`;
     const ranked = [...byGroup.entries()]
       .filter(([, g]) => g.total >= 5)
       .map(([id, g]) => ({ id, ...g, rate: Math.round((g.present / g.total) * 100) }))
@@ -342,9 +449,9 @@ export async function answerZaki(centerId: string, key: string): Promise<ZakiAns
     if (!ranked.length) return { key, title: "مفيش داتا كفاية", body: "لسه مفيش حضور كافي آخر 30 يوم للمقارنة بين المجموعات.", items: [] };
     return {
       key,
-      title: `أعلى مجموعة غيابًا: ${ranked[0].subject} — ${ranked[0].name}`,
+      title: `أعلى مجموعة غيابًا: ${glabel(ranked[0])}`,
       body: `نسبة حضورها ${ranked[0].rate}% فقط آخر 30 يوم (${ranked[0].present} من ${ranked[0].total}). أعلى مجموعة بعدها ${ranked[1]?.rate ?? "—"}%.`,
-      items: ranked.slice(0, 5).map((g) => ({ label: `${g.subject} — ${g.name}`, sub: `حضور ${g.rate}%` })),
+      items: ranked.slice(0, 5).map((g) => ({ label: glabel(g), sub: `حضور ${g.rate}%` })),
       go: { view: "schedule" },
     };
   }
@@ -385,21 +492,23 @@ export async function answerZaki(centerId: string, key: string): Promise<ZakiAns
   }
 
   if (key === "debtors") {
-    const agg = await db.studentTransaction.groupBy({
+    // كل المدينين مرة واحدة — العدد الإجمالي وإجمالي المديونية + أكبر 10 للعرض
+    const all = await db.studentTransaction.groupBy({
       by: ["studentId"],
       where: { centerId },
       _sum: { amount: true },
       having: { amount: { _sum: { lt: 0 } } },
       orderBy: { _sum: { amount: "asc" } },
-      take: 10,
     });
-    if (!agg.length) return { key, title: "مفيش مديونيات", body: "كل الأرصدة سليمة — مفيش طالب عليه فلوس.", items: [] };
+    if (!all.length) return { key, title: "مفيش مديونيات", body: "كل الأرصدة سليمة — مفيش طالب عليه فلوس.", items: [] };
+    const totalDebt = Math.round(all.reduce((s, a) => s + Math.abs(a._sum?.amount ?? 0), 0) / 100);
+    const agg = all.slice(0, 10);
     const studs = await db.student.findMany({ where: { id: { in: agg.map((a) => a.studentId) } }, select: { id: true, name: true, code: true } });
     const name = (id: string) => studs.find((s) => s.id === id);
     return {
       key,
-      title: `أكبر 10 مديونيات (إجمالي ${Math.round(Math.abs(agg.reduce((s, a) => s + (a._sum?.amount ?? 0), 0)) / 100)}ج)`,
-      body: "رتّبنااهم من الأعلى مديونية. زرار التواصل جاهز في ملف كل طالب.",
+      title: `أكبر 10 مديونيات من إجمالي ${all.length} طالب عليهم رصيد سالب (إجمالي المديونية ${totalDebt}ج)`,
+      body: `إجمالي ${all.length} طالب عندهم مديونية — مجموعها ${totalDebt}ج. ده الترتيب من الأعلى مديونية، وزرار التواصل جاهز في ملف كل طالب.`,
       items: agg.map((a) => ({ label: name(a.studentId)?.name ?? "طالب", sub: `${Math.round(Math.abs(a._sum?.amount ?? 0) / 100)}ج · كود ${name(a.studentId)?.code ?? "—"}`, studentId: a.studentId })),
       go: { view: "students" },
     };
