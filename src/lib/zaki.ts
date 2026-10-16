@@ -26,24 +26,43 @@ const today = () => todayStr();
 function dstr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
-function daysAgo(n: number): string {
-  return dstr(new Date(Date.now() - n * 86400000));
+function daysAgo(from: string, n: number): string {
+  const [y, m, d] = from.split("-").map(Number);
+  return dstr(new Date(y, m - 1, d - n));
+}
+
+/** مرساة النشاط: آخر يوم فيه حصة فعلية (مش ملغاة) — بيتقيد بيوم النهاردة.
+ *  ليه؟ لو السنتر مثلاً وقّف تسجيل حصص لفترة (عطل/مشكلة) قواعد «آخر 14 يوم»
+ *  كانت هتبقى فاضية وقاعدة تدنّي الحضور عمرها ما تشتغل. المرساة بتخلي
+ *  المقارنة على آخر 4 أسابيع فيها داتا فعلية — اليوم نفسه لو فيه حصص. */
+async function activityAnchor(centerId: string): Promise<string> {
+  const last = await db.sessionInstance.findFirst({
+    where: { centerId, status: { not: "CANCELLED" } },
+    orderBy: { date: "desc" },
+    select: { date: true },
+  });
+  const t = today();
+  if (!last?.date) return t;
+  return last.date > t ? t : last.date; // داتا مستقبلية غلط → نقص بيوم النهاردة
 }
 
 /* ------------------------------------------------------------
    قواعد التحليل — كل قاعدة بترجع 0..n ملاحظات
 ------------------------------------------------------------ */
 
-// 1) تدنّي حضور مجموعة مقارنة بالفترة اللي قبلها
+// 1) تدنّي حضور مجموعة مقارنة بالفترة اللي قبلها — على مرساة النشاط
+//    الصيغة الرسمية (نفس تقارير النخبة): (PRESENT+LATE) ÷ (عدد الحصص × المسجلين النشطين)
+//    صفوف ABSENT الصريحة بتتحسب غياب — مش حضور زي النسخة القديمة.
 async function ruleGroupAttendanceDrop(centerId: string, out: ZakiFinding[]) {
+  const anchor = await activityAnchor(centerId);
   const recent = await db.sessionInstance.findMany({
-    where: { centerId, date: { gte: daysAgo(14), lte: today() }, status: { not: "CANCELLED" } },
+    where: { centerId, date: { gte: daysAgo(anchor, 13), lte: anchor }, status: { not: "CANCELLED" } },
     select: { id: true, groupId: true, group: { select: { name: true, subject: { select: { name: true } }, teacher: { select: { name: true } } } } },
   });
   if (!recent.length) return;
   const older = await db.sessionInstance.findMany({
-    where: { centerId, date: { gte: daysAgo(28), lt: daysAgo(14) }, status: { not: "CANCELLED" } },
-    select: { id: true, groupId: true },
+    where: { centerId, date: { gte: daysAgo(anchor, 27), lt: daysAgo(anchor, 13) }, status: { not: "CANCELLED" } },
+    select: { id: true, groupId: true, group: { select: { name: true, subject: { select: { name: true } }, teacher: { select: { name: true } } } } },
   });
   const byGroup = (rows: typeof recent) => {
     const m = new Map<string, { sessions: string[]; name: string; subject: string; teacher: string }>();
@@ -55,19 +74,33 @@ async function ruleGroupAttendanceDrop(centerId: string, out: ZakiFinding[]) {
   };
   const recentM = byGroup(recent);
   const olderM = byGroup(older as typeof recent);
+  // عدد المسجلين النشطين لكل مجموعة — مرة واحدة لكل المجموعات المرشحة
+  const candidateIds = [...recentM.keys()];
+  const regRows = await db.studentGroup.groupBy({
+    by: ["groupId"],
+    where: { status: "ACTIVE", groupId: { in: candidateIds }, student: { status: "ACTIVE" } },
+    _count: true,
+  });
+  const regsOf = new Map(regRows.map((r) => [r.groupId, r._count]));
+  const isPresent = (s: string) => s === "PRESENT" || s === "LATE";
+  const drops: ZakiFinding[] = [];
   for (const [groupId, g] of recentM) {
+    const regs = regsOf.get(groupId) ?? 0;
+    if (regs === 0) continue;
     const ids = g.sessions;
     if (ids.length < 2) continue;
     const marks = await db.attendance.findMany({ where: { sessionId: { in: ids } }, select: { status: true } });
-    if (marks.length < 6) continue;
-    const rateNow = Math.round((marks.filter((m) => m.status !== "EXCUSED").length / marks.length) * 100);
+    if (!marks.length) continue;
+    const expectedNow = ids.length * regs;
+    const rateNow = Math.round((marks.filter((m) => isPresent(m.status)).length / expectedNow) * 100);
     const old = olderM.get(groupId);
     if (!old || old.sessions.length < 2) continue;
     const oldMarks = await db.attendance.findMany({ where: { sessionId: { in: old.sessions } }, select: { status: true } });
-    if (oldMarks.length < 6) continue;
-    const rateOld = Math.round((oldMarks.filter((m) => m.status !== "EXCUSED").length / oldMarks.length) * 100);
+    if (!oldMarks.length) continue;
+    const expectedOld = old.sessions.length * regs;
+    const rateOld = Math.round((oldMarks.filter((m) => isPresent(m.status)).length / expectedOld) * 100);
     if (rateOld - rateNow >= 15 && rateNow < 80) {
-      out.push({
+      drops.push({
         id: "group_att_drop",
         dimension: "OPERATIONAL",
         severity: rateNow < 60 ? "CRITICAL" : "WARNING",
@@ -80,22 +113,25 @@ async function ruleGroupAttendanceDrop(centerId: string, out: ZakiFinding[]) {
       });
     }
   }
+  // سقف الإزعاج: أضعف 3 مجموعات بس — تقرير قراءته أهم من تعداد كل حالة
+  drops.sort((a, b) => ((a.data?.rateNow as number) ?? 100) - ((b.data?.rateNow as number) ?? 100));
+  out.push(...drops.slice(0, 3));
 }
 
-// 2) طلاب غيابهم اتكرر كتير آخر 30 يوم
+// 2) طلاب غيابهم اتكرر كتير آخر 30 يوم — على مرساة النشاط (مش وقت التسجيل)
 async function ruleRepeatedAbsences(centerId: string, out: ZakiFinding[]) {
-  const since = new Date(daysAgo(30) + "T00:00:00");
+  const anchor = await activityAnchor(centerId);
   const sessions = await db.sessionInstance.findMany({
-    where: { centerId, date: { gte: daysAgo(30) }, status: { not: "CANCELLED" } },
+    where: { centerId, date: { gte: daysAgo(anchor, 29), lte: anchor }, status: { not: "CANCELLED" } },
     select: { id: true },
   });
   if (!sessions.length) return;
   const att = await db.attendance.findMany({
-    where: { sessionId: { in: sessions.map((s) => s.id) }, status: "PRESENT", createdAt: { gte: since } },
+    where: { sessionId: { in: sessions.map((s) => s.id) }, status: "PRESENT" },
     select: { studentId: true },
   });
   const allRegs = await db.studentGroup.findMany({
-    where: { status: "ACTIVE", group: { centerId, isActive: true } },
+    where: { status: "ACTIVE", student: { status: "ACTIVE" }, group: { centerId, isActive: true } },
     select: { studentId: true },
   });
   const expected = new Set(allRegs.map((r) => r.studentId));
@@ -125,11 +161,11 @@ async function ruleRepeatedAbsences(centerId: string, out: ZakiFinding[]) {
 // 3) تحصيل أقل من المعدل الطبيعي
 async function ruleCollectionAnomaly(centerId: string, out: ZakiFinding[]) {
   const week = await db.studentTransaction.aggregate({
-    where: { centerId, type: "PAYMENT", createdAt: { gte: new Date(daysAgo(7) + "T00:00:00") } },
+    where: { centerId, type: "PAYMENT", createdAt: { gte: new Date(daysAgo(today(), 7) + "T00:00:00") } },
     _sum: { amount: true },
   });
   const month = await db.studentTransaction.aggregate({
-    where: { centerId, type: "PAYMENT", createdAt: { gte: new Date(daysAgo(35) + "T00:00:00"), lt: new Date(daysAgo(7) + "T00:00:00") } },
+    where: { centerId, type: "PAYMENT", createdAt: { gte: new Date(daysAgo(today(), 35) + "T00:00:00"), lt: new Date(daysAgo(today(), 7) + "T00:00:00") } },
     _sum: { amount: true },
   });
   const cur = week._sum.amount ?? 0;
@@ -178,7 +214,7 @@ async function ruleMissingSessions(centerId: string, out: ZakiFinding[]) {
     where: { centerId, isActive: true },
     include: { group: { select: { id: true, name: true, isActive: true, subject: { select: { name: true } }, teacher: { select: { name: true } } } } },
   });
-  const since = daysAgo(10);
+  const since = daysAgo(today(), 10);
   for (const slot of slots) {
     const g = slot.group;
     if (!g.isActive) continue;
@@ -229,17 +265,27 @@ async function ruleDebtors(centerId: string, out: ZakiFinding[]) {
   });
 }
 
-/** تشغيل كل القواعد — مرتبة بالخطورة */
+/** تشغيل كل القواعد — مرتبة بالخطورة. أي قاعدة تقع السبب بيتسجل في اللوج
+ *  (ممنوع فشل صامت — القاعدة اللي مش شغالة لازم تبقى مرئية للمطور). */
 export async function runZakiRules(centerId: string): Promise<{ findings: ZakiFinding[]; at: string }> {
   const out: ZakiFinding[] = [];
-  await Promise.allSettled([
-    ruleGroupAttendanceDrop(centerId, out),
-    ruleRepeatedAbsences(centerId, out),
-    ruleCollectionAnomaly(centerId, out),
-    ruleUnclosedSessions(centerId, out),
-    ruleMissingSessions(centerId, out),
-    ruleDebtors(centerId, out),
-  ]);
+  const rules: [string, (cid: string, o: ZakiFinding[]) => Promise<void>][] = [
+    ["group_att_drop", ruleGroupAttendanceDrop],
+    ["repeated_absence", ruleRepeatedAbsences],
+    ["collection_anomaly", ruleCollectionAnomaly],
+    ["unclosed_sessions", ruleUnclosedSessions],
+    ["missing_sessions", ruleMissingSessions],
+    ["debtors", ruleDebtors],
+  ];
+  await Promise.all(
+    rules.map(async ([name, fn]) => {
+      try {
+        await fn(centerId, out);
+      } catch (e) {
+        console.error(`[zaki:rule:${name}] فشل:`, e instanceof Error ? e.message : e);
+      }
+    }),
+  );
   const order = { CRITICAL: 0, WARNING: 1, INFO: 2 } as const;
   out.sort((a, b) => order[a.severity] - order[b.severity]);
   return { findings: out, at: new Date().toISOString() };
@@ -268,7 +314,7 @@ export const ZAKI_QUESTIONS: { key: string; label: string }[] = [
 export async function answerZaki(centerId: string, key: string): Promise<ZakiAnswer> {
   if (key === "top_absent_group") {
     const sessions = await db.sessionInstance.findMany({
-      where: { centerId, date: { gte: daysAgo(30) }, status: { not: "CANCELLED" } },
+      where: { centerId, date: { gte: daysAgo(today(), 30) }, status: { not: "CANCELLED" } },
       select: { id: true, groupId: true, group: { select: { name: true, subject: { select: { name: true } } } } },
     });
     const byGroup = new Map<string, { name: string; subject: string; present: number; total: number }>();
@@ -323,7 +369,7 @@ export async function answerZaki(centerId: string, key: string): Promise<ZakiAns
       _sum: { amount: true },
     }))._sum.amount ?? 0;
     const t = await agg(today());
-    const y = await agg(daysAgo(1), today());
+    const y = await agg(daysAgo(today(), 1), today());
     const trend = y > 0 ? Math.round(((t - y) / y) * 100) : null;
     return {
       key,

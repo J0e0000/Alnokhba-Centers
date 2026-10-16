@@ -208,7 +208,7 @@ register({
   description: "بيانات حضور: الطلبة الغايبين النهاردة، أو الغياب المتكرر، أو إحصاء حضور مجموعة",
   usageHint: "«مين غاب النهارده؟» / «اللي غابوا أكتر من 3 مرات» / «حضور مجموعة كذا إزاي؟»",
   input: z.object({
-    mode: z.enum(["absent_today", "frequent_absentees", "by_group"]).describe("نوع الاستعلام"),
+    mode: z.enum(["absent_today", "frequent_absentees", "never_attended", "by_group"]).describe("نوع الاستعلام"),
     minAbsences: z.number().int().min(1).max(30).optional().describe("للغياب المتكرر — الحد الأدنى (افتراضي 3)"),
     days: z.number().int().min(1).max(90).optional().describe("نطاق الأيام للخلف (افتراضي 30 للمتكرر)"),
     groupId: z.string().optional().describe("لموضع by_group"),
@@ -257,6 +257,49 @@ register({
             actions: [{ label: "تقرير الطالب", action: "agent" as const, text: `اعمللي تقرير عن ${s.name}` }],
           })),
           actions: [{ label: "افتح شاشة الحضور", action: "navigate" as const, view: "today" }],
+        }],
+      };
+    }
+
+    if (args.mode === "never_attended") {
+      // الطلاب المسجلين النشطين اللي ماعندهمش ولا حاجة PRESENT واحدة في الفترة —
+      // نفس تعريف قاعدة «الغياب المتكرر» في زكي (عمليًا خارج التدريب)
+      const days = args.days ?? 30;
+      const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+      const sessions = await db.sessionInstance.findMany({
+        where: { centerId: ctx.centerId, date: { gte: since }, status: { not: "CANCELLED" } },
+        select: { id: true },
+      });
+      if (!sessions.length) return { summary: "مفيش حصص في الفترة دي أصلاً.", data: { count: 0, students: [] } };
+      const present = await db.attendance.findMany({
+        where: { sessionId: { in: sessions.map((s) => s.id) }, status: "PRESENT" },
+        select: { studentId: true },
+      });
+      const attended = new Set(present.map((p) => p.studentId));
+      const regs = await db.studentGroup.findMany({
+        where: { status: "ACTIVE", student: { status: "ACTIVE" }, group: { centerId: ctx.centerId, isActive: true } },
+        select: { studentId: true },
+      });
+      const missing = [...new Set(regs.map((r) => r.studentId))].filter((id) => !attended.has(id));
+      if (!missing.length) {
+        return { summary: `كل المسجلين النشطين حضروا مرة على الأقل في آخر ${days} يوم — الوضع صحي.`, data: { count: 0, students: [] } };
+      }
+      const studs = await db.student.findMany({
+        where: { id: { in: missing.slice(0, 60) }, centerId: ctx.centerId, status: "ACTIVE" },
+        select: { id: true, name: true, code: true },
+        take: 12,
+        orderBy: { name: "asc" }, // نفس ترتيب التقارير — أول 12 أسماء بالحرف
+      });
+      return {
+        summary: `${missing.length} طالب مسجل ومحضروش ولا مرة في آخر ${days} يوم — أمثلة: ${studs.slice(0, 3).map((s) => s.name).join("، ")}.`,
+        data: { count: missing.length, students: studs.map((s) => ({ id: s.id, name: s.name, code: s.code })) },
+        cards: [{
+          type: "students",
+          title: `صفر حضور آخر ${days} يوم (${missing.length})`,
+          items: studs.map((s) => ({
+            id: s.id, title: s.name, sub: `كود ${s.code}`,
+            actions: [{ label: "تقرير الطالب", action: "agent" as const, text: `اعمللي تقرير عن ${s.name}` }],
+          })),
         }],
       };
     }
@@ -1052,5 +1095,94 @@ register({
     const s = await db.sessionInstance.findFirst({ where: { id: sessionId, centerId: ctx.centerId, status: "CLOSED" }, select: { id: true } });
     if (!s) return "الحصة مظهرتش مقفولة في الداتابيز.";
     return null;
+  },
+});
+
+/* ============================================================
+   TOOL: نسبة الحضور الحقيقية — attendance.get_rate
+   الصيغة الصحيحة (مطابقة لتقارير النخبة): لكل مجموعة —
+   الحضور الفعلي (PRESENT+LATE) ÷ (عدد الحصص غير الملغاة × المسجلين النشطين).
+   الطالب اللي ماتسجلش له علامة = غايب (مش خارج الحسبة) — دي الفرق
+   بين «نسبة التسجيلات» و«نسبة الحضور».
+============================================================ */
+
+function shiftYmd(from: string, days: number): string {
+  const [y, m, d] = from.split("-").map(Number);
+  const dt = new Date(y, m - 1, d + days);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+}
+
+register({
+  name: "attendance.get_rate",
+  group: "attendance",
+  requiredModule: "attendance",
+  description: "نسبة الحضور الحقيقية لفترة (افتراضي آخر 30 يوم) — للحسن كله ولكل مجموعة، مع أفضل وأضعف مجموعة بالاسم",
+  usageHint: "«نسبة الحضور العامة قد إيه؟» / «أنهي مجموعة حضورها أفضل؟» / «أعلى المجموعات غيابًا آخر 30 يوم؟» — الرقم بيحسب الغايب غير المسجل كغياب فعلًا",
+  input: z.object({
+    days: z.number().int().min(1).max(90).optional().describe("عدد الأيام للخلف — افتراضي 30"),
+  }),
+  risk: "LOW",
+  requiredPermission: "VIEW_REPORTS",
+  permissionLabel: "عرض التقارير",
+  async handler(args, ctx): Promise<ToolOutput> {
+    const today = todayStr();
+    const days = args.days ?? 30;
+    const from = shiftYmd(today, -(days - 1));
+    // حصص الفترة (بمجموعة — حصص الحضور المفتوح من غير مجموعة خارج الحسبة)
+    const sessions = await db.sessionInstance.findMany({
+      where: { centerId: ctx.centerId, date: { gte: from, lte: today }, status: { not: "CANCELLED" }, groupId: { not: null } },
+      select: { id: true, groupId: true },
+    });
+    if (!sessions.length) {
+      return { summary: `مفيش حصص من ${from} لـ ${today} — مفيش إيه تتقاس عليه.`, data: { from, to: today, rate: null } };
+    }
+    const gids = [...new Set(sessions.map((s) => s.groupId!))];
+    const [groups, regs, marks] = await Promise.all([
+      db.group.findMany({ where: { id: { in: gids } }, select: { id: true, name: true, subject: { select: { name: true } } } }),
+      db.studentGroup.findMany({ where: { status: "ACTIVE", groupId: { in: gids }, student: { status: "ACTIVE" } }, select: { groupId: true } }),
+      db.attendance.findMany({ where: { sessionId: { in: sessions.map((s) => s.id) }, status: { in: ["PRESENT", "LATE"] } }, select: { sessionId: true, status: true } }),
+    ]);
+    const sessCount = new Map<string, number>();
+    for (const s of sessions) sessCount.set(s.groupId!, (sessCount.get(s.groupId!) ?? 0) + 1);
+    const regCount = new Map<string, number>();
+    for (const r of regs) regCount.set(r.groupId, (regCount.get(r.groupId) ?? 0) + 1);
+    const sid2gid = new Map(sessions.map((s) => [s.id, s.groupId!]));
+    const presentCount = new Map<string, number>();
+    let globalPresent = 0, globalExpected = 0;
+    for (const m of marks) {
+      const gid = sid2gid.get(m.sessionId);
+      if (!gid) continue;
+      presentCount.set(gid, (presentCount.get(gid) ?? 0) + 1);
+    }
+    const groupRows = gids.map((gid) => {
+      const sess = sessCount.get(gid) ?? 0;
+      const rg = regCount.get(gid) ?? 0;
+      const expected = sess * rg;
+      const present = presentCount.get(gid) ?? 0;
+      globalPresent += present;
+      globalExpected += expected;
+      const g = groups.find((x) => x.id === gid);
+      return { groupId: gid, label: `${g?.subject.name ?? "—"} (${g?.name ?? "—"})`, sessions: sess, regs: rg, present, expected, rate: expected > 0 ? Math.round((present / expected) * 100) : null };
+    }).filter((g) => g.expected > 0).sort((a, b) => (a.rate ?? 0) - (b.rate ?? 0));
+    const overall = globalExpected > 0 ? Math.round((globalPresent / globalExpected) * 100) : null;
+    const worst = groupRows[0], best = groupRows[groupRows.length - 1];
+    return {
+      summary: `نسبة الحضور ${from} → ${today}: ${overall}% (من ${groupRows.length} مجموعة).${worst && best ? ` الأضعف: ${worst.label} (${worst.rate}%) — والأفضل: ${best.label} (${best.rate}%).` : ""}`,
+      data: {
+        from, to: today, rate: overall, present: globalPresent, expected: globalExpected,
+        groups: groupRows.map(({ groupId, label, rate, sessions: ss, regs: rr, present: pp }) => ({ groupId, label, rate, sessions: ss, regs: rr, present: pp })),
+        worst: worst ? { label: worst.label, rate: worst.rate } : null,
+        best: best ? { label: best.label, rate: best.rate } : null,
+      },
+      cards: [{
+        type: "report", title: `نسبة الحضور ${from} → ${today}`,
+        rows: [
+          { label: "النسبة العامة", value: `${overall}%`, tone: overall != null && overall < 70 ? ("warn" as const) : ("good" as const) },
+          ...(worst ? [{ label: "أضعف مجموعة", value: `${worst.label} — ${worst.rate}%`, tone: "bad" as const }] : []),
+          ...(best ? [{ label: "أفضل مجموعة", value: `${best.label} — ${best.rate}%`, tone: "good" as const }] : []),
+        ],
+        actions: [{ label: "التقارير", action: "navigate" as const, view: "reports" }],
+      }],
+    };
   },
 });

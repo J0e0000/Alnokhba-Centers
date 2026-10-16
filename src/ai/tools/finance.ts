@@ -182,3 +182,186 @@ register({
     return null;
   },
 });
+
+/* ============================================================
+   TOOLS: قراءات مالية — مدينين / مصروفات / إيصالات / مستحقات مدرسين
+   قراءة فقط (LOW) — أرقام حتمية من الداتابيز، الموديل بيرجع بيها زي ما هي.
+   دي كانت فجوة حقيقية: أسئلة «مين المدينين؟ / المصروفات كام؟» كانت
+   بتسقط في التخمين أو الـ fallback — دلوقتي ليها أداة رسمية بنتيجة مضبوطة.
+============================================================ */
+
+/** تحويل قروش → نص جنيه بدقة (بدون تقريب مخلّ) */
+function fmtEgp(p: number): string {
+  return p % 100 === 0 ? String(p / 100) : (p / 100).toFixed(2);
+}
+const MONTH_START = () => `${todayStr().slice(0, 7)}-01`;
+
+register({
+  name: "finance.get_debtors",
+  group: "finance",
+  requiredModule: "finance",
+  description: "قائمة المديونين: الطلاب اللي رصيدهم سالب (عليهم فلوس) — مرتبين من الأعلى مديونية، بالأسماء والأكواد والمبالغ + إجمالي المديونية وعددهم",
+  usageHint: "«مين أكبر المدينين؟» / «كام طالب مديونين؟» / «الطلاب اللي عليهم فلوس بالترتيب» / «رصيد سالب»",
+  input: z.object({
+    limit: z.number().int().min(1).max(25).optional().describe("عدد الأسماء المعروضة — افتراضي 10"),
+  }),
+  risk: "LOW",
+  requiredPermission: "VIEW_STUDENT_FINANCIAL_STATUS",
+  permissionLabel: "عرض الحالة المالية للطالب",
+  async handler(args, ctx): Promise<ToolOutput> {
+    const limit = args.limit ?? 10;
+    const agg = await db.studentTransaction.groupBy({
+      by: ["studentId"],
+      where: { centerId: ctx.centerId },
+      _sum: { amount: true },
+      having: { amount: { _sum: { lt: 0 } } },
+      orderBy: { _sum: { amount: "asc" } },
+      take: limit,
+    });
+    const totalAgg = await db.studentTransaction.groupBy({
+      by: ["studentId"],
+      where: { centerId: ctx.centerId },
+      _sum: { amount: true },
+      having: { amount: { _sum: { lt: 0 } } },
+    });
+    if (!totalAgg.length) {
+      return { summary: "مفيش مديونين — كل الأرصدة سليمة.", data: { count: 0, debtors: [], totalDebtPiastres: 0 } };
+    }
+    const studs = await db.student.findMany({ where: { id: { in: agg.map((a) => a.studentId) }, centerId: ctx.centerId }, select: { id: true, name: true, code: true } });
+    const totalDebt = totalAgg.reduce((s, a) => s + (a._sum?.amount ?? 0), 0);
+    const debtors = agg.map((a) => {
+      const s = studs.find((x) => x.id === a.studentId);
+      return { id: a.studentId, name: s?.name ?? "طالب", code: s?.code ?? "—", balancePiastres: a._sum?.amount ?? 0 };
+    });
+    return {
+      summary: `${totalAgg.length} طالب عليهم رصيد سالب — إجمالي المديونية ${fmtEgp(Math.abs(totalDebt))} ج. أكبرهم: ${debtors[0].name} (${fmtEgp(Math.abs(debtors[0].balancePiastres))} ج)${debtors.length > 1 ? ` وبعده ${debtors[1].name}` : ""}.`,
+      data: { count: totalAgg.length, totalDebtPiastres: totalDebt, debtors },
+      cards: [{
+        type: "report", title: `أكبر ${debtors.length} مديونيات`,
+        rows: debtors.map((d) => ({ label: `${d.name} (كود ${d.code})`, value: `${fmtEgp(Math.abs(d.balancePiastres))} ج عليه`, tone: "bad" as const })),
+        actions: [{ label: "الطلاب", action: "navigate" as const, view: "students", studentId: debtors[0].id }],
+      }],
+    };
+  },
+});
+
+register({
+  name: "finance.get_expenses",
+  group: "finance",
+  requiredModule: "finance",
+  requiredRole: "MANAGER",
+  description: "إجمالي مصروفات السنتر في فترة (إيجار/كهرباء/مرتبات/صيانة/مستلزمات/أخرى) بالتفصيل والنوع — للسنتر كله",
+  usageHint: "«المصروفات كام؟» / «صرفنا كام الشهر ده؟» / «مصاريف من 2026-10-01 لـ 2026-10-15» — من غير تواريخ = من أول الشهر لليوم",
+  input: z.object({
+    from: z.string().regex(ymd, "YYYY-MM-DD").optional().describe("بداية الفترة (افتراضي أول الشهر)"),
+    to: z.string().regex(ymd, "YYYY-MM-DD").optional().describe("نهاية الفترة شاملة (افتراضي النهاردة)"),
+  }),
+  risk: "LOW",
+  async handler(args, ctx): Promise<ToolOutput> {
+    const from = args.from ?? MONTH_START();
+    const to = args.to ?? todayStr();
+    if (to < from) return { summary: "تاريخ النهاية قبل البداية — راجع الفترة.", data: { error: "range" } };
+    const rows = await db.expense.groupBy({ by: ["category"], where: { centerId: ctx.centerId, date: { gte: from, lte: to } }, _sum: { amount: true }, _count: true });
+    const total = rows.reduce((s, r) => s + (r._sum.amount ?? 0), 0);
+    const count = rows.reduce((s, r) => s + r._count, 0);
+    if (!count) {
+      return { summary: `مفيش مصروفات مسجلة من ${from} لـ ${to}.`, data: { from, to, totalPiastres: 0, count: 0, byCategory: [] } };
+    }
+    const catLabel: Record<string, string> = { RENT: "إيجار", ELECTRICITY: "كهرباء", SALARIES: "مرتبات", MAINTENANCE: "صيانة", SUPPLIES: "مستلزمات", OTHER: "أخرى" };
+    const byCategory = rows.map((r) => ({ category: r.category, label: catLabel[r.category] ?? r.category, piastres: r._sum.amount ?? 0, count: r._count })).sort((a, b) => b.piastres - a.piastres);
+    return {
+      summary: `مصروفات ${from} → ${to}: ${fmtEgp(total)} ج (${count} مصروف). أكبر بند: ${byCategory[0].label} بـ ${fmtEgp(byCategory[0].piastres)} ج.`,
+      data: { from, to, totalPiastres: total, count, byCategory },
+      cards: [{
+        type: "report", title: `المصروفات ${from} → ${to}`,
+        rows: byCategory.map((c) => ({ label: c.label, value: `${fmtEgp(c.piastres)} ج (${c.count})`, tone: "info" as const })),
+        actions: [{ label: "المصروفات", action: "navigate" as const, view: "reports" }],
+      }],
+    };
+  },
+});
+
+register({
+  name: "finance.get_receipts",
+  group: "finance",
+  requiredModule: "finance",
+  description: "إيصالات الدفع: عددها وإجمالي مبالغها في فترة (أو من أول الشهر) — آخر 5 إيصالات بأرقامها الرسمية",
+  usageHint: "«كام إيصال اتصرف؟» / «إيصالات النهاردة» / «إيصالات من 2026-10-01 لـ 2026-10-10» — من غير تواريخ = من أول الشهر",
+  input: z.object({
+    from: z.string().regex(ymd, "YYYY-MM-DD").optional().describe("بداية الفترة (افتراضي أول الشهر)"),
+    to: z.string().regex(ymd, "YYYY-MM-DD").optional().describe("نهاية الفترة شاملة (افتراضي النهاردة)"),
+  }),
+  risk: "LOW",
+  requiredPermission: "VIEW_STUDENT_FINANCIAL_STATUS",
+  permissionLabel: "عرض الحالة المالية للطالب",
+  async handler(args, ctx): Promise<ToolOutput> {
+    const from = args.from ?? MONTH_START();
+    const to = args.to ?? todayStr();
+    if (to < from) return { summary: "تاريخ النهاية قبل البداية — راجع الفترة.", data: { error: "range" } };
+    const agg = await db.receipt.aggregate({ where: { centerId: ctx.centerId, date: { gte: from, lte: to } }, _sum: { amount: true }, _count: true });
+    const last = await db.receipt.findMany({ where: { centerId: ctx.centerId }, orderBy: { seq: "desc" }, take: 5, select: { number: true, amount: true, date: true, issuedByName: true } });
+    const total = agg._sum.amount ?? 0;
+    return {
+      summary: agg._count
+        ? `اتصرف ${agg._count} إيصال من ${from} لـ ${to} بإجمالي ${fmtEgp(total)} ج. آخر إيصال ${last[0]?.number ?? "—"} (${fmtEgp(last[0]?.amount ?? 0)} ج).`
+        : `مفيش إيصالات من ${from} لـ ${to}.`,
+      data: { from, to, count: agg._count, totalPiastres: total, latest: last },
+      cards: [{
+        type: "report", title: `الإيصالات ${from} → ${to}`,
+        rows: [
+          { label: "العدد", value: String(agg._count), tone: "info" },
+          { label: "الإجمالي", value: `${fmtEgp(total)} ج`, tone: "good" },
+          ...(last.length ? [{ label: "آخر إيصال", value: `${last[0].number} — ${fmtEgp(last[0].amount)} ج` }] : []),
+        ],
+        actions: [{ label: "الإيصالات", action: "navigate" as const, view: "payments" }],
+      }],
+    };
+  },
+});
+
+register({
+  name: "finance.get_teacher_settlements",
+  group: "finance",
+  requiredModule: "finance",
+  description: "مستحقات المدرسين: إجمالي اللي اتحسب ليهم (مستحق) واللي اتصرح لهم (مدفوع) وصافي المستحق الحالي + أعلى المدرسين مستحقات في الفترة",
+  usageHint: "«مستحقات المدرسين كام؟» / «اتصرف للمدرسين كام الشهر ده؟» / «مين أكبر مدرس مستحقاته؟»",
+  input: z.object({
+    from: z.string().regex(ymd, "YYYY-MM-DD").optional().describe("بداية الفترة (افتراضي أول الشهر)"),
+    to: z.string().regex(ymd, "YYYY-MM-DD").optional().describe("نهاية الفترة شاملة (افتراضي النهاردة)"),
+  }),
+  risk: "LOW",
+  requiredPermission: "VIEW_REPORTS",
+  permissionLabel: "عرض التقارير",
+  async handler(args, ctx): Promise<ToolOutput> {
+    const from = args.from ?? MONTH_START();
+    const to = args.to ?? todayStr();
+    if (to < from) return { summary: "تاريخ النهاية قبل البداية — راجع الفترة.", data: { error: "range" } };
+    const rows = await db.teacherSettlement.findMany({
+      where: { centerId: ctx.centerId, date: { gte: from, lte: to } },
+      select: { type: true, amount: true, teacherId: true },
+    });
+    const earned = rows.filter((r) => r.type === "EARNED").reduce((s, r) => s + r.amount, 0);
+    const paid = rows.filter((r) => r.type === "PAID").reduce((s, r) => s + r.amount, 0);
+    const perTeacher = new Map<string, number>();
+    for (const r of rows) if (r.type === "EARNED") perTeacher.set(r.teacherId, (perTeacher.get(r.teacherId) ?? 0) + r.amount);
+    const topIds = [...perTeacher.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+    const teachers = topIds.length ? await db.teacher.findMany({ where: { id: { in: topIds.map(([id]) => id) }, centerId: ctx.centerId }, select: { id: true, name: true } }) : [];
+    const top = topIds.map(([id, amt]) => ({ name: teachers.find((t) => t.id === id)?.name ?? "مدرس", earnedPiastres: amt }));
+    return {
+      summary: rows.length
+        ? `مستحقات المدرسين ${from} → ${to}: اتحسب ${fmtEgp(earned)} ج، اتصرف ${fmtEgp(Math.abs(paid))} ج — الباقي المستحق دلوقتي ${fmtEgp(earned + paid)} ج.${top.length ? ` أكبرهم: ${top[0].name} (${fmtEgp(top[0].earnedPiastres)} ج).` : ""}`
+        : `مفيش مستحقات مدرسين مسجلة من ${from} لـ ${to}.`,
+      data: { from, to, earnedPiastres: earned, paidPiastres: paid, netPayablePiastres: earned + paid, topEarned: top },
+      cards: [{
+        type: "report", title: `مستحقات المدرسين ${from} → ${to}`,
+        rows: [
+          { label: "اتحسب ليهم", value: `${fmtEgp(earned)} ج`, tone: "info" },
+          { label: "اتصرف لهم", value: `${fmtEgp(Math.abs(paid))} ج`, tone: "good" },
+          { label: "المتبقي المستحق", value: `${fmtEgp(earned + paid)} ج`, tone: earned + paid > 0 ? "warn" : "good" },
+          ...(top.length ? [{ label: "أعلى مستحقات", value: top.map((t) => `${t.name} (${fmtEgp(t.earnedPiastres)}ج)`).join(" · ") }] : []),
+        ],
+        actions: [{ label: "التقارير", action: "navigate" as const, view: "reports" }],
+      }],
+    };
+  },
+});

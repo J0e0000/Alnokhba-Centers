@@ -98,11 +98,12 @@ register({
 
     // نص = مطابقة مطبّعة في الذاكرة: بتغلف فروق الكتابة العربية
     // (احمد/أحمد · مريمه/مريم · على/علي · تشكيل) اللي بتخلي contains يرجع فاضي — ده كان سبب لوب البحث.
+    // ⚠️ بندور في كل الطلاب (مش take محدود) — بحث مقصوص على 1000 كان بيفلت أسماء
+    // في سنترات كبيرة (5000 طالب) وبيخلي زكي يقول «مفيش مطابق» غلط.
     const candidates = await db.student.findMany({
       where: { centerId: ctx.centerId },
       select: { id: true, name: true, code: true, phone: true, parentPhone: true },
       orderBy: { name: "asc" },
-      take: 1000,
     });
     const scored = candidates
       .map((s) => ({
@@ -431,7 +432,8 @@ export async function resolveStudentFlexible(q: string, centerId: string): Promi
     where: { centerId },
     select: { id: true, name: true, code: true, phone: true, parentPhone: true },
     orderBy: { name: "asc" },
-    take: 1000,
+    // ⚠️ من غير take — البحث المقصوص كان بيفلت طلاب في السنترات الكبيرة
+    // وبيخلي تسجيل الدفعات/العمليات يفشل غلط («مفيش مطابق» وهمي)
   });
   const scored = rows
     .map((s) => ({

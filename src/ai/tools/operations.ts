@@ -626,3 +626,43 @@ register({
     };
   },
 });
+
+/* ============================================================
+   TOOL: مبيعات الكتب — books.get_sales (قراءة)
+============================================================ */
+
+register({
+  name: "books.get_sales",
+  group: "books",
+  requiredModule: "books",
+  description: "مبيعات الكتب في فترة: عدد النسخ، إجمالي المبلغ، وترتيب الكتب الأكثر بيعًا",
+  usageHint: "«مبيعات الكتب كام؟» / «اتبيع كام كتاب الشهر ده؟» / «أنهي كتاب اتباع أكتر؟»",
+  input: z.object({
+    from: z.string().regex(ymd, "YYYY-MM-DD").optional().describe("بداية الفترة (افتراضي أول الشهر)"),
+    to: z.string().regex(ymd, "YYYY-MM-DD").optional().describe("نهاية الفترة شاملة (افتراضي النهاردة)"),
+  }),
+  risk: "LOW",
+  async handler(args, ctx): Promise<ToolOutput> {
+    const from = args.from ?? `${todayStr().slice(0, 7)}-01`;
+    const to = args.to ?? todayStr();
+    if (to < from) return { summary: "تاريخ النهاية قبل البداية — راجع الفترة.", data: { error: "range" } };
+    const [agg, perBook] = await Promise.all([
+      db.bookSale.aggregate({ where: { centerId: ctx.centerId, date: { gte: from, lte: to } }, _sum: { total: true, qty: true }, _count: true }),
+      db.bookSale.groupBy({ by: ["bookId"], where: { centerId: ctx.centerId, date: { gte: from, lte: to } }, _sum: { total: true, qty: true }, orderBy: { _sum: { total: "desc" } }, take: 5 }),
+    ]);
+    if (!agg._count) {
+      return { summary: `مفيش مبيعات كتب من ${from} لـ ${to}.`, data: { from, to, count: 0, totalPiastres: 0, qty: 0 } };
+    }
+    const books = await db.book.findMany({ where: { id: { in: perBook.map((b) => b.bookId) } }, select: { id: true, name: true } });
+    const top = perBook.map((b) => ({ name: books.find((x) => x.id === b.bookId)?.name ?? "كتاب", qty: b._sum.qty ?? 0, piastres: b._sum.total ?? 0 }));
+    return {
+      summary: `مبيعات الكتب ${from} → ${to}: ${agg._sum.qty ?? 0} نسخة في ${agg._count} عملية بإجمالي ${fmt(agg._sum.total ?? 0)} ج. الأكثر بيعًا: ${top[0].name} (${top[0].qty} نسخة).`,
+      data: { from, to, count: agg._count, qty: agg._sum.qty ?? 0, totalPiastres: agg._sum.total ?? 0, top },
+      cards: [{
+        type: "report", title: `مبيعات الكتب ${from} → ${to}`,
+        rows: top.map((t) => ({ label: t.name, value: `${t.qty} نسخة — ${fmt(t.piastres)} ج`, tone: "info" as const })),
+        actions: [{ label: "الكتب", action: "navigate" as const, view: "books" }],
+      }],
+    };
+  },
+});
