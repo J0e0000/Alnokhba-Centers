@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "sdk_version": "0.0.18",
+  "init_ms": 1,
+  "call_ms": 514,
+  "answer": "391",
+  "deterministic_check": "PASS (17*23=391)",
+  "model_meta": "glm-4-plus",
+  "usage": {
+    "completion_tokens": 3,
+    "prompt_tokens": 41,
+    "total_tokens": 44
+  },
+  "keys": [
+    "choices",
+    "created",
+    "id",
+    "model",
+    "object",
+    "request_id",
+    "usage"
+  ]
+}
