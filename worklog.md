@@ -200,3 +200,21 @@ Stage Summary:
 - زكي دلوقتي agent بمعماريتين متكاملتين: عقل LLM (عند توفر الحصة) + مخ حتمي بنفس الأدوات والصلاحيات والتأكيد — الاتنين بيعدّوا على نفس بوابات التفويض
 - كل الأدوات الجديدة منخفضة الخطورة (قراءة) + نفس بوابات الصلاحيات والاستحقاق
 - commit: 068d46a | بنش قابل لإعادة التشغيل: QAE_BASE=http://127.0.0.1:3000 bun scripts/qae/zaki-bench.ts
+
+---
+Task ID: deploy-zaki-agent-v2
+Agent: Super Z (main agent)
+Task: «ارفع دلوقتي علي vercel» — دفع 6 كوميتات معلقة (منها zaki-agent-v2) للإنتاج والتحقق.
+
+Work Log:
+- origin/main كان متأخر 6 كوميتات (benchmark logs + zaki-agent-v2 068d46a + سكريبتات QAE 376fdb7) — الكوميتات كلها آمنة: مفيش تغيير في src غير zaki-agent-v2
+- tsc pre-push: صفر أخطاء في src/ (الأخطاء في scripts/ و skills/ خارج البناء — معروفة)
+- push 665eb14..376fdb7 → Vercel auto-deploy → GitHub commit status = success (deployment BkJCNRdSUgEEGkuUKbjcYA17Avry)
+- تحقق إنتاج e2e: homepage 200 · login بيانات غلط = 401 خلال 0.33s (مش 500 — قاعدة البيانات سليمة) · دخول qae-mgr-99 = 200
+- زكي على الإنتاج: /api/agent/message جاوب سؤال «أكبر مدينين بالترتيب» ببيانات حقيقية (4153 طالب سالب، إجمالي 1,993,779ج، أولهم علي رجب الشناوي 1480ج) — ده سؤال كان فاشل في الـ baseline → إثبات إن النسخة الجديدة عايشة
+- GET /api/zaki findings بتشتعل (debtors: 3021 طالب فوق 250ج، إجمالي ≈1,848,069ج) · POST preset بمفتاح debtors = أكبر 10 مديونيات (14,042ج) ✓
+- ملاحظة توثيقية: POST /api/zaki بيطابق بالـ key الإنجليزي (debtors وغيره) مش بالـ label العربي — الواجهة بتبعت المفتاح فده بالتصميم
+
+Stage Summary:
+- الإنتاج شغال بـ zaki-agent-v2: كل القواعد + 7 أدوات القراءة + المخ الحتمي التحليلي + مسار الـ LLM agent
+- بيانات المالك الحقيقية لم تُمس — كل الاختبارات على سنتر qae-c99-stress الاختباري
