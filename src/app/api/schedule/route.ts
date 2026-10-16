@@ -10,6 +10,101 @@ export const dynamic = "force-dynamic";
 
 const DAY_ORDER = [6, 0, 1, 2, 3, 4, 5]; // Saturday-first Egyptian week
 
+// ============================================================
+// جدول v2 — تفاعلي بالقاعات والبلوكات:
+// - التعارض (نفس المدرس/نفس القاعة بتداخل وقتي حقيقي) = تحذير غير حاجز:
+//   السيرفر بيرجع 409 مع تفاصيل التعارض، والعميل بيعيد الإرسال بـ confirmConflict + سبب.
+//   التجاوز بيتسجل في سجل التدقيق (الممثل + الوقت + الحصص المتأثرة + السبب).
+// - الأخطاء الحاجزة بس: بيانات ناقصة/غير صحيحة، وقت معكوس، أو عملية غير مصرّح بها.
+// - قفل التزامن: PATCH لازم يبعت updatedAt اللي شافه — لو اتغير قبله → 409 stale.
+// ============================================================
+
+type SlotConflict = {
+  type: "TEACHER" | "ROOM" | "DUPLICATE";
+  label: string;
+  detail: string;
+  withSlotId?: string;
+};
+
+/** تداخل فترات حقيقي (مش مجرد مطابقة أوقات البداية) — a.start < b.end && b.start < a.end */
+function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
+  return aStart < bEnd && bStart < aEnd;
+}
+
+type DaySlotRow = {
+  id: string;
+  startTime: string;
+  endTime: string;
+  room: string | null;
+  groupId: string;
+  teacherId: string | null;
+  subject: string;
+  groupName: string;
+  teacherName: string | null;
+};
+
+/** بيجيب حصص يوم معين (مع كل اللي محتاجينه لكشف التعارض) */
+async function loadDaySlots(centerId: string, dayOfWeek: number, excludeId?: string): Promise<DaySlotRow[]> {
+  const rows = await db.scheduleSlot.findMany({
+    where: { centerId, dayOfWeek, isActive: true, ...(excludeId ? { id: { not: excludeId } } : {}) },
+    include: { group: { include: { subject: { select: { name: true } }, teacher: { select: { name: true } } } } },
+    orderBy: { startTime: "asc" },
+  });
+  return rows.map((s) => ({
+    id: s.id, startTime: s.startTime, endTime: s.endTime, room: s.room,
+    groupId: s.groupId, teacherId: s.group.teacherId,
+    subject: s.group.subject.name, groupName: s.group.name, teacherName: s.group.teacher?.name ?? null,
+  }));
+}
+
+/**
+ * كشف تعارض سلوت واحد ضد حصص يومه — تداخل فتري حقيقي.
+ * - TEACHER / ROOM: تعارض موارد (غير حاجز بتأكيد) — بيتفحص كل البلوكات المشغولة،
+ *   فحصة 4 ساعات بتتعارض مع أي حصة بتلامس أي بلوك منها.
+ * - DUPLICATE: تلميح غير حاجز لمجموعة نفسها متكررة في نفس الوقت (مش بيمنع الحفظ أبدًا).
+ * - مطابقة الصف/القسم/المادة لوحدها مش تعارض أبدًا — الحصص المتوازية للمجموعات المختلفة حرة.
+ */
+function conflictsForSlot(candidate: {
+  startTime: string; endTime: string; room: string | null; groupId: string; teacherId: string | null;
+}, daySlots: DaySlotRow[]): SlotConflict[] {
+  const out: SlotConflict[] = [];
+  for (const s of daySlots) {
+    if (!overlaps(candidate.startTime, candidate.endTime, s.startTime, s.endTime)) continue;
+    if (candidate.teacherId && s.teacherId === candidate.teacherId) {
+      out.push({
+        type: "TEACHER",
+        label: `تعارض مدرس — ${s.teacherName ?? "—"}`,
+        detail: `${s.subject} (${s.groupName}) من ${formatTime12(s.startTime)} لـ ${formatTime12(s.endTime)} لنفس المدرس`,
+        withSlotId: s.id,
+      });
+    }
+    if (candidate.room && s.room && candidate.room === s.room) {
+      out.push({
+        type: "ROOM",
+        label: `تعارض قاعة — ${candidate.room}`,
+        detail: `${s.subject} (${s.groupName}) محجوزة في القاعة دي من ${formatTime12(s.startTime)} لـ ${formatTime12(s.endTime)}`,
+        withSlotId: s.id,
+      });
+    }
+    if (candidate.groupId === s.groupId) {
+      out.push({
+        type: "DUPLICATE",
+        label: `تكرار محتمل — ${s.subject} (${s.groupName})`,
+        detail: `نفس المجموعة ليها حصة متقاطعة من ${formatTime12(s.startTime)} لـ ${formatTime12(s.endTime)} — لو مقصودة كمّل عادي`,
+        withSlotId: s.id,
+      });
+    }
+  }
+  return out;
+}
+
+function splitBlocking(all: SlotConflict[]): { blocking: SlotConflict[]; hints: SlotConflict[] } {
+  return {
+    blocking: all.filter((c) => c.type === "TEACHER" || c.type === "ROOM"),
+    hints: all.filter((c) => c.type === "DUPLICATE"),
+  };
+}
+
 /** GET /api/schedule — weekly schedule grouped by day */
 export const GET = handler(async () => {
   const user = await requireCenterUser();
@@ -49,6 +144,9 @@ export const GET = handler(async () => {
         teacher: s.group.teacher?.name ?? "—", teacherId: s.group.teacherId,
         price: s.group.sessionPrice, teacherPercent: s.group.teacherPercent,
         students: s.group._count.students,
+        // للعرض الشبكي + قفل التزامن
+        updatedAt: s.updatedAt.toISOString(),
+        lastOverrideAt: s.lastOverrideAt ? s.lastOverrideAt.toISOString() : null,
       })),
   }));
 
@@ -60,8 +158,7 @@ export const GET = handler(async () => {
     for (let i = 0; i < daySlots.length; i++) {
       for (let j = i + 1; j < daySlots.length; j++) {
         const a = daySlots[i], b = daySlots[j];
-        const overlap = a.startTime < b.endTime && a.endTime > b.startTime;
-        if (!overlap) continue;
+        if (!overlaps(a.startTime, a.endTime, b.startTime, b.endTime)) continue;
         if (a.group.teacherId && a.group.teacherId === b.group.teacherId) {
           conflicts.push({
             type: "TEACHER",
@@ -129,7 +226,30 @@ type SlotBody = {
   id?: string;
   dayOfWeek?: number; startTime?: string; endTime?: string;
   groupId?: string; room?: string;
+  // جدول v2: تجاوز التعارض بعد التأكيد الصريح + سبب مكتوب
+  confirmConflict?: boolean;
+  conflictReason?: string;
+  // قفل التزامن: ISO updatedAt اللي العميل شافه — لو اتغيّر قبله → 409
+  updatedAt?: string;
 };
+
+async function resolveGroup(centerId: string, groupId?: string) {
+  if (!groupId) throw new ApiError("اختار المجموعة.");
+  const group = await db.group.findFirst({
+    where: { id: String(groupId), centerId },
+    include: { teacher: true, subject: true },
+  });
+  if (!group) throw new ApiError("المجموعة مش موجودة.");
+  return group;
+}
+
+function validateTimes(startTime?: string, endTime?: string): { start: string; end: string } {
+  if (!startTime || !endTime || !/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime)) {
+    throw new ApiError("اكتب وقت البداية والنهاية بشكل صحيح (مثلاً 05:00 م).");
+  }
+  if (endTime <= startTime) throw new ApiError("وقت النهاية لازم بعد البداية.");
+  return { start: startTime, end: endTime };
+}
 
 /** POST /api/schedule — add a slot (manager) */
 export const POST = handler(async (req: Request) => {
@@ -138,39 +258,54 @@ export const POST = handler(async (req: Request) => {
 
   const day = Number(body.dayOfWeek);
   if (!Number.isInteger(day) || day < 0 || day > 6) throw new ApiError("اختار اليوم.");
-  if (!/^\d{2}:\d{2}$/.test(body.startTime ?? "") || !/^\d{2}:\d{2}$/.test(body.endTime ?? "")) {
-    throw new ApiError("اكتب وقت البداية والنهاية بشكل صحيح (مثلاً 05:00 م).");
+  const { start, end } = validateTimes(body.startTime, body.endTime);
+  const group = await resolveGroup(user.centerId, body.groupId);
+  const room = body.room ? String(body.room) : null;
+
+  // كشف التعارض بتداخل فتري حقيقي — كل البلوكات المشغولة
+  const daySlots = await loadDaySlots(user.centerId, day);
+  const all = conflictsForSlot(
+    { startTime: start, endTime: end, room, groupId: group.id, teacherId: group.teacherId },
+    daySlots,
+  );
+  const { blocking, hints } = splitBlocking(all);
+
+  // تعارض موارد من غير تأكيد صريح → 409 بالتفاصيل (العميل بيعرضها ويعيد الإرسال بتأكيد)
+  if (blocking.length > 0 && body.confirmConflict !== true) {
+    return ok({ needsConfirm: true, conflicts: blocking, hints }, { status: 409 });
   }
-  if (body.endTime! <= body.startTime!) throw new ApiError("وقت النهاية لازم بعد البداية.");
-
-  const group = await db.group.findFirst({ where: { id: String(body.groupId), centerId: user.centerId }, include: { teacher: true, subject: true } });
-  if (!group) throw new ApiError("اختار المجموعة.");
-
-  // كشف التعارض في نفس اليوم: نفس القاعة أو نفس المدرس بتداخل وقتي
-  const sameDay = await db.scheduleSlot.findMany({
-    where: { centerId: user.centerId, dayOfWeek: day, isActive: true },
-    include: { group: { include: { subject: { select: { name: true } }, teacher: true } } },
-  });
-  for (const s of sameDay) {
-    const overlaps = s.startTime < body.endTime! && s.endTime > body.startTime!;
-    if (!overlaps) continue;
-    if (body.room && s.room && s.room === body.room) {
-      throw new ApiError(`القاعة محجوزة في نفس الوقت — عندها حصة ${s.group.subject.name} من ${s.startTime} لـ ${s.endTime}.`);
-    }
-    if (group.teacherId && s.group.teacherId === group.teacherId) {
-      throw new ApiError(`المدرس محجوز في حصة تانية في نفس الوقت (${s.group.subject.name} من ${s.startTime} لـ ${s.endTime}) — اختار وقت تاني.`);
-    }
+  if (blocking.length > 0 && !String(body.conflictReason ?? "").trim()) {
+    throw new ApiError("لو هتحفظ رغم التعارض، اكتب السبب في خانة التأكيد.");
   }
 
   const slot = await db.scheduleSlot.create({
-    data: { centerId: user.centerId, dayOfWeek: day, startTime: body.startTime!, endTime: body.endTime!, groupId: group.id, room: body.room ?? null },
+    data: {
+      centerId: user.centerId, dayOfWeek: day, startTime: start, endTime: end,
+      groupId: group.id, room,
+    },
   });
-  await logAudit({ user, action: AUDIT.SCHEDULE_ADDED, entity: "SCHEDULE", entityId: slot.id, after: { day, startTime: body.startTime, group: group.name } });
+
+  await logAudit({
+    user, action: AUDIT.SCHEDULE_ADDED, entity: "SCHEDULE", entityId: slot.id,
+    after: { day, startTime: start, group: group.name },
+  });
+  if (blocking.length > 0) {
+    // سجل تدقيق مخصص للتجاوز: الممثل + الوقت + الحصص المتأثرة + السبب (append-only)
+    await logAudit({
+      user, action: "تجاوز تعارض جدول", entity: "SCHEDULE", entityId: slot.id,
+      after: {
+        newSlot: { day: dayNameAR(day), startTime: start, endTime: end, room, group: group.name },
+        affected: blocking.map((c) => ({ slotId: c.withSlotId, type: c.type, detail: c.detail })),
+      },
+      reason: String(body.conflictReason).trim(),
+    });
+    await db.scheduleSlot.update({ where: { id: slot.id }, data: { lastOverrideAt: new Date() } });
+  }
   // قابل للتراجع (spec §13) — التراجع بيعطّل السلوت (مش مسح)
   await recordUndo({
     user, entity: "SCHEDULE_SLOT", entityId: slot.id, action: "CREATE",
-    label: `إضافة حصة ${group.name} — ${dayNameAR(day)} ${body.startTime}`,
-    forward: { id: slot.id, centerId: user.centerId, dayOfWeek: day, startTime: body.startTime, endTime: body.endTime, groupId: group.id, room: body.room ?? null },
+    label: `إضافة حصة ${group.name} — ${dayNameAR(day)} ${start}`,
+    forward: { id: slot.id, centerId: user.centerId, dayOfWeek: day, startTime: start, endTime: end, groupId: group.id, room },
     inverse: { isActive: false },
   });
 
@@ -178,18 +313,33 @@ export const POST = handler(async (req: Request) => {
   await notifyGroupStudents(
     user.centerId, group.id, "SCHEDULE_CHANGE",
     "📅 اتضاف حصة لجدولك",
-    `حصة ${group.subject.name} — يوم ${dayNameAR(day)} الساعة ${formatTime12(body.startTime!)}${body.room ? ` في ${body.room}` : ""}.`,
+    `حصة ${group.subject.name} — يوم ${dayNameAR(day)} الساعة ${formatTime12(start)}${room ? ` في ${room}` : ""}.`,
   );
 
-  return ok({ slot: { id: slot.id } }, { status: 201 });
+  return ok({
+    slot: { id: slot.id, updatedAt: slot.updatedAt.toISOString() },
+    hints, overrides: blocking.length > 0,
+  }, { status: 201 });
 });
 
-/** PATCH /api/schedule — update a slot (manager) */
+/** PATCH /api/schedule — update a slot (manager) with optimistic concurrency */
 export const PATCH = handler(async (req: Request) => {
   const user = await requireManager();
   const body = await readJson<SlotBody>(req);
-  const slot = await db.scheduleSlot.findFirst({ where: { id: String(body.id), centerId: user.centerId } });
+  const slot = await db.scheduleSlot.findFirst({
+    where: { id: String(body.id), centerId: user.centerId },
+    include: { group: { include: { teacher: true, subject: true } } },
+  });
   if (!slot) throw new ApiError("الحصة دي مش موجودة في الجدول.", 404);
+
+  // قفل التزامن: العميل بيبعت updatedAt اللي شافه — لو حد تاني سبقه → 409 stale
+  if (body.updatedAt) {
+    const seen = new Date(body.updatedAt);
+    if (isNaN(seen.getTime())) throw new ApiError("بيانات التزامن مش صحيحة — حدّث الصفحة.");
+    if (seen.getTime() !== slot.updatedAt.getTime()) {
+      return ok({ stale: true, error: "حد تاني عدّل الحصة دي قبلك — هات نسخة fresh وقيد تاني." }, { status: 409 });
+    }
+  }
 
   const data: Record<string, unknown> = {};
   if (body.dayOfWeek !== undefined) {
@@ -205,16 +355,12 @@ export const PATCH = handler(async (req: Request) => {
     if (!/^\d{2}:\d{2}$/.test(body.endTime)) throw new ApiError("وقت النهاية مش صحيح.");
     data.endTime = body.endTime;
   }
-  if (data.startTime && data.endTime && data.endTime <= data.startTime) throw new ApiError("وقت النهاية لازم بعد البداية.");
   if (body.room !== undefined) data.room = body.room || null;
   if (body.groupId !== undefined) {
-    const group = await db.group.findFirst({ where: { id: String(body.groupId), centerId: user.centerId }, include: { teacher: true, subject: true } });
-    if (!group) throw new ApiError("المجموعة مش موجودة.");
+    const group = await resolveGroup(user.centerId, body.groupId);
     data.groupId = group.id;
   }
 
-  // كشف التعارض بعد التعديل: نجيب السلوة محدّثة (المجموعة الجديدة/القاعة الجديدة)
-  // ونتحقق من التداخل مع باقي حصص نفس اليوم (باستثناء السلوة نفسها)
   const finalDay = data.dayOfWeek !== undefined ? Number(data.dayOfWeek) : slot.dayOfWeek;
   const finalStart = (data.startTime as string) ?? slot.startTime;
   const finalEnd = (data.endTime as string) ?? slot.endTime;
@@ -224,23 +370,50 @@ export const PATCH = handler(async (req: Request) => {
   const effectiveGroupId = (data.groupId as string) ?? slot.groupId;
   const effectiveGroup = await db.group.findUnique({ where: { id: effectiveGroupId }, include: { teacher: true, subject: true } });
 
-  const sameDay = await db.scheduleSlot.findMany({
-    where: { centerId: user.centerId, dayOfWeek: finalDay, isActive: true, id: { not: slot.id } },
-    include: { group: { include: { subject: { select: { name: true } }, teacher: true } } },
-  });
-  for (const s of sameDay) {
-    const overlaps = s.startTime < finalEnd && s.endTime > finalStart;
-    if (!overlaps) continue;
-    if (finalRoom && s.room && s.room === finalRoom) {
-      throw new ApiError(`القاعة محجوزة في نفس الوقت — عندها حصة ${s.group.subject.name} من ${s.startTime} لـ ${s.endTime}.`);
-    }
-    if (effectiveGroup?.teacherId && s.group.teacherId === effectiveGroup.teacherId) {
-      throw new ApiError(`المدرس محجوز في حصة تانية في نفس الوقت (${s.group.subject.name} من ${s.startTime} لـ ${s.endTime}) — اختار وقت تاني.`);
-    }
+  // كشف التعارض بعد التعديل (باستثناء السلوت نفسه — مفيش self-conflict)
+  const daySlots = await loadDaySlots(user.centerId, finalDay, slot.id);
+  const all = conflictsForSlot(
+    { startTime: finalStart, endTime: finalEnd, room: finalRoom, groupId: effectiveGroupId, teacherId: effectiveGroup?.teacherId ?? null },
+    daySlots,
+  );
+  const { blocking, hints } = splitBlocking(all);
+
+  if (blocking.length > 0 && body.confirmConflict !== true) {
+    return ok({ needsConfirm: true, conflicts: blocking, hints }, { status: 409 });
+  }
+  if (blocking.length > 0 && !String(body.conflictReason ?? "").trim()) {
+    throw new ApiError("لو هتحفظ رغم التعارض، اكتب السبب في خانة التأكيد.");
   }
 
-  await db.scheduleSlot.update({ where: { id: slot.id }, data: data as never });
-  await logAudit({ user, action: AUDIT.SCHEDULE_UPDATED, entity: "SCHEDULE", entityId: slot.id, before: { day: slot.dayOfWeek, startTime: slot.startTime }, after: data });
+  // التحديث الذري: بنفس شرط updatedAt — لو حد تاني عدّل في اللحظة دي بيتفشل بدل ما يكتب فوقه
+  const res = await db.scheduleSlot.updateMany({
+    where: {
+      id: slot.id, centerId: user.centerId,
+      ...(body.updatedAt ? { updatedAt: new Date(body.updatedAt) } : {}),
+    },
+    data: {
+      ...data,
+      ...(blocking.length > 0 ? { lastOverrideAt: new Date() } : {}),
+    } as never,
+  });
+  if (res.count === 0) {
+    return ok({ stale: true, error: "حد تاني عدّل الحصة دي قبلك — هات نسخة fresh وقيد تاني." }, { status: 409 });
+  }
+
+  await logAudit({
+    user, action: AUDIT.SCHEDULE_UPDATED, entity: "SCHEDULE", entityId: slot.id,
+    before: { day: slot.dayOfWeek, startTime: slot.startTime }, after: data,
+  });
+  if (blocking.length > 0) {
+    await logAudit({
+      user, action: "تجاوز تعارض جدول", entity: "SCHEDULE", entityId: slot.id,
+      after: {
+        slot: { day: dayNameAR(finalDay), startTime: finalStart, endTime: finalEnd, room: finalRoom },
+        affected: blocking.map((c) => ({ slotId: c.withSlotId, type: c.type, detail: c.detail })),
+      },
+      reason: String(body.conflictReason).trim(),
+    });
+  }
 
   // إشعار تلقائي لطلاب المجموعة — نوع الإشعار حسب اللي اتغير فعلاً
   const changedGroup = await db.group.findUnique({
@@ -266,7 +439,8 @@ export const PATCH = handler(async (req: Request) => {
     }
   }
 
-  return ok({ ok: true });
+  const fresh = await db.scheduleSlot.findUnique({ where: { id: slot.id }, select: { updatedAt: true } });
+  return ok({ ok: true, hints, overrides: blocking.length > 0, slot: { id: slot.id, updatedAt: fresh?.updatedAt.toISOString() } });
 });
 
 /** DELETE /api/schedule?id= — remove a slot (manager) */

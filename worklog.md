@@ -276,3 +276,51 @@ Stage Summary:
 - رحلة البداية عايشة على الرئيسية: بيانات حقيقية 100%، skip/restore لكل مستخدم، احتفال مرة واحدة، وسنترات قديمة مش متأثرة
 - الناف بقى بيعكس الصلاحيات الفعلية (التقارير) مع السيرفر بيفضل المصدر النهائي للرفض
 - اللي اتنفذ هو المرحلة 1 من برومبت الـ Refactor — الباقي (داشبورد لكل دور، بروفايل طالب موحد، توحيد design system، تدقيق صلاحيات REST كامل) موثق تحت في التقرير
+
+---
+Task ID: 6-a
+Agent: Explore (permission audit)
+Task: تدقيق صلاحيات REST كامل — مصفوفة كل مسارات الـ API
+
+Work Log:
+- قرأت worklog.md (onboarding-quest-role-nav) + auth.ts + permissions.ts + permission-catalog.ts (24 صلاحية، RECEPTIONIST_DEFAULT، MANAGER ضمني كل حاجة)
+- جرد كامل: 77 ملف route.ts تحت src/app/api — قريتهم كلهم (handler bodies + where-clauses) + portal-auth.ts / teacher-auth.ts / undo.ts / backup.ts / api.ts
+- بنيت مصفوفة: path | methods | guard | الأدوار عمليًا | فحوص الصلاحيات | centerId scope | الخطر | ملاحظة
+- تحقق خاص من: schedule, rooms, sessions POST, attendance/*, payments/*, students/*, accounting/*, audit/*, admin/*, backup/*, emergency/*, البورتالات (توكن + انتهاء + سنتر), staff-qr/deviceKey, system/db-status
+- فحص "WRITE بدون حارس": كل الكتابات العامة (public check-in / qr-claim / staff-qr issue / fingerprint event) محمية بتوكنات سيرفرية + rate limit — مفيش كتابة صلاحيات بدون حارس
+- خرّيط استخدام hasPermission فعليًا: payments، sessions/[id] cancel، attendance mark PATCH، students/[id] PATCH، reports — والباقي حرس أدوار بس
+
+Stage Summary:
+- مفيش أي WRITE غير محمي؛ كل استعلامات القراءة/الكتابة في السنتر متقيّدة بـ centerId (خطأ 404/فاضي) — استثناء واحد خطير: /api/backup?download=latest (مدير سنتر) بينزّل VACUUM INTO لقاعدة البيانات كاملة = كل السنترات (يعمل بس في وضع SQLite)
+- أخطر 3: (1) تسريب DB كامل لمدير سنتر عبر /api/backup، (2) أي موظف سنتر حتى TEACHER يقدر يفتح/يقفل حصص وينشئ قيود مالية (sessions POST/close من غير START_SESSION/END_SESSION)، (3) DELETE /api/attendance/mark بينعكس تحميله من غير EDIT_ATTENDANCE (الـ PATCH بيفحصها والـ DELETE لأ)
+- ثغرة نموذج الصلاحيات: صلاحية CANCEL_SUBSCRIPTION و ARCHIVE_STUDENT ممنوحة لاستقبال = سجينة: approvals يرفضها (canDirect) و students/[id] يطلب MANAGER فقط
+- dashboard غير محسوم: أي دور غير RECEPTIONIST (TEACHER) بياخد الفرع المالي للمدير كامل
+- تسجيل دخول الموظفين محدود بـ username بس (8/دقيقة) — مفيش حد لكل IP زي البورتالات
+- تفاصيل مصفوفة + الفيندنجات مرقّمة في تقرير المهمة (تم تسليمها في رسالة الوكيل)
+
+---
+Task ID: phase2-timetable-offline
+Agent: Super Z (main agent)
+Task: «كمّل المرحلة 2» + «نظام offline مش شغال — خليه html نسخة للموقع أوفلاين وإلا excel dashboard» + «شيل شكل الجدول القديم وحط الجدول التفاعلي بالقاعات» (Mandatory Feature: Interactive Room-Based Class Scheduling).
+
+Work Log:
+- جدول v2 (الميزة الإلزامية كاملة):
+  1) Schema: ScheduleSlot + updatedAt (قفل تزامن) + lastOverrideAt (سجل تجاوز) — db push dev + تطبيق آمن على إنتاج Supabase (ALTER ADD IF NOT EXISTS — 75 صف سليمة)
+  2) API /api/schedule v2: كشف تعارض بتداخل فتري حقيقي (مش مطابقة أوقات) — TEACHER/ROOM غير حاجزين بتأكيد (409 needsConfirm → confirmConflict + conflictReason إجباري) + DUPLICATE تلميح غير حاجز + تجاوز مسجّل في audit (الممثل/الوقت/الحصص المتأثرة/السبب) + قفل تزامن optimistic (PATCH بـ updatedAt → updateMany ذري → stale = 409) — e2e: 15/15 ✅
+  3) UI جديد بالكامل (schedule.tsx 1490 سطر): شبكة قاعات×7 بلوكات ثابتة (08:00→22:00 بآخر بلوك 20–22) · مواضع بالنِسب الزمنية الحقيقية · حصة متعددة بلوكات = شريط متصل واحد · lanes للتقاطعات (كل الحجوزات ظاهرة) · أخضر=سليم / أصفر=تعارض بنص وأيقونة (مش لون بس) + aria-label بالحالة · خط الساعة الحالية بتوقيت القاهرة · دبل-كليك/ضغطة خلية فاضية → حوار مدمج معبّى باليوم/القاعة/البلوك · مدة 1-3 بلوكات + وقت مخصص · معاينة تعارض حية جوه الحوار · سحب وإفلات بمعاينة قبل الحفظ + بديل كيبورد (نقل) · فلاتر مدرس/مجموعة/قاعة + «أسبوع المورد» · إجراءات سريعة (فتح النهاردة/تعديل/نقل/تكرار/حذف) · منع إرسال مكرر + تأكيد فقدان تغييرات + تأكيدات الحذف · تنبيه صريح إن التعديل على القالب الأسبوعي · موبايل = قايمة بالقاعات بدل الشبكة المصغرة · القاعات زي ما هي · الطباعة محفوظة
+  4) تحقق متصفح كامل (localhost بعد حل مشكلة WS للـ 127.0.0.1 في الساندبوكس): الشبكة بالألوان ✓ التفاصيل بسببات التعارض ✓ السحب → معاينة التعارض ✓ إضافة من خلية ✓ موبايل ✓ فلاتر + أسبوع المورد ✓
+- نظام الأوفلاين (سبب «مش شغال» الحقيقي):
+  1) التشخيص: حزمة HTML الموقّعة (emergency-app.ts) كانت dead code — الزرار بينزّل إكسل برغم إن الواجهة واعدة بحزمة HTML → ربط buildEmergencyHtml + issueLicense + buildEmergencySnapshot في GET /api/emergency (HTML افتراضي، ?format=xlsx للإكسل كبديل + زرار ثانوي في الواجهة)
+  2) الباك الجذري الثاني: emergency-app-js2.ts فيه خطأ syntax (علامة تنصيص `'...'` مقفولة بـ `";` سطر 460) بكسر السكريبت كله → boot() بيقع بـ «persistState is not defined» → الحزمة تفضل معلقة على «جاري التحقق» للأبد → أصلحت النص + node --check
+  3) التحقق بالمتصفح: الحزمة بقت تفتح — رخصة 7 أيام ✓ داشبورد ✓ اختيار الموظف ✓ بحث طلاب (لقيط أحمد 11111) ✓ الحصص والعمليات والتصدير ✓ — 730KB مكتفية بذاتها (خطوط+لوجو+jsQR+لقطة+توقيع)
+- المرحلة 2 (تدقيق الصلاحيات REST كامل — 77 route):
+  1) مصفوفة تدقيق كاملة (subagent) + 11 فجوة حقيقية → إصلاحات: #2 HIGH فتح/قفل الحصص بـ START_SESSION/END_SESSION · #3 HIGH مسح الرصد بـ EDIT_ATTENDANCE · #1 HIGH تنزيل .db الكامل للأدمن بس (المدير JSON/CSV لسنتره) · #4 ARCHIVE_STUDENT/CANCEL_SUBSCRIPTION الممنوحة بقت بتشتغل · #5 rate limit لكل IP على اللوجين · #7 داشبورد غير المدير بسيط بدون مالي · #8 بوابة dynamic_qr للـ batch · #9 مفيش إعلانات للمعلم · #10 sysdiag من غير يوزر/باسورد في الـ URL
+  2) e2e الإصلاحات: 9/9 ✅ (TEACHER 403 فتح حصة/إعلان/مسح حضور · مدير .db 403 · JSON 200 · داشبورد بسيط)
+  3) المتبقي موثق: #6 PII reads (VIEW_STUDENTS على GET الطلاب/lookup/scan — محتاج مراجعة UI قبل) + #11 info — للمرحلة الجاية
+- أدوات: scripts/qae/{schedule_v2_e2e.mjs, permissions_fix_e2e.mjs, seed_schedule_env.ts, prod_slot_columns.mjs} — قابلة لإعادة التشغيل
+
+Stage Summary:
+- الجدول التفاعلي بالقاعات عايش (7 بلوكات × قاعات، تعارضات صفراء بتتأكد وتتسجل، أخضر سليم، سحب وإفلات بمعاينة، موبايل قايمة) — e2e 15/15 + متصفح
+- الأوفلاين اتصلح من جذرين: الربط الناقص (HTML package dead code) + syntax error كان بيخلي الحزمة معلقة للأبد — الحزمة بتتنزّل HTML شغال + بديل إكسل موجود
+- الصلاحيات: 9 إصلاحات مطبقة ومتحقق منها — الرفض سيرفر-سايد مش إخفاء زرار
+- إنتاج Supabase اتحدّث بأمان (عمودين) — جاهز للنشر

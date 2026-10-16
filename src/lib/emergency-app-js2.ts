@@ -457,7 +457,7 @@ function paymentModal(s, opts) {
     "</div>" +
     '<div id="pay-change-box" style="margin-top:12px"></div>' +
     '<button class="nk-btn primary wide" id="pay-go" style="margin-top:12px">' + icon("check") + (isRenew ? " سجّل التجديد" : " سجّل الدفعة") + "</button>" +
-    '<button class="nk-btn wide" id="pay-skip" style="margin-top:8px">مش هيدفع دلوقتي</button>";
+    '<button class="nk-btn wide" id="pay-skip" style="margin-top:8px">مش هيدفع دلوقتي</button>';
 
   var state = { method: "CASH", changeAction: "WALLET" };
   var amt = document.getElementById("pay-amt");

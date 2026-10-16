@@ -57,6 +57,10 @@ type CreateBody = {
  */
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
+  // النشر جماعي لكل الطلاب — المدرس مش بيبعت إعلانات (تدقيق المرحلة 2 — #9)
+  if (user.role === "TEACHER") {
+    throw new ApiError("نشر الإعلانات للمدير والاستقبال بس.", 403);
+  }
   const body = await readJson<CreateBody>(req);
 
   const title = String(body.title ?? "").trim();

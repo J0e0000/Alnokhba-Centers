@@ -274,6 +274,10 @@ export const POST = handler(async (req: Request) => {
  *  الحصة المفتوحة: أي موظف سنتر (زي POST). المقفولة: المدير بس (زي PATCH). */
 export const DELETE = handler(async (req: Request) => {
   const user = await requireCenterUser();
+  // مسح الرصد بيعكس فلوس (CHARGE) — لازم صلاحية تعديل الحضور زي الـ PATCH (تدقيق المرحلة 2)
+  if (!hasPermission(user, "EDIT_ATTENDANCE")) {
+    throw new ApiError("مفيش عندك صلاحية مسح الرصد — كلّم المدير.", 403);
+  }
   const url = new URL(req.url);
   const id = String(url.searchParams.get("attendanceId") ?? "");
   if (!id) throw new ApiError("حدد سجل الحضور.", 400);

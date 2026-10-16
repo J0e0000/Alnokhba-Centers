@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
 import { requireCenterUser, requireManager, ApiError } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { todayStr } from "@/lib/normalize";
 import { assertNoSessionConflicts, autoTeacherAttendance } from "@/lib/sessions-core";
@@ -97,6 +98,10 @@ function clientIp(req: Request): string {
 /** POST /api/sessions — open/materialize a session from a schedule slot, ad-hoc group, or Open Attendance */
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
+  // صلاحية فتح الحصص على السيرفر — الإخفاء في الناف مش أمان (تدقيق المرحلة 2)
+  if (!hasPermission(user, "START_SESSION")) {
+    throw new ApiError("مفيش عندك صلاحية فتح الحصص — كلّم المدير.", 403);
+  }
   const body = await readJson<OpenBody>(req);
   const date = body.date || todayStr();
   const roomPinEnabled = body.requireRoomPin === true;

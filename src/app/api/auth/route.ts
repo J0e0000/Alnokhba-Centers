@@ -128,6 +128,9 @@ export const POST = handler(async (req: Request) => {
 
   if (!username || !password) throw new ApiError("اكتب اسم المستخدم وكلمة السر.", 400);
   rateLimit(`login:${username}`, 8, 60_000);
+  // حدود لكل IP — تكفي ضد تبديل أسماء المستخدمين (تدقيق المرحلة 2 — #5)
+  const __ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim().slice(0, 40) || (req.headers.get("x-real-ip") ?? "unknown");
+  rateLimit(`login-ip:${__ip}`, 30, 60_000);
 
   const user = await db.user.findUnique({
     where: { username },

@@ -92,7 +92,7 @@ export async function GET() {
     vercelEnv: process.env.VERCEL_ENV || null,
     vercelFlag: process.env.VERCEL || null,
     envSet: !!process.env.DATABASE_URL,
-    dbUrlPrefix: (process.env.DATABASE_URL || '').slice(0, 24),
+    dbUrlPrefix: (process.env.DATABASE_URL || '').split('@')[1]?.slice(0, 24) ?? '', // الهوست بس — من غير يوزر/باسورد (تدقيق المرحلة 2 — #10)
     commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
     exists,
     tmpCopyOk: tmpOk,
