@@ -77,3 +77,51 @@ register({
     };
   },
 });
+
+/* ============================================================
+   TOOL: إحصاء الحصص — schedule.get_stats
+   أعداد الحصص حسب الحالة في فترة (مقفولة/مفتوحة/ملغاة) + الحصص
+   المفتوحة من أيام فاتت اللي لازم تتقفل — بدل ما الموديل يجاوب
+   بأرقام النهاردة لواحد سأل عن الشهر.
+============================================================ */
+
+register({
+  name: "schedule.get_stats",
+  group: "schedule",
+  requiredModule: "sessions",
+  description: "أعداد حصص السنتر حسب الحالة في فترة: كام اتقفلت، كام لسه مفتوحة، كام اتلغت + الحصص المفتوحة من أيام فاتت",
+  usageHint: "«كام حصة اتقفلت الشهر ده؟» / «كام حصة مفتوحة؟» / «حصص من 2026-10-01 لـ 2026-10-15» — من غير تواريخ = من أول الشهر لليوم",
+  input: z.object({
+    from: z.string().regex(ymd, "YYYY-MM-DD").optional().describe("بداية الفترة (افتراضي أول الشهر)"),
+    to: z.string().regex(ymd, "YYYY-MM-DD").optional().describe("نهاية الفترة شاملة (افتراضي النهاردة)"),
+  }),
+  risk: "LOW",
+  async handler(args, ctx): Promise<ToolOutput> {
+    const today = todayStr();
+    const from = args.from ?? `${today.slice(0, 7)}-01`;
+    const to = args.to ?? today;
+    if (to < from) return { summary: "تاريخ النهاية قبل البداية — راجع الفترة.", data: { error: "range" } };
+    const sessions = await db.sessionInstance.findMany({
+      where: { centerId: ctx.centerId, date: { gte: from, lte: to } },
+      select: { status: true, date: true },
+    });
+    const closed = sessions.filter((s) => s.status === "CLOSED").length;
+    const open = sessions.filter((s) => s.status === "OPEN").length;
+    const cancelled = sessions.filter((s) => s.status === "CANCELLED").length;
+    const openPast = sessions.filter((s) => s.status === "OPEN" && s.date < today).length;
+    const openToday = open - openPast;
+    return {
+      summary: `حصص ${from} → ${to}: ${closed} مقفولة، ${open} مفتوحة (${openPast} منها من أيام فاتت لازم تتقفل)، ${cancelled} ملغاة.`,
+      data: { from, to, total: sessions.length, closed, open, openPast, openToday, cancelled },
+      cards: [{
+        type: "report", title: `حصص ${from} → ${to}`,
+        rows: [
+          { label: "المقفولة", value: String(closed), tone: "good" },
+          { label: "المفتوحة", value: `${open} (${openPast} من أيام فاتت)`, tone: openPast > 0 ? ("warn" as const) : ("info" as const) },
+          { label: "الملغاة", value: String(cancelled), tone: "info" },
+        ],
+        actions: [{ label: "الجدول", action: "navigate" as const, view: "schedule" }],
+      }],
+    };
+  },
+});

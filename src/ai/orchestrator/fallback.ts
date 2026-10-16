@@ -67,12 +67,20 @@ function methodOf(text: string): "CASH" | "VODAFONE" | "INSTAPAY" | null {
   return null;
 }
 
+/** اسم الطالب من سؤال رصيد — «رصيد الطالب أحمد محمد كام؟» */
+function extractBalanceName(text: string): string | null {
+  const m = text.match(/رصيد (?:الطالب|الحساب)\s+([\u0600-\u06FFa-zA-Z]+(?:\s+[\u0600-\u06FFa-zA-Z]+){0,3}?)(?:\s+(?:كام|بكام|اد ايه|إيه)|\?|؟|$)/);
+  if (!m) return null;
+  const words = m[1].split(/\s+/).filter((w) => w.length >= 2 && !/^(كام|بكام)$/.test(w));
+  return words.length ? words.join(" ") : null;
+}
+
 /** اسم الطالب من طلب دفعة — «لأحمد محمد» / «لـ أحمد» / «من أحمد» / «لحساب أحمد»
  *  الحرف بيتطلب قبل مسافة أو بداية النص — عشان «ل» جوه «سجل» ما تلتقطش اللي بعدها كاسم */
 function extractPaymentName(text: string): string | null {
   const m = text.match(/(?:^|\s)(?:لحساب|لـ|ل|من)\s*([\u0600-\u06FFa-zA-Z]{2,}(?:\s+[\u0600-\u06FFa-zA-Z]{2,}){0,3})/);
   if (!m) return null;
-  const stop = ["جنيه", "ج", "كاش", "فودافون", "انستا", "انستاباي", "النهارده", "اليوم", "دفعه", "حساب"];
+  const stop = ["جنيه", "ج", "كاش", "فودافون", "انستا", "انستاباي", "النهارده", "اليوم", "دفعه", "حساب", "طالب", "الطالب"];
   const words = m[1].split(/\s+/)
     .map((w, i) => (i === 0 ? w.replace(/^لل?/, "") : w)) // «لأحمد» ← «أحمد»
     .filter((w) => w.length >= 2 && !stop.includes(w) && !/^\d+([.,]\d+)?$/.test(w));
@@ -246,6 +254,18 @@ const RE = {
   groupsList: /المجموعات|مجموعاتي|مجموعات السنتر|كام مجموعه|غروبات|my groups|show( me)? groups|list groups/,
   weakStudents: /مستواه نازل|مستوي نازل|الضعفاء|ضعيف|محتاج(ين)? متابعه|متعثر(ين)?|متلخبط(ين)?|struggling|falling behind|weak students|needs? follow ?-?up|مين محتاج/,
   collection: /كام (اتنصل|جمع|تحصيل)|التحصيل|ايراد|حصلنا|جمعنا|اتحصل|collections? (today|this week)|how much (collected|did we collect)/,
+  // قراءات تحليلية دقيقة — أدوات مالية/حضور/حصص/كتب (بيتمسك قبل التحليل العام)
+  debtors: /مديني(ن)?|مديون(ية|ين)?|عليهم فلوس|عليه فلوس|رصيد سالب|مديونية|الديون|المتأخرين في الدفع|ديون|debtors?|who owes|outstanding (balances?|payments?)/,
+  expenses: /مصروف|مصاريف|مصروفات|expenses?|spending/,
+  receipts: /ايصال(ات)?|إيصال(ات)?|فواتير|receipts?|invoices?/,
+  settlements: /مستحق(ات)?|مستاهقات|تسويات|اتصرف للمدرسين|اتحسب للمدرسين|مرتبات المدرسين|settlements?/,
+  attRateOverall: /نسبه الحضور|نسبة الحضور|معدل الحضور|الحضور العام|attendance rate|overall attendance|حضورهم عامل|الحضور آخر/,
+  sessionStats: /(كام|عدد) (حصه|حصة).{0,30}(اتقفلت|مقفول|مفتوح|ملغات|الشهر|الاسبوع|الفتره)|(اتقفلت|مقفوله|مفتوحه|ملغاته).{0,20}(الشهر|الاسبوع)|اتقفلت الشهر|حصص مقفوله|session stats|closed sessions/,
+  bookSales: /مبيعات الكتب|كتب اتباعت|بيع الكتب|اتبع كتب|كتاب اتباع|book sales?/,
+  studentBalance: /رصيد (الطالب|الحساب)|حساب الطالب|المطلوب منه كام|الباقي عليه كام|balance (of|for)/,
+  studentCount: /عدد الطلاب|كام طالب|كام طالبه|عدد الطالبات|عدد المسجلين|حجم السنتر|how many students/,
+  groupRanking: /(مجموعه|مجموعة).{0,14}(غيابها|غايبها|حضورها).{0,14}(اعلي|افضل|احسن|اكبر|أعلى|أفضل|أحسن|أكبر)|افضل مجموعه|أفضل مجموعة|اعلي مجموعه|أعلى مجموعة|اكتر مجموعه حضور/,
+  neverAttended: /محضروش ولا م(رة|ره)|ما حضروش|مش حاجرين خالص|صفر حضور|never attended/,
   // أدوات الإدارة الجديدة (مدير) — قراءة فقط في المخ الحتمي (الكتابة تفضل بمسار الموديل)
   approvalsList: /طلبات (مستنيه|الموافقه|الموافقات)\?|طلبات مستني|في طلبات|الطلبات المستنيه|اعرض (ال)?طلبات|مستني(ه)? قرار|pending (requests?|approvals?)|approval (requests?|queue)/,
   subscriptionStatus: /اشتراكنا|الاشتراك|اشتراك السنتر|خطتنا|إيه الخطة|ايه الخطة|التجديد|تجديد لغاية|subscription|our plan|renewal/,
@@ -281,7 +301,7 @@ export function fallbackPlan(
   // الدفعات قبل كل حاجة — «سجل دفعة» شكلها «سجل…» بس نيتها تاني خالص (والأسئلة «كام» بتروح للتحصيل)
   const isPay = (RE.payRecord.test(t) || (!!gi && RE.payRecord.test(gi))) && !/كام|اد ايه|how much/.test(t);
   const isEnroll = !isPay && (RE.enroll.test(t) || (!!gi && RE.enroll.test(gi) && !RE.report.test(t)));
-  const isReport = !isEnroll && !isPay && (RE.report.test(t) || (!!gi && RE.report.test(gi)));
+  const isReport = !isEnroll && !isPay && (RE.report.test(t) || RE.studentBalance.test(t) || (!!gi && RE.report.test(gi)));
 
   const last = observations[observations.length - 1];
   const searchObs = obsOf(observations, "student.search");
@@ -445,6 +465,64 @@ export function fallbackPlan(
     };
   }
 
+  /* ================= قراءات تحليلية دقيقة (قبل التحليل العام — أدوات متخصصة) ================= */
+  const goalT = norm(ctx.goal ?? "");
+  if (RE.neverAttended.test(t) || RE.neverAttended.test(goalT)) {
+    const prev = obsOf(observations, "attendance.get");
+    if (prev && prev.data?.count !== undefined) return doneWith(prev, "خلصت — القايمة فوق.");
+    return { say: "هجيبلك الطلبة المسجلين اللي ماحضروش ولا مرة آخر 30 يوم.", tool: { name: "attendance.get", args: { mode: "never_attended" } } };
+  }
+  if (RE.studentBalance.test(t) || RE.studentBalance.test(goalT)) {
+    const reportObs = obsOf(observations, "reports.get_student_report");
+    if (reportObs) return doneWith(reportObs, "خلصت — الرصيد ظاهر في التقرير فوق.");
+    const students = studentsOf(searchObs);
+    const picked = students.length ? pickStudent(students, text) : null;
+    if (picked) return { tool: { name: "reports.get_student_report", args: { studentId: picked.id } }, say: `هشوف رصيد ${picked.name}.` };
+    const balName = extractBalanceName(text) ?? extractBalanceName(ctx.goal ?? "");
+    if (balName) return { say: `هجيب رصيد ${balName}.`, tool: { name: "student.search", args: { q: balName, limit: 5 } } };
+    return { say: "قولي اسم الطالب وأنا أجيب رصيده.", need_info: { question: "مين الطالب؟" } };
+  }
+  if (RE.debtors.test(t) || RE.debtors.test(goalT)) {
+    const prev = obsOf(observations, "finance.get_debtors");
+    if (prev) return doneWith(prev, "خلصت — قايمة المدينين فوق.");
+    return { say: "هجيبلك المديونين بالترتيب من الأعلى.", tool: { name: "finance.get_debtors", args: {} } };
+  }
+  if (RE.expenses.test(t) || RE.expenses.test(goalT)) {
+    const prev = obsOf(observations, "finance.get_expenses");
+    if (prev) return doneWith(prev, "خلصت — المصروفات فوق.");
+    return { say: "هجيب مصروفات الفترة بالتفصيل.", tool: { name: "finance.get_expenses", args: {} } };
+  }
+  if (RE.receipts.test(t) || RE.receipts.test(goalT)) {
+    const prev = obsOf(observations, "finance.get_receipts");
+    if (prev) return doneWith(prev, "خلصت — الإيصالات فوق.");
+    return { say: "هجيب إيصالات الفترة.", tool: { name: "finance.get_receipts", args: {} } };
+  }
+  if (RE.settlements.test(t) || RE.settlements.test(goalT)) {
+    const prev = obsOf(observations, "finance.get_teacher_settlements");
+    if (prev) return doneWith(prev, "خلصت — المستحقات فوق.");
+    return { say: "هجيب مستحقات المدرسين والمصروف لهم.", tool: { name: "finance.get_teacher_settlements", args: {} } };
+  }
+  if (RE.bookSales.test(t) || RE.bookSales.test(goalT)) {
+    const prev = obsOf(observations, "books.get_sales");
+    if (prev) return doneWith(prev, "خلصت — مبيعات الكتب فوق.");
+    return { say: "هجيب مبيعات الكتب.", tool: { name: "books.get_sales", args: {} } };
+  }
+  if (RE.attRateOverall.test(t) || RE.groupRanking.test(t) || RE.groupRanking.test(goalT)) {
+    const prev = obsOf(observations, "attendance.get_rate");
+    if (prev) return doneWith(prev, "خلصت — نسبة الحضور وترتيب المجموعات فوق.");
+    return { say: "هحسبلك نسبة الحضور الحقيقية وترتيب المجموعات.", tool: { name: "attendance.get_rate", args: {} } };
+  }
+  if (RE.sessionStats.test(t)) {
+    const prev = obsOf(observations, "schedule.get_stats");
+    if (prev) return doneWith(prev, "خلصت — إحصاء الحصص فوق.");
+    return { say: "هجيب أعداد الحصص بالحالة في الفترة.", tool: { name: "schedule.get_stats", args: {} } };
+  }
+  if (RE.studentCount.test(t)) {
+    const prev = obsOf(observations, "student.count");
+    if (prev) return doneWith(prev, "خلصت — العدد فوق.");
+    return { say: "هجيبلك عدد الطلاب والمجموعات.", tool: { name: "student.count", args: {} } };
+  }
+
   /* ================= تحليل أداء الفترة (reports.analyze) — قبل تقرير الطالب عشان «حلل/قارن» متلخبطش معه ================= */
   // لو الطلب عن طالب بالاسم/المفتوح على الشاشة → تقرير الطالب هو الصح، مش تحليل السنتر
   if ((RE.analyze.test(t) || (!!gi && RE.analyze.test(gi))) && !(isReport && (ctx.selectedStudent || extractName(text)))) {
@@ -604,10 +682,18 @@ export function fallbackPlan(
   }
 
   /* ================= التحصيل — أداة مالية حقيقية (رقم من الداتابيز) ================= */
-  if (RE.collection.test(t)) {
+  if (RE.collection.test(t) || RE.collection.test(goalT)) {
     const prev = obsOf(observations, "finance.get_collection");
     if (prev) return doneWith(prev, "خلصت — التحصيل فوق.");
-    return { say: "هجيبلك إجمالي التحصيل النهاردة.", tool: { name: "finance.get_collection", args: {} } };
+    // الفترة من الكلام: «الشهر ده» = من أول الشهر، «الأسبوع» = آخر 7 أيام — غير كده النهاردة
+    const nGoal = norm(ctx.goal ?? "");
+    const hay = `${t} ${nGoal}`;
+    const args = /الشهر|من اول الشهر|هذا الشهر/.test(hay)
+      ? { from: `${todayStr().slice(0, 7)}-01`, to: todayStr() }
+      : /الاسبوع|آخر 7|اخر 7/.test(hay)
+        ? { from: todayStr(new Date(Date.now() - 6 * 86400000)), to: todayStr() }
+        : {};
+    return { say: args.from ? "هجيبلك إجمالي التحصيل للفترة دي." : "هجيبلك إجمالي التحصيل النهاردة.", tool: { name: "finance.get_collection", args } };
   }
 
   /* ================= طلبات الموافقة المستنية (مدير) ================= */
