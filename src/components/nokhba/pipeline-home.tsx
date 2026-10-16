@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { api, formatTime12, type SessionUser } from "./lib";
 import { MoneyStat, Stat, SectionCard, Loading } from "./shared";
 import { InstallCard } from "./pwa";
+import { OnboardingQuest } from "./onboarding";
 import type { ViewId } from "./shell";
 
 /* ============================================================
@@ -255,6 +256,9 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
       </div>
 
       <InstallCard />
+
+      {/* ===== رحلة البداية — للسنتر الجديد (بتختفي لوحده أول ما تخلص أو تتخطى) ===== */}
+      <OnboardingQuest user={user} setView={setView} />
 
       {/* ===== شريط الأيام ===== */}
       <DayTimeline value={selectedDay} onChange={setSelectedDay} />

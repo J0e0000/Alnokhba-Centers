@@ -36,6 +36,11 @@ const SECURITY_HEADERS = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Turbopack: ثبّت جذر الـ workspace صراحة — من غيره dev بيفشل أحيانًا لما
+  // ميلاقي next/package.json من جوه src/app (بيحصل مع الـ sandbox layout)
+  turbopack: {
+    root: __dirname,
+  },
   // ملاحظة أمان: قاعدة بيانات SQLite التجريبية مبقتش تتضمن في باندل السيرفرلس —
   // الإنتاج بيستخدم Postgres دايمًا (DATABASE_URL)، والبناء المحلي بينسخ db/
   // جوا standalone بنفسه (سطر cp في package.json).
