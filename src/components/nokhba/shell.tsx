@@ -6,7 +6,7 @@ import {
   Calculator, BarChart3, Settings, LogOut, MoreHorizontal, ChevronLeft,
   Building2, BadgeCheck, Receipt, MonitorCog, Activity, GraduationCap, Menu, BookOpen, MessageSquareText,
   ShieldAlert, UserCog, DatabaseBackup, LifeBuoy, Sparkles, ClipboardCheck, UserPlus,
-  DoorClosed, CalendarClock, Grid3x3,
+  CalendarClock, Grid3x3, Presentation, Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -34,19 +34,23 @@ const VIEW_PREFETCH: Record<string, string> = {
   books: "/api/books",
   messages: "/api/announcements",
   approvals: "/api/approvals",
+  teachers: "/api/teachers",
+  accounting: "/api/accounting",
 };
 
 /* ============================================================
-   Tabs Workflow — 7 تابات رئيسية، وكل تاب فيه خطواته الفرعية.
-   كل الوظائف الـ16 القديمة لسه موجودة — منظمة جوه التابات.
+   Tabs Workflow — تبسيط الواجهة:
+   - «المالية» تاب واحد فيه كل الفلوس (تحصيل/خزنة/كتب/تقارير)
+   - «المدرسين» تاب جديد: حصته الجاية + عدد الطلاب + رسالة + مستحقاته
+   - «القاعات والتشغيل» اتبلعت: القاعات جوه الجداول، والطوارئ جوه «اليوم»
 ============================================================ */
 
 export type ViewId =
   | "home" | "today" | "scan" | "payments" | "students" | "schedule"
   | "groups" | "books" | "messages" | "accounting" | "reports" | "settings"
-  | "emergency" | "approvals" | "operations";
+  | "emergency" | "approvals" | "teachers";
 
-export type TabId = "dashboard" | "today" | "classes" | "people" | "operations" | "reports" | "settings";
+export type TabId = "dashboard" | "today" | "classes" | "people" | "finance" | "teachers" | "settings";
 
 export const NAV_ICONS: Record<ViewId, ReactNode> = {
   home: <LayoutDashboard className="w-5 h-5" />,
@@ -63,7 +67,7 @@ export const NAV_ICONS: Record<ViewId, ReactNode> = {
   settings: <Settings className="w-5 h-5" />,
   emergency: <ShieldAlert className="w-5 h-5" />,
   approvals: <ClipboardCheck className="w-5 h-5" />,
-  operations: <DoorClosed className="w-5 h-5" />,
+  teachers: <Presentation className="w-5 h-5" />,
 };
 
 export const NAV_LABELS: Record<ViewId, string> = {
@@ -81,7 +85,7 @@ export const NAV_LABELS: Record<ViewId, string> = {
   settings: "الإعدادات",
   emergency: "الطوارئ",
   approvals: "الموافقات",
-  operations: "القاعات والتشغيل",
+  teachers: "المدرسين",
 };
 
 type TabDef = { id: TabId; label: string; icon: ReactNode; subs: ViewId[] };
@@ -92,8 +96,8 @@ const TAB_SHORT_LABELS: Record<TabId, string> = {
   today: "اليوم",
   classes: "الحصص",
   people: "الطلاب",
-  operations: "التشغيل",
-  reports: "التقارير",
+  finance: "المالية",
+  teachers: "المدرسين",
   settings: "الإعدادات",
 };
 
@@ -114,18 +118,18 @@ const ADMIN_SHORT_LABELS: Partial<Record<AdminViewId, string>> = {
 
 const TABS: TabDef[] = [
   { id: "dashboard", label: "الرئيسية", icon: <LayoutDashboard className="w-5 h-5" />, subs: ["home"] },
-  { id: "today", label: "اليوم", icon: <CalendarClock className="w-5 h-5" />, subs: ["today", "scan", "approvals"] },
+  { id: "today", label: "اليوم", icon: <CalendarClock className="w-5 h-5" />, subs: ["today", "scan", "approvals", "emergency"] },
+  { id: "people", label: "الطلاب", icon: <Users className="w-5 h-5" />, subs: ["students", "messages"] },
+  { id: "finance", label: "المالية", icon: <Wallet className="w-5 h-5" />, subs: ["payments", "accounting", "books", "reports"] },
+  { id: "teachers", label: "المدرسين", icon: <Presentation className="w-5 h-5" />, subs: ["teachers"] },
   { id: "classes", label: "الحصص", icon: <Layers className="w-5 h-5" />, subs: ["schedule", "groups"] },
-  { id: "people", label: "الطلاب والمعلمين", icon: <Users className="w-5 h-5" />, subs: ["students", "payments", "messages", "books"] },
-  { id: "operations", label: "القاعات والتشغيل", icon: <DoorClosed className="w-5 h-5" />, subs: ["operations", "accounting", "emergency"] },
-  { id: "reports", label: "التقارير", icon: <BarChart3 className="w-5 h-5" />, subs: ["reports"] },
   { id: "settings", label: "الإعدادات", icon: <Settings className="w-5 h-5" />, subs: ["settings"] },
 ];
 
 /** الوظائف المسموحة لكل دور — نفس قواعد النظام القديم بالظبط */
 const ROLE_ALLOWED: Record<"MANAGER" | "RECEPTIONIST" | "TEACHER", ViewId[]> = {
   MANAGER: TABS.flatMap((t) => t.subs),
-  RECEPTIONIST: ["home", "today", "scan", "students", "payments", "books", "messages", "schedule"],
+  RECEPTIONIST: ["home", "today", "scan", "students", "payments", "books", "messages", "schedule", "teachers"],
   TEACHER: ["home", "schedule"],
 };
 
@@ -237,14 +241,14 @@ export function CenterShell({
   useEffect(() => {
     const t = setTimeout(() => {
       try {
-        if (!localStorage.getItem("nk-seen-restructure-v1")) setShowWelcome(true);
+        if (!localStorage.getItem("nk-seen-restructure-v2")) setShowWelcome(true);
       } catch { /* ignore */ }
     }, 0);
     return () => clearTimeout(t);
   }, []);
   function dismissWelcome() {
     setShowWelcome(false);
-    try { localStorage.setItem("nk-seen-restructure-v1", "1"); } catch { /* ignore */ }
+    try { localStorage.setItem("nk-seen-restructure-v2", "1"); } catch { /* ignore */ }
   }
 
   // ===== شريط الحالة المصغّر: 🟢 N حصص شغالة =====
@@ -312,8 +316,8 @@ export function CenterShell({
     </button>
   );
 
-  const mobileTabs = tabs.slice(0, 4);
-  const mobileMore = tabs.slice(4);
+  const mobileTabs = tabs.slice(0, 5);
+  const mobileMore = tabs.slice(5);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -355,10 +359,10 @@ export function CenterShell({
             <div className="flex-1 min-w-0">
               <h2 className="font-extrabold text-sm nk-brand-text">AlNokhba Management بقت أسهل</h2>
               <ul className="text-[11px] font-bold text-muted-foreground mt-1.5 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 leading-relaxed">
-                <li>• 7 تابات واضحة: كل حاجة ليها مكان</li>
+                <li>• المدرسين ليهم تاب: مين جاي إمتى وعدد الطلاب ومستحقاته</li>
+                <li>• المالية كلها في تاب واحد: تحصيل، خزنة، كتب، وتقارير</li>
                 <li>• الرئيسية بتقولك الحصة الجاية وتفتحها بضغطة</li>
                 <li>• وضع التركيز للحصة: تنقل مختفي وحفظ تلقائي</li>
-                <li>• القاعات والتشغيل في تاب لوحده</li>
               </ul>
             </div>
             <button onClick={dismissWelcome} aria-label="إغلاق الإعلان"
@@ -506,9 +510,9 @@ export function CenterShell({
       {/* ===== زكي — المساعد الذكي ===== */}
       <AgentDock user={user} view={view} />
 
-      {/* ===== Mobile bottom nav — أول 4 تابات + المزيد (خلفية شبه معتمة عشان المحتوى ميقراش وراها) ===== */}
+      {/* ===== Mobile bottom nav — أول 5 تابات + المزيد (خلفية شبه معتمة عشان المحتوى ميقراش وراها) ===== */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 nk-bottom-nav print:hidden" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 4px)" }} aria-label="التنقل الرئيسي">
-        <div className="grid grid-cols-5 h-16">
+        <div className="grid grid-cols-6 h-16">
           {mobileTabs.map((t) => (
             <button
               key={t.id}

@@ -6,13 +6,13 @@ import { api, applyCenterBranding, type SessionUser } from "./lib";
 import { CenterShell, AdminShell, NAV_LABELS, type ViewId, type AdminViewId } from "./shell";
 import { PipelineHome } from "./pipeline-home";
 import { TodayView } from "./today-view";
-import { OperationsView } from "./operations";
 import { FocusShell } from "./focus-shell";
 import { SuccessBarHost } from "./success-bar";
 import { ScanView } from "./scan";
 import { PaymentsView } from "./payments-view";
 import { StudentsView } from "./students";
 import { StudentProfileView } from "./student-profile";
+import { TeachersView } from "./teachers";
 import { ScheduleView } from "./schedule";
 import { GroupsView } from "./groups";
 import { BooksView } from "./books";
@@ -237,9 +237,6 @@ export function App() {
       case "today":
         content = <TodayView user={user} setView={setView} openSession={openSession} goScanForSession={goScanForSession} />;
         break;
-      case "operations":
-        content = <OperationsView user={user} setView={setView} />;
-        break;
       case "scan":
         content = (
           <ScanView
@@ -261,6 +258,9 @@ export function App() {
             onOpenProfile={openStudent}
           />
         );
+        break;
+      case "teachers":
+        content = <TeachersView user={user} />;
         break;
       case "schedule":
         content = <ScheduleView user={user} openSession={openSession} />;
