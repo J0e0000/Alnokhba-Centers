@@ -89,8 +89,9 @@ export const GET = handler(async () => {
 
   const base = { today, sessions, plannedSessions, centerName: user.center!.name };
 
-  if (user.role === "RECEPTIONIST") {
+  if (user.role !== "MANAGER") {
     // Simple payload: today's sessions + quick counts. No heavy analytics.
+    // (غير المدير مش بيشوف التحليلات المالية — تدقيق المرحلة 2 — #7)
     const payload = {
       ...base,
       role: "RECEPTIONIST",

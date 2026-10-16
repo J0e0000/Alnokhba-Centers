@@ -81,6 +81,10 @@ export const POST = handler(async (req: Request, ctx: Ctx) => {
   if (body.action === "close") {
     // Close can be done by manager OR receptionist (spec: "authorized user presses قفل الحصة")
     const user = await requireCenterUser();
+    // صلاحية قفل الحصص على السيرفر — القفل بيثبت حسابات ومستحقات (تدقيق المرحلة 2)
+    if (!hasPermission(user, "END_SESSION")) {
+      throw new ApiError("مفيش عندك صلاحية قفل الحصص — كلّم المدير.", 403);
+    }
     const session = await db.sessionInstance.findFirst({
       where: { id, centerId: user.centerId },
       include: { group: { include: { subject: true, teacher: true } } },

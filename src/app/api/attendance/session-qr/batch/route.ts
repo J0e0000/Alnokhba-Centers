@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
 import { requireCenterUser, ApiError, rateLimit } from "@/lib/auth";
 import { issueSessionQrBatch, QR_BATCH_DEFAULT_COUNT, QR_BATCH_SLOT_SECONDS } from "@/lib/session-qr";
+import { requireCapability } from "@/lib/center-capabilities";
 import { logAudit, AUDIT } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,8 @@ export const dynamic = "force-dynamic";
  */
 export const POST = handler(async (req: Request) => {
   const user = await requireCenterUser();
+  // بوابة قدرة QR المتغير — زي slot/route.ts بالظبط (تدقيق المرحلة 2 — #8)
+  await requireCapability(user.centerId, "dynamic_qr");
   const body = await readJson<{ sessionId?: string; count?: number; ttlMs?: number; slotSeconds?: number }>(req);
   const sessionId = String(body.sessionId ?? "");
   // الإيقاع: 5 ثواني افتراضيًا — الحد الأدنى 2ث (أسرع من كده الكاميرا مش بتلحق)، الأقصى 10ث

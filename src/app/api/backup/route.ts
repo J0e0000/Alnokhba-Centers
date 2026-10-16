@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { ok, handler } from "@/lib/api";
-import { requireManager, ApiError } from "@/lib/auth";
+import { requireUser, requireManager, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { createBackup, getBackupStatus, exportCenterJson, exportCenterCsv, CSV_TABLES, type CsvTableKey } from "@/lib/backup";
 import { readFile } from "fs/promises";
@@ -16,14 +16,37 @@ export const dynamic = "force-dynamic";
  *   (no params)           → backup status + available tables
  */
 export const GET = handler(async (req: Request) => {
-  const user = await requireManager();
+  const user = await requireUser();
   const url = new URL(req.url);
   const format = url.searchParams.get("format");
   const table = url.searchParams.get("table");
   const download = url.searchParams.get("download");
 
+  if (download === "latest") {
+    // ملف الـ .db الفيزيائي بيضم قاعدة المنصة كاملة (كل السنترات) — للأدمن بس.
+    // المدير ياخد نسخة سنتره JSON/CSV — عزل بيانات السنترات (تدقيق المرحلة 2 — HIGH)
+    if (user.role !== "ADMIN") {
+      throw new ApiError("ملف قاعدة البيانات الفيزيائي بيضم كل السنترات — متاح للأدمن بس. استخدم تصدير JSON أو CSV لسنترك.", 403);
+    }
+    const { file } = await createBackup("manual");
+    const bytes = await readFile(path.join(process.cwd(), "backups", file));
+    await logAudit({ user, action: AUDIT.BACKUP_DOWNLOADED, entity: "CENTER", entityId: user.centerId ?? undefined, after: { file } });
+    return new Response(new Uint8Array(bytes), {
+      headers: {
+        "Content-Type": "application/octet-stream",
+        "Content-Disposition": `attachment; filename="${file}"`,
+      },
+    });
+  }
+
+  // باقي مسارات النسخ الاحتياطي = مدير السنتر (نطاق سنتره بس)
+  if (user.role !== "MANAGER" || !user.centerId) {
+    throw new ApiError("العملية دي لمدير السنتر بس.", 403);
+  }
+  const centerId = user.centerId;
+
   if (format === "json") {
-    const payload = await exportCenterJson(user.centerId);
+    const payload = await exportCenterJson(centerId);
     await logAudit({ user, action: AUDIT.BACKUP_EXPORTED, entity: "CENTER", entityId: user.centerId, after: { format: "json", counts: payload.meta.counts } });
     const stamp = new Date().toISOString().slice(0, 10);
     return new Response(JSON.stringify(payload, null, 2), {
@@ -37,24 +60,12 @@ export const GET = handler(async (req: Request) => {
   if (format === "csv") {
     const key = (CSV_TABLES.find((t) => t.key === table)?.key ?? null) as CsvTableKey | null;
     if (!key) throw new ApiError("اختار جدول التصدير من القائمة.");
-    const { filename, csv } = await exportCenterCsv(user.centerId, key);
-    await logAudit({ user, action: AUDIT.BACKUP_EXPORTED, entity: "CENTER", entityId: user.centerId, after: { format: "csv", table: key } });
+    const { filename, csv } = await exportCenterCsv(centerId, key);
+    await logAudit({ user, action: AUDIT.BACKUP_EXPORTED, entity: "CENTER", entityId: centerId, after: { format: "csv", table: key } });
     return new Response(csv, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
         "Content-Disposition": `attachment; filename="${filename}"`,
-      },
-    });
-  }
-
-  if (download === "latest") {
-    const { file } = await createBackup("manual");
-    const bytes = await readFile(path.join(process.cwd(), "backups", file));
-    await logAudit({ user, action: AUDIT.BACKUP_DOWNLOADED, entity: "CENTER", entityId: user.centerId, after: { file } });
-    return new Response(new Uint8Array(bytes), {
-      headers: {
-        "Content-Type": "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${file}"`,
       },
     });
   }

@@ -5,6 +5,9 @@ import { logAudit, AUDIT } from "@/lib/audit";
 import { todayStr, dayNameAR, formatTime12 } from "@/lib/normalize";
 import { manyBalances, sessionEconomics } from "@/lib/finance";
 import ExcelJS from "exceljs";
+import { buildEmergencySnapshot } from "@/lib/emergency-snapshot";
+import { issueLicense } from "@/lib/emergency-license";
+import { buildEmergencyHtml } from "@/lib/emergency-app";
 
 export const dynamic = "force-dynamic";
 
@@ -105,7 +108,44 @@ export const GET = handler(async (req: Request) => {
   const weekDates = Array.from({ length: 7 }, (_, i) => addDaysStr(today, i));
   const weekEnd = weekDates[6];
 
-  // ===== نجيب كل حاجة =====
+  // =============================
+  // حزمة الطوارئ الأوفلاين (HTML موقّعة) — الافتراضي
+  // ?format=xlsx → لوحة الطوارئ الإكسل (بديل الجداول للسنترات اللي بتحب إكسل)
+  // =============================
+  const format = url.searchParams.get("format") ?? "html";
+  if (format === "html") {
+    const { snapshot, snapshotRaw, snapshotDigest, stats } = await buildEmergencySnapshot(user.centerId);
+    const lic = issueLicense({
+      centerId: user.centerId,
+      centerName: user.center?.name ?? snapshot.center.name,
+      packageId: `pkg-${snapshotDigest.slice(0, 12)}`,
+      snapshotId: snapshotDigest.slice(0, 16),
+      snapshotDigest,
+    });
+    const html = buildEmergencyHtml({
+      licenseRaw: lic.licenseRaw,
+      signature: lic.signature,
+      publicKeySpkiB64: lic.publicKeySpkiB64,
+      snapshotRaw,
+      centerPrimary: snapshot.center.primaryColor,
+      centerSecondary: snapshot.center.secondaryColor,
+      license: lic.license,
+    });
+    await logAudit({
+      user, action: "تصدير حزمة طوارئ أوفلاين", entity: "EMERGENCY",
+      after: { format: "html", ...stats, expiresAt: lic.license.expiresAt },
+    });
+    const fileName = `NOKHBA-OFFLINE-${today}.html`;
+    return new Response(html, {
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "content-disposition": `attachment; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+        "cache-control": "no-store",
+      },
+    });
+  }
+
+  // ===== نجيب كل حاجة (مسار الإكسل) =====
   const [students, groups, slots, books, weekSessions, todaySessions, center] = await Promise.all([
     db.student.findMany({
       where: { centerId: user.centerId, status: { in: ["ACTIVE", "PAUSED"] } },

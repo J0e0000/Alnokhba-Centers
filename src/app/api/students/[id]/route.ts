@@ -154,8 +154,8 @@ export const PATCH = handler(async (req: Request, ctx: Ctx) => {
   if (body.notes !== undefined) data.notes = body.notes?.trim() || null;
   if (body.status !== undefined) {
     if (!["ACTIVE", "PAUSED", "ARCHIVED"].includes(body.status)) throw new ApiError("حالة الطالب مش معروفة.");
-    if (body.status !== "ACTIVE" && user.role !== "MANAGER") {
-      throw new ApiError("تغيير حالة الطالب للمدير بس.", 403);
+    if (body.status !== "ACTIVE" && !hasPermission(user, "ARCHIVE_STUDENT")) {
+      throw new ApiError("تغيير حالة الطالب (أرشفة/إيقاف) محتاجة صلاحية أرشفة — مش عندك.", 403);
     }
     data.status = body.status;
   }
@@ -181,7 +181,8 @@ export const PATCH = handler(async (req: Request, ctx: Ctx) => {
       }
     }
     if (Array.isArray(body.removeGroupIds) && body.removeGroupIds.length) {
-      if (user.role !== "MANAGER") throw new ApiError("إلغاء تسجيل طالب من مجموعة للمدير بس.", 403);
+      // صلاحية إلغاء التسجيل الممنوحة بقت بتشتغل فعليًا (تدقيق المرحلة 2 — #4)
+      if (!hasPermission(user, "CANCEL_SUBSCRIPTION")) throw new ApiError("إلغاء تسجيل طالب من مجموعة محتاج صلاحية إلغاء تسجيل — مش عندك.", 403);
       await tx.studentGroup.updateMany({
         where: { studentId: student.id, groupId: { in: body.removeGroupIds.map(String) } },
         data: { status: "CANCELLED" },

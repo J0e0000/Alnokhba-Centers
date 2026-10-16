@@ -208,6 +208,13 @@ export function EmergencyView({ user }: { user: SessionUser }) {
         <div className="mt-3 rounded-xl border border-border bg-muted/40 p-3 text-[11.5px] font-bold text-muted-foreground leading-relaxed">
           بعد انتهاء الـ 7 أيام التطبيق بيتحوّل <b>قراءة + تصدير بس</b> — والحزمة الجديدة بتتطلب من هنا (للسنترات المشتركة النشطة). تعديل أي حرف جوّه الملف يكسر التوقيع → التطبيق بيرفض يشتغل.
         </div>
+        <a
+          href="/api/emergency?export=1&format=xlsx"
+          className="mt-2 w-full border-2 border-border bg-card font-extrabold rounded-2xl px-4 py-3 flex items-center justify-center gap-2 text-[13px] hover:bg-muted/40 transition"
+        >
+          <FileSpreadsheet className="w-4.5 h-4.5 text-emerald-600" />
+          أو نزّل لوحة إكسل للطوارئ (بديل الجداول — للفتح في Excel)
+        </a>
       </SectionCard>
 
       {/* ===== 2) استيراد ملف الاسترداد ===== */}
