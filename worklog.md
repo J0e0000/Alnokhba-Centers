@@ -84,3 +84,24 @@ Work Log:
 Stage Summary:
 - كل حاجة جاهزة في الإنتاج ما عدا قيمة واحدة: DATABASE_URL في Vercel محتاجة تتستبدل برابط الـ pooler + Redeploy
 - بعد ما المالك يعمل الخطوتين: الدخول هيشتغل فورًا (مثبت محليًا بنفس الكود + نفس القاعدة)
+
+---
+Task ID: prod-500-diagnosis-final
+Agent: Super Z (main agent)
+Task: تأكيد وجود أكونت الـ 5000 طالب في الإنتاج + تشخيص 500 تسجيل الدخول + حفظ باسورد قاعدة الإنتاج.
+
+Work Log:
+- حفظ الباسورد في scripts/.dbpass (chmod 600 — gitignored من سابق)
+- الحصول المباشر مرفض: db.ttydfyqwzkwivucgiegy.supabase.co = IPv6-only والبيئة من غير IPv6 → probe 19 region للـ pooler بالـ pg driver (npm i --no-save pg) → المشروع في aws-0-eu-west-2.pooler.supabase.com (PostgreSQL 17.6)
+- فحص الإنتاج: 3 سنترات (alnokhba-elite 25 طالب / amal-center 8 / qae-c99-stress 5000) — QAE موجودة بكل بياناتها (5000 طالب، 30 جروب، 60 slot، 240 سيشن، 37,458 حضور، 40,269 حركة، 30 مدرس، 4 مستخدمين)
+- عمود الباسورد في الإنتاج = passwordHash (مش password) — 31 مستخدم كلهم scrypt-ok
+- تحقق تشفيري من الهاشات المخزنة في الإنتاج نفسها: Qae#2026 بتطابق الـ 4 حسابات QAE كلهم (mgr/rec/recl/tch)
+- POST /api/auth على الإنتاج = 500 لكل مستخدم (qae-mgr-99 و manager alike) — مش 401
+- الكونفيرم من worklog الجلسة اللي فاتت: نفس الكود + نفس قاعدة الإنتاج اشتغل 200 محليًا → الجاني الوحيد المتبقي = قيمة DATABASE_URL في Vercel (الرابط المباشر IPv6-only و/أو placeholder [YOUR-PASSWORD])
+- اختبار pooler 5432 و6543 بالباسورد الجديد: الاتنين OK — التوصية في docs/PRODUCTION-DB.md: 6543 + ?pgbouncer=true&connection_limit=1
+- أمان: scripts/save_and_probe_prod_db.py كان فيه الباسورد plain في كوميت محلي مش مpush → نضفته (بيقرأ من .dbpass) + git commit --amend → git log -S متأكد إن التاريخ نظيف تمامًا
+
+Stage Summary:
+- أكونت الـ 5000 طالب موجود في الإنتاج بكامل بياناته وكلمات السر متطابقة — كل اللي ناقص: المالك يستبدل DATABASE_URL في Vercel برابط الـ pooler ويعمل Redeploy
+- الرابط الصح: postgresql://postgres.ttydfyqwzkwivucgiegy:<PWD>@aws-0-eu-west-2.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
+- بعد الإصلاح: كل الحسابات هتشتغل (الحقيقية والتجريبية) — مفيش أي تغيير كود مطلوب
