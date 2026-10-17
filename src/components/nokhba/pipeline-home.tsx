@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CalendarDays, Loader2, Ban, CheckCircle2, ChevronDown, Zap,
   TrendingUp, TrendingDown, AlertTriangle,
-  UserPlus, Wallet, Users, Home,
+  UserPlus, Wallet, Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -244,12 +244,13 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
 
   return (
     <div className="space-y-5 nk-anim-stagger">
-      {/* ===== Hero — مسار الحصص ===== */}
+      {/* ===== Hero — مسار الحصص (بوابة الطوارئ) ===== */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[11px] font-black tracking-widest nk-brand-text uppercase">مسار الحصص</div>
-          <h1 className="text-xl sm:text-2xl font-black mt-1 mb-1 leading-snug">يومك الدراسي في مسار واحد</h1>
-          <p className="text-xs font-bold text-muted-foreground m-0">
+          <h1 className="text-xl sm:text-2xl font-black mt-1 mb-0 leading-snug">يومك الدراسي في مسار واحد</h1>
+          <div className="nk2-gate" aria-hidden />
+          <p className="text-xs font-bold text-muted-foreground m-0 mt-1.5">
             اختر اليوم، افتح الحصة، أنجز المطلوب، وأغلقها بدون التنقل بين شاشات كثيرة.
           </p>
         </div>
@@ -263,28 +264,28 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
       {/* ===== شريط الأيام ===== */}
       <DayTimeline value={selectedDay} onChange={setSelectedDay} />
 
-      {/* ===== 3 كروت إحصاء — بالظبط زي المنصة الأساسية ===== */}
+      {/* ===== 3 كروت إحصاء — بلاطات الطوارئ النيفي ===== */}
       <div className="grid grid-cols-3 gap-3">
         <NkStat small={dayIsToday ? "حصص اليوم" : "حصص اليوم المحدد"} value={stats.sessionsCount} />
-        <NkStat small={dayIsToday ? "طلاب اليوم" : "طلاب اليوم المحدد"} value={stats.studentsToday} />
+        <NkStat small={dayIsToday ? "طلاب اليوم" : "طلاب اليوم المحدد"} value={stats.studentsToday} ghost />
         {dayIsToday && stats.pending > 0 && pendingSession ? (
-          <button className="nk-stat-gold text-start cursor-pointer" onClick={() => pendingSession.id && openSession(pendingSession.id)}>
+          <button className="nk2-stat-gold text-start cursor-pointer" onClick={() => pendingSession.id && openSession(pendingSession.id)}>
             <small>إجراءات معلقة — متابعة ←</small>
             <strong>{stats.pending}</strong>
           </button>
         ) : (
-          <div className="nk-stat-gold">
+          <div className="nk2-stat-gold">
             <small>إجراءات معلقة</small>
             <strong>{stats.pending}</strong>
           </div>
         )}
       </div>
 
-      {/* ===== حصص اليوم ===== */}
-      <div>
+      {/* ===== حصص اليوم — كارت الطوارئ بالشريط العلوي ===== */}
+      <div className="nk2-card">
         <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 mb-3">
-          <h2 className="text-base font-extrabold m-0">{heading}</h2>
-          <span className="text-[11px] font-bold text-muted-foreground">اضغط على الحصة لفتح مساحة العمل</span>
+          <h2 className="nk2-sec-title">{heading}</h2>
+          <span className="nk2-sec-sub">اضغط على الحصة لفتح مساحة العمل</span>
         </div>
 
         {rows.length === 0 ? (
@@ -327,8 +328,8 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
                   aria-label={`فتح ${r.subject}`}
                 >
                   <span className="flex items-center gap-3 min-w-0">
-                    <span className="nk-session-icon shrink-0" aria-hidden>
-                      {r.status === "CANCELLED" ? <Ban className="w-5 h-5" /> : <Home className="w-5 h-5" />}
+                    <span className="nk2-av shrink-0" aria-hidden>
+                      {r.status === "CANCELLED" ? <Ban className="w-5 h-5" /> : (r.subject?.trim()?.[0] ?? "•")}
                     </span>
                     <span className="min-w-0">
                       {isNext && (
@@ -435,12 +436,12 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
   );
 }
 
-// ─── كروت الإحصاء بنمط المنصة الأساسية (nk-stat) ───
-function NkStat({ small, value }: { small: string; value: number }) {
+// ─── كروت الإحصاء ببلاطات الطوارئ (نيفي متدرج / شبح أبيض) ───
+function NkStat({ small, value, ghost }: { small: string; value: number; ghost?: boolean }) {
   return (
-    <div className="rounded-2xl border-2 border-border bg-card px-3.5 py-3">
-      <small className="block text-[11px] font-extrabold text-muted-foreground">{small}</small>
-      <strong className="block text-2xl font-black nk-num mt-0.5">{value}</strong>
+    <div className={cn("nk2-stat", ghost && "ghost")}>
+      <small>{small}</small>
+      <strong className="nk-num">{value}</strong>
     </div>
   );
 }
