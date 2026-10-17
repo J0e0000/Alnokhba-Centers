@@ -36,7 +36,7 @@ function extractScript(html, id) {
   const re = new RegExp(`<script type="application/json" id="${id}">([\\s\\S]*?)</script>`);
   const m = html.match(re);
   if (!m) return null;
-  return JSON.parse(m[1]); // jsonForScript بيخرّب </ بس — وده escape صالح في JSON
+  return m[1]; // النص الخام زي ما هو — ده نفسه licenseRaw/snapshotRaw الموقّعين
 }
 
 (async () => {
@@ -51,8 +51,7 @@ function extractScript(html, id) {
 
   const licenseRaw = extractScript(html, "nk-license-raw");
   const snapshotRaw = extractScript(html, "nk-snapshot-raw");
-  const metaStr = extractScript(html, "nk-meta");
-  const meta = typeof metaStr === "string" ? JSON.parse(metaStr) : metaStr;
+  const meta = JSON.parse(extractScript(html, "nk-meta"));
   const license = JSON.parse(licenseRaw);
   const snap = JSON.parse(snapshotRaw);
   ok("رخصة + توقيع + لقطة مستخرجة", !!licenseRaw && !!meta?.signature && !!snap?.students?.length,
@@ -121,13 +120,24 @@ function extractScript(html, id) {
   const pv2 = await post("recovery-preview");
   ok("إعادة الرفع → duplicates=1 وصلاحية 0", pv2.data?.duplicates === 1 && pv2.data?.valid === 0, `dup=${pv2.data?.duplicates} valid=${pv2.data?.valid}`);
 
-  // 6) رفض ملف سنتر تاني (عزل)
-  const bad = { ...recovery, centerId: "cmothercenter0000000000000xx" };
-  const rej = await fetch(`${BASE}/api/emergency`, {
+  // 6) عزل وتلاعب — (أ) معاملة لسنتر تاني (ب) مبلغ متعدّل والمجموع قديم
+  const mkPkg = (txns) => ({ ...recovery, txns });
+  const tForeign = { ...txn, id: "ETX-" + crypto.randomUUID(), centerId: "cmothercenter0000000000000xx" };
+  const rF = await fetch(`${BASE}/api/emergency`, {
     method: "POST", headers: { "Content-Type": "application/json", cookie: mgr },
-    body: JSON.stringify({ action: "recovery-preview", recovery: bad }),
+    body: JSON.stringify({ action: "recovery-preview", recovery: mkPkg([tForeign]) }),
   });
-  ok("ملف سنتر تاني → مرفوض", rej.status === 403 || rej.status === 400, `status=${rej.status}`);
+  const dF = await rF.json().catch(() => null);
+  ok("معاملة سنتر تاني → مرفوضة", rF.status === 200 && dF?.valid === 0 && dF?.invalid === 1, `status=${rF.status} valid=${dF?.valid} invalid=${dF?.invalid}`);
+
+  const tTampered = { ...txn, id: "ETX-" + crypto.randomUUID(), payload: { ...txn.payload, amount: 999999 } };
+  tTampered.sum = txn.sum; // المجموع القديم مع مبلغ جديد = تلاعب
+  const rT = await fetch(`${BASE}/api/emergency`, {
+    method: "POST", headers: { "Content-Type": "application/json", cookie: mgr },
+    body: JSON.stringify({ action: "recovery-preview", recovery: mkPkg([tTampered]) }),
+  });
+  const dT = await rT.json().catch(() => null);
+  ok("معاملة متعدّلة (checksum) → مرفوضة", rT.status === 200 && dT?.valid === 0 && dT?.invalid === 1, `status=${rT.status} valid=${dT?.valid} invalid=${dT?.invalid}`);
 
   // 7) السجل بقى فيه صف recovery
   const hist = await fetch(`${BASE}/api/emergency`, { headers: { cookie: mgr } });
