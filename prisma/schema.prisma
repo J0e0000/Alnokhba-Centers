@@ -106,6 +106,10 @@ model User {
   modules         String?
   // بيانات طلب الانضمام (لما role = PENDING)
   phone           String?
+  // ربط حساب مدرس (role = TEACHER) بكيان المدرس في الجدول —
+  // بيسمح للداشبورد والجدول يفلتر لحصصه هو بس. null = مش مربوط (بيشوف جدول السنتر كله)
+  teacherRefId    String? @unique
+  teacherRef      Teacher? @relation(fields: [teacherRefId], references: [id], onDelete: SetNull)
   center          Center?  @relation(fields: [centerId], references: [id])
   authSessions   AuthSession[]
   auditLogs      AuditLog[]
@@ -175,6 +179,8 @@ model Teacher {
   groups    Group[]
   settlements TeacherSettlement[]
   portalSessions TeacherPortalSession[]
+  // حساب الموظف المرتبط بالمدرس ده (1:1 اختياري — داشبورد المدرس في التطبيق الرئيسي)
+  staffAccount User?
 
   @@index([centerId])
   @@unique([centerId, loginCode])

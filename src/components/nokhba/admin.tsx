@@ -142,7 +142,7 @@ export function AdminCentersView({ data, reload }: { data: AdminData | null; rel
                     <p className="text-[11px] text-muted-foreground font-semibold" dir="ltr">@{c.slug}</p>
                   </div>
                 </div>
-                <Chip className={c.status === "ACTIVE" ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-rose-50 border-rose-200 text-rose-700"}>
+                <Chip className={c.status === "ACTIVE" ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300" : "bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300"}>
                   {c.status === "ACTIVE" ? "شغال" : "موقوف"}
                 </Chip>
               </div>
@@ -166,16 +166,16 @@ export function AdminCentersView({ data, reload }: { data: AdminData | null; rel
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">التجديد</span>
-                    <span className={cn(daysLeft !== null && daysLeft <= 10 && "text-amber-700")}>
+                    <span className={cn(daysLeft !== null && daysLeft <= 10 && "text-amber-700 dark:text-amber-300")}>
                       {formatDateAR(c.subscription.renewalDate)} {daysLeft !== null ? `(${daysLeft} يوم)` : ""}
                     </span>
                   </div>
                   {c.subscription.overLimit && (
-                    <p className="text-amber-700 flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> عدّى حد الخطة ({c.subscription.maxStudents} طالب)</p>
+                    <p className="text-amber-700 flex items-center gap-1 dark:text-amber-300"><AlertTriangle className="w-3.5 h-3.5" /> عدّى حد الخطة ({c.subscription.maxStudents} طالب)</p>
                   )}
                 </div>
               ) : (
-                <p className="text-xs font-bold text-rose-600">ملوش اشتراك</p>
+                <p className="text-xs font-bold text-rose-600 dark:text-rose-400">ملوش اشتراك</p>
               )}
 
               <div className="flex gap-2">
@@ -192,7 +192,7 @@ export function AdminCentersView({ data, reload }: { data: AdminData | null; rel
                     } catch { /* toast */ }
                   }}
                   className={cn("rounded-xl border py-2 px-3 text-xs font-extrabold",
-                    c.status === "ACTIVE" ? "border-rose-200 bg-rose-50 text-rose-700" : "border-emerald-200 bg-emerald-50 text-emerald-700")}>
+                    c.status === "ACTIVE" ? "border-rose-200 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300" : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300")}>
                   {c.status === "ACTIVE" ? "إيقاف" : "تشغيل"}
                 </button>
               </div>
@@ -243,7 +243,7 @@ export function AdminCentersView({ data, reload }: { data: AdminData | null; rel
                             centerModules: Object.fromEntries(Object.entries(u.modules ?? {}).map(([k, v]) => [k, { enabled: v.enabled }])),
                           })}
                           title="تعديل صلاحيات الحساب"
-                          className="shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-extrabold bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 flex items-center gap-1"
+                          className="shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-extrabold bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 flex items-center gap-1 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-300"
                         >
                           <ShieldCheck className="w-3.5 h-3.5" /> صلاحيات
                         </button>
@@ -265,7 +265,7 @@ export function AdminCentersView({ data, reload }: { data: AdminData | null; rel
                       <button
                         onClick={() => { setSupportFor(u); setSupportReason(""); }}
                         title="دخول باسم المستخدم لمساعدته (30 دقيقة)"
-                        className="shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-extrabold bg-sky-50 border border-sky-200 text-sky-700 hover:bg-sky-100 flex items-center gap-1"
+                        className="shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] font-extrabold bg-sky-50 border border-sky-200 text-sky-700 hover:bg-sky-100 flex items-center gap-1 dark:bg-sky-950/40 dark:border-sky-800/60 dark:text-sky-300"
                       >
                         <LifeBuoy className="w-3.5 h-3.5" /> دعم
                       </button>
@@ -287,7 +287,7 @@ export function AdminCentersView({ data, reload }: { data: AdminData | null; rel
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-3.5">
-              <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs font-bold text-amber-800 leading-relaxed">
+              <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs font-bold text-amber-800 leading-relaxed dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-200">
                 هتدخل باسم <b>{supportFor.name}</b> (@{supportFor.username}) في سنتر {supportFor.centerName}.
                 الجلسة مؤقتة (٣٠ دقيقة) وبانر واضح فوق الشاشة طول الوقت، وكل عملية هتتسجل في سجل التدقيق باسمك وبالسبب ده.
                 <b> مفيش أي كلمة سر بتظهر أو بتتخزن.</b>
@@ -416,7 +416,7 @@ export function AdminSubscriptionsView({ data, reload }: { data: AdminData | nul
               {/* تحذير الانتهاء (spec §7) */}
               {sub?.expiringSoon && sub.daysLeft != null && (
                 <div className={cn("rounded-xl p-2.5 text-xs font-bold flex items-center gap-2",
-                  sub.daysLeft <= 3 ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-800")}>
+                  sub.daysLeft <= 3 ? "bg-rose-100 text-rose-700 dark:text-rose-300" : "bg-amber-100 text-amber-800 dark:text-amber-200")}>
                   <AlertTriangle className="w-4 h-4 shrink-0" />
                   {sub.daysLeft < 0
                     ? "الاشتراك تجاوز تاريخ التجديد — بيانات السنتر محفوظة، القرار ليك"
@@ -428,8 +428,8 @@ export function AdminSubscriptionsView({ data, reload }: { data: AdminData | nul
               {p.warnLevel !== "NONE" && (
                 <div className={`rounded-xl p-2.5 text-xs font-bold flex items-center gap-2 ${
                   p.warnLevel === "LIMIT" ? "bg-red-100 text-red-700"
-                  : p.warnLevel === "WARN_95" ? "bg-orange-100 text-orange-700"
-                  : "bg-amber-100 text-amber-800"
+                  : p.warnLevel === "WARN_95" ? "bg-orange-100 text-orange-700 dark:text-orange-300"
+                  : "bg-amber-100 text-amber-800 dark:text-amber-200"
                 }`}>
                   <AlertTriangle className="w-4 h-4 shrink-0" />
                   {p.warnLevel === "LIMIT"
@@ -484,7 +484,7 @@ export function AdminSubscriptionsView({ data, reload }: { data: AdminData | nul
                   سماح
                 </button>
                 <button onClick={() => lifecycle(c.id, "cancel")} disabled={busy}
-                  className="rounded-xl border border-rose-200 bg-card px-3 py-2.5 text-[11px] font-extrabold text-rose-600 hover:bg-rose-50 disabled:opacity-50">
+                  className="rounded-xl border border-rose-200 bg-card px-3 py-2.5 text-[11px] font-extrabold text-rose-600 hover:bg-rose-50 disabled:opacity-50 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-400">
                   إلغاء
                 </button>
                 <button onClick={() => setHistoryFor(c)}
@@ -655,7 +655,7 @@ export function AdminBillingView({ data }: { data: AdminData | null }) {
                 </div>
                 <div className="text-end shrink-0">
                   <p className="font-extrabold nk-num text-sm">{fmtE(b.amount)}</p>
-                  <Chip className={b.status === "PAID" ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-amber-50 border-amber-200 text-amber-700"}>
+                  <Chip className={b.status === "PAID" ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300" : "bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-300"}>
                     {b.status === "PAID" ? "مدفوعة" : "معلّقة"}
                   </Chip>
                 </div>
@@ -800,7 +800,7 @@ export function AdminEntitlementsView({ data, reload }: { data: AdminData | null
                 <tr key={c.id} className="border-t">
                   <td className="p-2 font-extrabold whitespace-nowrap">
                     {c.name}
-                    {c.status !== "ACTIVE" && <span className="text-rose-600 font-black"> (موقوف)</span>}
+                    {c.status !== "ACTIVE" && <span className="text-rose-600 font-black dark:text-rose-400"> (موقوف)</span>}
                   </td>
                   {data.moduleCatalog.map((m) => {
                     const st = effectiveModule(c, m.key);
@@ -980,7 +980,7 @@ export function AdminTeamsView({ data, reload }: { data: AdminData | null; reloa
                   <h3 className="font-extrabold truncate">{t.name}</h3>
                   {t.description && <p className="text-[11px] text-muted-foreground font-semibold truncate">{t.description}</p>}
                 </div>
-                <Chip className={t.isActive ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-muted"}>
+                <Chip className={t.isActive ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300" : "bg-muted"}>
                   {t.isActive ? "نشط" : "متوقف"}
                 </Chip>
               </div>
@@ -1013,7 +1013,7 @@ export function AdminTeamsView({ data, reload }: { data: AdminData | null; reloa
                     void teamAction({ action: "team-set-status", teamId: t.id, status: t.isActive ? "SUSPENDED" : "ACTIVE" }, "تم تحديث حالة الفريق.");
                   }}
                   className={cn("rounded-xl border py-2 px-3 text-xs font-extrabold",
-                    t.isActive ? "border-rose-200 bg-rose-50 text-rose-700" : "border-emerald-200 bg-emerald-50 text-emerald-700")}>
+                    t.isActive ? "border-rose-200 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300" : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300")}>
                   {t.isActive ? "إيقاف" : "تشغيل"}
                 </button>
               </div>
@@ -1080,7 +1080,7 @@ export function AdminTeamsView({ data, reload }: { data: AdminData | null; reloa
                           void teamAction({ action: "team-remove-member", teamId: detail.id, userId: m.userId }, `تم إزالة ${m.name}.`);
                           setDetail((cur) => cur ? { ...cur, members: cur.members.filter((x) => x.id !== m.id) } : cur);
                         }}
-                        className="shrink-0 rounded-lg p-2 text-rose-600 hover:bg-rose-50" title="إزالة من الفريق">
+                        className="shrink-0 rounded-lg p-2 text-rose-600 hover:bg-rose-50 dark:bg-rose-950/40 dark:text-rose-400" title="إزالة من الفريق">
                         <UserMinus className="w-4 h-4" />
                       </button>
                     </li>
@@ -1183,7 +1183,7 @@ export function AdminBackupsView({ data }: { data: AdminData | null }) {
       <div className="space-y-4">
         <PageHeader title="النسخ الاحتياطية والاستعادة" subtitle="نسخ تلقائية كل جمعة 10 مساءً بتوقيت القاهرة + نسخة يومية خفيفة — والتنزيل اليدوي هو الضمان الحقيقي" />
         <div className="nk-card rounded-2xl p-6 text-center space-y-3">
-          <span className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 grid place-items-center mx-auto">
+          <span className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 grid place-items-center mx-auto dark:bg-rose-950/40 dark:text-rose-400">
             <DatabaseBackup className="w-6 h-6" />
           </span>
           <p className="font-extrabold text-sm">النسخ الاحتياطية مش بتحمل دلوقتي</p>
@@ -1275,7 +1275,7 @@ export function AdminBackupsView({ data }: { data: AdminData | null }) {
             <span className="text-muted-foreground">آخر لقطة: </span>
             {backups.status.lastSuccessAt ? new Date(backups.status.lastSuccessAt).toLocaleString("ar-EG", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) : "—"}
           </div>
-          <div className={cn("rounded-xl px-3 py-2", backups.status.lastError ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700")}>
+          <div className={cn("rounded-xl px-3 py-2", backups.status.lastError ? "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300")}>
             {backups.status.lastError ? `آخر خطأ: ${backups.status.lastError.slice(0, 60)}` : "مفيش أخطاء ✓"}
           </div>
         </div>
@@ -1292,7 +1292,7 @@ export function AdminBackupsView({ data }: { data: AdminData | null }) {
           <ul className="divide-y">
             {backups.excelBackups.map((e) => (
               <li key={e.file} className="flex items-center gap-3 py-3">
-                <span className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 grid place-items-center shrink-0">
+                <span className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 grid place-items-center shrink-0 dark:bg-emerald-950/40 dark:text-emerald-300">
                   <FileSpreadsheet className="w-4.5 h-4.5" />
                 </span>
                 <div className="flex-1 min-w-0">
@@ -1301,8 +1301,8 @@ export function AdminBackupsView({ data }: { data: AdminData | null }) {
                   <p className="text-[11px] text-muted-foreground font-semibold">
                     {new Date(e.createdAt).toLocaleString("ar-EG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · {fmtSize(e.size)} · {e.sheets} شيت
                     {e.validated
-                      ? <span className="text-emerald-700 font-extrabold"> · متتحقق منها ✓</span>
-                      : <span className="text-rose-600 font-extrabold"> · فشل التحقق: {e.validationError}</span>}
+                      ? <span className="text-emerald-700 font-extrabold dark:text-emerald-300"> · متتحقق منها ✓</span>
+                      : <span className="text-rose-600 font-extrabold dark:text-rose-400"> · فشل التحقق: {e.validationError}</span>}
                   </p>
                 </div>
                 <a
@@ -1329,7 +1329,7 @@ export function AdminBackupsView({ data }: { data: AdminData | null }) {
           <ul className="divide-y">
             {backups.dbBackups.map((b) => (
               <li key={b.file} className="flex items-center gap-3 py-3">
-                <span className="w-9 h-9 rounded-xl bg-sky-50 text-sky-700 grid place-items-center shrink-0">
+                <span className="w-9 h-9 rounded-xl bg-sky-50 text-sky-700 grid place-items-center shrink-0 dark:bg-sky-950/40 dark:text-sky-300">
                   <HardDriveDownload className="w-4.5 h-4.5" />
                 </span>
                 <div className="flex-1 min-w-0">
@@ -1393,7 +1393,7 @@ export function AdminBackupsView({ data }: { data: AdminData | null }) {
                 </div>
               </div>
 
-              <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-[11px] font-bold text-amber-800 leading-relaxed">
+              <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-[11px] font-bold text-amber-800 leading-relaxed dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-200">
                 الاستعادة بتضيف الصفوف الناقصة في الإنتاج بس — أي صف موجود خلاص بيفضل زي ما هو.
                 <b> مفيش أي حاجة بتتمسح أو تتعدل.</b> كل عملية استعادة بتتسجل في سجل التدقيق.
               </div>
@@ -1406,10 +1406,10 @@ export function AdminBackupsView({ data }: { data: AdminData | null }) {
                       <li key={r.table} className="flex items-center justify-between px-3.5 py-2.5">
                         <span className="font-bold">{r.label}</span>
                         <span className="nk-num font-extrabold text-xs">
-                          <span className={r.inserted > 0 ? "text-emerald-700" : "text-muted-foreground"}>+{r.inserted} مستعاد</span>
+                          <span className={r.inserted > 0 ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground"}>+{r.inserted} مستعاد</span>
                           <span className="text-muted-foreground"> · {r.existing} موجود خلاص</span>
                           {!!r.failed && r.failed > 0 && (
-                            <span className="text-rose-600 font-bold"> · {r.failed} فشلوا (مرجع ناقص)</span>
+                            <span className="text-rose-600 font-bold dark:text-rose-400"> · {r.failed} فشلوا (مرجع ناقص)</span>
                           )}
                         </span>
                       </li>
@@ -1499,7 +1499,7 @@ export function AdminRequestsView({ data, reload }: { data: AdminData | null; re
         title="طلبات الانضمام"
         subtitle="حسابات جديدة سجلت من صفحة الدخول — عيّنها لسنتر أو ارفضها"
         action={
-          <Chip className={requests.length > 0 ? "bg-amber-50 border-amber-200 text-amber-700" : "bg-emerald-50 border-emerald-200 text-emerald-700"}>
+          <Chip className={requests.length > 0 ? "bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-300" : "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300"}>
             <UserPlus className="w-3.5 h-3.5" /> {requests.length} مستني
           </Chip>
         }
@@ -1528,7 +1528,7 @@ export function AdminRequestsView({ data, reload }: { data: AdminData | null; re
                     <p className="text-xs text-muted-foreground font-semibold" dir="ltr">@{r.username}</p>
                   </div>
                 </div>
-                <Chip className="bg-amber-50 border-amber-200 text-amber-700 shrink-0">
+                <Chip className="bg-amber-50 border-amber-200 text-amber-700 shrink-0 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-300">
                   <CalendarDays className="w-3.5 h-3.5" />
                   {formatDateAR(r.createdAt)}
                 </Chip>
@@ -1549,7 +1549,7 @@ export function AdminRequestsView({ data, reload }: { data: AdminData | null; re
                 </button>
                 <button
                   onClick={() => { setRejectFor(r); setRejectReason(""); }}
-                  className="rounded-xl border-2 border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 font-extrabold px-3.5 py-2.5 flex items-center justify-center gap-1.5 text-sm transition active:scale-[0.98]"
+                  className="rounded-xl border-2 border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 font-extrabold px-3.5 py-2.5 flex items-center justify-center gap-1.5 text-sm transition active:scale-[0.98] dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300"
                 >
                   <UserMinus className="w-4.5 h-4.5" /> ارفض
                 </button>
@@ -1632,7 +1632,7 @@ export function AdminRequestsView({ data, reload }: { data: AdminData | null; re
             <>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
-                  <UserMinus className="w-5 h-5 text-rose-600" />
+                  <UserMinus className="w-5 h-5 text-rose-600 dark:text-rose-400" />
                   رفض طلب {rejectFor.name}
                 </DialogTitle>
                 <DialogDescription>
@@ -1723,7 +1723,7 @@ export function AdminAnalyticsView() {
       <div className="nk-card rounded-2xl p-4">
         <h3 className="font-extrabold text-sm mb-3">حالات الاشتراكات (محسوبة)</h3>
         <div className="grid grid-cols-5 gap-2 text-center">
-          {([["TRIAL", "تجريبي", "bg-sky-100 text-sky-700"], ["ACTIVE", "نشط", "bg-emerald-100 text-emerald-700"], ["GRACE", "سماح", "bg-amber-100 text-amber-700"], ["EXPIRED", "منتهي", "bg-rose-100 text-rose-700"], ["CANCELLED", "ملغي", "bg-gray-100 text-gray-600"]] as const).map(([k, label, cls]) => (
+          {([["TRIAL", "تجريبي", "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"], ["ACTIVE", "نشط", "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"], ["GRACE", "سماح", "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"], ["EXPIRED", "منتهي", "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"], ["CANCELLED", "ملغي", "bg-gray-100 text-gray-600 dark:bg-gray-900/60 dark:text-gray-400"]] as const).map(([k, label, cls]) => (
             <div key={k} className={cn("rounded-xl p-3", cls)}>
               <p className="nk-num text-xl font-black">{d.subCounts[k]}</p>
               <p className="text-[10px] font-bold mt-0.5">{label}</p>
@@ -1791,7 +1791,7 @@ export function AdminAnalyticsView() {
             {d.expiringSoon.map((s) => (
               <div key={s.centerId} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-bold">
                 <span className="font-extrabold">{s.centerName}</span>
-                <span className={cn("nk-num", s.daysLeft <= 7 ? "text-rose-600" : "text-amber-600")}>
+                <span className={cn("nk-num", s.daysLeft <= 7 ? "text-rose-600 dark:text-rose-400" : "text-amber-600")}>
                   {s.daysLeft <= 0 ? "تجاوز الموعد" : `باقي ${s.daysLeft} يوم`} · {formatDateAR(s.renewalDate)}
                 </span>
               </div>
@@ -1866,14 +1866,14 @@ export function BackupRunsPanel() {
             <div className="flex items-center gap-2 shrink-0 text-[10px] text-muted-foreground">
               {r.integrity && (
                 <span className={cn("rounded-full px-1.5 py-0.5",
-                  r.integrity === "OK" ? "bg-emerald-50 text-emerald-700" : r.integrity === "FAILED" ? "bg-rose-50 text-rose-700" : "bg-muted")}>
+                  r.integrity === "OK" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : r.integrity === "FAILED" ? "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300" : "bg-muted")}>
                   سلامة: {r.integrity === "OK" ? "تمام" : r.integrity === "FAILED" ? "فشل" : "—"}
                 </span>
               )}
               {r.sizeBytes != null && <span className="nk-num">{(r.sizeBytes / 1048576).toFixed(1)}MB</span>}
               <span className="nk-num">{new Date(r.startedAt).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" })}</span>
             </div>
-            {r.error && <p className="w-full text-rose-600 text-[11px]">{r.error}</p>}
+            {r.error && <p className="w-full text-rose-600 text-[11px] dark:text-rose-400">{r.error}</p>}
             {r.notes && <p className="w-full text-muted-foreground text-[11px]">{r.notes}</p>}
           </div>
         ))}

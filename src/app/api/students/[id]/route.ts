@@ -11,9 +11,13 @@ export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-/** GET /api/students/[id] — full profile (tenant-scoped) */
+/** GET /api/students/[id] — full profile (tenant-scoped)
+ *  تدقيق المرحلة 2 #6: الملف الكامل (تليفونات/رصيد/كشف حساب) محتاج صلاحية صريحة */
 export const GET = handler(async (_req: Request, ctx: Ctx) => {
   const user = await requireCenterUser();
+  if (!hasPermission(user, "VIEW_STUDENTS")) {
+    throw new ApiError("عرض ملف الطالب محتاج صلاحية «عرض الطلاب» — كلّم المدير.", 403);
+  }
   const { id } = await ctx.params;
 
   const student = await db.student.findFirst({

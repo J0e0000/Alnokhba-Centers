@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPhoneIntl, smartPhoneDigits } from "@/lib/normalize";
-import { api, fmt, normalizeDigits, prefetchApi, STUDENT_STATUS, type SessionUser } from "./lib";
+import { api, fmt, normalizeDigits, prefetchApi, STUDENT_STATUS, userCan, type SessionUser } from "./lib";
 import { PageHeader, Chip, BalanceChip, EmptyState, Loading, CardsSkeleton } from "./shared";
 import { ContactActions } from "./contact-actions";
 import { StudentSearchBar } from "./student-search";
@@ -72,6 +72,8 @@ export function StudentsView({ user, openNew, onOpenNewConsumed, onOpenProfile }
   }, [q, status, gradeId, groupId, reloadKey]);
 
   const canAdd = user.role === "MANAGER" || user.canAddStudents;
+  // تدقيق المرحلة 2 #6: القراءة نفسها صلاحية — من غيرها بنعرض حالة قفل وديعة (السيرفر بيفضل الحارس الحقيقي)
+  const canView = userCan(user, "VIEW_STUDENTS");
   const rows = data?.students ?? [];
 
   const toggleSel = (id: string) => setSelected((prev) => {
@@ -223,6 +225,14 @@ export function StudentsView({ user, openNew, onOpenNewConsumed, onOpenProfile }
 
       {loading && !data ? (
         <CardsSkeleton count={6} />
+      ) : !canView ? (
+        <div className="nk-card rounded-2xl">
+          <EmptyState
+            icon={<ShieldCheck className="w-8 h-8" />}
+            title="عرض الطلاب مقفول لحسابك"
+            hint="الحساب ده مش معاه صلاحية «عرض الطلاب» — كلّم المدير يوزّها من إدارة الموظفين."
+          />
+        </div>
       ) : !data || data.students.length === 0 ? (
         <div className="nk-card rounded-2xl">
           <EmptyState
@@ -853,7 +863,7 @@ export function Field({ label, required, error, hint, children, ref }: {
       </label>
       {children}
       {error ? (
-        <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-1.5">{error}</p>
+        <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-1.5 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-400">{error}</p>
       ) : hint ? (
         <p className="text-[11px] text-muted-foreground font-semibold">{hint}</p>
       ) : null}
@@ -864,7 +874,7 @@ export function Field({ label, required, error, hint, children, ref }: {
 export function inputCls(hasError: boolean): string {
   return cn(
     "w-full h-11 rounded-xl border-2 bg-card px-3.5 font-semibold text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition",
-    hasError ? "border-rose-300 focus-visible:ring-rose-400" : "border-input"
+    hasError ? "border-rose-300 focus-visible:ring-rose-400 dark:border-rose-700/60" : "border-input"
   );
 }
 
@@ -1320,7 +1330,7 @@ function BulkAddDialog({ open, onClose, onSaved, centerName }: {
                   return (
                     <div key={r.key} className={cn(
                       "grid gap-2 rounded-xl border-2 p-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_32px] sm:items-center transition",
-                      err ? "border-rose-300 bg-rose-50/40" : "border-border bg-card"
+                      err ? "border-rose-300 bg-rose-50/40 dark:bg-rose-950/40 dark:border-rose-700/60" : "border-border bg-card"
                     )}>
                       <input dir="rtl" className={cn(inputCls(false), "h-10 text-sm")} value={r.name}
                         onChange={(e) => setName(r, e.target.value)}

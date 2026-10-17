@@ -117,7 +117,7 @@ export function StudentProfileView({ user, studentId, onBack }: {
             </div>
           </div>
           {s.notes && (
-            <p className="mt-3 flex items-start gap-2 text-sm bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 font-semibold text-amber-800">
+            <p className="mt-3 flex items-start gap-2 text-sm bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 font-semibold text-amber-800 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-200">
               <StickyNote className="w-4 h-4 mt-0.5 shrink-0" /> {s.notes}
             </p>
           )}
@@ -133,7 +133,7 @@ export function StudentProfileView({ user, studentId, onBack }: {
                 <div key={g.groupId} className="rounded-xl border border-border bg-card p-3.5">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-extrabold text-sm">{g.subject} — مجموعة {g.groupName}</span>
-                    <Chip className={g.isOverride ? "bg-sky-50 border-sky-200 text-sky-700" : "bg-muted border-border text-muted-foreground"}>
+                    <Chip className={g.isOverride ? "bg-sky-50 border-sky-200 text-sky-700 dark:bg-sky-950/40 dark:border-sky-800/60 dark:text-sky-300" : "bg-muted border-border text-muted-foreground"}>
                       الحصة {fmt(g.price)} ج{g.isOverride ? " (سعر خاص)" : ""}
                     </Chip>
                   </div>
@@ -169,13 +169,13 @@ export function StudentProfileView({ user, studentId, onBack }: {
           {/* تسوية/استرداد: صلاحية مباشرة → تنفيذ فوري · من غيرها → طلب موافقة للمدير */}
           {(userCan(user, "REFUND_PAYMENT") || userCan(user, "ADJUST_BALANCE")) ? (
             <div className="flex gap-2">
-              <button onClick={() => setAdjustOpen(true)} className="flex-1 rounded-xl border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 font-bold px-4 py-3 flex items-center justify-center gap-2 text-sm transition">
+              <button onClick={() => setAdjustOpen(true)} className="flex-1 rounded-xl border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 font-bold px-4 py-3 flex items-center justify-center gap-2 text-sm transition dark:bg-sky-950/40 dark:border-sky-800/60 dark:text-sky-300">
                 <Scale className="w-4 h-4" /> تسوية / استرداد
               </button>
             </div>
           ) : (userCanRequest(user, "REQUEST_REFUND") || userCanRequest(user, "REQUEST_ADJUSTMENT")) ? (
             <div className="flex gap-2">
-              <button onClick={() => setRequestOpen(true)} className="flex-1 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 font-bold px-4 py-3 flex items-center justify-center gap-2 text-sm transition">
+              <button onClick={() => setRequestOpen(true)} className="flex-1 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 font-bold px-4 py-3 flex items-center justify-center gap-2 text-sm transition dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-300">
                 <ClipboardCheck className="w-4 h-4" /> طلب استرداد / تسوية
               </button>
             </div>
@@ -230,9 +230,9 @@ export function StudentProfileView({ user, studentId, onBack }: {
                   <span className="text-xs font-bold text-muted-foreground nk-num">{a.charged ? `${fmt(a.charged)} ج` : "—"}</span>
                   <span className={cn(
                     "text-[11px] font-bold rounded-full border px-2 py-0.5",
-                    a.status === "PRESENT" ? "bg-emerald-50 border-emerald-200 text-emerald-700" :
-                    a.status === "LATE" ? "bg-amber-50 border-amber-200 text-amber-700" :
-                    "bg-sky-50 border-sky-200 text-sky-700"
+                    a.status === "PRESENT" ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300" :
+                    a.status === "LATE" ? "bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-300" :
+                    "bg-sky-50 border-sky-200 text-sky-700 dark:bg-sky-950/40 dark:border-sky-800/60 dark:text-sky-300"
                   )}>{ATTENDANCE_LABEL[a.status]}</span>
                 </div>
               </li>
@@ -303,14 +303,14 @@ function WhatsAppPanel({ studentId, studentName, parentPhone }: { studentId: str
           <div className="flex flex-wrap gap-2">
             {templates.map((t) => (
               <button key={t.id} onClick={() => render(t.id)} disabled={busy}
-                className="rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 px-3.5 py-2 text-xs font-extrabold hover:bg-emerald-100 transition disabled:opacity-60">
+                className="rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 px-3.5 py-2 text-xs font-extrabold hover:bg-emerald-100 transition disabled:opacity-60 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300">
                 {t.name}
               </button>
             ))}
           </div>
           {rendered && (
             <div className="space-y-2.5">
-              <div className="rounded-2xl bg-[#e7ffdb] border border-emerald-200 p-3.5 text-sm font-semibold whitespace-pre-wrap leading-relaxed">
+              <div className="rounded-2xl bg-[#e7ffdb] border border-emerald-200 p-3.5 text-sm font-semibold whitespace-pre-wrap leading-relaxed dark:border-emerald-800/60">
                 {rendered.text}
               </div>
               <div className="flex flex-wrap gap-2 items-center">
@@ -320,7 +320,7 @@ function WhatsAppPanel({ studentId, studentName, parentPhone }: { studentId: str
                     <MessageCircle className="w-5 h-5" /> ابعت واتساب {rendered.phone ? `(${rendered.phone})` : ""}
                   </a>
                 ) : (
-                  <p className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 flex-1">
+                  <p className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 flex-1 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-300">
                     {studentName} ماليهوش رقم موبايل مسجل — ضيف الرقم من تعديل البيانات.
                   </p>
                 )}

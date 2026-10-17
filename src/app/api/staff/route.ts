@@ -14,7 +14,7 @@ export const GET = handler(async () => {
   const user = await requireManager();
   const staff = await db.user.findMany({
     where: { centerId: user.centerId },
-    select: { id: true, name: true, username: true, role: true, canAddStudents: true, isActive: true, createdAt: true, permissions: true, modules: true, phone: true },
+    select: { id: true, name: true, username: true, role: true, canAddStudents: true, isActive: true, createdAt: true, permissions: true, modules: true, phone: true, teacherRefId: true, teacherRef: { select: { name: true } } },
     orderBy: { createdAt: "asc" },
   });
   // حالة أقسام السنتر مرة واحدة — وقيود كل موظف بتتطبق محليًا (pure) من غير استعلامات متكررة
@@ -24,6 +24,9 @@ export const GET = handler(async () => {
       id: s.id, name: s.name, username: s.username, role: s.role,
       canAddStudents: s.canAddStudents, isActive: s.isActive, createdAt: s.createdAt,
       phone: s.phone,
+      // ربط حساب المدرس بكيانه في الجدول (داشبورد المدرس المحدد)
+      teacherRefId: s.teacherRefId,
+      teacherRefName: s.teacherRef?.name ?? null,
       permissions: [...resolvePermissions(s)].sort(),
       // الأقسام الفعلية للحساب (سنتر + قيود الحساب) + القيود الخام للعرض في المحرر
       modules: applyUserModuleGrants(centerModules, s.role, s.modules),
@@ -36,9 +39,24 @@ export const GET = handler(async () => {
 type StaffBody = {
   id?: string; name?: string; username?: string; password?: string;
   role?: string; canAddStudents?: boolean; isActive?: boolean; phone?: string;
+  // ربط حساب TEACHER بكيان مدرس من الجدول (null/"" = فك الربط) — داشبورد المدرس بيفلتر بيه
+  teacherRefId?: string | null;
   permissions?: Record<string, boolean>; // أي صلاحية من الكتالوج: تفعيل/تعطيل فوق الافتراضي
   modules?: Record<string, boolean>; // أقسام المنتج للحساب: false = مقفول له، true = رجّع وراثة السنتر
 };
+
+/** تحقق ربط المدرس: موجود في نفس السنتر + شغال + مش مربوط بحساب تاني (1:1) */
+async function resolveTeacherRef(centerId: string, teacherRefId: string | null | undefined): Promise<string | null> {
+  if (teacherRefId == null || teacherRefId === "") return null;
+  const t = await db.teacher.findFirst({
+    where: { id: teacherRefId, centerId },
+    include: { staffAccount: { select: { id: true } } },
+  });
+  if (!t) throw new ApiError("المدرس ده مش موجود في السنتر ده.", 404);
+  if (!t.isActive) throw new ApiError("المدرس ده متوقف — فعّله الأول من شاشة المدرسين.", 400);
+  if (t.staffAccount) throw new ApiError(`المدرس ده مربوط بحساب موظف تاني خلاص.`, 409);
+  return t.id;
+}
 
 /** POST /api/staff — add staff (manager) */
 export const POST = handler(async (req: Request) => {
@@ -65,11 +83,15 @@ export const POST = handler(async (req: Request) => {
     throw new ApiError("في مدير واحد مسموح به للسنتر — ممكن تضيف موظفين استقبال.");
   }
 
+  // ربط المدرس (للـ TEACHER بس — أي دور تاني بنمحيه)
+  const teacherRefId = role === "TEACHER" ? await resolveTeacherRef(user.centerId, body.teacherRefId) : null;
+
   const staff = await db.user.create({
     data: {
       centerId: user.centerId, name, username,
       passwordHash: hashPassword(password), role,
       canAddStudents: role === "RECEPTIONIST" ? Boolean(body.canAddStudents ?? true) : true,
+      teacherRefId,
     },
   });
   await logAudit({ user, action: AUDIT.STAFF_ADDED, entity: "USER", entityId: staff.id, after: { name, username, role } });
@@ -102,6 +124,27 @@ export const PATCH = handler(async (req: Request) => {
     if (body.role === "MANAGER" && managerCount >= 1) throw new ApiError("في مدير واحد للسنتر.");
     if (target.id === user.id && body.role !== "MANAGER") throw new ApiError("مينفعش تنزل نفسك من مدير.");
     data.role = body.role;
+  }
+
+  // ===== ربط المدرس بكيانه (للحسابات اللي دورها TEACHER بعد التعديل) =====
+  if (body.teacherRefId !== undefined) {
+    const effectiveRole = (data.role as string | undefined) ?? target.role;
+    if (effectiveRole !== "TEACHER" && body.teacherRefId !== null && body.teacherRefId !== "") {
+      throw new ApiError("الربط بمدرس للحسابات اللي وظيفتها مدرس بس.", 400);
+    }
+    // فحص التكرار: نفس المدرس مش مفروض يتربط بحسابين
+    const existing = await db.user.findFirst({
+      where: { centerId: user.centerId, teacherRefId: body.teacherRefId || null, NOT: { id: target.id } },
+      select: { id: true, name: true },
+    });
+    if (body.teacherRefId && existing) {
+      throw new ApiError(`المدرس ده مربوط بحساب ${existing.name} خلاص.`, 409);
+    }
+    const resolved = effectiveRole === "TEACHER"
+      ? await resolveTeacherRef(user.centerId, body.teacherRefId || null)
+      : null;
+    data.teacherRefId = resolved;
+    // التبديل من مدرس لمدرس: resolveTeacherRef بيمنع لو مربوط — بس لو نفسه هو فالـ NOT فوق بيغطي
   }
 
   // ===== الصلاحيات الدقيقة (المدير بيتحكم فيها لكل موظف — الكتالوج كامل لأي دور غير المدير) =====

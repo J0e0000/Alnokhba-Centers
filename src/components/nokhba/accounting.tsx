@@ -97,8 +97,8 @@ export function AccountingView() {
           {difference !== null ? (
             <div className={cn(
               "rounded-2xl border-2 px-5 py-4 font-extrabold text-center text-lg nk-num",
-              difference === 0 ? "bg-emerald-50 border-emerald-300 text-emerald-700" :
-              difference > 0 ? "bg-sky-50 border-sky-300 text-sky-700" : "bg-rose-50 border-rose-300 text-rose-700"
+              difference === 0 ? "bg-emerald-50 border-emerald-300 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-700/60 dark:text-emerald-300" :
+              difference > 0 ? "bg-sky-50 border-sky-300 text-sky-700 dark:bg-sky-950/40 dark:border-sky-700/60 dark:text-sky-300" : "bg-rose-50 border-rose-300 text-rose-700 dark:bg-rose-950/40 dark:border-rose-700/60 dark:text-rose-300"
             )}>
               فرق الصندوق: {fmt(difference)} جنيه {difference < 0 ? "(ناقص)" : difference > 0 ? "(زيادة)" : "(مظبوط ✧)".replace(" ✧", "")}
               <p className="text-xs font-semibold mt-1 text-muted-foreground">
@@ -179,12 +179,12 @@ export function AccountingView() {
               <ul className="divide-y max-h-96 overflow-y-auto nk-scroll">
                 {data.expenses.map((e) => (
                   <li key={e.id} className="flex items-center gap-3 py-2.5">
-                    <span className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 grid place-items-center shrink-0"><Receipt className="w-4.5 h-4.5" /></span>
+                    <span className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 grid place-items-center shrink-0 dark:bg-amber-950/40 dark:text-amber-300"><Receipt className="w-4.5 h-4.5" /></span>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-sm">{EXPENSE_LABEL[e.category] ?? e.category}{e.note ? ` — ${e.note}` : ""}</p>
                       <p className="text-[11px] text-muted-foreground font-semibold">{formatDateAR(e.date)}</p>
                     </div>
-                    <span className="font-extrabold nk-num text-sm text-rose-600 shrink-0">−{fmt(e.amount)} ج</span>
+                    <span className="font-extrabold nk-num text-sm text-rose-600 shrink-0 dark:text-rose-400">−{fmt(e.amount)} ج</span>
                   </li>
                 ))}
               </ul>
@@ -217,7 +217,7 @@ export function AccountingView() {
             <ul className="divide-y max-h-[28rem] overflow-y-auto nk-scroll">
               {data.journal.map((j) => (
                 <li key={j.id} className="flex items-center gap-3 py-2.5">
-                  <Chip className={cn("shrink-0", j.amount >= 0 ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-rose-50 border-rose-200 text-rose-700")}>
+                  <Chip className={cn("shrink-0", j.amount >= 0 ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300" : "bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300")}>
                     {JOURNAL_LABEL[j.type] ?? j.type}
                   </Chip>
                   <div className="flex-1 min-w-0">
@@ -310,7 +310,7 @@ function TeacherSettlementCard({ teacher, busy, onPay }: {
           <h3 className="font-extrabold">{teacher.name}</h3>
           {teacher.phone && <p className="text-xs text-muted-foreground font-semibold nk-num" dir="ltr">{teacher.phone}</p>}
         </div>
-        <Chip className={teacher.payable > 0 ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-muted border-border text-muted-foreground"}>
+        <Chip className={teacher.payable > 0 ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300" : "bg-muted border-border text-muted-foreground"}>
           {teacher.payable > 0 ? `له ${fmt(teacher.payable)} ج` : "تم الصرف"}
         </Chip>
       </div>

@@ -71,6 +71,8 @@ export type SessionUser = {
   role: "ADMIN" | "MANAGER" | "RECEPTIONIST" | "TEACHER";
   centerId: string | null;
   canAddStudents: boolean;
+  // ربط حساب المدرس بكيانه في الجدول (TEACHER بس) — الداشبورد يفلتر لحصصه به
+  teacherRefId: string | null;
   // الصلاحيات الدقيقة المحسومة (للواجهات + لفحوص السيرفر في كل مكان)
   permissions: PermissionId[];
   // قيود أقسام المنتج على مستوى الحساب (JSON خام { grants: { finance: false } } — null = وراثة السنتر)
@@ -302,6 +304,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     role: role as SessionUser["role"],
     centerId: u.centerId,
     canAddStudents: u.canAddStudents,
+    teacherRefId: u.teacherRefId ?? null,
     permissions: permissionsForClient(u),
     modules: u.modules ?? null,
     autoPrintReceipt: u.autoPrintReceipt,

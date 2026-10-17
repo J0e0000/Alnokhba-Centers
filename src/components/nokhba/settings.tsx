@@ -375,7 +375,7 @@ function BrandingTab({ user, onBrandingChanged }: { user: SessionUser; onBrandin
               <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onLogoFile} />
             </div>
             {form.logo && (
-              <button onClick={() => set("logo", null)} className="text-rose-600 text-xs font-bold pb-3">مسح</button>
+              <button onClick={() => set("logo", null)} className="text-rose-600 text-xs font-bold pb-3 dark:text-rose-400">مسح</button>
             )}
           </div>
 
@@ -532,10 +532,10 @@ function WhatsAppTab() {
                   <button onClick={async () => {
                     if (!confirm(`تمسح قالب "${t.name}"؟`)) return;
                     try { await api(`/api/templates?id=${t.id}`, { method: "DELETE" }); toast.success("تم الحذف."); load(); } catch { /* toast */ }
-                  }} className="text-rose-500 hover:text-rose-600 p-1" aria-label="حذف"><Trash2 className="w-4 h-4" /></button>
+                  }} className="text-rose-500 hover:text-rose-600 p-1 dark:text-rose-400" aria-label="حذف"><Trash2 className="w-4 h-4" /></button>
                 </div>
               </div>
-              <p className="mt-2 text-sm font-semibold leading-relaxed whitespace-pre-wrap bg-[#e7ffdb] border border-emerald-200 rounded-xl p-3">{t.body}</p>
+              <p className="mt-2 text-sm font-semibold leading-relaxed whitespace-pre-wrap bg-[#e7ffdb] dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 rounded-xl p-3">{t.body}</p>
             </div>
           ))}
         </div>
@@ -560,7 +560,7 @@ function WhatsAppTab() {
                   {VARIABLES.map((v) => (
                     <button key={v} type="button" dir="ltr"
                       onClick={() => setEdit({ ...edit, body: edit.body + " " + v })}
-                      className="rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 px-2.5 py-1 text-[11px] font-bold hover:bg-emerald-100">
+                      className="rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 px-2.5 py-1 text-[11px] font-bold hover:bg-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300">
                       {v}
                     </button>
                   ))}
@@ -587,6 +587,7 @@ function StaffTab() {
   const [staff, setStaff] = useState<{
     id: string; name: string; username: string; role: string; canAddStudents: boolean; isActive: boolean;
     permissions?: string[]; phone?: string | null;
+    teacherRefId?: string | null; teacherRefName?: string | null;
     modules?: Record<string, { enabled: boolean; lockedBy?: string }>;
     moduleGrants?: Record<string, boolean>;
   }[]>([]);
@@ -594,6 +595,7 @@ function StaffTab() {
   const [addOpen, setAddOpen] = useState(false);
   const [permFor, setPermFor] = useState<EditorStaff | null>(null);
   const [modsFor, setModsFor] = useState<EditorStaff | null>(null);
+  const [linkFor, setLinkFor] = useState<(typeof staff)[number] | null>(null);
 
   const toEditor = (s: (typeof staff)[number]): EditorStaff => ({
     id: s.id, name: s.name, role: s.role,
@@ -628,7 +630,7 @@ function StaffTab() {
                   <h3 className="font-extrabold">{s.name}</h3>
                   <p className="text-xs text-muted-foreground font-semibold" dir="ltr">@{s.username}</p>
                 </div>
-                <Chip className={s.role === "MANAGER" ? "nk-brand-bg-soft nk-brand-text border-transparent" : s.role === "TEACHER" ? "bg-violet-50 border-violet-200 text-violet-700" : s.isActive ? "bg-muted border-border" : "bg-rose-50 border-rose-200 text-rose-600"}>
+                <Chip className={s.role === "MANAGER" ? "nk-brand-bg-soft nk-brand-text border-transparent" : s.role === "TEACHER" ? "bg-violet-50 border-violet-200 text-violet-700" : s.isActive ? "bg-muted border-border" : "bg-rose-50 border-rose-200 text-rose-600 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-400"}>
                   {s.role === "MANAGER" ? "مدير" : s.role === "TEACHER" ? "مدرس" : s.isActive ? "موظف استقبال" : "موقوف"}
                 </Chip>
               </div>
@@ -640,9 +642,21 @@ function StaffTab() {
                       صلاحياته: {s.permissions.length} صلاحية من {PERMISSION_IDS.length}
                     </p>
                   )}
+                  {/* ربط حساب المدرس بكيانه في الجدول — الداشبورد بيفلتر حصصه بيه */}
+                  {s.role === "TEACHER" && (
+                    <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 px-3.5 py-2.5">
+                      <span className="text-xs font-bold min-w-0 truncate">
+                        {s.teacherRefName ? `مربوط بـ: ${s.teacherRefName}` : "مش مربوط بمدرس في الجدول"}
+                      </span>
+                      <button onClick={() => setLinkFor(s)}
+                        className="shrink-0 rounded-lg border border-border bg-card px-2.5 py-1.5 text-[11px] font-extrabold hover:bg-muted/50 transition">
+                        {s.teacherRefName ? "تغيير" : "ربط"}
+                      </button>
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-2">
                     <button onClick={() => setPermFor(toEditor(s))}
-                      className="rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 font-extrabold px-3 py-2 text-xs flex items-center justify-center gap-1.5 transition">
+                      className="rounded-xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 font-extrabold px-3 py-2 text-xs flex items-center justify-center gap-1.5 transition dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-300">
                       <ShieldCheck className="w-3.5 h-3.5" /> الصلاحيات
                     </button>
                     <button onClick={() => setModsFor(toEditor(s))}
@@ -660,7 +674,7 @@ function StaffTab() {
                   <div className="flex gap-2">
                     <button onClick={() => patch(s.id, { isActive: !s.isActive })}
                       className={cn("flex-1 rounded-xl border px-3 py-2 text-xs font-extrabold",
-                        s.isActive ? "border-rose-200 bg-rose-50 text-rose-700" : "border-emerald-200 bg-emerald-50 text-emerald-700")}>
+                        s.isActive ? "border-rose-200 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300" : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300")}>
                       {s.isActive ? "إيقاف الحساب" : "تشغيل الحساب"}
                     </button>
                     <button onClick={() => {
@@ -679,6 +693,14 @@ function StaffTab() {
 
       {addOpen && (
         <AddStaffDialog onClose={() => setAddOpen(false)} onSaved={() => { setAddOpen(false); load(); }} />
+      )}
+
+      {linkFor && (
+        <LinkTeacherDialog
+          staff={linkFor}
+          onClose={() => setLinkFor(null)}
+          onSaved={() => { setLinkFor(null); load(); }}
+        />
       )}
 
       {permFor && (
@@ -712,13 +734,22 @@ function grantsPlusAdd(resolved?: string[]): Record<string, boolean> {
 }
 
 function AddStaffDialog({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = useState({ name: "", username: "", password: "", canAddStudents: true, role: "RECEPTIONIST" });
+  const [form, setForm] = useState({ name: "", username: "", password: "", canAddStudents: true, role: "RECEPTIONIST", teacherRefId: "" });
+  const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([]);
   const [busy, setBusy] = useState(false);
+
+  // منتقي المدرس: محتاجين مدرسين السنتر الشغالين لما الوظيفة تبقى مدرس
+  useEffect(() => {
+    if (form.role !== "TEACHER" || teachers.length > 0) return;
+    api<{ teachers: { id: string; name: string; isActive: boolean }[] }>("/api/teachers", { silent: true })
+      .then((d) => setTeachers(d.teachers.filter((t) => t.isActive).map((t) => ({ id: t.id, name: t.name }))))
+      .catch(() => {});
+  }, [form.role, teachers.length]);
 
   async function save() {
     setBusy(true);
     try {
-      await api("/api/staff", { method: "POST", body: form });
+      await api("/api/staff", { method: "POST", body: { ...form, teacherRefId: form.role === "TEACHER" && form.teacherRefId ? form.teacherRefId : null } });
       toast.success("تم إضافة الموظف.");
       onSaved();
     } catch { /* toast */ } finally { setBusy(false); }
@@ -751,6 +782,14 @@ function AddStaffDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
             <input type="checkbox" className="w-5 h-5 accent-[var(--c-primary)]" checked={form.canAddStudents} disabled={form.role !== "RECEPTIONIST"}
               onChange={(e) => setForm({ ...form, canAddStudents: e.target.checked })} />
           </label>
+          {form.role === "TEACHER" && (
+            <Field label="ربطه بمدرس من الجدول" hint="عشان داشبورده يعرض حصصه هو بس — اختياري">
+              <select className={inputCls(false)} value={form.teacherRefId} onChange={(e) => setForm({ ...form, teacherRefId: e.target.value })}>
+                <option value="">من غير ربط (بيشوف جدول السنتر كله)</option>
+                {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </Field>
+          )}
           <div className="flex gap-2">
             <button onClick={save} disabled={busy} className="flex-1 nk-brand-bg text-white font-extrabold rounded-xl py-3.5 disabled:opacity-60">{busy ? "جاري..." : "إضافة"}</button>
             <button onClick={onClose} className="rounded-xl border border-border bg-card font-bold px-5">إلغاء</button>
@@ -762,6 +801,58 @@ function AddStaffDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
 }
 
 // ============================= AUDIT =============================
+
+/** حوار ربط حساب مدرس (موظف) بكيان مدرس من الجدول — الداشبورد بيفلتر حصصه بيه */
+function LinkTeacherDialog({ staff, onClose, onSaved }: {
+  staff: { id: string; name: string; teacherRefId?: string | null };
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([]);
+  const [val, setVal] = useState(staff.teacherRefId ?? "");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api<{ teachers: { id: string; name: string; isActive: boolean }[] }>("/api/teachers", { silent: true })
+      .then((d) => setTeachers(d.teachers.filter((t) => t.isActive).map((t) => ({ id: t.id, name: t.name }))))
+      .catch(() => {});
+  }, []);
+
+  async function save() {
+    setBusy(true);
+    try {
+      await api("/api/staff", { method: "PATCH", body: { id: staff.id, teacherRefId: val || null } });
+      toast.success(val ? "اتربط بالمدرس — داشبورده هيعرض حصصه بس." : "اتفك الربط — هيشوف جدول السنتر كله.");
+      onSaved();
+    } catch { /* toast */ } finally { setBusy(false); }
+  }
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && !busy && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>ربط {staff.name} بمدرس</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3.5">
+          <Field label="المدرس في الجدول">
+            <select className={inputCls(false)} value={val} onChange={(e) => setVal(e.target.value)}>
+              <option value="">من غير ربط (بيشوف جدول السنتر كله)</option>
+              {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </Field>
+          <p className="text-[11px] text-muted-foreground font-semibold leading-relaxed bg-muted/50 rounded-xl p-3">
+            الحساب المربوط ببيشوف في الرئيسية حصصه هو بس (المفتوحة والمخططة)، وعدد طلابه.
+            المدرس الواحد مينفعش يتربط بحسابين.
+          </p>
+          <div className="flex gap-2">
+            <button onClick={save} disabled={busy} className="flex-1 nk-brand-bg text-white font-extrabold rounded-xl py-3.5 disabled:opacity-60">{busy ? "جاري..." : "حفظ"}</button>
+            <button onClick={onClose} disabled={busy} className="rounded-xl border border-border bg-card font-bold px-5">إلغاء</button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function AuditTab() {
   const [data, setData] = useState<{
@@ -803,8 +894,8 @@ function AuditTab() {
                   <details className="mt-1.5 ms-11">
                     <summary className="text-[11px] font-bold text-muted-foreground cursor-pointer">التفاصيل</summary>
                     <div className="text-[11px] font-mono bg-muted/50 rounded-lg p-2 mt-1 overflow-x-auto" dir="ltr">
-                      {l.before ? <p className="text-rose-600">- {JSON.stringify(l.before)}</p> : null}
-                      {l.after ? <p className="text-emerald-700">+ {JSON.stringify(l.after)}</p> : null}
+                      {l.before ? <p className="text-rose-600 dark:text-rose-400">- {JSON.stringify(l.before)}</p> : null}
+                      {l.after ? <p className="text-emerald-700 dark:text-emerald-300">+ {JSON.stringify(l.after)}</p> : null}
                     </div>
                   </details>
                 )}

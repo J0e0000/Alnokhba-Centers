@@ -178,7 +178,7 @@ export function ReportsView({ user }: { user: SessionUser }) {
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-bold text-muted-foreground">فلاتر إضافية (اختياري)</span>
             {hasExtraFilters ? (
-              <button onClick={clearFilters} className="text-[11px] font-extrabold text-rose-600 flex items-center gap-1">
+              <button onClick={clearFilters} className="text-[11px] font-extrabold text-rose-600 flex items-center gap-1 dark:text-rose-400">
                 <X className="w-3.5 h-3.5" /> مسح الفلاتر
               </button>
             ) : null}
@@ -214,7 +214,7 @@ export function ReportsView({ user }: { user: SessionUser }) {
                 <div className="w-full h-11 rounded-xl border-2 nk-brand-border nk-brand-bg-soft px-3 font-bold text-sm flex items-center justify-between gap-1">
                   <span className="truncate">{studentName}</span>
                   <button onClick={() => { setStudentId(""); setStudentName(""); }}
-                    aria-label="إزالة فلتر الطالب" className="shrink-0 text-rose-600">
+                    aria-label="إزالة فلتر الطالب" className="shrink-0 text-rose-600 dark:text-rose-400">
                     <X className="w-4 h-4" />
                   </button>
                 </div>

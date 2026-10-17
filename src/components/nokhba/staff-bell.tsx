@@ -128,7 +128,7 @@ export function StaffNotificationsBell({ variant = "center" }: { variant?: "cent
         <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/40 rounded-t-2xl">
           <h3 className="text-sm font-extrabold flex items-center gap-1.5">
             <Bell className="w-4 h-4 text-muted-foreground" /> الإشعارات
-            {unread > 0 && <span className="text-[10px] font-bold text-rose-600">({unread} جديد)</span>}
+            {unread > 0 && <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400">({unread} جديد)</span>}
           </h3>
           {unread > 0 && (
             <button onClick={markAll} className="text-[11px] font-extrabold nk-brand-text hover:underline flex items-center gap-1">

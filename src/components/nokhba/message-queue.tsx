@@ -110,11 +110,11 @@ const STATUS_LABEL: Record<QueueItem["status"], string> = {
 
 const STATUS_STYLE: Record<QueueItem["status"], string> = {
   QUEUED: "bg-muted text-muted-foreground",
-  SENDING: "bg-amber-100 text-amber-800",
+  SENDING: "bg-amber-100 text-amber-800 dark:text-amber-200",
   SENT: "bg-emerald-100 text-emerald-800",
-  FAILED: "bg-rose-100 text-rose-700",
+  FAILED: "bg-rose-100 text-rose-700 dark:text-rose-300",
   SKIPPED: "bg-muted text-muted-foreground",
-  CANCELLED: "bg-rose-50 text-rose-500",
+  CANCELLED: "bg-rose-50 text-rose-500 dark:bg-rose-950/40",
 };
 
 const HANDOFF_BREAK = 100; // استراحة أمان بعد 100 تسليم
@@ -249,13 +249,13 @@ export function MessageQueueView({ user, embedded }: { user: SessionUser; embedd
               <div className="flex items-center gap-2">
                 {stats && stats.failed > 0 && (
                   <button onClick={() => act("retry-failed")} disabled={busy}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold bg-amber-100 text-amber-800 rounded-lg px-3 py-2 hover:bg-amber-200 disabled:opacity-50">
+                    className="inline-flex items-center gap-1.5 text-xs font-bold bg-amber-100 text-amber-800 rounded-lg px-3 py-2 hover:bg-amber-200 disabled:opacity-50 dark:text-amber-200">
                     <RotateCcw className="w-3.5 h-3.5" /> إعادة إرسال الفاشل ({stats.failed})
                   </button>
                 )}
                 {(stats?.queued ?? 0) + (stats?.sending ?? 0) > 0 && (
                   <button onClick={() => { if (confirm("هتلغي كل الرسايل اللي لسه متبعتتش في الطابور — متأكد؟")) act("stop"); }} disabled={busy}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold bg-rose-50 text-rose-600 rounded-lg px-3 py-2 hover:bg-rose-100 disabled:opacity-50">
+                    className="inline-flex items-center gap-1.5 text-xs font-bold bg-rose-50 text-rose-600 rounded-lg px-3 py-2 hover:bg-rose-100 disabled:opacity-50 dark:bg-rose-950/40 dark:text-rose-400">
                     <StopCircle className="w-3.5 h-3.5" /> إيقاف الطابور
                   </button>
                 )}
@@ -270,8 +270,8 @@ export function MessageQueueView({ user, embedded }: { user: SessionUser; embedd
                     ["انتظار", stats.queued, "text-muted-foreground"],
                     ["فتح واتساب", stats.sending, "text-amber-600"],
                     ["مرسلة", stats.sent, "text-emerald-600"],
-                    ["فاشلة", stats.failed, "text-rose-600"],
-                    ["متخطاة", stats.skipped, "text-slate-500"],
+                    ["فاشلة", stats.failed, "text-rose-600 dark:text-rose-400"],
+                    ["متخطاة", stats.skipped, "text-muted-foreground"],
                   ] as const).map(([label, value, cls]) => (
                     <div key={label} className="rounded-xl border border-border bg-card/70 p-2.5 text-center">
                       <div className={`text-lg font-extrabold ${cls}`}>{value}</div>
@@ -293,10 +293,10 @@ export function MessageQueueView({ user, embedded }: { user: SessionUser; embedd
 
           {/* ===== استراحة الأمان بعد 100 ===== */}
           {paused && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-center justify-between gap-3">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-center justify-between gap-3 dark:bg-amber-950/40 dark:border-amber-800/60">
               <div className="flex items-center gap-2.5">
                 <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
-                <p className="text-sm font-bold text-amber-800">
+                <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
                   فتحت {HANDOFF_BREAK} محادثة في الجلسة دي — استراحة أمان عشان متتحظرش من واتساب.
                 </p>
               </div>
@@ -338,17 +338,17 @@ export function MessageQueueView({ user, embedded }: { user: SessionUser; embedd
                   <SkipForward className="w-4 h-4" /> تخطي
                 </button>
                 <button onClick={() => act("fail", data.current!.id, "تعليم يدوي: مفيش رد/رقم غلط")} disabled={busy}
-                  className="inline-flex items-center gap-1.5 text-sm font-bold text-rose-600 border border-rose-200 rounded-xl px-3.5 py-2.5 hover:bg-rose-50 disabled:opacity-60">
+                  className="inline-flex items-center gap-1.5 text-sm font-bold text-rose-600 border border-rose-200 rounded-xl px-3.5 py-2.5 hover:bg-rose-50 disabled:opacity-60 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-400">
                   <XCircle className="w-4 h-4" /> الرقم ده فشل
                 </button>
               </div>
             </section>
           ) : (stats?.queued ?? 0) === 0 && (stats?.sending ?? 0) > 0 ? (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 text-sm font-bold text-amber-800">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 text-sm font-bold text-amber-800 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-200">
               خلصت التسليمات — فاضل تأكيد {stats!.sending} رسالة «تم فتح واتساب» من القائمة تحت (دوس ✓ لو بعتها فعلًا).
             </div>
           ) : (stats?.queued ?? 0) === 0 && (stats?.sending ?? 0) === 0 && (stats?.total ?? 0) > 0 ? (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 text-sm font-bold text-emerald-700">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 text-sm font-bold text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300">
               الدفعة خلصت تمامًا — مفيش رسايل في الانتظار. تعمل دفعة جديدة؟
             </div>
           ) : null}
@@ -389,19 +389,19 @@ function QueueRow({ item, busy, act }: {
           </span>
         </div>
         <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{item.messageText.split("\n")[0]}</p>
-        {item.lastError && <p className="text-[11px] text-rose-600 mt-0.5">{item.lastError}</p>}
+        {item.lastError && <p className="text-[11px] text-rose-600 mt-0.5 dark:text-rose-400">{item.lastError}</p>}
       </div>
       <div className="flex items-center gap-1 shrink-0">
         {item.status === "SENDING" && (
           <>
             <button title="تأكيد: بعتها فعلًا في واتساب" disabled={busy}
               onClick={() => act("confirm-sent", item.id)}
-              className="inline-flex items-center gap-1 text-[11px] font-extrabold bg-emerald-100 text-emerald-700 rounded-lg px-2.5 py-1.5 hover:bg-emerald-200 disabled:opacity-50">
+              className="inline-flex items-center gap-1 text-[11px] font-extrabold bg-emerald-100 text-emerald-700 rounded-lg px-2.5 py-1.5 hover:bg-emerald-200 disabled:opacity-50 dark:text-emerald-300">
               <CheckCheck className="w-3.5 h-3.5" /> تم الإرسال
             </button>
             <button title="الرقم غلط / مفيش رد" disabled={busy}
               onClick={() => act("fail", item.id, "أكدها الموظف: فشل التسليم")}
-              className="inline-flex items-center gap-1 text-[11px] font-extrabold bg-rose-50 text-rose-600 rounded-lg px-2.5 py-1.5 hover:bg-rose-100 disabled:opacity-50">
+              className="inline-flex items-center gap-1 text-[11px] font-extrabold bg-rose-50 text-rose-600 rounded-lg px-2.5 py-1.5 hover:bg-rose-100 disabled:opacity-50 dark:bg-rose-950/40 dark:text-rose-400">
               <XCircle className="w-3.5 h-3.5" /> فشل
             </button>
           </>
