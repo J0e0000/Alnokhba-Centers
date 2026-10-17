@@ -14,6 +14,7 @@ import { usePrint, PrintableAttendanceSheet } from "./print";
 import { feedback } from "./feedback";
 import { showSuccess } from "./success-bar";
 import { ScanView } from "./scan";
+import { QrCameraScanner } from "./qr-scanner";
 import { SessionQrCard } from "./session-qr-card";
 import { useCaps } from "./caps";
 import { RecipientPickerModal, SendQueueModal, recipientPhone, type ReportStudent, type ReportContext } from "./session-report";
@@ -792,6 +793,56 @@ function AttendanceStage({ data, user, caps, sessionId, roster, isOpenSession, c
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "unmarked" | "present" | "absent">("all");
 
+  // ===== تسجيل سريع: كتابة الكود أو سكان الطالب (المسؤول يسجل لكل طالب) =====
+  const [quickCode, setQuickCode] = useState("");
+  const [camOn, setCamOn] = useState(false);
+  const [camBusy, setCamBusy] = useState(false);
+
+  function quickMarkByRow(row: RosterRow) {
+    if (row.status) {
+      toast.info(`${row.name} متسجل خلاص (${ATTENDANCE_LABEL[row.status] ?? row.status}).`);
+      return;
+    }
+    onMarkPresent(row.studentId, "PRESENT");
+    setQuickCode("");
+  }
+
+  function submitQuickCode() {
+    const q = quickCode.replace(/\D/g, "");
+    if (!q) return;
+    const row = roster.find((r) => r.code === q);
+    if (!row) {
+      toast.error(`مفيش طالب بالكود ${q} في كشف الحصة دي — تأكد من الكود.`);
+      return;
+    }
+    quickMarkByRow(row);
+  }
+
+  async function onQuickScan(q: string) {
+    if (camBusy) return;
+    setCamBusy(true);
+    try {
+      const res = await api<{ status: string; student?: { id: string; name: string; code: string }; message?: string }>(
+        "/api/attendance/scan",
+        { method: "POST", body: { query: q, sessionId } },
+      );
+      const sid = res.student?.id ?? "";
+      const row = sid ? roster.find((r) => r.studentId === sid) : undefined;
+      if (row) {
+        quickMarkByRow(row);
+        setCamOn(false);
+      } else if (res.student) {
+        toast.error(`${res.student.name} مش في كشف الحصة دي — الطالب ده لمجموعة تانية.`);
+      } else {
+        toast.error(res.message ?? "المسح مش معروف — جرب تاني.");
+      }
+    } catch {
+      toast.error("الطلب وصلش للسيرفر — جرب تاني.");
+    } finally {
+      setCamBusy(false);
+    }
+  }
+
   // قفزة «عرض الغائبين» من التقرير — تعديل وقت الرندر (نمط React الرسمي بدل effect)
   const [appliedIntent, setAppliedIntent] = useState(0);
   if (absentIntent !== appliedIntent) {
@@ -835,6 +886,44 @@ function AttendanceStage({ data, user, caps, sessionId, roster, isOpenSession, c
         <div className="flex items-center gap-2.5 rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm font-bold text-muted-foreground">
           <DoorClosed className="w-4.5 h-4.5 shrink-0" />
           الحصة منتهية — الحضور ده السجل النهائي. تعديله للمدير (إعادة فتح).
+        </div>
+      )}
+
+      {/* ===== تسجيل سريع — اكتب الكود أو امسح لكل طالب (بدل القلب على الكشف كله) ===== */}
+      {!isOpenSession && !closed && editable && (
+        <div className="nk2-card !p-3">
+          <div className="flex gap-2 items-stretch">
+            <input
+              className="rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm font-bold flex-1 min-w-0 nk-num"
+              placeholder="⌨ اكتب كود الطالب + Enter"
+              value={quickCode}
+              onChange={(e) => setQuickCode(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") submitQuickCode(); }}
+              inputMode="numeric"
+              autoComplete="off"
+              aria-label="تسجيل حضور بكود الطالب"
+            />
+            <button
+              type="button"
+              onClick={() => setCamOn((v) => !v)}
+              aria-pressed={camOn}
+              className={cn(
+                "shrink-0 rounded-xl px-3.5 py-2.5 text-[.78rem] font-extrabold inline-flex items-center gap-1.5 transition active:scale-[0.98]",
+                camOn ? "bg-rose-50 text-rose-700 border-2 border-rose-200 dark:bg-rose-950/30 dark:border-rose-800/60 dark:text-rose-300" : "nk-brand-grad text-white shadow",
+              )}
+            >
+              {camBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ScanLine className="w-4 h-4" />}
+              {camOn ? "اقفل الكاميرا" : "سكان طالب"}
+            </button>
+          </div>
+          {camOn && (
+            <div className="mt-2.5 overflow-hidden rounded-xl border border-border">
+              <QrCameraScanner active={camOn} onScan={onQuickScan} />
+            </div>
+          )}
+          <p className="text-[11px] font-bold text-muted-foreground mt-2 mb-0">
+            الحضور الأصلي بيقدر يتسجل بـ 3 طرق: ضغطة على الاسم في الكشف · كتابة الكود · سكان الطالب بالكاميرا.
+          </p>
         </div>
       )}
 
