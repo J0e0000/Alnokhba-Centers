@@ -104,7 +104,7 @@ export const GET = handler(async (req: Request) => {
         importedByName: h.importedByName,
         createdAt: h.createdAt,
       })),
-    });
+    }, { headers: { "cache-control": "no-store" } });
   }
 
   const today = todayStr();

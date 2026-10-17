@@ -46,6 +46,7 @@ type RecoveryResult = {
 
 export function EmergencyView({ user }: { user: SessionUser }) {
   const [history, setHistory] = useState<HistoryItem[] | null>(null);
+  const [dlBusy, setDlBusy] = useState(false);
 
   // استيراد ملف الاسترداد
   const [recFile, setRecFile] = useState<{ name: string; data: unknown } | null>(null);
@@ -67,9 +68,51 @@ export function EmergencyView({ user }: { user: SessionUser }) {
   }, []);
   useEffect(() => { load(); }, [load]);
 
+  // تنزيل جوّه الصفحة (fetch → blob) — الصفحة مش بتتنقل، ولو حصل خطأ بنشوف السبب الحقيقي
+  async function downloadFile(path: string, fallback: string, okMsg: string, startMsg: string) {
+    if (dlBusy) return;
+    setDlBusy(true);
+    toast.info(startMsg);
+    try {
+      const res = await fetch(`${path}${path.includes("?") ? "&" : "?"}cb=${Date.now()}`, { cache: "no-store" });
+      if (!res.ok) {
+        let msg = `فشل التحميل (${res.status})`;
+        try { const d = await res.json(); if (d?.error) msg = String(d.error); } catch { /* مش JSON */ }
+        if (res.status === 401) msg = "الجلسة خلصت — سجّل دخول تاني وبعدين حمّل الحزمة.";
+        toast.error(msg);
+        return;
+      }
+      const cd = res.headers.get("content-disposition") ?? "";
+      const m = cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = m?.[1] ? decodeURIComponent(m[1]) : fallback;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      toast.success(okMsg);
+    } catch {
+      toast.error("مشكلة شبكة — اتأكد من النت وجرب تاني.");
+    } finally {
+      setDlBusy(false);
+    }
+  }
+
   function downloadPackage() {
-    toast.info("جاري تجهيز حزمة الطوارئ — بتتوقّع وتتنزّل دلوقتي…");
-    window.location.href = "/api/emergency?package=1";
+    const today = new Date().toISOString().slice(0, 10);
+    void downloadFile(
+      "/api/emergency?package=1",
+      `NOKHBA-OFFLINE-${today}.html`,
+      "الحزمة نزلت — افتحها من غير نت عادي ✅",
+      "جاري تجهيز حزمة الطوارئ — بتتوقّع وتتنزّل دلوقتي…",
+    );
+  }
+
+  function downloadExcel(path: string, fallback: string, okMsg: string, startMsg: string) {
+    void downloadFile(path, fallback, okMsg, startMsg);
   }
 
   // ===== ملف الاسترداد =====
@@ -189,9 +232,10 @@ export function EmergencyView({ user }: { user: SessionUser }) {
       <SectionCard title="① حزمة الطوارئ (أوفلاين — HTML)" icon={<PackageCheck className="w-4 h-4" />}>
         <button
           onClick={downloadPackage}
-          className="w-full nk-brand-grad text-white font-extrabold rounded-2xl px-4 py-5 shadow flex items-center justify-center gap-3 active:scale-[0.99] transition"
+          disabled={dlBusy}
+          className="w-full nk-brand-grad text-white font-extrabold rounded-2xl px-4 py-5 shadow flex items-center justify-center gap-3 active:scale-[0.99] transition disabled:opacity-60"
         >
-          <WifiOff className="w-6 h-6" />
+          {dlBusy ? <Loader2 className="w-6 h-6 animate-spin" /> : <WifiOff className="w-6 h-6" />}
           <span className="text-start">
             <span className="block text-base">نزّل نظام الطوارئ (7 أيام أوفلاين)</span>
             <span className="block text-[11px] font-semibold text-white/95">
@@ -208,13 +252,14 @@ export function EmergencyView({ user }: { user: SessionUser }) {
         <div className="mt-3 rounded-xl border border-border bg-muted/40 p-3 text-[11.5px] font-bold text-muted-foreground leading-relaxed">
           بعد انتهاء الـ 7 أيام التطبيق بيتحوّل <b>قراءة + تصدير بس</b> — والحزمة الجديدة بتتطلب من هنا (للسنترات المشتركة النشطة). تعديل أي حرف جوّه الملف يكسر التوقيع → التطبيق بيرفض يشتغل.
         </div>
-        <a
-          href="/api/emergency?export=1&format=xlsx"
-          className="mt-2 w-full border-2 border-border bg-card font-extrabold rounded-2xl px-4 py-3 flex items-center justify-center gap-2 text-[13px] hover:bg-muted/40 transition"
+        <button
+          onClick={() => downloadExcel("/api/emergency?export=1&format=xlsx", `NOKHBA-DASHBOARD-${new Date().toISOString().slice(0, 10)}.xlsx`, "لوحة الإكسل نزلت — افتحها في Excel ✅", "جاري تجهيز لوحة الإكسل…")}
+          disabled={dlBusy}
+          className="mt-2 w-full border-2 border-border bg-card font-extrabold rounded-2xl px-4 py-3 flex items-center justify-center gap-2 text-[13px] hover:bg-muted/40 transition disabled:opacity-60"
         >
           <FileSpreadsheet className="w-4.5 h-4.5 text-emerald-600" />
           أو نزّل لوحة إكسل للطوارئ (بديل الجداول — للفتح في Excel)
-        </a>
+        </button>
       </SectionCard>
 
       {/* ===== 2) استيراد ملف الاسترداد ===== */}
@@ -400,8 +445,9 @@ export function EmergencyView({ user }: { user: SessionUser }) {
         </summary>
         <div className="px-4 pb-4 space-y-3">
           <button
-            onClick={() => { toast.info("جاري تجهيز ملف الأسبوع…"); window.location.href = "/api/emergency?export=1"; }}
-            className="w-full border-2 border-[color:var(--c-primary)]/40 bg-card nk-brand-text font-extrabold rounded-2xl px-4 py-4 flex items-center justify-center gap-3 active:scale-[0.99] transition"
+            onClick={() => downloadExcel("/api/emergency?export=1", `NOKHBA-WEEK-${new Date().toISOString().slice(0, 10)}.xlsx`, "ملف الأسبوع نزل ✅", "جاري تجهيز ملف الأسبوع…")}
+            disabled={dlBusy}
+            className="w-full border-2 border-[color:var(--c-primary)]/40 bg-card nk-brand-text font-extrabold rounded-2xl px-4 py-4 flex items-center justify-center gap-3 active:scale-[0.99] transition disabled:opacity-60"
           >
             <FileSpreadsheet className="w-5 h-5" />
             نزّل ملف الأسبوع (إكسل)
