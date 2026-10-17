@@ -378,3 +378,17 @@ Work Log:
 Stage Summary:
 - كل شغل المرحلة دي عايش على الإنتاج ومتحقق منه: إغلاق فجوة #6 الأخيرة + ربط المدرس بنطاقه + دارك مود متسق
 - الديف سيرفر محتاج restart يدوي لو هيتختبر تاني (npx next dev -p 3000)
+
+---
+Task ID: emergency-package-param-fix
+Agent: Super Z (main agent)
+Task: «بيوريني دي برضه لما اجي احمل ملف الطوارئ» — المالك بيفتح /api/emergency?package=1 فيلاقي {"history":[]} بدل الحزمة.
+
+Work Log:
+- التشخيص: زرار «حزمة الطوارئ الأوفلاين» في emergency.tsx بيبعت ?package=1، لكن GET في route.ts كان بيدخل مسار التصدير بس لو ?export=1 — فـ package=1 كانت بتقع في فرع سجل المزامنات وترجّع {"history":[]}
+- الإصلاح (0b3f9cf): wantsPackage = package=1 || export=1 — الاثنين تصدير، format=html افتراضي (و format=xlsx زي ما هو)، و GET العادي لسه بيرجّع history
+- تحقق إنتاج (scripts/qae/prod_emergency_package_verify.mjs): 9/9 ✅ — package=1 → 200 text/html attachment NOKHBA-OFFLINE-*.html فيها snapshot موقّع (~حجم كبير مش JSON) · export=1 HTML · export=1&format=xlsx PK magic · GET عادي history · RECEPTIONIST 403 (requireManager)
+
+Stage Summary:
+- باج سلك ميت (dead wiring) اتقفل: زرار تحميل حزمة الطوارئ الأوفلاين شغال على الإنتاج
+- مفيش migration ولا تغيير schema — سطر توجيه بارامتر واحد
