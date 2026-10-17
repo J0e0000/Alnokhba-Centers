@@ -362,3 +362,19 @@ Stage Summary:
 - داشبورد لكل دور خلص: مدير (تشغيلي+مالي) · استقبال (أزرار سريعة) · مدرس (حصصه هو بس — مربوط بكيانه)
 - الدارك مود بقى متسق على شاشات الموظفين كلها بأنماط الحالة
 - سنترات المالك الحقيقية لم تُمس — كل الاختبار على QAE1 الديف و سنتر الاختبار بالإنتاج
+
+---
+Task ID: phase2-pii-teacher-dashboard (إغلاق إنتاج)
+Agent: Super Z (main agent)
+Task: نشر ae761ab + تحقق إنتاج كامل.
+
+Work Log:
+- scripts/.dbpass اتعادت قبل الدفع (كانت ضاعة) — كل اتصالات الإنتاج بتمر عليها
+- السكيما اتعملت manual على Supabase session pooler (5432): User.teacherRefId + unique idx — اتأكدت بـ information_schema (ScheduleSlot updatedAt/lastOverrideAt كانوا موجودين من الجلسة اللي فاتت)
+- النشر: poll لحد ما /api/staff رجّع teacherRefId (3 محاولات ~60 ثانية)
+- تحقق إنتاج (prod_pii_teacher_verify.mjs): 11/11 ✅ — TEACHER students/lookup 403 + scan RED بصلاحية · RECEPTIONIST 200 · ربط/فك ربط qae-tch-99 على سنتر الاختبار + داشبورد و sessions المربوط = حصصه هو بس · المش مربوط = قوائم فاضية
+- schedule v2 e2e على الإنتاج: 15/15 ✅ (تعارضات + قفل تزامن stale 409)
+
+Stage Summary:
+- كل شغل المرحلة دي عايش على الإنتاج ومتحقق منه: إغلاق فجوة #6 الأخيرة + ربط المدرس بنطاقه + دارك مود متسق
+- الديف سيرفر محتاج restart يدوي لو هيتختبر تاني (npx next dev -p 3000)
