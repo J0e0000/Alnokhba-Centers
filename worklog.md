@@ -406,3 +406,19 @@ Work Log:
 Stage Summary:
 - سلسلة التحميل كلها متحققة طرف-لطرف في متصفح حقيقي على الإنتاج: زرار → fetch 200 → blob → تنزيل
 - أي فشل مستقبلي هيظهر للمالك برسالة عربية واضحة بالسبب الحقيقي بدل صفحة JSON
+
+---
+Task ID: emergency-recovery-endpoint
+Agent: Super Z (main agent)
+Task: «بيقولي كده لما ارجع ملف json» — توست «مفيش اتصال بالسيرفر» وهو أونلاين عند استيراد ملف الاسترداد.
+
+Work Log:
+- الجذر: /api/emergency كان GET فقط — أزرار الفحص/المزامنة (recovery-preview/commit) والاستيراد الكلاسيكي بيبعتوا POST لمسار مش موجود → 405 → res.json() يرمي → التوست المضلل
+- الجذر الثاني: الحزمة وقت التصدير مش بتتسجل في EmergencyPackage — analyzeRecovery بيرفض أي ملف بـ«الحزمة مش مسجلة» حتى لو الـ endpoint اتوصّل
+- الإصلاح (70541c0): POST handler كامل (preview/commit + audit + no-store) + upsert تسجيل الحزمة عند التصدير + دمج سجل الاسترداد في history (kind=recovery) + رسايل خطأ حقيقية في الواجهة (parse آمن) + إيقاف صريح لاستيراد الإكسل الكلاسيكي برسالة توضيحية
+- scripts/.dbpass اتعادت (ضاعت مع الريسيت) — الجداول EmergencyPackage/RecoveryImport/ImportedTxn/Receipt موجودة على الإنتاج
+- E2E إنتاج (recovery_e2e.mjs): 11/11 — تصدير→تسجيل→معاينة→مزامنة→idempotency→رفض معاملة سنتر تاني→رفض checksum متلاعب→السجل
+
+Stage Summary:
+- ملف الاسترداد JSON بقى يستورد فعلاً على الإنتاج بتحقق توقيع و checksum وعزل سنتر كامل
+- نموذج الثقة: الحقول الخارجية غير موثوقة — المعتمد الرخصة الموقعة و sum كل معاملة
