@@ -148,11 +148,15 @@ export function EmergencyView({ user }: { user: SessionUser }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, recovery: recFile.data, decisions }),
       });
-      const data = await res.json();
+      // بنقرأ نصًا الأول — لو السيرفر رجّع حاجة مش JSON مش هنبوّظ الرسالة
+      const raw = await res.text();
+      let data: (RecoveryPreview & { error?: string }) | (RecoveryResult & { error?: string }) | null = null;
+      try { data = JSON.parse(raw); } catch { /* رد غير JSON */ }
       if (!res.ok) {
-        toast.error(data.error ?? "حصلت مشكلة في قراءة الملف — جرب تاني.");
+        toast.error(data?.error ?? `السيرفر رفض العملية (${res.status}) — جرب تاني.`);
         return;
       }
+      if (!data) { toast.error("رد غير مفهوم من السيرفر — جرب تاني."); return; }
       if (action === "recovery-preview") {
         setRecPreview(data as RecoveryPreview);
         setRecResult(null);
@@ -167,7 +171,7 @@ export function EmergencyView({ user }: { user: SessionUser }) {
         load();
       }
     } catch {
-      toast.error("مفيش اتصال بالسيرفر — بص على النت وجرب تاني.");
+      toast.error("الطلب وصلش للسيرفر — اتأكد من النت وجرب تاني.");
     } finally {
       setRecBusy(null);
     }
@@ -175,38 +179,10 @@ export function EmergencyView({ user }: { user: SessionUser }) {
 
   // ===== إكسل الأسبوع (كلاسيكي) =====
   async function analyze(action: "preview" | "commit") {
-    if (!file) {
-      toast.error("اختار ملف الإكسل الأول.");
-      return;
-    }
-    setBusy(action);
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      form.append("action", action);
-      const res = await fetch("/api/emergency", { method: "POST", body: form });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error ?? "حصلت مشكلة في قراءة الملف — جرب تاني.");
-        return;
-      }
-      if (action === "preview") {
-        setPreview(data as PreviewData);
-        setResult(null);
-        toast.success((data as PreviewData).message);
-      } else {
-        setResult(data);
-        setPreview(null);
-        setFile(null);
-        if (inputRef.current) inputRef.current.value = "";
-        toast.success((data as { message: string }).message);
-        load();
-      }
-    } catch {
-      toast.error("مفيش اتصال بالسيرفر — بص على النت وجرب تاني.");
-    } finally {
-      setBusy(null);
-    }
+    // استيراد الإكسل الكلاسيكي موقوف مؤقتًا — المزامنة الرسمية بملف الاسترداد (JSON) اللي فوق
+    void action;
+    void file;
+    toast.info("استيراد الإكسل الكلاسيكي متوقف مؤقتًا — المزامنة الرسمية بملف الاسترداد (JSON) من تطبيق الطوارئ اللي فوق.");
   }
 
   return (
@@ -482,22 +458,25 @@ export function EmergencyView({ user }: { user: SessionUser }) {
             <div className="flex flex-col sm:flex-row gap-2">
               <button
                 onClick={() => analyze("preview")}
-                disabled={busy !== null}
-                className="flex-1 border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,white)] bg-card nk-brand-text font-extrabold rounded-xl px-4 py-3 flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-60"
+                disabled
+                className="flex-1 border-2 border-border bg-muted/40 text-muted-foreground font-extrabold rounded-xl px-4 py-3 flex items-center justify-center gap-2 cursor-not-allowed"
               >
-                {busy === "preview" ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
-                فحص الأول (معاينة)
+                <CheckCircle2 className="w-5 h-5" />
+                فحص الأول (معاينة) — متوقف مؤقتًا
               </button>
               <button
                 onClick={() => analyze("commit")}
-                disabled={busy !== null || (!preview && !file)}
-                className="flex-1 nk-brand-bg text-white font-extrabold rounded-xl px-4 py-3 shadow flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-60"
+                disabled
+                className="flex-1 border-2 border-border bg-muted/40 text-muted-foreground font-extrabold rounded-xl px-4 py-3 flex items-center justify-center gap-2 cursor-not-allowed"
               >
-                {busy === "commit" ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
-                مزامنة العمليات الصحيحة
+                <Zap className="w-5 h-5" />
+                مزامنة العمليات الصحيحة — متوقفة مؤقتًا
               </button>
             </div>
           )}
+          <p className="text-[11px] font-bold text-muted-foreground leading-relaxed">
+            ملاحظة: استيراد الإكسل الكلاسيكي متوقف مؤقتًا — المزامنة الرسمية بملف الاسترداد (JSON) من تطبيق الطوارئ (القسم اللي فوق)، بتحقق كامل وتوقيع وسجل معاملات.
+          </p>
           {preview && (
             <div className="rounded-2xl border border-border bg-muted/40 p-4 space-y-3">
               <p className="font-extrabold text-sm">{preview.message}</p>
