@@ -87,7 +87,10 @@ export const GET = handler(async (req: Request) => {
   const user = await requireManager();
   const url = new URL(req.url);
 
-  if (url.searchParams.get("export") !== "1") {
+  // ?package=1 (زرار حزمة الأوفلاين) أو ?export=1 (الكلاسيكي) — الاتنين تصدير
+  const wantsPackage = url.searchParams.get("package") === "1" || url.searchParams.get("export") === "1";
+
+  if (!wantsPackage) {
     // سجل المزامنات
     const history = await db.emergencyImport.findMany({
       where: { centerId: user.centerId },
