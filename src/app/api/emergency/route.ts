@@ -8,6 +8,7 @@ import ExcelJS from "exceljs";
 import { buildEmergencySnapshot } from "@/lib/emergency-snapshot";
 import { issueLicense } from "@/lib/emergency-license";
 import { buildEmergencyHtml } from "@/lib/emergency-app";
+import { previewRecovery, commitRecovery, type RecoveryPkg } from "@/lib/emergency-recovery";
 
 export const dynamic = "force-dynamic";
 
@@ -91,19 +92,37 @@ export const GET = handler(async (req: Request) => {
   const wantsPackage = url.searchParams.get("package") === "1" || url.searchParams.get("export") === "1";
 
   if (!wantsPackage) {
-    // سجل المزامنات
-    const history = await db.emergencyImport.findMany({
-      where: { centerId: user.centerId },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    });
-    return ok({
-      history: history.map((h) => ({
+    // سجل المزامنات — إكسل كلاسيكي + استرداد JSON (مدموجين)
+    const [excelHist, recHist] = await Promise.all([
+      db.emergencyImport.findMany({
+        where: { centerId: user.centerId },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      }),
+      db.emergencyRecoveryImport.findMany({
+        where: { centerId: user.centerId },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      }),
+    ]);
+    const history = [
+      ...excelHist.map((h) => ({
+        kind: "excel" as const,
         id: h.id, fileName: h.fileName, totalRows: h.totalRows,
         imported: h.imported, duplicates: h.duplicates, conflicts: h.conflicts,
-        importedByName: h.importedByName,
-        createdAt: h.createdAt,
+        skipped: 0, importedByName: h.importedByName, createdAt: h.createdAt,
       })),
+      ...recHist.map((h) => ({
+        kind: "recovery" as const,
+        id: h.id, fileName: h.fileName, totalRows: h.totalTxns,
+        imported: h.imported, duplicates: h.duplicates, conflicts: h.conflicts,
+        skipped: h.skipped, importedByName: h.importedByName, createdAt: h.createdAt,
+      })),
+    ]
+      .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
+      .slice(0, 20);
+    return ok({
+      history,
     }, { headers: { "cache-control": "no-store" } });
   }
 
@@ -124,6 +143,43 @@ export const GET = handler(async (req: Request) => {
       packageId: `pkg-${snapshotDigest.slice(0, 12)}`,
       snapshotId: snapshotDigest.slice(0, 16),
       snapshotDigest,
+    });
+    // تسجيل الحزمة — من غير الخطوة دي ملف الاسترداد بيترد بـ«الحزمة مش مسجّلة» وقت المزامنة
+    await db.emergencyPackage.upsert({
+      where: { id: lic.license.packageId },
+      create: {
+        id: lic.license.packageId,
+        centerId: user.centerId,
+        snapshotId: lic.license.snapshotId,
+        centerName: lic.license.centerName,
+        licenseVersion: lic.license.v,
+        licenseJson: lic.licenseRaw,
+        signature: lic.signature,
+        snapshotDigest,
+        keyFingerprint: lic.license.keyFp,
+        studentCount: stats.students,
+        groupCount: stats.groups,
+        sessionCount: stats.sessions,
+        expiresAt: new Date(lic.license.expiresAt),
+        generatedBy: user.id,
+        generatedByName: user.name,
+      },
+      update: {
+        snapshotId: lic.license.snapshotId,
+        centerName: lic.license.centerName,
+        licenseVersion: lic.license.v,
+        licenseJson: lic.licenseRaw,
+        signature: lic.signature,
+        snapshotDigest,
+        keyFingerprint: lic.license.keyFp,
+        studentCount: stats.students,
+        groupCount: stats.groups,
+        sessionCount: stats.sessions,
+        expiresAt: new Date(lic.license.expiresAt),
+        revokedAt: null,
+        generatedBy: user.id,
+        generatedByName: user.name,
+      },
     });
     const html = buildEmergencyHtml({
       licenseRaw: lic.licenseRaw,
@@ -609,4 +665,44 @@ export const GET = handler(async (req: Request) => {
       "Cache-Control": "no-store",
     },
   });
+});
+
+// ============================= POST — مزامنة ملف الاسترداد (JSON) =============================
+// الواجهة بتبعت { action: "recovery-preview" | "recovery-commit", recovery, decisions }
+// المسار ده كان ناقص خالص — فالزرار كان يرمي «مفيش اتصال بالسيرفر» وهو الغلط مش من النت.
+
+export const POST = handler(async (req: Request) => {
+  const user = await requireManager();
+  const ct = req.headers.get("content-type") ?? "";
+
+  if (!ct.includes("application/json")) {
+    throw new ApiError("استيراد الإكسل الكلاسيكي متوقف مؤقتًا — المزامنة الرسمية بملف الاسترداد (JSON) من تطبيق الطوارئ.", 400);
+  }
+
+  let body: { action?: string; recovery?: RecoveryPkg; decisions?: Record<string, string> };
+  try {
+    body = await req.json();
+  } catch {
+    throw new ApiError("البيانات المتبعتة مش مظبوطة.", 400);
+  }
+
+  if (body.action === "recovery-preview") {
+    const result = await previewRecovery(user, body.recovery as RecoveryPkg);
+    await logAudit({
+      user, action: "فحص ملف استرداد طوارئ (معاينة)", entity: "EMERGENCY",
+      after: { packageId: result.packageId, totalTxns: result.totalTxns, valid: result.valid, duplicates: result.duplicates, conflicts: result.conflicts, invalid: result.invalid },
+    });
+    return ok(result, { headers: { "cache-control": "no-store" } });
+  }
+
+  if (body.action === "recovery-commit") {
+    const result = await commitRecovery(user, body.recovery as RecoveryPkg, body.decisions ?? {});
+    await logAudit({
+      user, action: "مزامنة ملف استرداد طوارئ", entity: "EMERGENCY",
+      after: { imported: result.imported, duplicates: result.duplicates, conflicts: result.conflicts, skipped: result.skipped },
+    });
+    return ok(result, { headers: { "cache-control": "no-store" } });
+  }
+
+  throw new ApiError("نوع الطلب مش معروف.", 400);
 });
