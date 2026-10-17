@@ -1,0 +1,462 @@
+<!doctype html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>نموذج ١ — البسيط | النخبة سنترز</title>
+<style>
+@font-face{font-family:'CairoP';src:url('/fonts/cairo-arabic.woff2') format('woff2');font-weight:200 900;font-display:swap;}
+:root{
+  --navy:#0B1B4F; --navy-2:#1D4ED8; --navy-soft:#EDF1F7; --navy-50:#F5F8FD;
+  --teal:#10B981; --teal-deep:#0F766E; --teal-soft:#ECFDF5;
+  --bg:#F5F8FD; --card:#FFFFFF; --border:#E2E9F4; --text:#101A30; --muted:#64748B;
+  --ok:#16A34A; --ok-soft:#EAF7EF; --bad:#DC2626; --bad-soft:#FDECEC; --amber:#B45309; --amber-soft:#FFF8E8;
+  --r:16px; --r-sm:12px;
+  --shadow:0 10px 24px -14px rgba(11,27,79,.22);
+  --shadow-sm:0 4px 14px -8px rgba(11,27,79,.18);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'CairoP','Cairo','Segoe UI',Tahoma,Arial,sans-serif;font-size:15px;line-height:1.6;}
+button{font-family:inherit;}
+.hidden{display:none !important;}
+.mono{font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:embed;}
+
+/* شريط النموذج */
+.ribbon{background:linear-gradient(90deg,#0B1B4F,#1D4ED8);color:#fff;text-align:center;font-size:12px;font-weight:800;padding:7px 12px;}
+.ribbon a{color:#A7F3D0;text-decoration:none;}
+
+/* ===== الهيدر ===== */
+.top{position:sticky;top:0;z-index:40;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);}
+.top-in{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:12px;}
+.logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;box-shadow:var(--shadow-sm);flex-shrink:0;}
+.top-txt{min-width:0;flex:1;}
+.top-txt b{display:block;font-size:15px;font-weight:800;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.top-txt span{display:block;font-size:11px;font-weight:700;color:var(--teal-deep);letter-spacing:.4px;}
+.ava{width:38px;height:38px;border-radius:50%;background:var(--navy-soft);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;border:1px solid var(--border);flex-shrink:0;}
+
+/* ===== التابات ===== */
+.tabs{position:sticky;top:57px;z-index:30;background:rgba(245,248,253,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);}
+.tabs-in{max-width:1080px;margin:0 auto;display:flex;gap:4px;padding:8px 12px;overflow-x:auto;scrollbar-width:none;}
+.tabs-in::-webkit-scrollbar{display:none;}
+.tab{flex:1;min-width:84px;border:1px solid transparent;background:transparent;border-radius:var(--r-sm);padding:8px 10px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;font-weight:800;color:var(--muted);cursor:pointer;position:relative;transition:all .15s;white-space:nowrap;}
+.tab .ico{font-size:19px;line-height:1;}
+.tab:hover{background:#fff;color:var(--navy);}
+.tab.on{background:#fff;border-color:var(--border);color:var(--navy);box-shadow:var(--shadow-sm);}
+.tab.on::after{content:"";position:absolute;bottom:-1px;inset-inline:14px;height:3px;border-radius:3px 3px 0 0;background:linear-gradient(90deg,var(--teal),var(--navy));}
+
+/* ===== الحاوية ===== */
+.main{max-width:1080px;margin:0 auto;padding:16px 16px 90px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-sm);padding:16px;margin-bottom:14px;}
+.card.brand{position:relative;overflow:hidden;}
+.card.brand::before{content:"";position:absolute;inset-inline:0;top:0;height:4px;background:linear-gradient(90deg,var(--teal),var(--navy) 60%);}
+.sec-title{font-size:16px;font-weight:800;color:var(--navy);margin:0 0 4px;}
+.sec-sub{font-size:12px;color:var(--muted);font-weight:700;margin:0 0 12px;}
+.gate{width:64px;height:5px;border-radius:4px;background:linear-gradient(90deg,var(--teal) 0 38%,var(--navy) 38% 100%);margin:6px 0 14px;}
+
+/* ===== إحصائيات ===== */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;}
+.stat{background:linear-gradient(135deg,var(--navy),var(--navy-2));border-radius:var(--r);color:#fff;padding:14px;position:relative;overflow:hidden;box-shadow:var(--shadow);min-height:84px;}
+.stat::after{content:"";position:absolute;inset-block:0;inset-inline-start:0;width:4px;background:var(--teal);}
+.stat .v{font-size:22px;font-weight:800;line-height:1.2;}
+.stat .l{font-size:11px;font-weight:700;color:rgba(255,255,255,.75);margin-top:2px;}
+.stat.ghost{background:#fff;color:var(--navy);border:1px solid var(--border);box-shadow:none;}
+.stat.ghost::after{background:var(--navy-soft);}
+.stat.ghost .l{color:var(--muted);}
+.stat.gold{background:linear-gradient(135deg,var(--teal-deep),var(--teal));}
+.stat.gold::after{background:#FDE68A;}
+
+/* ===== أزرار ===== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--border);background:#fff;color:var(--navy);font-weight:800;font-size:14px;border-radius:var(--r-sm);padding:10px 16px;cursor:pointer;transition:all .15s;min-height:44px;text-decoration:none;}
+.btn:active{transform:scale(.985);}
+.btn.primary{background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;border-color:transparent;box-shadow:inset 0 -3px 0 rgba(16,185,129,.45),var(--shadow);}
+.btn.primary:hover{filter:brightness(1.07);}
+.btn.teal{background:linear-gradient(135deg,var(--teal-deep),var(--teal));color:#fff;border-color:transparent;box-shadow:inset 0 -3px 0 rgba(11,27,79,.4),var(--shadow);}
+.btn.ghost-ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 35%,#fff);background:var(--ok-soft);}
+.btn.sm{min-height:36px;padding:6px 12px;font-size:12px;border-radius:10px;}
+.btn.wide{width:100%;}
+.actions-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;}
+.act{display:flex;flex-direction:column;align-items:center;gap:6px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r);padding:14px 10px;cursor:pointer;font-weight:800;font-size:13px;color:var(--navy);transition:all .15s;font-family:inherit;}
+.act:hover{border-color:var(--navy);box-shadow:var(--shadow-sm);transform:translateY(-1px);}
+.act .ico{width:44px;height:44px;border-radius:12px;background:var(--navy-soft);display:flex;align-items:center;justify-content:center;font-size:22px;}
+
+/* ===== حقول ===== */
+.input{width:100%;border:1.5px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;font-family:inherit;font-size:16px;font-weight:700;color:var(--text);background:#fff;min-height:48px;outline:none;transition:border .15s,box-shadow .15s;}
+.input:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(11,27,79,.12);}
+.chip{display:inline-flex;align-items:center;gap:4px;background:var(--navy-soft);color:var(--navy);border:1px solid color-mix(in srgb,var(--navy) 18%,#fff);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:800;}
+.chip.gold{background:var(--teal-soft);color:var(--teal-deep);border-color:#A7F3D0;}
+.chip.bad{background:var(--bad-soft);color:var(--bad);border-color:#FCA5A5;}
+.chip.amber{background:var(--amber-soft);color:var(--amber);border-color:#FDE68A;}
+.chip.ok{background:var(--ok-soft);color:var(--ok);border-color:#86EFAC;}
+.hint{font-size:11.5px;color:var(--muted);font-weight:700;}
+
+/* ===== صفوف ===== */
+.rows{display:flex;flex-direction:column;gap:8px;}
+.row{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;}
+.row-txt{min-width:0;flex:1;}
+.row-txt b{display:block;font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.row-txt span{display:block;font-size:11.5px;color:var(--muted);font-weight:700;}
+.row .end{display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;}
+
+/* ===== حضور ===== */
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.seg button{border:1.5px solid var(--border);background:#fff;border-radius:var(--r-sm);padding:12px 10px;font-weight:800;font-size:13.5px;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;transition:all .15s;font-family:inherit;}
+.seg button.on{background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;border-color:transparent;box-shadow:var(--shadow);}
+.scan-big{width:100%;border:2px dashed var(--teal);background:var(--teal-soft);color:var(--teal-deep);border-radius:var(--r);padding:22px;font-size:17px;font-weight:800;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;transition:all .15s;font-family:inherit;}
+.scan-big:disabled{opacity:.7;}
+.scan-big .ico{font-size:34px;}
+.scan-result{margin-top:10px;border:1.5px solid var(--teal);background:#fff;border-radius:var(--r);padding:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.mark-row{display:flex;align-items:center;gap:8px;background:var(--ok-soft);border:1px solid #86EFAC;color:var(--ok);border-radius:var(--r-sm);padding:9px 12px;font-weight:800;font-size:13px;margin-bottom:8px;}
+.progress{height:10px;background:var(--navy-soft);border-radius:99px;overflow:hidden;margin:8px 0 4px;}
+.progress i{display:block;height:100%;background:linear-gradient(90deg,var(--teal),var(--navy));border-radius:99px;}
+.tgl{border:1.5px solid var(--border);background:#fff;color:var(--muted);border-radius:999px;padding:6px 14px;font-size:12.5px;font-weight:800;cursor:pointer;min-width:76px;transition:all .12s;font-family:inherit;}
+.tgl.on{background:var(--ok-soft);border-color:#86EFAC;color:var(--ok);}
+.tgl.off{background:var(--bad-soft);border-color:#FCA5A5;color:var(--bad);}
+
+/* ===== جدول ===== */
+.grid-sched{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;}
+.room-col{background:var(--navy-50);border:1px solid var(--border);border-radius:var(--r);padding:10px;}
+.room-col h4{margin:0 0 8px;font-size:13px;font-weight:800;color:var(--navy);display:flex;align-items:center;gap:6px;}
+.slot{background:#fff;border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;margin-bottom:6px;font-size:12px;font-weight:700;}
+.slot b{display:block;font-size:12.5px;color:var(--navy);}
+.slot.live{border-color:#86EFAC;background:var(--ok-soft);}
+.slot .t{color:var(--muted);font-size:11px;}
+
+/* ===== دخول ===== */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--navy),var(--navy-2));padding:20px;}
+.login-card{background:#fff;border-radius:20px;box-shadow:var(--shadow);padding:28px 22px;width:100%;max-width:380px;text-align:center;}
+.login-logo{width:72px;height:72px;border-radius:18px;background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;margin:0 auto 12px;box-shadow:var(--shadow);}
+.login-card h1{font-size:19px;font-weight:800;color:var(--navy);margin:0 0 2px;}
+.login-card p{font-size:12px;color:var(--muted);font-weight:700;margin:0 0 18px;}
+.field{text-align:start;margin-bottom:10px;}
+.field label{display:block;font-size:12px;font-weight:800;color:var(--navy);margin-bottom:5px;}
+</style>
+</head>
+<body>
+
+<div class="ribbon">🧪 نموذج تصميم رقم ١ — «البسيط» (نفس ستايل ملف الطوارئ اللي عجبك) — بيانات وهمية للتجربة · <a href="/prototypes">شوف النماذج التانية ←</a></div>
+
+<!-- ===== شاشة الدخول ===== -->
+<div id="loginScr" class="login-wrap">
+  <div class="login-card">
+    <div class="login-logo">ن</div>
+    <h1>النخبة سنترز</h1>
+    <p>سنتر النخبة التعليمي — لوحة الموظفين</p>
+    <div class="field">
+      <label>اسم المستخدم</label>
+      <input class="input" id="lu" placeholder="مثال: samy.manager" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>كلمة السر</label>
+      <input class="input" id="lp" type="password" placeholder="••••••••">
+    </div>
+    <button class="btn primary wide" style="margin-top:6px" onclick="doLogin()">دخول</button>
+    <p class="hint" style="margin-top:12px">نموذج تجريبي — اكتب أي حاجة واضغط دخول</p>
+  </div>
+</div>
+
+<!-- ===== التطبيق ===== -->
+<div id="appScr" class="hidden">
+<header class="top">
+  <div class="top-in">
+    <div class="logo">ن</div>
+    <div class="top-txt"><b>سنتر النخبة التعليمي</b><span>النخبة سنترز — لوحة الإدارة</span></div>
+    <div class="ava">س</div>
+  </div>
+</header>
+
+<nav class="tabs"><div class="tabs-in" id="tabbar">
+  <button class="tab on" data-pg="home" onclick="go('home')"><span class="ico">🏠</span>الرئيسية</button>
+  <button class="tab" data-pg="today" onclick="go('today')"><span class="ico">📋</span>اليوم</button>
+  <button class="tab" data-pg="students" onclick="go('students')"><span class="ico">👥</span>الطلاب</button>
+  <button class="tab" data-pg="pay" onclick="go('pay')"><span class="ico">💰</span>المالية</button>
+  <button class="tab" data-pg="teachers" onclick="go('teachers')"><span class="ico">🧑‍🏫</span>المدرسين</button>
+  <button class="tab" data-pg="sched" onclick="go('sched')"><span class="ico">🗓️</span>الجداول</button>
+  <button class="tab" data-pg="emg" onclick="go('emg')"><span class="ico">📴</span>الطوارئ</button>
+  <button class="tab" data-pg="set" onclick="go('set')"><span class="ico">⚙️</span>الإعدادات</button>
+</div></nav>
+
+<main class="main">
+
+<!-- ===== الرئيسية ===== -->
+<section id="pg-home" class="page">
+  <div class="card brand">
+    <h2 class="sec-title" style="font-size:18px">أهلاً يا أ. سامي 👋</h2>
+    <p class="sec-sub">السبت ١٨ أكتوبر ٢٠٢٦ — كل حاجة تحت إيدك</p>
+    <div class="gate"></div>
+    <div class="stats">
+      <div class="stat"><div class="v">4</div><div class="l">حصص النهاردة</div></div>
+      <div class="stat ghost"><div class="v mono">31/48</div><div class="l">حضروا لحد دلوقتي</div></div>
+      <div class="stat gold"><div class="v mono">2,150ج</div><div class="l">تحصيل النهاردة</div></div>
+      <div class="stat ghost"><div class="v">6</div><div class="l">طلاب عليهم مستحقات</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="sec-title">إجراءات سريعة</h3>
+    <p class="sec-sub">أهم 4 حاجات بتتعمل كل يوم</p>
+    <div class="actions-grid">
+      <button class="act" onclick="go('today')"><span class="ico">✍️</span>سجّل حضور</button>
+      <button class="act" onclick="go('pay')"><span class="ico">💰</span>حصّل</button>
+      <button class="act" onclick="go('students')"><span class="ico">👤</span>طالب جديد</button>
+      <button class="act" onclick="go('emg')"><span class="ico">📴</span>ملف الطوارئ</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="sec-title">حصص النهاردة</h3>
+    <p class="sec-sub">4 حصص — دوس على أي حصة تفتحها</p>
+    <div class="rows">
+      <div class="row"><div class="ava">ع</div><div class="row-txt"><b>عربي — 2 ثانوي</b><span>أ. محمود الشريف · قاعة 1 · 10:00–12:00</span></div><div class="end"><span class="chip ok">خلصت 16/18</span></div></div>
+      <div class="row" style="border-color:#86EFAC;background:var(--ok-soft)"><div class="ava" style="background:#fff">ر</div><div class="row-txt"><b>رياضة — 3 ثانوي</b><span>أ. نهى إبراهيم · قاعة 2 · 12:00–14:00</span></div><div class="end"><button class="btn sm teal" onclick="go('today')">شغّالة 12/14 — افتح</button></div></div>
+      <div class="row"><div class="ava">إ</div><div class="row-txt"><b>إنجليزي — 1 ثانوي</b><span>أ. كريم مصطفى · قاعة 3 · 16:00–18:00</span></div><div class="end"><span class="chip">قادمة · 15 طالب</span></div></div>
+      <div class="row"><div class="ava">ف</div><div class="row-txt"><b>فيزياء — 2 ثانوي</b><span>أ. أحمد سالم · قاعة 1 · 18:00–20:00</span></div><div class="end"><span class="chip">قادمة · 19 طالب</span></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="sec-title">تنبيهات المهم</h3>
+    <p class="sec-sub">محتاجة نظرة النهاردة</p>
+    <div class="rows">
+      <div class="row"><div class="ava" style="background:var(--bad-soft);color:var(--bad)">!</div><div class="row-txt"><b>أحمد محمد سعيد</b><span>متأخر 600ج — آخر دفع قبل 12 يوم</span></div><div class="end"><button class="btn sm ghost-ok">حصّل</button></div></div>
+      <div class="row"><div class="ava" style="background:var(--bad-soft);color:var(--bad)">!</div><div class="row-txt"><b>سلمى عادل</b><span>متأخرة 350ج — غابت حصتين ورا بعض</span></div><div class="end"><button class="btn sm ghost-ok">حصّل</button></div></div>
+      <div class="row"><div class="ava" style="background:var(--amber-soft);color:var(--amber)">!</div><div class="row-txt"><b>يوسف عبد الرحمن</b><span>الرصيد خلص — هيحتاج شحن قبل الحصة</span></div><div class="end"><button class="btn sm ghost-ok">اشحن</button></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== اليوم + الحضور ===== -->
+<section id="pg-today" class="page hidden">
+  <div class="card brand">
+    <h2 class="sec-title" style="font-size:18px">الحصة الشغالة: رياضة — 3 ثانوي</h2>
+    <p class="sec-sub">أ. نهى إبراهيم · قاعة 2 · 12:00–14:00</p>
+    <div class="gate"></div>
+    <div class="stats">
+      <div class="stat"><div class="v mono" id="attCount">12/14</div><div class="l">حضروا</div></div>
+      <div class="stat ghost"><div class="v" id="attLeft">2</div><div class="l">لسه غايبين</div></div>
+    </div>
+    <div class="progress"><i id="attBar" style="width:86%"></i></div>
+  </div>
+
+  <div class="card">
+    <h3 class="sec-title">سجّل الحضور</h3>
+    <p class="sec-sub">الطريقة الأساسية: اكتب كود الطالب أو امسح كارتة واحد واحد</p>
+    <div class="seg">
+      <button id="mCode" class="on" onclick="setMode('code')">✍️ اكتب الكود</button>
+      <button id="mScan" onclick="setMode('scan')">📷 سكان لكل طالب</button>
+    </div>
+
+    <div id="boxCode">
+      <div style="display:flex;gap:8px">
+        <input class="input mono" id="codeIn" placeholder="كود الطالب — مثال: 14952" inputmode="numeric" style="text-align:center;font-size:18px" onkeydown="if(event.key==='Enter')markCode()">
+        <button class="btn primary" style="min-width:96px" onclick="markCode()">تسجيل</button>
+      </div>
+      <p class="hint" style="margin-top:8px">الكود مكتوب على كارت الطالب — زرار Enter بيسجل على طول ✓</p>
+      <div id="codeResults" style="margin-top:10px"></div>
+    </div>
+
+    <div id="boxScan" class="hidden">
+      <button class="scan-big" id="scanBtn" onclick="doScan()"><span class="ico">📷</span><span id="scanLabel">امسح الطالب اللي بعده</span></button>
+      <div id="scanArea" style="margin-top:10px"></div>
+      <p class="hint" style="margin-top:8px">وَجّه كاميرا الموبايل على كارت الطالب — كل طالب لوحده بتأكيد واضح قبل التسجيل</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="sec-title">كشف الحصة</h3>
+    <p class="sec-sub">تقدر تعدّل بالضغط — وكل تغيير بيتسجل باسمك</p>
+    <div class="rows" id="roster"></div>
+  </div>
+</section>
+
+<!-- ===== الطلاب ===== -->
+<section id="pg-students" class="page hidden">
+  <div class="card">
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input class="input" placeholder="🔍 ابحث بالاسم أو الكود…">
+      <button class="btn primary" style="min-width:110px;flex-shrink:0">+ طالب جديد</button>
+    </div>
+    <div class="rows">
+      <div class="row"><div class="ava">أ</div><div class="row-txt"><b>أحمد محمد سعيد</b><span class="mono">14950 · عربي 2ث · آخر حضور: النهاردة</span></div><div class="end"><span class="chip bad">مديونية 600ج</span></div></div>
+      <div class="row"><div class="ava">م</div><div class="row-txt"><b>مريم السيد</b><span class="mono">14951 · رياضة 3ث · آخر حضور: النهاردة</span></div><div class="end"><span class="chip ok">سليمة</span></div></div>
+      <div class="row"><div class="ava">ي</div><div class="row-txt"><b>يوسف عبد الرحمن</b><span class="mono">14952 · إنجليزي 1ث · آخر حضور: امبارح</span></div><div class="end"><span class="chip amber">الرصيد خلص</span></div></div>
+      <div class="row"><div class="ava">س</div><div class="row-txt"><b>سلمى عادل</b><span class="mono">14953 · عربي 2ث · آخر حضور: قبل 6 أيام</span></div><div class="end"><span class="chip bad">مديونية 350ج</span></div></div>
+      <div class="row"><div class="ava">ك</div><div class="row-txt"><b>كريم فتحي</b><span class="mono">14954 · فيزياء 2ث · آخر حضور: النهاردة</span></div><div class="end"><span class="chip ok">سليم</span></div></div>
+      <div class="row"><div class="ava">ح</div><div class="row-txt"><b>حبيبة رمضان</b><span class="mono">14955 · رياضة 3ث · آخر حضور: النهاردة</span></div><div class="end"><span class="chip ok">سليمة</span></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3 class="sec-title">إضافة سريعة</h3>
+    <p class="sec-sub">الطالب الجديد بياخد كود أوتوماتيك — مش محتاج تفكر رقم</p>
+    <div class="actions-grid">
+      <button class="act"><span class="ico">👤</span>طالب واحد</button>
+      <button class="act"><span class="ico">👥</span>كذا طالب مرة واحدة</button>
+      <button class="act"><span class="ico">📄</span>من ملف إكسل</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== المالية ===== -->
+<section id="pg-pay" class="page hidden">
+  <div class="card brand">
+    <h2 class="sec-title" style="font-size:18px">خزنة النهاردة</h2>
+    <p class="sec-sub">بتتحدث لحظة بلحظة</p>
+    <div class="gate"></div>
+    <div class="stats">
+      <div class="stat gold"><div class="v mono">2,150ج</div><div class="l">تحصيل النهاردة</div></div>
+      <div class="stat ghost"><div class="v">9</div><div class="l">عمليات</div></div>
+      <div class="stat ghost"><div class="v mono">18,400ج</div><div class="l">الشهر ده لحد دلوقتي</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap">
+      <h3 class="sec-title" style="margin:0">آخر التحصيلات</h3>
+      <button class="btn sm teal">+ تحصيل سريع</button>
+    </div>
+    <div class="rows">
+      <div class="row"><div class="ava">م</div><div class="row-txt"><b>مريم السيد</b><span>10:24 ص — كاش · إيصال #2841</span></div><div class="end"><span class="chip ok mono">+300ج</span></div></div>
+      <div class="row"><div class="ava">ك</div><div class="row-txt"><b>كريم فتحي</b><span>10:41 ص — محفظة إلكترونية · إيصال #2842</span></div><div class="end"><span class="chip ok mono">+250ج</span></div></div>
+      <div class="row"><div class="ava">ح</div><div class="row-txt"><b>حبيبة رمضان</b><span>11:05 ص — كاش · إيصال #2843</span></div><div class="end"><span class="chip ok mono">+400ج</span></div></div>
+      <div class="row"><div class="ava">م</div><div class="row-txt"><b>محمد عبد الله</b><span>12:15 م — كاش · إيصال #2844</span></div><div class="end"><span class="chip ok mono">+600ج</span></div></div>
+      <div class="row"><div class="ava">آ</div><div class="row-txt"><b>آية مجدي</b><span>12:32 م — محفظة إلكترونية · إيصال #2845</span></div><div class="end"><span class="chip ok mono">+600ج</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== المدرسين ===== -->
+<section id="pg-teachers" class="page hidden">
+  <div class="card">
+    <h3 class="sec-title">فريق المدرسين</h3>
+    <p class="sec-sub">الحصة الجاية + المستحقات — واتساب بضغطة</p>
+    <div class="rows">
+      <div class="row"><div class="ava">م</div><div class="row-txt"><b>أ. محمود الشريف — عربي</b><span>حصته الجاية: بكرة 10:00 · قاعة 1 · 34 طالب</span></div><div class="end"><button class="btn sm">واتساب</button><button class="btn sm ghost-ok mono">صرف 1,200ج</button></div></div>
+      <div class="row" style="border-color:#86EFAC;background:var(--ok-soft)"><div class="ava" style="background:#fff">ن</div><div class="row-txt"><b>أ. نهى إبراهيم — رياضة</b><span>شغالة دلوقتي: 12:00 · قاعة 2 · 42 طالب</span></div><div class="end"><button class="btn sm">واتساب</button><button class="btn sm ghost-ok mono">صرف 900ج</button></div></div>
+      <div class="row"><div class="ava">ك</div><div class="row-txt"><b>أ. كريم مصطفى — إنجليزي</b><span>حصته الجاية: النهاردة 16:00 · قاعة 3 · 28 طالب</span></div><div class="end"><button class="btn sm">واتساب</button><button class="btn sm ghost-ok mono">صرف 750ج</button></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== الجداول ===== -->
+<section id="pg-sched" class="page hidden">
+  <div class="card">
+    <h3 class="sec-title">جدول النهاردة — بالقاعات</h3>
+    <p class="sec-sub">الكتلة الواحدة = ساعتين · التغيير بالسحب والإفلات</p>
+    <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+      <span class="chip ok">🟢 سليمة</span><span class="chip amber">🟡 تعارض — بيتأكد قبل الحفظ</span><span class="chip">⚪ فاضية</span>
+    </div>
+    <div class="grid-sched">
+      <div class="room-col"><h4>🚪 قاعة 1</h4>
+        <div class="slot"><b>عربي — 2 ثانوي</b><span class="t">10:00–12:00 · أ. محمود · خلصت</span></div>
+        <div class="slot"><b>فيزياء — 2 ثانوي</b><span class="t">18:00–20:00 · أ. أحمد · قادمة</span></div>
+      </div>
+      <div class="room-col"><h4>🚪 قاعة 2</h4>
+        <div class="slot live"><b>رياضة — 3 ثانوي</b><span class="t">12:00–14:00 · أ. نهى · شغالة</span></div>
+      </div>
+      <div class="room-col"><h4>🚪 قاعة 3</h4>
+        <div class="slot"><b>إنجليزي — 1 ثانوي</b><span class="t">16:00–18:00 · أ. كريم · قادمة</span></div>
+      </div>
+    </div>
+    <p class="hint" style="margin-top:12px">لو سحبت حصة على وقت فيه حاجة تانية — السيستم يقفلك بالأصفر ويسألك: تأكيد ولا رجوع؟ وبيسجل مين غيّر وإمتى.</p>
+  </div>
+</section>
+
+<!-- ===== الطوارئ ===== -->
+<section id="pg-emg" class="page hidden">
+  <div class="card brand">
+    <h2 class="sec-title" style="font-size:18px">📴 وضع الطوارئ</h2>
+    <p class="sec-sub">لو النت قطع — تشتغلوا عادي وكأن مفيش حاجة حصلت</p>
+    <div class="gate"></div>
+    <button class="btn primary wide" style="min-height:56px;font-size:15px">⬇️ حمّل ملف الطوارئ (HTML)</button>
+    <p class="hint" style="margin-top:8px;text-align:center">ملف واحد فيه كل حاجة — يفتح من أي موبايل أو فلاشة من غير نت</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+      <button class="btn">📄 إكسل الحسابات</button>
+      <button class="btn">🗂️ آخر نسخة</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3 class="sec-title">آخر حزمة</h3>
+    <div class="rows">
+      <div class="row"><div class="ava">📦</div><div class="row-txt"><b>NOKHBA-OFFLINE-2026-10-18.html</b><span>النهاردة 9:30 ص · 4.2 ميجا · موقعة وآمنة</span></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3 class="sec-title">ولما ترجع والنت رجع؟</h3>
+    <p class="sec-sub" style="margin-bottom:6px">3 خطوات بس:</p>
+    <div class="rows">
+      <div class="row"><div class="ava">1</div><div class="row-txt"><b>افتح تاب الطوارئ</b><span>والنت رجع عادي</span></div></div>
+      <div class="row"><div class="ava">2</div><div class="row-txt"><b>اضغط «استيراد ملف الاسترداد»</b><span>واختار ملف الـ JSON اللي بيتسجل لوحده مع الحزمة</span></div></div>
+      <div class="row"><div class="ava">3</div><div class="row-txt"><b>السيستم يطابق كل حاجة لوحده</b><span>مفيش تكرار ومفيش ضياع — لو فيه تعارض بيسألك قبل ما يسجل</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== الإعدادات ===== -->
+<section id="pg-set" class="page hidden">
+  <div class="card">
+    <h3 class="sec-title">بيانات السنتر</h3>
+    <div class="rows">
+      <div class="row"><div class="ava">🏫</div><div class="row-txt"><b>سنتر النخبة التعليمي</b><span class="mono">01234567890 · الاشتراك ساري لـ يناير ٢٠٢٧</span></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3 class="sec-title">الموظفين</h3>
+    <div class="rows">
+      <div class="row"><div class="ava">س</div><div class="row-txt"><b>أ. سامي</b><span>مدير — كل الصلاحيات</span></div><div class="end"><span class="chip gold">مدير</span></div></div>
+      <div class="row"><div class="ava">م</div><div class="row-txt"><b>منى</b><span>استقبال — حضور وتحصيل وطلاب</span></div><div class="end"><span class="chip">استقبال</span></div></div>
+      <div class="row"><div class="ava">هـ</div><div class="row-txt"><b>هدى</b><span>استقبال — حضور وتحصيل وطلاب</span></div><div class="end"><span class="chip">استقبال</span></div></div>
+      <div class="row"><div class="ava">مح</div><div class="row-txt"><b>أ. محمود الشريف</b><span>مدرس — حصصه هو بس</span></div><div class="end"><span class="chip">مدرس</span></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3 class="sec-title">طريقة الحضور الأساسية</h3>
+    <p class="sec-sub">زي ما اخترت — محفوظة لكل الموظفين</p>
+    <div class="rows">
+      <div class="row"><div class="ava">✅</div><div class="row-txt"><b>اكتب الكود أو سكان لكل طالب</b><span>الطريقتين دول الأولانيين في شاشة الحضور</span></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3 class="sec-title">المظهر</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <span class="chip gold">☀️ فاتح — المختار</span><span class="chip">🌙 غامق</span>
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+const CODES={"14950":"أحمد محمد سعيد","14951":"مريم السيد","14952":"يوسف عبد الرحمن","14953":"سلمى عادل","14954":"كريم فتحي","14955":"حبيبة رمضان"};
+let present=12,total=14;
+const rosterData=[
+ ["أحمد محمد سعيد",true],["مريم السيد",true],["يوسف عبد الرحمن",false],["سلمى عادل",true],
+ ["كريم فتحي",true],["حبيبة رمضان",true],["منة الله طارق",true],["زياد أشرف",false],
+ ["نور الدين حسن",true],["ملك وليد",true],["عمر خالد",true],["جنى محمود",true],
+ ["ياسين عصام",true],["روان حسام",true]
+];
+function $(id){return document.getElementById(id)}
+function doLogin(){$("loginScr").classList.add("hidden");$("appScr").classList.remove("hidden");window.scrollTo(0,0)}
+function go(pg){document.querySelectorAll(".page").forEach(p=>p.classList.add("hidden"));$("pg-"+pg).classList.remove("hidden");
+ document.querySelectorAll("#tabbar .tab").forEach(t=>t.classList.toggle("on",t.dataset.pg===pg));window.scrollTo({top:0,behavior:"smooth"})}
+function setMode(m){$("mCode").classList.toggle("on",m==="code");$("mScan").classList.toggle("on",m==="scan");
+ $("boxCode").classList.toggle("hidden",m!=="code");$("boxScan").classList.toggle("hidden",m!=="scan")}
+function bump(n){present=Math.max(0,Math.min(total,present+n));$("attCount").textContent=present+"/"+total;$("attLeft").textContent=(total-present);$("attBar").style.width=Math.round(present/total*100)+"%"}
+function okRow(html,ok){const d=document.createElement("div");d.className="mark-row";if(!ok){d.style.background="var(--bad-soft)";d.style.borderColor="#FCA5A5";d.style.color="var(--bad)"}d.innerHTML=html;$("codeResults").prepend(d);setTimeout(()=>d.remove(),6000)}
+function markCode(){const v=$("codeIn").value.trim();if(!v)return;
+ if(CODES[v]){okRow("✅ <b>"+CODES[v]+"</b> — اتسجل حاضر (كود "+v+")");const r=rosterData.find(x=>x[0]===CODES[v]);if(r&&!r[1]){r[1]=true;renderRoster();bump(1)}$("codeIn").value=""}
+ else{okRow("❌ كود "+v+" مش موجود في الكشف ده",false)}}
+function doScan(){const b=$("scanBtn");b.disabled=true;$("scanLabel").textContent="… بيدور على الكارت";
+ setTimeout(()=>{b.disabled=false;const nxt=rosterData.find(x=>!x[1]);
+  if(!nxt){$("scanArea").innerHTML='<div class="mark-row">🎉 كل الطلاب اتسجلوا — خلاص!</div>';return}
+  $("scanArea").innerHTML='<div class="scan-result"><div class="ava">'+nxt[0][0]+'</div><div class="row-txt" style="flex:1"><b>'+nxt[0]+'</b><span>اتلقط من الكارت — اتأكد قبل التسجيل</span></div><button class="btn sm teal" onclick="confirmScan()">تأكيد ✓</button></div>'},900)}
+function confirmScan(){const nxt=rosterData.find(x=>!x[1]);if(nxt){nxt[1]=true;renderRoster();bump(1);okRow("✅ <b>"+nxt[0]+"</b> — اتسجل حاضر بالسكان")}
+ $("scanArea").innerHTML="";$("scanLabel").textContent="امسح الطالب اللي بعده"}
+function renderRoster(){const box=$("roster");box.innerHTML="";rosterData.forEach((r,i)=>{const d=document.createElement("div");d.className="row";
+ const code=Object.keys(CODES)[i%6];
+ d.innerHTML='<div class="ava">'+r[0][0]+'</div><div class="row-txt"><b>'+r[0]+'</b><span class="mono">كود '+code+'</span></div><div class="end"><button class="tgl '+(r[1]?"on":"off")+'">'+(r[1]?"حاضر":"غايب")+'</button></div>';
+ d.querySelector(".tgl").onclick=()=>{r[1]=!r[1];renderRoster();bump(r[1]?1:-1)};box.appendChild(d)})}
+renderRoster();
+</script>
+</body>
+</html>

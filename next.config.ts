@@ -82,6 +82,19 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // نماذج التصميم (public/prototypes/*.html) — روابط نضيفة من غير .html:
+  // /prototypes → صفحة المقارنة · /prototypes/1 → النموذج الأول … إلخ
+  // afterFiles (الافتراضي): الملف الثابت بيتقدم الأول — الـ rewrite بيشتغل بس لو مفيش ملف.
+  async rewrites() {
+    return {
+      beforeFiles: [],
+      afterFiles: [
+        { source: "/prototypes", destination: "/prototypes/index.html" },
+        { source: "/prototypes/:slug", destination: "/prototypes/:slug.html" },
+      ],
+      fallback: [],
+    };
+  },
 };
 
 export default nextConfig;
