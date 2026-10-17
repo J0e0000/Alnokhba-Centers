@@ -342,3 +342,23 @@ Work Log:
 Stage Summary:
 - كل شيء عايش على الإنتاج: الجدول التفاعلي v2 + الحزمة الأوفلاين الموقعة + إصلاحات الصلاحيات الـ9
 - مراكز المالك الحقيقية لم تُمس — كل الكتابة على سنتر الاختبار
+
+---
+Task ID: phase2-pii-teacher-dashboard
+Agent: Super Z (main agent)
+Task: «كمل» — إغلاق متبقي خطة الـ refactor: فجوة #6 PII + داشبورد لكل دور (ربط المدرس بكيانه) + توحيد design system (دارك مود).
+
+Work Log:
+- #6 PII (آخر فجوة من تدقيق الـ 77 route): فرض SEARCH_STUDENTS على GET /api/lookup + VIEW_STUDENTS على GET /api/students و GET /api/students/[id] + كارت RED وديع في POST /api/attendance/scan — والواجهة: حالة قفل في students.tsx لو الحساب من غير صلاحية
+- ربط حساب المدرس بكيانه (داشبورد لكل دور): User.teacherRefId (1:1 اختياري → Teacher, SetNull) + unique index · staff API (GET يعرض الربط، POST/PATCH بتحقق ملكية/1:1/isActive — تكرار = 409، استقبال = 400) · منتقي مدرس في إضافة موظف + حوار «ربط/تغيير» في كارت الموظف · الجلسة بتحمل teacherRefId
+- نطاق المدرس على السيرفر: /api/dashboard + /api/sessions GET (اللي بيغذي «مسار الجيم») — المربوط بيشوف حصصه هو بس (sessions+suggestions+planned)، والمش مربوط قوائم فاضية + teacherLinked=false (مفيش تسريب جدول السنتر لحساب بلا هوية) · الواجهة: زرار «طلابي» الميت اتشال من داشبورد المدرس + تلميح amber للمش مربوط + أزرار «امسح الحضور/فتح الحصة» محجوبة بالصلاحية (EDIT_ATTENDANCE/START_SESSION)
+- e2e جديد (pii_teacher_link_e2e.mjs — 20/20 ✅) مسك تسريب حقيقي: plannedSessions كانت بتترجع للسنتر كله للمدرس المش مربوط — اتصلحت بنصفير القوائم في الـ early-return · suites التانية نضيفة (permissions 9/9، schedule v2 15/15) · tsc src صفر · build ✅
+- design system: codemod (scripts/nk_dark_mode_codemod.py — v2 per-segment بعد ما v1 أفسد 3 أسطرmultiple-quoted واكتشفتها/صلحتها) ضاف نظائر dark لأنماط الحالة المعيارية في 24 مكوّن (~160 سطر) · استثناءات مقصودة: كروت الطباعة (ألوان فيزيائية)، landing (براند شيت)، QR (خلفية بيضا عشان المسح)، شاشات الكاميرا · تصليحات يدوية: شيبس admin (خلفيات 100-level + CANCELLED) + message-queue slate → muted-foreground
+- متصفح (dark): داشبورد المدير ✓ الرئيسية للمدرس المش مربوط (تلميح) ✓ المربوط = «حصص اليوم 1» عربي بس (كانت 3) ✓
+- نشر: scripts/.dbpass اتعادت (كانت ضاعت مع الريسيت — من القيمة الموثقة، chmod 600) · السكيما اتعملت manual على إنتاج Supabase عبر session pooler 5432 (User.teacherRefId + unique idx — تحقق information_schema) قبل الـ deploy عشان مفيش سباق
+
+Stage Summary:
+- الفجوات الـ 11 من تدقيق الصلاحيات اتقفلت كلها (#6 آخرها) — القراءة والكتابة كلها سيرفر-سايد
+- داشبورد لكل دور خلص: مدير (تشغيلي+مالي) · استقبال (أزرار سريعة) · مدرس (حصصه هو بس — مربوط بكيانه)
+- الدارك مود بقى متسق على شاشات الموظفين كلها بأنماط الحالة
+- سنترات المالك الحقيقية لم تُمس — كل الاختبار على QAE1 الديف و سنتر الاختبار بالإنتاج

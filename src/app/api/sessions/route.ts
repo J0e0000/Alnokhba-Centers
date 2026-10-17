@@ -13,8 +13,16 @@ export const GET = handler(async (req: Request) => {
   const url = new URL(req.url);
   const date = url.searchParams.get("date") || todayStr();
 
+  // نطاق المدرس: حساب TEACHER مربوط بكيانه بيشوف حصصه هو بس —
+  // والمش مربوط بياخد قوائم فاضية (نفس سياسة الداشبورد — مفيش تسريب جدول السنتر لحساب بلا هوية)
+  const teacherId = user.role === "TEACHER" ? user.teacherRefId : null;
+  if (user.role === "TEACHER" && !teacherId) {
+    return ok({ date, sessions: [], suggestions: [] });
+  }
+  const teacherScope = teacherId ? { group: { teacherId } } : {};
+
   const sessions = await db.sessionInstance.findMany({
-    where: { centerId: user.centerId, date },
+    where: { centerId: user.centerId, date, ...teacherScope },
     orderBy: { startTime: "asc" },
     include: {
       group: { include: { subject: true, grade: true, teacher: true } },
@@ -26,7 +34,7 @@ export const GET = handler(async (req: Request) => {
   // (الحصة الملغاة بترجع اقتراح تاني — عشان أي حد يقدر يفتحها من جديد)
   const dow = new Date(`${date}T12:00:00Z`).getUTCDay();
   const slots = await db.scheduleSlot.findMany({
-    where: { centerId: user.centerId, dayOfWeek: dow, isActive: true },
+    where: { centerId: user.centerId, dayOfWeek: dow, isActive: true, ...teacherScope },
     include: { group: { include: { subject: true, grade: true, teacher: true } } },
     orderBy: { startTime: "asc" },
   });

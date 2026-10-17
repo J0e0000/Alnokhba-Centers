@@ -174,12 +174,12 @@ export function EmergencyView({ user }: { user: SessionUser }) {
       />
 
       {/* ===== المبدأ ===== */}
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3">
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3 dark:bg-amber-950/40 dark:border-amber-800/60">
         <ShieldAlert className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
-        <div className="text-sm font-bold text-amber-800 leading-relaxed">
+        <div className="text-sm font-bold text-amber-800 leading-relaxed dark:text-amber-200">
           نزّل <b>حزمة الطوارئ</b> خلاص دلوقتي وخليها على جهاز الاستقبال — الرخصة بتبقى شغّالة
           <span className="nk-num"> ٧ أيام </span> من التوليد وموقّعة من السيرفر.
-          <span className="block text-amber-700 font-semibold mt-1">
+          <span className="block text-amber-700 font-semibold mt-1 dark:text-amber-300">
             لو النت قطع: افتح الملف من الجهاز — بحث QR/كود · حضور · دفع بالباقي · اشتراكات · حصص — وكل معاملة بياخد كود فريد ETX.
           </span>
         </div>
@@ -305,16 +305,16 @@ export function EmergencyView({ user }: { user: SessionUser }) {
 
               {recPreview.preview.conflicts.length > 0 && (
                 <div>
-                  <p className="text-xs font-extrabold text-amber-700 mb-1.5 flex items-center gap-1.5">
+                  <p className="text-xs font-extrabold text-amber-700 mb-1.5 flex items-center gap-1.5 dark:text-amber-300">
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                     تعارضات محتاجة قرارك ({recPreview.preview.conflicts.length}) — افتراضي: تتخطى
                   </p>
                   <ul className="space-y-1.5">
                     {recPreview.preview.conflicts.map((c) => (
-                      <li key={c.txnId} className="bg-card border border-amber-200 rounded-xl px-3 py-2.5 text-xs font-bold space-y-1.5">
+                      <li key={c.txnId} className="bg-card border border-amber-200 rounded-xl px-3 py-2.5 text-xs font-bold space-y-1.5 dark:border-amber-800/60">
                         <div className="flex items-center justify-between gap-2 flex-wrap">
                           <span className="font-extrabold">#{c.seq} · {c.opAr}{c.entityName ? ` — ${c.entityName}` : ""}</span>
-                          <span className="nk-badge bg-amber-50 text-amber-700 border border-amber-200" style={{ borderRadius: 999, padding: "2px 8px" }}>{c.code}</span>
+                          <span className="nk-badge bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-300" style={{ borderRadius: 999, padding: "2px 8px" }}>{c.code}</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-[11px]">
                           <span className="bg-muted/60 rounded-lg px-2 py-1.5"><b>أوفلاين:</b> {c.offlineValue}</span>
@@ -343,7 +343,7 @@ export function EmergencyView({ user }: { user: SessionUser }) {
 
               {recPreview.preview.invalid.length > 0 && (
                 <div>
-                  <p className="text-xs font-extrabold text-rose-700 mb-1.5 flex items-center gap-1.5">
+                  <p className="text-xs font-extrabold text-rose-700 mb-1.5 flex items-center gap-1.5 dark:text-rose-300">
                     <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
                     مرفوضة (سلامة/صيغة) — مش هتتزامن
                   </p>
@@ -364,7 +364,7 @@ export function EmergencyView({ user }: { user: SessionUser }) {
           {recResult && (
             <div className={cn(
               "rounded-2xl border p-4 space-y-2",
-              recResult.conflicts > 0 ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50",
+              recResult.conflicts > 0 ? "border-amber-200 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-800/60" : "border-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 dark:border-emerald-800/60",
             )}>
               <p className="font-extrabold text-sm">{recResult.message}</p>
               <div className="grid grid-cols-4 gap-2 text-center">
@@ -374,7 +374,7 @@ export function EmergencyView({ user }: { user: SessionUser }) {
                 <MiniStat label="متخطاة" value={recResult.skipped} tone="warn" />
               </div>
               {recResult.conflictDetails?.length > 0 && (
-                <ul className="text-[11px] font-bold text-amber-800 space-y-1 mt-1">
+                <ul className="text-[11px] font-bold text-amber-800 space-y-1 mt-1 dark:text-amber-200">
                   {recResult.conflictDetails.slice(0, 10).map((c, i) => (
                     <li key={i} className="flex items-start gap-1.5"><AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {c.reason}</li>
                   ))}
@@ -467,7 +467,7 @@ export function EmergencyView({ user }: { user: SessionUser }) {
           {result && (
             <div className={cn(
               "rounded-2xl border p-4 space-y-2",
-              result.conflicts > 0 ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50",
+              result.conflicts > 0 ? "border-amber-200 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-800/60" : "border-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 dark:border-emerald-800/60",
             )}>
               <p className="font-extrabold text-sm">{result.message}</p>
               <div className="grid grid-cols-3 gap-2 text-center">
@@ -505,7 +505,7 @@ export function EmergencyView({ user }: { user: SessionUser }) {
                 <div className="flex items-center gap-1.5 text-[11px] font-extrabold shrink-0">
                   <span className="nk-brand-bg-soft nk-brand-text rounded-full px-2 py-1">{h.imported} اتزامنت</span>
                   {h.duplicates > 0 && <span className="bg-muted text-muted-foreground rounded-full px-2 py-1">{h.duplicates} متكررة</span>}
-                  {h.conflicts > 0 && <span className="bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-1">{h.conflicts} تعارض</span>}
+                  {h.conflicts > 0 && <span className="bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-1 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-300">{h.conflicts} تعارض</span>}
                   {h.skipped > 0 && <span className="bg-muted text-muted-foreground rounded-full px-2 py-1">{h.skipped} متخطاة</span>}
                 </div>
               </li>
@@ -521,9 +521,9 @@ function MiniStat({ label, value, tone }: { label: string; value: number; tone?:
   return (
     <div className={cn(
       "rounded-xl border px-2 py-2",
-      tone === "ok" ? "bg-emerald-50 border-emerald-200 text-emerald-700" :
+      tone === "ok" ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300" :
       tone === "warn" ? "bg-muted border-border text-muted-foreground" :
-      tone === "bad" ? "bg-amber-50 border-amber-200 text-amber-700" : "bg-card border-border",
+      tone === "bad" ? "bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-300" : "bg-card border-border",
     )}>
       <p className="nk-num text-lg font-extrabold leading-none">{value}</p>
       <p className="text-[10px] font-bold mt-1">{label}</p>

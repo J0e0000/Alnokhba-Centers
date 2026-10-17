@@ -3,6 +3,7 @@ import { ok, handler, readJson } from "@/lib/api";
 import { requireModule } from "@/lib/entitlements";
 import { assertStudentQuotaTx } from "@/lib/entitlements";
 import { requireCenterUser, canRegisterStudents, generateStudentCode, generateQrToken, ApiError } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { cleanRaw, normalizeDigits, validateEgyptianPhone, toPiastres } from "@/lib/normalize";
 import { recordUndo } from "@/lib/undo";
@@ -14,9 +15,13 @@ export const dynamic = "force-dynamic";
 
 /** GET /api/students?q=&status=&gradeId=&groupId=&page= — search & list (tenant-scoped)
  *  Server-side pagination — الحد الأقصى 50/صفحة وترتيب ثابت (deterministic)
- *  فلاتر المرحلة والمجموعة (فكرة الريبو المرجعي: فلتر مرحلة مقسّم + فلتر مجموعة) */
+ *  فلاتر المرحلة والمجموعة (فكرة الريبو المرجعي: فلتر مرحلة مقسّم + فلتر مجموعة)
+ *  تدقيق المرحلة 2 #6: بيانات الطلاب (تليفونات/أرصدة) PII — القراءة محتاجة صلاحية صريحة */
 export const GET = handler(async (req: Request) => {
   const user = await requireCenterUser();
+  if (!hasPermission(user, "VIEW_STUDENTS")) {
+    throw new ApiError("عرض الطلاب محتاج صلاحية «عرض الطلاب» — كلّم المدير يوزّها لك.", 403);
+  }
   const url = new URL(req.url);
   const q = cleanRaw(url.searchParams.get("q") ?? "").trim();
   const status = url.searchParams.get("status") ?? "";

@@ -158,7 +158,7 @@ function TeacherCard({ t, isManager, centerName, onPaid }: {
             </p>
           </div>
         </div>
-        {!t.isActive && <Chip className="bg-rose-50 border-rose-200 text-rose-600 shrink-0">موقوف</Chip>}
+        {!t.isActive && <Chip className="bg-rose-50 border-rose-200 text-rose-600 shrink-0 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-400">موقوف</Chip>}
       </div>
 
       {/* الحصة الجاية — حضرتك جاي إمتى */}

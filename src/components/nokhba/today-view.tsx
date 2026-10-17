@@ -231,8 +231,8 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
               return (
                 <div key={s.id} className={cn(
                   "rounded-2xl border p-4 flex items-center gap-3.5 transition",
-                  isOpen ? "border-emerald-300 bg-emerald-50/70" :
-                  cancelled ? "border-rose-200 bg-rose-50/40 opacity-75" :
+                  isOpen ? "border-emerald-300 bg-emerald-50/70 dark:bg-emerald-950/40 dark:border-emerald-700/60" :
+                  cancelled ? "border-rose-200 bg-rose-50/40 opacity-75 dark:bg-rose-950/40 dark:border-rose-800/60" :
                   closed ? "border-border bg-muted/40 opacity-80" : "border-border bg-card",
                 )}>
                   <button onClick={() => !cancelled && openSession(s.id)} disabled={cancelled} className={cn("flex-1 min-w-0 text-start", cancelled && "cursor-default")}>

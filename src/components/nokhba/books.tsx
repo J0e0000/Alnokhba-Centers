@@ -120,16 +120,16 @@ export function BooksView({ user }: { user: SessionUser }) {
 
       {/* تنبيه بارز لما كتاب يوصل حد إعادة الطلب */}
       {data && data.stats.lowStockList && data.stats.lowStockList.length > 0 && (
-        <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-4" role="alert">
+        <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 dark:bg-amber-950/40 dark:border-amber-700/60" role="alert">
           <div className="flex items-center gap-2.5 mb-2">
             <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
-            <p className="text-sm font-extrabold text-amber-800">
+            <p className="text-sm font-extrabold text-amber-800 dark:text-amber-200">
               {data.stats.lowStockList.length === 1 ? "كتاب قرب يخلص — زوّد مخزونه" : `${data.stats.lowStockList.length} كتب قربت تخلص — زوّد مخزونها`}
             </p>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {data.stats.lowStockList.map((b) => (
-              <span key={b.id} className="text-xs font-bold bg-card border border-amber-200 rounded-full px-2.5 py-1">
+              <span key={b.id} className="text-xs font-bold bg-card border border-amber-200 rounded-full px-2.5 py-1 dark:border-amber-800/60">
                 {b.name} <span className="nk-num text-amber-700 dark:text-amber-300" dir="ltr">({b.stock}/{b.threshold})</span>
               </span>
             ))}
@@ -196,9 +196,9 @@ export function BooksView({ user }: { user: SessionUser }) {
                     <td className="px-3 py-3">
                       <span className={cn(
                         "nk-num font-extrabold rounded-lg px-2.5 py-1 border",
-                        b.stock === 0 ? "bg-rose-50 text-rose-700 border-rose-200"
-                        : b.stock <= b.reorderThreshold ? "bg-amber-50 text-amber-700 border-amber-200"
-                        : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        b.stock === 0 ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300"
+                        : b.stock <= b.reorderThreshold ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-300"
+                        : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300"
                       )}>
                         {b.stock}
                       </span>
@@ -227,7 +227,7 @@ export function BooksView({ user }: { user: SessionUser }) {
                             <button onClick={() => setEditBook(b)} title="تعديل" className="rounded-lg border border-border bg-card p-1.5 hover:bg-muted/60 transition">
                               <Pencil className="w-4 h-4 text-muted-foreground" />
                             </button>
-                            <button onClick={() => setConfirmDelete(b)} title="حذف" className="rounded-lg border border-border bg-card p-1.5 hover:bg-rose-50 transition">
+                            <button onClick={() => setConfirmDelete(b)} title="حذف" className="rounded-lg border border-border bg-card p-1.5 hover:bg-rose-50 transition dark:bg-rose-950/40">
                               <Trash2 className="w-4 h-4 text-rose-500" />
                             </button>
                           </>
@@ -701,7 +701,7 @@ function SalesReportCard() {
           </div>
 
           {report.lowStock.length > 0 && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-200">
               قرب يخلص: {report.lowStock.map((b) => `${b.name} (${b.stock})`).join(" · ")}
             </div>
           )}
@@ -809,7 +809,7 @@ function DeleteBookDialog({ book, onClose, onDone }: {
     <Dialog open={!!book} onOpenChange={(o) => !busy && !o && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-rose-600">
+          <DialogTitle className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
             <Trash2 className="w-5 h-5" /> حذف كتاب
           </DialogTitle>
         </DialogHeader>

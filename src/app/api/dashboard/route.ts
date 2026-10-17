@@ -14,20 +14,25 @@ type DashEntry = { at: number; payload: unknown };
 const dashCache = new Map<string, DashEntry>();
 const DASH_TTL_MS = 15_000;
 
-/** GET /api/dashboard — role-aware daily dashboard */
+/** GET /api/dashboard — role-aware daily dashboard
+ *  نطاق المدرس: حساب TEACHER مربوط بكيان مدرس → بيشوف حصصه هو بس (بدل جدول السنتر كله) */
 export const GET = handler(async () => {
   const user = await requireCenterUser();
   const centerId = user.centerId;
   const today = todayStr();
 
   // 1) كاش-hit؟ رجّعه فورًا — بيحمي الداتابيز من الـ bursts
-  const cacheKey = `${centerId}:${user.role}`;
+  const cacheKey = `${centerId}:${user.role}:${user.teacherRefId ?? ""}`;
   const hit = dashCache.get(cacheKey);
   if (hit && Date.now() - hit.at < DASH_TTL_MS) return ok(hit.payload);
 
+  // فلتر نطاق المدرس (TEACHER مربوط بس — غير كده فاضي)
+  const teacherId = user.role === "TEACHER" ? user.teacherRefId : null;
+  const teacherScope = teacherId ? { group: { teacherId } } : {};
+
   const [todaySessions, cash, subscription, todaySlots] = await Promise.all([
     db.sessionInstance.findMany({
-      where: { centerId, date: today },
+      where: { centerId, date: today, ...teacherScope },
       orderBy: { startTime: "asc" },
       include: {
         group: { include: { subject: true, grade: true, teacher: true } },
@@ -42,7 +47,7 @@ export const GET = handler(async () => {
     }),
     // Weekly-schedule slots for today (planned sessions not opened yet)
     db.scheduleSlot.findMany({
-      where: { centerId, dayOfWeek: new Date(`${today}T12:00:00Z`).getUTCDay(), isActive: true },
+      where: { centerId, dayOfWeek: new Date(`${today}T12:00:00Z`).getUTCDay(), isActive: true, ...teacherScope },
       include: { group: { include: { subject: true, grade: true, teacher: true, _count: { select: { students: true } } } } },
       orderBy: { startTime: "asc" },
     }),
@@ -90,13 +95,24 @@ export const GET = handler(async () => {
   const base = { today, sessions, plannedSessions, centerName: user.center!.name };
 
   if (user.role !== "MANAGER") {
+    // مدرس مش مربوط بكيانه: مبنسربش له جدول السنتر كله — قايمة فاضية + علامة
+    // الواجهة بتعرض تلميح «كلّم المدير يربط حسابك» (تدقيق المرحلة 2 + داشبورد لكل دور)
+    if (user.role === "TEACHER" && !teacherId) {
+      // ⚠️ الاستعلامات فوق اتنفذت بنطاق فاضي — بنصفّر القوائم هنا صراحة (الـ e2e مسك التسريب ده)
+      const payload = { ...base, sessions: [], plannedSessions: [], role: "TEACHER", teacherLinked: false, quickStats: { students: 0 } };
+      dashCache.set(cacheKey, { at: Date.now(), payload });
+      return ok(payload);
+    }
     // Simple payload: today's sessions + quick counts. No heavy analytics.
     // (غير المدير مش بيشوف التحليلات المالية — تدقيق المرحلة 2 — #7)
     const payload = {
       ...base,
-      role: "RECEPTIONIST",
+      role: user.role === "TEACHER" ? "TEACHER" : "RECEPTIONIST",
+      teacherLinked: user.role === "TEACHER" ? true : undefined,
       quickStats: {
-        students: await db.student.count({ where: { centerId, status: "ACTIVE" } }),
+        students: teacherId
+          ? await db.studentGroup.count({ where: { status: "ACTIVE", group: { teacherId } } })
+          : await db.student.count({ where: { centerId, status: "ACTIVE" } }),
       },
     };
     dashCache.set(cacheKey, { at: Date.now(), payload });

@@ -31,9 +31,9 @@ type MyRequestRow = {
 };
 
 const REQ_STATUS: Record<string, { label: string; cls: string }> = {
-  PENDING: { label: "مستني قرار المدير", cls: "bg-amber-50 border-amber-200 text-amber-700" },
-  APPROVED: { label: "اتقبل واتنفذ", cls: "bg-emerald-50 border-emerald-200 text-emerald-700" },
-  REJECTED: { label: "اترفض", cls: "bg-rose-50 border-rose-200 text-rose-700" },
+  PENDING: { label: "مستني قرار المدير", cls: "bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-300" },
+  APPROVED: { label: "اتقبل واتنفذ", cls: "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300" },
+  REJECTED: { label: "اترفض", cls: "bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300" },
   CANCELLED: { label: "اتلغى", cls: "bg-muted border-border text-muted-foreground" },
 };
 
@@ -183,7 +183,7 @@ export function PaymentsView({ user }: { user: SessionUser }) {
                               onClick={() => cancelMyRequest(r)}
                               disabled={cancelReqBusy === r.id}
                               title="سحب الطلب — لسه مفيش قرار اتاخد فيه"
-                              className="shrink-0 rounded-xl border border-border bg-card px-3 py-2 text-xs font-extrabold flex items-center gap-1.5 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-700 transition disabled:opacity-60"
+                              className="shrink-0 rounded-xl border border-border bg-card px-3 py-2 text-xs font-extrabold flex items-center gap-1.5 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-700 transition disabled:opacity-60 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300"
                             >
                               {cancelReqBusy === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
                               إلغاء الطلب
@@ -256,7 +256,7 @@ export function PaymentsView({ user }: { user: SessionUser }) {
           {balance !== null && (
             <p className={cn(
               "text-sm font-bold rounded-xl px-4 py-2.5 border",
-              balance < 0 ? "bg-rose-50 border-rose-200 text-rose-700" : balance > 0 ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-muted border-border text-muted-foreground"
+              balance < 0 ? "bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300" : balance > 0 ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300" : "bg-muted border-border text-muted-foreground"
             )}>
               {balanceLabel(balance).text}
             </p>

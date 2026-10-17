@@ -536,14 +536,14 @@ function OpsSummaryStrip({ summary, openSession, setView }: {
   const active = summary.activeSessions ?? 0;
   const items: { key: string; label: string; value: string; tone: string; onClick?: () => void }[] = [];
 
-  if (active > 0) items.push({ key: "active", label: "حصص شغالة", value: `${active}`, tone: "bg-emerald-50 border-emerald-300 text-emerald-700", onClick: () => setView("today") });
-  if (needsClosing.length > 0) items.push({ key: "closing", label: "محتاجة تقفيل", value: `${needsClosing.length}`, tone: "bg-amber-50 border-amber-300 text-amber-700", onClick: () => openSession(needsClosing[0].id) });
-  if (pending > 0) items.push({ key: "approvals", label: "طلبات محتاجة موافقة", value: `${pending}`, tone: "bg-sky-50 border-sky-300 text-sky-700", onClick: () => setView("approvals") });
-  if ((summary.paymentIssues?.length ?? 0) > 0) items.push({ key: "pay", label: "ملاحظات دفع", value: `${summary.paymentIssues.length}`, tone: "bg-rose-50 border-rose-300 text-rose-700", onClick: () => setView("payments") });
+  if (active > 0) items.push({ key: "active", label: "حصص شغالة", value: `${active}`, tone: "bg-emerald-50 border-emerald-300 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-700/60 dark:text-emerald-300", onClick: () => setView("today") });
+  if (needsClosing.length > 0) items.push({ key: "closing", label: "محتاجة تقفيل", value: `${needsClosing.length}`, tone: "bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-950/40 dark:border-amber-700/60 dark:text-amber-300", onClick: () => openSession(needsClosing[0].id) });
+  if (pending > 0) items.push({ key: "approvals", label: "طلبات محتاجة موافقة", value: `${pending}`, tone: "bg-sky-50 border-sky-300 text-sky-700 dark:bg-sky-950/40 dark:border-sky-700/60 dark:text-sky-300", onClick: () => setView("approvals") });
+  if ((summary.paymentIssues?.length ?? 0) > 0) items.push({ key: "pay", label: "ملاحظات دفع", value: `${summary.paymentIssues.length}`, tone: "bg-rose-50 border-rose-300 text-rose-700 dark:bg-rose-950/40 dark:border-rose-700/60 dark:text-rose-300", onClick: () => setView("payments") });
 
   if (items.length === 0) {
     return (
-      <div className="flex items-center gap-2 rounded-2xl border-2 border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700 font-extrabold text-sm">
+      <div className="flex items-center gap-2 rounded-2xl border-2 border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700 font-extrabold text-sm dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300">
         <CheckCircle2 className="w-5 h-5" />
         كل حاجة تمام — مفيش حاجة محتاجة انتباه
       </div>

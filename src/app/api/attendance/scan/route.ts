@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
 import { requireCenterUser, rateLimit } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { cleanRaw } from "@/lib/normalize";
 import { studentBalance, effectivePrice, amountDueToday } from "@/lib/finance";
 import { hasCapability } from "@/lib/center-capabilities";
@@ -22,6 +23,12 @@ export const POST = handler(async (req: Request) => {
   const raw = String(body.query ?? "").trim();
   const q = cleanRaw(raw);
   if (!q) return ok({ status: "RED", message: "امسح الكود أو اكتب كود الطالب." });
+
+  // تدقيق المرحلة 2 #6: المسح بيحلّل هوية الطالب (اسم/رصيد) — محتاج صلاحية عرض الطلاب.
+  // نفس نمط الكارت الأحمر بتاع البوابة عشان الشاشة تعرضه بشكل طبيعي من غير خطأ API
+  if (!hasPermission(user, "VIEW_STUDENTS")) {
+    return ok({ status: "RED", message: "مسح الحضور محتاج صلاحية «عرض الطلاب» — كلّم المدير يوزّها لك." });
+  }
 
   // بوابة قدرات المركز: مسح توكن الكارت = static_qr — كتابة الكود = static_qr أو name_attendance
   const tokenLike = q.length >= 16 && /^[0-9a-f]+$/i.test(q);

@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { ok, handler } from "@/lib/api";
-import { requireCenterUser } from "@/lib/auth";
+import { requireCenterUser, ApiError } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { cleanRaw } from "@/lib/normalize";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,10 @@ export const dynamic = "force-dynamic";
  */
 export const GET = handler(async (req: Request) => {
   const user = await requireCenterUser();
+  // تدقيق المرحلة 2 #6: البحث بيرجّع تليفونات وبانات طلاب — محتاج صلاحية صريحة
+  if (!hasPermission(user, "SEARCH_STUDENTS")) {
+    throw new ApiError("البحث عن الطلاب محتاج صلاحية «البحث عن الطلاب» — كلّم المدير.", 403);
+  }
   const url = new URL(req.url);
   const raw = (url.searchParams.get("q") ?? "").trim();
   const q = cleanRaw(raw);

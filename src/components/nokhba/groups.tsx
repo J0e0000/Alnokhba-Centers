@@ -167,7 +167,7 @@ export function GroupsView() {
                           {!t.phone && <span className="text-[10px] font-bold text-orange-600">محتاج موبايل</span>}
                           {waLink && (
                             <a href={waLink} target="_blank" rel="noreferrer"
-                              className="text-[10px] font-extrabold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 hover:bg-emerald-100 transition">
+                              className="text-[10px] font-extrabold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 hover:bg-emerald-100 transition dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300">
                               ابعتله على واتساب
                             </a>
                           )}

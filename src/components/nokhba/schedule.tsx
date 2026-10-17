@@ -416,7 +416,7 @@ export function ScheduleView({ user, openSession }: { user: SessionUser; openSes
                         <span className="flex-1 min-w-0 font-bold text-[13px] truncate">{s.subject} — {s.grade} {s.groupName}</span>
                         <span className="text-[11px] font-semibold text-muted-foreground shrink-0">{s.teacher}</span>
                         {blockingFlags(weekFlags.get(s.id)).length > 0 && (
-                          <span className="shrink-0 text-[10px] font-extrabold rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 flex items-center gap-1">
+                          <span className="shrink-0 text-[10px] font-extrabold rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 flex items-center gap-1 dark:text-amber-200">
                             <AlertTriangle className="w-3 h-3" /> تعارض
                           </span>
                         )}
@@ -581,7 +581,7 @@ export function ScheduleView({ user, openSession }: { user: SessionUser; openSes
                                 {s.teacher} · {s.students} طالب · {fmt(s.price)} ج
                               </p>
                               {blocked && (
-                                <p className="text-[10.5px] font-bold text-amber-800 mt-1">
+                                <p className="text-[10.5px] font-bold text-amber-800 mt-1 dark:text-amber-200">
                                   {blockingFlags(flags).map((f) => f.label).join(" · ")}
                                 </p>
                               )}
@@ -801,7 +801,7 @@ function SlotChip({ slot, lane, lanes, flags, dragging, draggable, onDragStart, 
         {slot.teacher} · {formatTime12(slot.startTime)}–{formatTime12(slot.endTime)}
       </span>
       {blocked.length > 0 && (
-        <span className="block text-[9.5px] font-extrabold text-amber-700 truncate">{blocked[0].label}</span>
+        <span className="block text-[9.5px] font-extrabold text-amber-700 truncate dark:text-amber-300">{blocked[0].label}</span>
       )}
     </button>
   );
@@ -1060,7 +1060,7 @@ function SlotDialog({ open, slot, copySlot, seed, allSlots, groups, rooms, onClo
               <div className="rounded-xl border-2 border-amber-400 bg-amber-50 px-3.5 py-3 space-y-2 dark:bg-amber-500/10 dark:border-amber-500/50" role="alert">
                 <p className="text-xs font-extrabold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
                   <AlertTriangle className="w-4 h-4" /> تعارض موارد ({(serverConflicts.length > 0 ? serverConflicts : preview.blocking).length})
-                  <span className="font-bold text-[10px] text-amber-700/80">— تقدر تحفظ رغم التعارض بتأكيد</span>
+                  <span className="font-bold text-[10px] text-amber-700/80 dark:text-amber-300">— تقدر تحفظ رغم التعارض بتأكيد</span>
                 </p>
                 {(serverConflicts.length > 0 ? serverConflicts : preview.blocking).slice(0, 4).map((c, i) => (
                   <div key={i} className="rounded-lg bg-white/70 px-2.5 py-1.5 dark:bg-white/5">
@@ -1075,7 +1075,7 @@ function SlotDialog({ open, slot, copySlot, seed, allSlots, groups, rooms, onClo
                   onChange={(e) => setOverrideReason(e.target.value)}
                   maxLength={200}
                 />
-                <p className="text-[10px] font-bold text-amber-800/70">
+                <p className="text-[10px] font-bold text-amber-800/70 dark:text-amber-200">
                   التجاوز بيتسجل في سجل التدقيق باسمك وبتاريخه مع الحصص المتأثرة والسبب.
                 </p>
               </div>
@@ -1469,7 +1469,7 @@ function RoomsDialog({ open, rooms, allSlots, onClose, onChanged }: {
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button onClick={() => deleteRoom(r.id, r.name)} disabled={busy}
-                        className="w-9 h-9 rounded-lg hover:bg-rose-50 grid place-items-center text-rose-600" aria-label="حذف">
+                        className="w-9 h-9 rounded-lg hover:bg-rose-50 grid place-items-center text-rose-600 dark:bg-rose-950/40 dark:text-rose-400" aria-label="حذف">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </>

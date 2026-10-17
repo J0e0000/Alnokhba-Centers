@@ -471,7 +471,7 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
               {!closed && !cancelled && (canCancelDirect || canCancelRequest) && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setCancelOpen(true)} className="text-rose-600 focus:text-rose-600">
+                  <DropdownMenuItem onClick={() => setCancelOpen(true)} className="text-rose-600 focus:text-rose-600 dark:text-rose-400">
                     {canCancelDirect ? <CalendarX className="w-4 h-4" /> : <Send className="w-4 h-4" />}
                     {canCancelDirect ? "إلغاء الحصة" : "طلب إلغاء الحصة"}
                   </DropdownMenuItem>
@@ -617,7 +617,7 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
       <Dialog open={closeOpen} onOpenChange={setCloseOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Lock className="w-5 h-5 text-rose-600" /> إنهاء الحصة</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><Lock className="w-5 h-5 text-rose-600 dark:text-rose-400" /> إنهاء الحصة</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="rounded-2xl bg-muted/60 border p-4 space-y-1.5 text-sm">
@@ -676,7 +676,7 @@ export function SessionLiveView({ user, sessionId, onBack, onGoScan, initialTab,
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {canCancelDirect
-                ? <><CalendarX className="w-5 h-5 text-rose-600" /> إلغاء الحصة</>
+                ? <><CalendarX className="w-5 h-5 text-rose-600 dark:text-rose-400" /> إلغاء الحصة</>
                 : <><Send className="w-5 h-5 nk-brand-text" /> طلب إلغاء الحصة</>}
             </DialogTitle>
           </DialogHeader>

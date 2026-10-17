@@ -50,9 +50,9 @@ const TYPE_ICON: Record<string, React.ReactNode> = {
 };
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
-  PENDING: { label: "مستني قرارك", cls: "bg-amber-50 border-amber-200 text-amber-700" },
-  APPROVED: { label: "اتقبل", cls: "bg-emerald-50 border-emerald-200 text-emerald-700" },
-  REJECTED: { label: "اترفض", cls: "bg-rose-50 border-rose-200 text-rose-700" },
+  PENDING: { label: "مستني قرارك", cls: "bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-300" },
+  APPROVED: { label: "اتقبل", cls: "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300" },
+  REJECTED: { label: "اترفض", cls: "bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300" },
   CANCELLED: { label: "اتلغى", cls: "bg-muted border-border text-muted-foreground" },
 };
 
@@ -119,11 +119,11 @@ export function ApprovalsView({ user }: { user: SessionUser }) {
         }
         action={
           pendingCount > 0 ? (
-            <Chip className="bg-amber-50 border-amber-200 text-amber-700 shrink-0">
+            <Chip className="bg-amber-50 border-amber-200 text-amber-700 shrink-0 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-300">
               <Clock className="w-3.5 h-3.5" /> {pendingCount} مستني
             </Chip>
           ) : (
-            <Chip className="bg-emerald-50 border-emerald-200 text-emerald-700 shrink-0">
+            <Chip className="bg-emerald-50 border-emerald-200 text-emerald-700 shrink-0 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300">
               <ShieldCheck className="w-3.5 h-3.5" /> مفيش طلبات مستنية
             </Chip>
           )
@@ -154,7 +154,7 @@ export function ApprovalsView({ user }: { user: SessionUser }) {
                 {/* رأس الطلب */}
                 <div className="flex items-start justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="w-10 h-10 rounded-xl bg-card border border-amber-200 text-amber-700 grid place-items-center shrink-0">
+                    <span className="w-10 h-10 rounded-xl bg-card border border-amber-200 text-amber-700 grid place-items-center shrink-0 dark:border-amber-800/60 dark:text-amber-300">
                       {TYPE_ICON[r.type] ?? <Wallet className="w-5 h-5" />}
                     </span>
                     <div className="min-w-0">
@@ -168,7 +168,7 @@ export function ApprovalsView({ user }: { user: SessionUser }) {
                     </div>
                   </div>
                   {r.amount !== null && (
-                    <Chip className="bg-rose-50 border-rose-200 text-rose-700 shrink-0 nk-num font-extrabold">
+                    <Chip className="bg-rose-50 border-rose-200 text-rose-700 shrink-0 nk-num font-extrabold dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300">
                       {fmtPiastres(r.amount)} ج
                     </Chip>
                   )}
@@ -215,7 +215,7 @@ export function ApprovalsView({ user }: { user: SessionUser }) {
                   <button
                     onClick={() => { setDecision({ row: r, action: "reject" }); setDecisionNote(""); }}
                     disabled={busyId === r.id}
-                    className="flex-1 rounded-xl border-2 border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 font-extrabold px-4 py-2.5 flex items-center justify-center gap-1.5 text-sm transition active:scale-[0.98] disabled:opacity-60"
+                    className="flex-1 rounded-xl border-2 border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 font-extrabold px-4 py-2.5 flex items-center justify-center gap-1.5 text-sm transition active:scale-[0.98] disabled:opacity-60 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300"
                   >
                     <XCircle className="w-4.5 h-4.5" /> ارفض
                   </button>
@@ -239,8 +239,8 @@ export function ApprovalsView({ user }: { user: SessionUser }) {
               return (
                 <li key={r.id} className="py-3 flex items-center gap-3">
                   <span className={cn("w-9 h-9 rounded-xl grid place-items-center shrink-0",
-                    r.status === "APPROVED" ? "bg-emerald-50 text-emerald-600 border border-emerald-200" :
-                    r.status === "REJECTED" ? "bg-rose-50 text-rose-600 border border-rose-200" :
+                    r.status === "APPROVED" ? "bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800/60" :
+                    r.status === "REJECTED" ? "bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-400" :
                     "bg-muted text-muted-foreground border border-border")}>
                     {TYPE_ICON[r.type] ?? <Wallet className="w-4.5 h-4.5" />}
                   </span>
@@ -273,7 +273,7 @@ export function ApprovalsView({ user }: { user: SessionUser }) {
                 <DialogTitle className="flex items-center gap-2">
                   {decision.action === "approve"
                     ? <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                    : <XCircle className="w-5 h-5 text-rose-600" />}
+                    : <XCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />}
                   {decision.action === "approve" ? "اعتماد الطلب وتنفيذه" : "رفض الطلب"}
                 </DialogTitle>
                 <DialogDescription>

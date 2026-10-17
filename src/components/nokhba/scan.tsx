@@ -626,7 +626,7 @@ export function ScanView({ user, sessionOverride, clearSessionOverride, embedded
 
           {/* مفيش حصة مفتوحة → قول للموظف يعمل إيه بدل خانة معطّلة من غير تفسير */}
           {!activeSession && (
-            <p className="text-sm font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5 flex items-center gap-2">
+            <p className="text-sm font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5 flex items-center gap-2 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-300">
               <Zap className="w-4 h-4 shrink-0" />
               {suggestions.length > 0
                 ? "افتح الحصة من الجدول فوق الأول — بعد كده اكتب الكود عادي."
@@ -821,7 +821,7 @@ function AdhocSessionDialog({ open, onClose, defaultDate, onOpened }: {
             </div>
 
             {error && (
-              <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-1.5">{error}</p>
+              <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-1.5 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-400">{error}</p>
             )}
 
             <div className="flex gap-2 pt-1">
@@ -993,7 +993,7 @@ function ResultCard({ result, onClose, onComplete, busy, user }: {
         <div className="flex items-center gap-3">
           <span className="w-12 h-12 rounded-2xl bg-rose-500 text-white grid place-items-center shrink-0"><XCircle className="w-7 h-7" /></span>
           <div>
-            <h3 className="font-extrabold text-lg text-rose-700">{result.message}</h3>
+            <h3 className="font-extrabold text-lg text-rose-700 dark:text-rose-300">{result.message}</h3>
             {result.hint && <p className="text-sm text-rose-600 dark:text-rose-300 font-semibold">{result.hint}</p>}
           </div>
         </div>
@@ -1044,7 +1044,7 @@ function ResultCard({ result, onClose, onComplete, busy, user }: {
       </div>
 
       {result.alreadyAttended && step !== "done" && (
-        <p className="text-sm font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 flex items-center gap-2">
+        <p className="text-sm font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 flex items-center gap-2 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300">
           <CheckCircle2 className="w-4.5 h-4.5" /> سجّل حضوره خلاص ({ATTENDANCE_LABEL[result.attendanceStatus ?? "PRESENT"]})
         </p>
       )}
@@ -1052,9 +1052,9 @@ function ResultCard({ result, onClose, onComplete, busy, user }: {
       {/* ===== success card ===== */}
       {step === "done" ? (
         <div className="space-y-3">
-          <div className="rounded-2xl bg-white/85 border border-emerald-200 p-4 text-center space-y-1.5">
+          <div className="rounded-2xl bg-white/85 border border-emerald-200 p-4 text-center space-y-1.5 dark:border-emerald-800/60">
             <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
-            <p className="font-extrabold text-emerald-700">{doneMsg ?? "تم"}</p>
+            <p className="font-extrabold text-emerald-700 dark:text-emerald-300">{doneMsg ?? "تم"}</p>
             <p className="text-sm font-bold text-muted-foreground">
               {result.balance != null && result.balance < 0
                 ? `الباقي عليه: ${fmt(-result.balance)} ج`
@@ -1094,9 +1094,9 @@ function ResultCard({ result, onClose, onComplete, busy, user }: {
           <div className={cn(
             "rounded-xl px-3.5 py-3 text-sm font-extrabold border flex items-center gap-2 leading-relaxed",
             balPi < 0
-              ? "bg-orange-50 border-orange-200 text-orange-700"
+              ? "bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-950/40 dark:border-orange-800/60 dark:text-orange-300"
               : balPi > 0
-                ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300"
                 : "bg-muted/60 border-border text-muted-foreground"
           )}>
             <Banknote className="w-4.5 h-4.5 shrink-0" />
@@ -1172,10 +1172,10 @@ function ResultCard({ result, onClose, onComplete, busy, user }: {
               <div className={cn(
                 "rounded-xl px-3.5 py-2.5 text-sm font-bold border",
                 remaining > 0
-                  ? "bg-orange-50 border-orange-200 text-orange-700"
+                  ? "bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-950/40 dark:border-orange-800/60 dark:text-orange-300"
                   : remaining === 0
-                    ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                    : "bg-sky-50 border-sky-200 text-sky-700"
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300"
+                    : "bg-sky-50 border-sky-200 text-sky-700 dark:bg-sky-950/40 dark:border-sky-800/60 dark:text-sky-300"
               )}>
                 {remaining > 0 ? (
                   <>هيخصم اللي دفعه — <b>الباقي عليه {fmt(remaining)} ج</b></>
@@ -1247,8 +1247,8 @@ function ResultCard({ result, onClose, onComplete, busy, user }: {
         </p>
       ) : !green ? (
         <div className="space-y-2">
-          <div className="rounded-xl bg-white/70 border-2 border-orange-200 px-3.5 py-2.5 text-sm space-y-1">
-            <p className="font-extrabold text-orange-700 flex items-center gap-1.5">
+          <div className="rounded-xl bg-white/70 border-2 border-orange-200 px-3.5 py-2.5 text-sm space-y-1 dark:border-orange-800/60">
+            <p className="font-extrabold text-orange-700 flex items-center gap-1.5 dark:text-orange-300">
               <AlertTriangle className="w-4.5 h-4.5 shrink-0" />
               الطالب غير مسجل في المجموعة دي.
             </p>
@@ -1407,7 +1407,7 @@ function KioskMode({ sessions, activeSessionId, online, onExit }: {
       </div>
 
       {!online && (
-        <p className="mx-5 mt-4 text-sm font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-center">
+        <p className="mx-5 mt-4 text-sm font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-center dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-300">
           الكشك محتاج نت — استخدم شاشة الاستقبال العادية.
         </p>
       )}
@@ -1422,17 +1422,17 @@ function KioskMode({ sessions, activeSessionId, online, onExit }: {
         <div
           className={cn(
             "nk-kiosk-result flex-1 mx-5 my-4 rounded-3xl p-8 flex flex-col items-center justify-center text-center space-y-3 border-2",
-            card.tone === "green" && "bg-emerald-50 border-emerald-300",
-            card.tone === "orange" && "bg-orange-50 border-orange-300",
-            card.tone === "red" && "bg-rose-50 border-rose-300",
+            card.tone === "green" && "bg-emerald-50 border-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-700/60",
+            card.tone === "orange" && "bg-orange-50 border-orange-300 dark:bg-orange-950/40 dark:border-orange-700/60",
+            card.tone === "red" && "bg-rose-50 border-rose-300 dark:bg-rose-950/40 dark:border-rose-700/60",
           )}
         >
           {card.big && <p className="nk-num font-extrabold text-5xl tracking-widest" dir="ltr">{card.big}</p>}
           <p className={cn(
             "font-extrabold text-2xl md:text-3xl leading-relaxed",
-            card.tone === "green" && "text-emerald-700",
-            card.tone === "orange" && "text-orange-700",
-            card.tone === "red" && "text-rose-700",
+            card.tone === "green" && "text-emerald-700 dark:text-emerald-300",
+            card.tone === "orange" && "text-orange-700 dark:text-orange-300",
+            card.tone === "red" && "text-rose-700 dark:text-rose-300",
           )}>
             {card.title}
           </p>
@@ -1724,7 +1724,7 @@ export function PaymentPanel({ studentId, studentName, sessionId, suggestedDue, 
       <div className="flex items-center gap-2 flex-wrap">
         <Banknote className="w-4.5 h-4.5 nk-brand-text" />
         <h4 className="font-extrabold text-sm">دفع — {studentName}</h4>
-        {suggestedDue > 0 && <Chip className="bg-rose-50 border-rose-200 text-rose-700">عليه: {fmt(suggestedDue)} ج</Chip>}
+        {suggestedDue > 0 && <Chip className="bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300">عليه: {fmt(suggestedDue)} ج</Chip>}
       </div>
       <div className="flex flex-wrap gap-2">
         <input
@@ -1817,7 +1817,7 @@ export function PaymentPanel({ studentId, studentName, sessionId, suggestedDue, 
       })()}
       {resultMsg && (
         <div className="space-y-2.5">
-          <p className="text-sm font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 flex items-center gap-2">
+          <p className="text-sm font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 flex items-center gap-2 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300">
             <CheckCircle2 className="w-4.5 h-4.5 shrink-0" /> {resultMsg}
           </p>
           {paidTxnId && user && (

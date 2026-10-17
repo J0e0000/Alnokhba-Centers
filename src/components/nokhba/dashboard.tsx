@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { api, fmt, fmtE, formatTime12, sessionPhase, type SessionUser } from "./lib";
+import { api, fmt, fmtE, formatTime12, sessionPhase, userCan, type SessionUser } from "./lib";
 import { PageHeader, Stat, MoneyStat, SectionCard, Loading, EmptyState } from "./shared";
 import { DemoCard } from "./demo-card";
 import { InstallCard } from "./pwa";
@@ -45,32 +45,32 @@ function OpsSummaryStrip({
 
   if (active > 0) {
     items.push({
-      key: "active", label: "حصص شغالة", value: `${active}`, tone: "bg-emerald-50 border-emerald-300 text-emerald-700",
+      key: "active", label: "حصص شغالة", value: `${active}`, tone: "bg-emerald-50 border-emerald-300 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-700/60 dark:text-emerald-300",
       onClick: () => setView("schedule"),
     });
   }
   if (needsClosing.length > 0) {
     items.push({
-      key: "closing", label: "محتاجة تقفيل", value: `${needsClosing.length}`, tone: "bg-amber-50 border-amber-300 text-amber-700",
+      key: "closing", label: "محتاجة تقفيل", value: `${needsClosing.length}`, tone: "bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-950/40 dark:border-amber-700/60 dark:text-amber-300",
       onClick: () => openSession(needsClosing[0].id),
     });
   }
   if (pending > 0) {
     items.push({
-      key: "approvals", label: "طلبات محتاجة موافقة", value: `${pending}`, tone: "bg-sky-50 border-sky-300 text-sky-700",
+      key: "approvals", label: "طلبات محتاجة موافقة", value: `${pending}`, tone: "bg-sky-50 border-sky-300 text-sky-700 dark:bg-sky-950/40 dark:border-sky-700/60 dark:text-sky-300",
       onClick: () => setView("approvals"),
     });
   }
   if (paymentIssues.length > 0) {
     items.push({
-      key: "pay", label: "ملاحظات دفع", value: `${paymentIssues.length}`, tone: "bg-rose-50 border-rose-300 text-rose-700",
+      key: "pay", label: "ملاحظات دفع", value: `${paymentIssues.length}`, tone: "bg-rose-50 border-rose-300 text-rose-700 dark:bg-rose-950/40 dark:border-rose-700/60 dark:text-rose-300",
       onClick: () => setView("payments"),
     });
   }
 
   if (items.length === 0) {
     return (
-      <div className="flex items-center gap-2 rounded-2xl border-2 border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700 font-extrabold text-sm">
+      <div className="flex items-center gap-2 rounded-2xl border-2 border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700 font-extrabold text-sm dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300">
         <CheckCircle2 className="w-5 h-5" />
         كل حاجة تمام — مفيش حاجة محتاجة انتباه
       </div>
@@ -98,6 +98,8 @@ type DashData = {
   sessions: SessionCard[];
   plannedSessions?: PlannedSession[];
   role: string;
+  /** TEACHER بس: false = الحساب مش مربوط بكيان مدرس → القايمة فاضية عمدًا */
+  teacherLinked?: boolean;
   quickStats: { students: number };
   opsSummary?: {
     activeSessions: number;
@@ -147,6 +149,9 @@ export function DashboardView({ user, setView, openSession, goScanForSession }: 
 
   const isManager = user.role === "MANAGER";
   const isTeacher = user.role === "TEACHER";
+  // أزرار الحصص بتتحسب بصلاحيات الحساب (السيرفر بيفضل الحارس — دي بس إخفاء أزرار مش هتشتغل)
+  const canMark = userCan(user, "EDIT_ATTENDANCE");
+  const canStart = userCan(user, "START_SESSION");
   const planned = data.plannedSessions ?? [];
   const totalToday = data.sessions.length + planned.length;
   const nowSession = data.sessions.find((s) => s.status === "OPEN" && sessionPhase(s.startTime, s.endTime) === "now");
@@ -167,11 +172,18 @@ export function DashboardView({ user, setView, openSession, goScanForSession }: 
         <OpsSummaryStrip summary={data.opsSummary} openSession={openSession} setView={setView} />
       )}
 
-      {/* ===== Teacher: جدول النهاردة بس (النظام حضور + مالية) ===== */}
+      {/* ===== Teacher: جدول النهاردة بس (النظام حضور + مالية — حساب المدرس مالوش شاشة طلاب في التطبيق الرئيسي) ===== */}
       {isTeacher && (
-        <div className="grid grid-cols-2 gap-3 nk-anim-stagger">
-          <BigAction icon={<CalendarDays className="w-7 h-7" />} label="جدول النهاردة" desc={`${totalToday} حصة`} onClick={() => setView("schedule")} primary />
-          <BigAction icon={<Users className="w-7 h-7" />} label="طلابي" desc="متابعة الطلاب" onClick={() => setView("students")} />
+        <div className="grid gap-3 nk-anim-stagger">
+          <BigAction icon={<CalendarDays className="w-7 h-7" />} label="جدول النهاردة" desc={`${totalToday} حصة — افتح الجدول الكامل`} onClick={() => setView("schedule")} primary />
+        </div>
+      )}
+
+      {/* ===== Teacher مش مربوط بكيان مدرس → تلميح واضح بدل جدول فاضي ملوش سبب ===== */}
+      {isTeacher && data.role === "TEACHER" && data.teacherLinked === false && (
+        <div className="flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800 text-sm font-bold dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-200">
+          <AlertTriangle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
+          <span>حسابك مش مربوط بمدرس في الجدول — كلّم المدير يربطه من إدارة الموظفين عشان تشوف حصصك هنا.</span>
         </div>
       )}
 
@@ -206,7 +218,7 @@ export function DashboardView({ user, setView, openSession, goScanForSession }: 
           {data.alerts!.map((a, i) => (
             <div key={i} className={cn(
               "flex items-center gap-2.5 rounded-2xl border px-4 py-3 text-sm font-bold",
-              a.level === "warn" ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-sky-50 border-sky-200 text-sky-800"
+              a.level === "warn" ? "bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-200" : "bg-sky-50 border-sky-200 text-sky-800 dark:bg-sky-950/40 dark:border-sky-800/60 dark:text-sky-200"
             )}>
               <AlertTriangle className="w-4.5 h-4.5 shrink-0" />
               {a.text}
@@ -244,8 +256,8 @@ export function DashboardView({ user, setView, openSession, goScanForSession }: 
                   key={s.id}
                   className={cn(
                     "rounded-2xl border p-4 flex items-center gap-3.5 transition",
-                    running ? "border-emerald-300 bg-emerald-50/70" :
-                    cancelled ? "border-rose-200 bg-rose-50/40 opacity-75" :
+                    running ? "border-emerald-300 bg-emerald-50/70 dark:bg-emerald-950/40 dark:border-emerald-700/60" :
+                    cancelled ? "border-rose-200 bg-rose-50/40 opacity-75 dark:bg-rose-950/40 dark:border-rose-800/60" :
                     isOpen ? "border-[color-mix(in_srgb,var(--c-primary)_30%,white)] bg-card" :
                     "border-border bg-muted/40 opacity-80",
                   )}
@@ -272,7 +284,7 @@ export function DashboardView({ user, setView, openSession, goScanForSession }: 
                       )}
                     </p>
                   </button>
-                  {isOpen && (
+                  {isOpen && canMark && (
                     <button
                       onClick={() => goScanForSession(s.id)}
                       className="shrink-0 rounded-xl px-4 py-3 font-extrabold text-sm flex items-center gap-2 active:scale-[0.98] transition shadow nk-brand-bg text-white"
@@ -306,7 +318,7 @@ export function DashboardView({ user, setView, openSession, goScanForSession }: 
                   </div>
                   <button
                     onClick={() => openLesson(p.scheduleId)}
-                    disabled={opening === p.scheduleId}
+                    disabled={opening === p.scheduleId || !canStart}
                     className="shrink-0 rounded-xl px-4 py-3 font-extrabold text-sm flex items-center gap-2 active:scale-[0.98] transition shadow border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,white)] bg-card nk-brand-text disabled:opacity-60"
                   >
                     {opening === p.scheduleId ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : <LockOpen className="w-4.5 h-4.5" />}
@@ -332,9 +344,9 @@ export function DashboardView({ user, setView, openSession, goScanForSession }: 
             {data.cash.difference !== null && (
               <div className={cn(
                 "mt-3 rounded-xl border px-4 py-3 font-bold text-sm",
-                data.cash.difference === 0 ? "bg-emerald-50 border-emerald-200 text-emerald-700" :
-                data.cash.difference > 0 ? "bg-sky-50 border-sky-200 text-sky-700" :
-                "bg-rose-50 border-rose-200 text-rose-700"
+                data.cash.difference === 0 ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300" :
+                data.cash.difference > 0 ? "bg-sky-50 border-sky-200 text-sky-700 dark:bg-sky-950/40 dark:border-sky-800/60 dark:text-sky-300" :
+                "bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300"
               )}>
                 <Scale className="w-4 h-4 inline me-1.5" />
                 فرق الصندوق: {fmt(data.cash.difference)} جنيه {data.cash.difference < 0 ? "(ناقص)" : data.cash.difference > 0 ? "(زيادة)" : "(مظبوط)"}
