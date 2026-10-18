@@ -1,5 +1,6 @@
 import "server-only";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
 
@@ -11,6 +12,18 @@ import crypto from "node:crypto";
 // ============================================================
 
 const KEY_PATH = path.join(process.cwd(), "db", "emergency-signing.pem");
+/** المفتاح بييجي من env في الإنتاج (بيتشرم على Vercel) — الملف للديف بس.
+ *  بيقبل PEM خام أو base64 (عشان newlines مبتتكسش في لوحة الـ env). */
+function envSigningPem(): string | null {
+  const raw = process.env.EMERGENCY_SIGNING_KEY?.trim();
+  if (!raw) return null;
+  if (raw.includes("-----BEGIN")) return raw.replace(/\\n/g, "\n") + "\n";
+  try {
+    const decoded = Buffer.from(raw, "base64").toString("utf8");
+    if (decoded.includes("-----BEGIN")) return decoded;
+  } catch { /* مش base64 */ }
+  return null;
+}
 export const EMERGENCY_LICENSE_DAYS = 7;
 export const EMERGENCY_APP_VERSION = "1.0.0";
 export const EMERGENCY_SCHEMA_VERSION = 1;
@@ -55,9 +68,16 @@ type KeyPair = {
 
 let cached: KeyPair | null = null;
 
-/** تحميل/توليد زوج المفاتيح مرة واحدة (RSA-2048) */
+/** تحميل/توليد زوج المفاتيح مرة واحدة (RSA-2048)
+ *  الترتيب: env (إنتاج) → ملف (ديف) → توليد جديد مع محاولة حفظ
+ *  (على Vercel الكتابة بتفشل — FS للقراءة فقط → مفتاح مؤقت بالذاكرة + تحذير صريح) */
 export function getSigningKeys(): KeyPair {
   if (cached) return cached;
+  const fromEnv = envSigningPem();
+  if (fromEnv) {
+    cached = deriveFromPrivate(fromEnv);
+    return cached;
+  }
   if (fs.existsSync(KEY_PATH)) {
     const privatePem = fs.readFileSync(KEY_PATH, "utf8");
     cached = deriveFromPrivate(privatePem);
@@ -68,8 +88,20 @@ export function getSigningKeys(): KeyPair {
     publicKeyEncoding: { type: "spki", format: "pem" },
     privateKeyEncoding: { type: "pkcs8", format: "pem" },
   });
-  fs.mkdirSync(path.dirname(KEY_PATH), { recursive: true });
-  fs.writeFileSync(KEY_PATH, privateKey, { mode: 0o600 });
+  try {
+    fs.mkdirSync(path.dirname(KEY_PATH), { recursive: true });
+    fs.writeFileSync(KEY_PATH, privateKey, { mode: 0o600 });
+  } catch {
+    // FS للقراءة فقط (لامدا Vercel) — نكمل بمفتاح مؤقت في الذاكرة/‏tmp
+    // ⚠️ الحزم الموقعة قبل كده مش هتتسترجع بعد كول ستارت جديد — ضيف EMERGENCY_SIGNING_KEY في الـ env
+    console.warn("[emergency-license] مفيش مفتاح محفوظ — مفتاح مؤقت بالذاكرة. ضيف EMERGENCY_SIGNING_KEY في env الإنتاج.");
+    try {
+      const tmpKey = path.join(os.tmpdir(), "emergency-signing.pem");
+      if (!fs.existsSync(tmpKey)) fs.writeFileSync(tmpKey, privateKey, { mode: 0o600 });
+      cached = deriveFromPrivate(fs.readFileSync(tmpKey, "utf8"));
+      return cached;
+    } catch { /* حتى tmp مقفول — الذاكرة بس */ }
+  }
   cached = {
     privatePem: privateKey,
     publicPem: publicKey,
