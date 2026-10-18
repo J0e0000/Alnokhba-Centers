@@ -47,10 +47,10 @@ export const CAPABILITY_CATALOG: Record<CapabilityKey, CapabilityMeta> = {
     methods: ["STATIC_QR"],
   },
   dynamic_qr: {
-    label: "QR متغير (QR الحصة)",
-    desc: "كود يتغير تلقائيًا كل 10 ثواني لمنع استخدام صورة QR قديمة — يظهر على شاشة الحصة.",
+    label: "QR متغير (QR الحصة) — حضور ذاتي",
+    desc: "كود يتغير تلقائيًا كل 10 ثواني — الطالب يمسحه من موبايله يسجّل حضوره بنفسه. مطفي افتراضيًا — فعّلها من هنا بس لو شغال بيها، والوضع العادي (الكود/الكارت/الاسم) مش بيتأثر خالص.",
     group: "students",
-    defaultEnabled: true,
+    defaultEnabled: false,
     methods: ["DYNAMIC_QR"],
   },
   student_self_scan: {
@@ -107,7 +107,7 @@ export function isCapabilityKey(k: string): k is CapabilityKey {
 export type CapabilityState = { enabled: boolean; config: Record<string, unknown> };
 export type CapabilityMap = Record<CapabilityKey, CapabilityState>;
 
-/** الخريطة الافتراضية (قبل أي تخصيص) — كل الميزات الموجودة شغالة عشان مفيش حاجة تتكسر */
+/** الخريطة الافتراضية (قبل أي تخصيص) — من الكتالوج: QR الحصة المتغير مطفي افتراضيًا (طلب المالك) والباقي زي ما هو */
 export function defaultCapabilityMap(): CapabilityMap {
   const map = {} as CapabilityMap;
   for (const key of CAPABILITY_KEYS) {

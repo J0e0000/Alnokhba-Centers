@@ -75,6 +75,7 @@ export function UnifiedAttendancePanel({ user }: { user: SessionUser }) {
   const [marking, setMarking] = useState<Record<string, boolean>>({});
   const lastActivityRef = useRef(Date.now());
   const inputRef = useRef<HTMLInputElement>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
 
   const online = useOnlineStatus();
   const nameCap = caps.name_attendance.enabled; // كتابة كود + ضغطة اسم = NAME
@@ -177,6 +178,11 @@ export function UnifiedAttendancePanel({ user }: { user: SessionUser }) {
   }, [online]);
   useEffect(() => { resolveRef.current = resolve; }, [resolve]);
 
+  // كارت النتيجة يظهر مرئي فورًا — بيتمركز في الشاشة (فوق الشريط العايم والروبوت)
+  useEffect(() => {
+    if (res) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [res]);
+
   // ===== تسجيل حضور (قلب التسجيل للطرق التلاتة) =====
   const doMark = useCallback(async (opts: {
     studentId: string; sessionId: string; status?: "PRESENT" | "LATE";
@@ -266,7 +272,7 @@ export function UnifiedAttendancePanel({ user }: { user: SessionUser }) {
             </span>
             لوحة الحضور الموحدة
           </h2>
-          <p className="text-[11px] font-bold text-muted-foreground mt-1 mb-0">
+          <p className="text-[11px] font-bold text-muted-foreground mt-1 mb-0 hidden sm:block">
             اكتب الكود أو امسح — والنظام يوصل الطالب لمجموعته لوحده، حتى لو أكتر من حصة شغالة.
           </p>
         </div>
@@ -289,7 +295,7 @@ export function UnifiedAttendancePanel({ user }: { user: SessionUser }) {
         <div className="px-4 pb-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5" data-testid="live-strip">
             {openSessions.map((s) => (
-              <div key={s.id} className="rounded-2xl border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,white)] bg-gradient-to-b from-[color-mix(in_srgb,var(--c-primary)_7%,white)] to-card p-3 min-w-0">
+              <div key={s.id} className="rounded-2xl border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,var(--card))] bg-gradient-to-b from-[color-mix(in_srgb,var(--c-primary)_8%,var(--card))] to-card p-3 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <b className="text-[13.5px] font-extrabold truncate">{s.subject} · {s.grade} {s.groupName}</b>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-[#052E2B] text-[#5EEAD4] px-2.5 py-1 text-[10.5px] font-extrabold shrink-0">
@@ -383,7 +389,7 @@ export function UnifiedAttendancePanel({ user }: { user: SessionUser }) {
               <CapOff warn msg="أنت أوفلاين — الحضور الموحد محتاج نت. استخدم «وضع الحصة المحددة» تحت." />
             ) : camOn ? (
               <>
-                <div className="overflow-hidden rounded-2xl border-2 border-dashed border-[color-mix(in_srgb,var(--c-primary)_40%,white)]">
+                <div className="overflow-hidden rounded-2xl border-2 border-dashed border-[color-mix(in_srgb,var(--c-primary)_40%,var(--card))]">
                   <QrCameraScanner active={camOn} onScan={onScan} />
                 </div>
                 <button type="button" onClick={() => setCamOn(false)}
@@ -393,7 +399,7 @@ export function UnifiedAttendancePanel({ user }: { user: SessionUser }) {
               </>
             ) : (
               <button type="button" onClick={() => { touchActivity(); setCamOn(true); }} data-testid="ua-open-cam"
-                className="w-full rounded-2xl border-2 border-dashed border-[color-mix(in_srgb,var(--c-primary)_40%,white)] bg-[color-mix(in_srgb,var(--c-primary)_8%,white)] nk-brand-text rounded-2xl py-6 font-extrabold text-[15px] flex flex-col items-center gap-1.5 justify-center min-h-[110px] transition active:scale-[0.99]">
+                className="w-full rounded-2xl border-2 border-dashed border-[color-mix(in_srgb,var(--c-primary)_40%,var(--card))] bg-[color-mix(in_srgb,var(--c-primary)_8%,var(--card))] nk-brand-text rounded-2xl py-6 font-extrabold text-[15px] flex flex-col items-center gap-1.5 justify-center min-h-[110px] transition active:scale-[0.99]">
                 <ScanLine className="w-8 h-8" />
                 شغّل الكاميرا وامسح كارت الطالب
                 <span className="text-[11px] font-bold text-muted-foreground">النظام هيسجله في مجموعته لوحده</span>
@@ -488,21 +494,23 @@ export function UnifiedAttendancePanel({ user }: { user: SessionUser }) {
           </div>
         )}
 
-        {/* ===== كارت النتيجة — «🎯 راح مجموعته» ===== */}
-        {res && (
-          <ResultCardUA
-            res={res}
-            busy={busy}
-            lateCap={lateCap}
-            canRegister={!!res.canRegister}
-            onMark={(status) => res.student && res.session && doMark({
-              studentId: res.student.id, sessionId: res.session.id, status,
-              display: res.student.name, sessLabel: `${res.session.subject} ${res.session.groupName}`,
-            })}
-            onClose={() => setRes(null)}
-            onRetry={(code) => resolve(code)}
-          />
-        )}
+        {/* ===== كارت النتيجة — «🎯 راح مجموعته» — بيتوسّط في الشاشة أوتوماتيك ===== */}
+        <div ref={resultRef}>
+          {res && (
+            <ResultCardUA
+              res={res}
+              busy={busy}
+              lateCap={lateCap}
+              canRegister={!!res.canRegister}
+              onMark={(status) => res.student && res.session && doMark({
+                studentId: res.student.id, sessionId: res.session.id, status,
+                display: res.student.name, sessLabel: `${res.session.subject} ${res.session.groupName}`,
+              })}
+              onClose={() => setRes(null)}
+              onRetry={(code) => resolve(code)}
+            />
+          )}
+        </div>
 
         {/* ===== آخر التسجيلات ===== */}
         {feed.length > 0 && (
@@ -555,7 +563,7 @@ function ResultCardUA({ res, busy, lateCap, canRegister, onMark, onClose, onRetr
       data-testid="ua-result"
       className={cn(
         "mt-3.5 rounded-2xl border-2 p-3.5",
-        sess && !done && "border-[color-mix(in_srgb,var(--c-primary)_45%,white)] bg-gradient-to-b from-[color-mix(in_srgb,var(--c-primary)_8%,white)] to-card",
+        sess && !done && "border-[color-mix(in_srgb,var(--c-primary)_45%,var(--card))] bg-gradient-to-b from-[color-mix(in_srgb,var(--c-primary)_8%,var(--card))] to-card",
         (!sess || done) && "border-[var(--nk-warn-border)] bg-[var(--nk-warn-bg)]",
       )}
     >

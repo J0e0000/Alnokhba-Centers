@@ -26,6 +26,35 @@ import {
 const CAPS_TTL_MS = 30_000;
 const capsCache = new Map<string, { at: number; map: CapabilityMap }>();
 
+/* ---- هجرة إعدادية لمرة واحدة (طلب المالك): «QR الحصة المتغير» العادي يكون مطفي ----
+ * الصفوف القديمة كانت اتزرعت لما الافتراضي كان شغال — بنطفيها مرة واحدة لكل سنتر.
+ * السينتينل (مفتاح مش قدرة ولا module: فمتجاهل في كل القراءات) بيمنع تكرار الهجرة
+ * — فلو المالك فعّلها بعدها من الإعدادات، اختياره محفوظ على كل النشرات الجاية. */
+const DQR_OFF_SENTINEL = "mig:dynamic_qr_off_v1";
+const dqrMigrated = new Set<string>();
+
+async function migrateDynamicQrDefaultOff(centerId: string): Promise<void> {
+  if (dqrMigrated.has(centerId)) return;
+  dqrMigrated.add(centerId);
+  try {
+    const done = await db.centerCapability.findUnique({
+      where: { centerId_key: { centerId, key: DQR_OFF_SENTINEL } },
+    });
+    if (done) return;
+    const res = await db.centerCapability.updateMany({
+      where: { centerId, key: "dynamic_qr", enabled: true },
+      data: { enabled: false },
+    });
+    await db.centerCapability.create({
+      data: { centerId, key: DQR_OFF_SENTINEL, enabled: false, config: JSON.stringify({ appliedAt: new Date().toISOString(), flipped: res.count }) },
+    }).catch(() => {}); // سباق بين انستنسين → السينتينل موجود خلاص والطفي اتطبق
+    if (res.count > 0) console.log(`[caps-migration] dynamic_qr → off (${res.count}) center=${centerId}`);
+  } catch {
+    // فشل الهجرة عمره ما بيكسر قراءة القدرات — بيتشال من الست عشان ينعاد في نداء جاي
+    dqrMigrated.delete(centerId);
+  }
+}
+
 /** إلغاء الكاش — بيتنادي من أي route بيعدّل قدرات سنتر */
 export function invalidateCenterCapabilities(centerId?: string): void {
   if (centerId) capsCache.delete(centerId);
@@ -34,6 +63,7 @@ export function invalidateCenterCapabilities(centerId?: string): void {
 
 /** يقرأ قدرات المركز ويزرع الافتراضي الناقص (idempotent) */
 export async function getCenterCapabilities(centerId: string): Promise<CapabilityMap> {
+  await migrateDynamicQrDefaultOff(centerId);
   const hit = capsCache.get(centerId);
   if (hit && Date.now() - hit.at < CAPS_TTL_MS) return hit.map;
   const rows = await db.centerCapability.findMany({ where: { centerId } });

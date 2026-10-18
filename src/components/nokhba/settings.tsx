@@ -283,7 +283,7 @@ export function SettingsView({ user, onBrandingChanged }: { user: SessionUser; o
       <PageHeader title="الإعدادات" subtitle="هوية السنتر والقوالب والموظفين والسجل" />
 
       <div className="flex gap-1.5 overflow-x-auto nk-scroll pb-1">
-        {TABS.filter((t) => t.id !== "agent" || user.role === "MANAGER").map((t) => (
+        {TABS.filter((t) => (t.id !== "agent" && t.id !== "attendance" && t.id !== "modules") || user.role === "MANAGER").map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={cn(
               "shrink-0 rounded-2xl border px-4 py-2.5 font-extrabold text-sm transition flex items-center gap-2",
@@ -295,7 +295,8 @@ export function SettingsView({ user, onBrandingChanged }: { user: SessionUser; o
       </div>
 
       {tab === "branding" && <BrandingTab user={user} onBrandingChanged={onBrandingChanged} />}
-      {tab === "attendance" && <AttendanceTab />}
+      {/* الحضور (قدرات المركز) للمدير بس — السيرفر بيرفض أي تعديل من غيره فالتاب مالوش لازمة للموظف */}
+      {tab === "attendance" && user.role === "MANAGER" && <AttendanceTab />}
       {tab === "modules" && user.role === "MANAGER" && <ModulesTab />}
       {tab === "whatsapp" && <WhatsAppTab />}
       {tab === "staff" && <StaffTab />}

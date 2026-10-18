@@ -113,9 +113,10 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
         startTime: p.startTime, endTime: p.endTime,
         requireRoomPin: true,
       } });
-      toast.success("حضور مفتوح فتح 🟢 — الكود ظهر للطلاب (من غير كشف)");
+      toast.success(caps.dynamic_qr.enabled ? "حضور مفتوح فتح 🟢 — الكود ظهر للطلاب (من غير كشف)" : "حضور مفتوح فتح 🟢 — سجّل بالكود أو الاسم من لوحة الحضور");
       window.dispatchEvent(new CustomEvent("nk-sessions-changed"));
-      openSession(res.session.id, { tab: "attendance", qrFullscreen: true });
+      // لو QR الحصة مطفي (الافتراضي) مفيش شاشة كود تتفتح — اللوحة الموحدة هي اللي فوق في التاب
+      openSession(res.session.id, caps.dynamic_qr.enabled ? { tab: "attendance", qrFullscreen: true } : { tab: "attendance" });
     } catch { /* toast */ } finally { setOpening(null); }
   }
 
@@ -166,7 +167,7 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
             {/* الحضور المفتوح — أسرع طريق لبدء تسجيل من غير داتابيز (اختيار المستخدم الحرفي) */}
             <button
               onClick={() => { setNewSource("OPEN"); setNewOpen(true); }}
-              className="rounded-xl border-2 border-[color-mix(in_srgb,var(--c-primary)_45%,white)] bg-[color-mix(in_srgb,var(--c-primary)_10%,white)] nk-brand-text px-3.5 py-2.5 font-extrabold text-xs flex items-center gap-1.5 active:scale-[0.98] transition"
+              className="rounded-xl border-2 border-[color-mix(in_srgb,var(--c-primary)_45%,var(--card))] bg-[color-mix(in_srgb,var(--c-primary)_10%,var(--card))] nk-brand-text px-3.5 py-2.5 font-extrabold text-xs flex items-center gap-1.5 active:scale-[0.98] transition"
             >
               <Globe2 className="w-4 h-4" />
               حضور مفتوح ⚡
@@ -180,7 +181,7 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
             </button>
             <button
               onClick={printDaySchedule}
-              className="rounded-xl border-2 border-border bg-card px-3.5 py-2.5 font-extrabold text-xs flex items-center gap-1.5 hover:border-[color-mix(in_srgb,var(--c-primary)_35%,white)] transition"
+              className="rounded-xl border-2 border-border bg-card px-3.5 py-2.5 font-extrabold text-xs flex items-center gap-1.5 hover:border-[color-mix(in_srgb,var(--c-primary)_35%,var(--card))] transition"
             >
               <Printer className="w-4 h-4" />
               طباعة جدول القاعات
@@ -267,8 +268,8 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
                   {isOpen && (
                     <div className="shrink-0 flex items-center gap-2">
                       <ActionPill icon={<PlayCircle className="w-4 h-4" />} label="متابعة" onClick={() => openSession(s.id)} tooltip="فتح شاشة الحصة الحية" />
-                      {/* الحصة المفتوحة: زرار الكود — الشاشة الكبيرة من مكان واحد (workflow) */}
-                      {s.studentSource === "OPEN" && (
+                      {/* الحصة المفتوحة: زرار الكود — بس لما QR الحصة المتغير مفعّل من الإعدادات (افتراضيًا مطفي) */}
+                      {s.studentSource === "OPEN" && caps.dynamic_qr.enabled && (
                         <ActionSquare icon={<QrCode className="w-5 h-5" />} label="الكود" variant="primary" size="sm" onClick={() => openSession(s.id, { tab: "attendance", qrFullscreen: true })} tooltip="عرض كود الحضور بحجم الشاشة" />
                       )}
                       {scanScreenAvailable && (

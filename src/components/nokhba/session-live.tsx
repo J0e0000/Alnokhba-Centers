@@ -1034,21 +1034,22 @@ function AttendanceStage({ data, user, caps, sessionId, roster, isOpenSession, c
         </div>
       )}
 
-      {/* ===== أدوات السنترز المحفوظة — كود الحصة + المسح + النشاط المشبوه ===== */}
+      {/* ===== أدوات السنترز المحفوظة — المسح المدمج هو الأداة الأساسية (فوق) وكود الحصة تحته اختياري ===== */}
+      {!closed && (caps.static_qr.enabled || caps.name_attendance.enabled) && (
+        !isOpenSession ? (
+          <FoldSection
+            title="المسح المدمج"
+            icon={<ScanLine className="w-4 h-4" />}
+            collapsedSummary={<span className="text-[11px] font-bold text-muted-foreground hidden sm:block">كشف الحصة — نفس محرك شاشة الحضور</span>}
+          >
+            <ScanView user={user} embedded sessionOverride={sessionId} clearSessionOverride={() => {}} />
+          </FoldSection>
+        ) : (
+          <ScanView user={user} embedded sessionOverride={sessionId} clearSessionOverride={() => {}} />
+        )
+      )}
       {!closed && caps.dynamic_qr.enabled && (
         <SessionQrCard sessionId={sessionId} autoFullscreen={autoFullQr} onFullscreenHandled={onFullscreenHandled} />
-      )}
-      {!closed && !isOpenSession && (caps.static_qr.enabled || caps.name_attendance.enabled) && (
-        <FoldSection
-          title="المسح المدمج"
-          icon={<ScanLine className="w-4 h-4" />}
-          collapsedSummary={<span className="text-[11px] font-bold text-muted-foreground hidden sm:block">كشف الحصة — نفس محرك شاشة الحضور</span>}
-        >
-          <ScanView user={user} embedded sessionOverride={sessionId} clearSessionOverride={() => {}} />
-        </FoldSection>
-      )}
-      {!closed && isOpenSession && (caps.static_qr.enabled || caps.name_attendance.enabled) && (
-        <ScanView user={user} embedded sessionOverride={sessionId} clearSessionOverride={() => {}} />
       )}
 
       <AttendanceTable data={data} printAttendance={printAttendance} showPrint />
@@ -1466,7 +1467,7 @@ function AttendanceTable({ data, printAttendance, showPrint }: {
         showPrint ? (
           <button
             onClick={(e) => { e.stopPropagation(); printAttendance(); }}
-            className="border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,white)] dark:border-[color-mix(in_srgb,var(--c-primary)_57%,#0d1420)] bg-card nk-brand-text font-extrabold rounded-xl px-3 py-1.5 flex items-center gap-1.5 text-xs active:scale-[0.98] shrink-0"
+            className="border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,var(--card))] dark:border-[color-mix(in_srgb,var(--c-primary)_57%,#0d1420)] bg-card nk-brand-text font-extrabold rounded-xl px-3 py-1.5 flex items-center gap-1.5 text-xs active:scale-[0.98] shrink-0"
           >
             <Printer className="w-4 h-4" />طباعة
           </button>

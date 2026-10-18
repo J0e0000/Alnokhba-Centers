@@ -64,3 +64,6 @@ scripts/pgtest/pgdata/
 scripts/pgtest/pg.pid
 scripts/pgtest/pg.log
 scripts/pgtest/dev-pg.log
+
+*.db-shm
+*.db-wal

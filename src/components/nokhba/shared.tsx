@@ -47,14 +47,14 @@ export function ThemeToggle({ className }: { className?: string }) {
 
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return (
-    /* موبايل: العنوان فوق والأزرار تحته بلفّ لسطرين — ديسك توب: جنب بعض زي ما كان.
-       قبل كده كان flex واحد أفقي: 3 أزرار (~400px) كانت تزحم العنوان وتعمل overflow أفقي للصفحة كلها على الموبايل. */
+    /* نفس هيرو الرئيسية (لغة نموذج الطوارئ): عنوان أسود ثقيل + بوابة نيفي/تيل + وصف —
+       موبايل: العنوان فوق والأزرار تحته — ديسك توب: جنب بعض. */
     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5 sm:gap-3 mb-4 md:mb-5">
       <div className="min-w-0">
-        <h1 data-tour="view-header" className="text-xl md:text-2xl font-extrabold tracking-tight nk-brand-text">{title}</h1>
-        {/* فاصل بوابة النخبة — صدى هندسة اللوجو */}
-        <span className="block nk-portal-divider mt-1.5 mb-1" aria-hidden />
-        {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
+        <h1 data-tour="view-header" className="text-xl sm:text-2xl font-black tracking-tight leading-snug">{title}</h1>
+        {/* بوابة الطوارئ — قطعتين تيل/نيفي زي الرئيسية */}
+        <div className="nk2-gate" aria-hidden />
+        {subtitle && <p className="text-sm font-bold text-muted-foreground mt-1">{subtitle}</p>}
       </div>
       {action && (
         <div className="nk-page-actions shrink-0 max-w-full">
@@ -70,9 +70,21 @@ export function Stat({
 }: {
   label: string; value: ReactNode; hint?: ReactNode; tone?: "default" | "brand" | "success" | "warning" | "danger" | "muted"; icon?: ReactNode; large?: boolean;
 }) {
+  /* بلاطة نيفي (لغة الرئيسية/الطوارئ) — نفس شكل nk2-stat بالظبط */
+  if (tone === "brand") {
+    return (
+      <div className="nk2-stat">
+        <div className="flex items-center justify-between gap-2">
+          <small>{label}</small>
+          {icon && <span className="text-white/90">{icon}</span>}
+        </div>
+        <strong className={large ? "!text-2xl md:!text-3xl" : undefined}>{value}</strong>
+        {hint && <span className="block text-[11px] md:text-xs font-bold text-white/80 mt-0.5">{hint}</span>}
+      </div>
+    );
+  }
   const tones: Record<string, string> = {
     default: "nk-card",
-    brand: "nk-brand-grad nk-portal-card text-white border-transparent shadow-md",
     success: "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-900",
     warning: "bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-900",
     danger: "bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-900",
@@ -81,11 +93,11 @@ export function Stat({
   return (
     <div className={cn("rounded-2xl border p-4 flex flex-col gap-1", tones[tone])}>
       <div className="flex items-center justify-between gap-2">
-        <span className={cn("text-xs md:text-[13px] font-semibold", tone === "brand" ? "text-white" : "text-muted-foreground")}>{label}</span>
-        {icon && <span className={cn(tone === "brand" ? "text-white/95" : "text-muted-foreground/70")}>{icon}</span>}
+        <span className="text-xs md:text-[13px] font-semibold text-muted-foreground">{label}</span>
+        {icon && <span className="text-muted-foreground/70">{icon}</span>}
       </div>
-      <span className={cn("nk-num font-extrabold", large ? "text-2xl md:text-3xl" : "text-lg md:text-xl", tone === "brand" && "text-white")}>{value}</span>
-      {hint && <span className={cn("text-[11px] md:text-xs", tone === "brand" ? "text-white/95" : "text-muted-foreground")}>{hint}</span>}
+      <span className={cn("nk-num font-extrabold", large ? "text-2xl md:text-3xl" : "text-lg md:text-xl")}>{value}</span>
+      {hint && <span className="text-[11px] md:text-xs text-muted-foreground">{hint}</span>}
     </div>
   );
 }
@@ -186,15 +198,24 @@ export function ListSkeleton({ rows = 5 }: { rows?: number }) {
 }
 
 export function SectionCard({ title, icon, action, children, className }: { title?: string; icon?: ReactNode; action?: ReactNode; children: ReactNode; className?: string }) {
+  /* كارت الطوارئ: شريط علوي متدرج (تيل→نيفي) + عنوان جوه الكارت — نفس لغة الرئيسية.
+     nk2-card بيجي padding مدمج فبنلغيه ونتحكم في الفراغ يدويًا. */
   return (
-    <section className={cn("nk-card rounded-2xl overflow-hidden", className)}>
+    <section className={cn("nk2-card !p-0 overflow-hidden", className)}>
       {(title || action) && (
-        <header className="flex items-center justify-between gap-2 px-4 py-3 border-b nk-brand-bg-soft">
-          <h2 className="font-bold text-sm md:text-base flex items-center gap-2">{icon}{title}</h2>
+        <header className="flex items-center justify-between gap-2 px-4 pt-4 pb-2.5">
+          <h2 className="nk2-sec-title flex items-center gap-2">
+            {icon && (
+              <span className="w-8 h-8 rounded-xl nk-brand-bg-soft nk-brand-text grid place-items-center shrink-0 [&>svg]:w-4 [&>svg]:h-4">
+                {icon}
+              </span>
+            )}
+            <span className="min-w-0">{title}</span>
+          </h2>
           {action}
         </header>
       )}
-      <div className="p-4">{children}</div>
+      <div className={cn("p-4", title && "pt-2.5")}>{children}</div>
     </section>
   );
 }

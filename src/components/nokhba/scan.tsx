@@ -411,7 +411,7 @@ export function ScanView({ user, sessionOverride, clearSessionOverride, embedded
   if (loading) {
     return (
       <div className="space-y-4">
-        {!embedded && <PageHeader title="الحضور" subtitle="ابحث بالاسم أو امسح QR أو اكتب الكود — سؤال واحد بس وخلاص" />}
+        {!embedded && <PageHeader title="الحضور" subtitle="لوحة واحدة لكل طرق التسجيل — كود · سكان · اسم" />}
         {!embedded && (
           <SectionCard title="حصة النهاردة" icon={<ScanLine className="w-4 h-4" />}>
             <ChipsSkeleton count={3} />
@@ -425,8 +425,8 @@ export function ScanView({ user, sessionOverride, clearSessionOverride, embedded
   }
 
   return (
-    <div className="space-y-4">
-      {!embedded && <PageHeader title="الحضور" subtitle="اكتب الكود أو امسح الكارت — والنظام يوصّل الطالب لمجموعته لوحده" />}
+    <div className="space-y-4 pb-20 lg:pb-0">
+      {!embedded && <PageHeader title="الحضور" subtitle="لوحة واحدة لكل طرق التسجيل — كود · سكان · اسم" />}
 
       {/* حالة الاتصال + طابور الحضور الأوفلاين */}
       <OfflineStatusBar />
@@ -516,7 +516,7 @@ export function ScanView({ user, sessionOverride, clearSessionOverride, embedded
                   onClick={() => { setActiveSessionId(s.id); setResult(null); }}
                   className={cn(
                     "shrink-0 rounded-2xl border px-3.5 py-2.5 text-start transition min-w-[150px]",
-                    activeSessionId === s.id ? "nk-brand-bg text-white border-transparent shadow" : "bg-card border-border hover:border-[color-mix(in_srgb,var(--c-primary)_40%,white)]"
+                    activeSessionId === s.id ? "nk-brand-bg text-white border-transparent shadow" : "bg-card border-border hover:border-[color-mix(in_srgb,var(--c-primary)_40%,var(--card))]"
                   )}
                 >
                   <span className="block text-xs font-bold opacity-80">{formatTime12(s.startTime)} {s.room ? `· ${s.room}` : ""} · {phaseChipLabel(s, viewDate)}</span>
@@ -668,7 +668,7 @@ export function ScanView({ user, sessionOverride, clearSessionOverride, embedded
             <button
               type="button"
               onClick={() => setKiosk(true)}
-              className="flex-1 min-w-[160px] rounded-xl border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,white)] bg-card nk-brand-text font-extrabold px-3 py-2.5 text-xs flex items-center justify-center gap-1.5 active:scale-[0.98] transition"
+              className="flex-1 min-w-[160px] rounded-xl border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,var(--card))] bg-card nk-brand-text font-extrabold px-3 py-2.5 text-xs flex items-center justify-center gap-1.5 active:scale-[0.98] transition"
             >
               <Monitor className="w-4 h-4" /> وضع الكشك الذاتي (تابلت الباب)
             </button>
@@ -1233,7 +1233,7 @@ function ResultCard({ result, onClose, onComplete, busy, user }: {
                   <button
                     onClick={returnChange}
                     disabled={busy}
-                    className="sm:max-w-[220px] border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,white)] bg-card nk-brand-text font-extrabold rounded-xl px-4 py-3.5 shadow active:scale-[0.99] disabled:opacity-60 flex items-center justify-center gap-2"
+                    className="sm:max-w-[220px] border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,var(--card))] bg-card nk-brand-text font-extrabold rounded-xl px-4 py-3.5 shadow active:scale-[0.99] disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     <Banknote className="w-5 h-5" />
                     رجّع الباقي ({fmt(amountPi - due)} ج)
@@ -1317,7 +1317,7 @@ function QuickChip({ label, onClick, active, primary, hotkey }: { label: string;
         active
           ? "nk-brand-bg text-white border-transparent shadow"
           : primary
-            ? "border-[color-mix(in_srgb,var(--c-primary)_50%,white)] bg-[color-mix(in_srgb,var(--c-primary)_10%,white)] nk-brand-text hover:bg-[color-mix(in_srgb,var(--c-primary)_18%,white)]"
+            ? "border-[color-mix(in_srgb,var(--c-primary)_50%,var(--card))] bg-[color-mix(in_srgb,var(--c-primary)_10%,var(--card))] nk-brand-text hover:bg-[color-mix(in_srgb,var(--c-primary)_18%,var(--card))]"
             : "border-border bg-card hover:bg-muted"
       )}
     >
@@ -1791,7 +1791,7 @@ export function PaymentPanel({ studentId, studentName, sessionId, suggestedDue, 
               "rounded-full border px-3.5 py-1.5 text-xs font-extrabold nk-num transition",
               amount === String(suggestedDue / 100)
                 ? "nk-brand-bg text-white border-transparent"
-                : "border-[color-mix(in_srgb,var(--c-primary)_50%,white)] bg-[color-mix(in_srgb,var(--c-primary)_10%,white)] nk-brand-text"
+                : "border-[color-mix(in_srgb,var(--c-primary)_50%,var(--card))] bg-[color-mix(in_srgb,var(--c-primary)_10%,var(--card))] nk-brand-text"
             )}>
             المطلوب {fmt(suggestedDue)}
           </button>
@@ -1825,7 +1825,7 @@ export function PaymentPanel({ studentId, studentName, sessionId, suggestedDue, 
               <button
                 onClick={payExact}
                 disabled={busy}
-                className="sm:max-w-[210px] border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,white)] bg-card nk-brand-text font-extrabold rounded-xl px-4 py-3.5 active:scale-[0.99] disabled:opacity-60 flex items-center justify-center gap-2"
+                className="sm:max-w-[210px] border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,var(--card))] bg-card nk-brand-text font-extrabold rounded-xl px-4 py-3.5 active:scale-[0.99] disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 <Banknote className="w-5 h-5" />
                 رجّع الباقي ({fmt(overpay)} ج)
