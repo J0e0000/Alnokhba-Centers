@@ -6,7 +6,7 @@ import {
   ScanLine, Camera, CameraOff, CheckCircle2, XCircle, AlertTriangle,
   Banknote, Keyboard, UserPlus, RefreshCcw, BadgeCheck, DoorClosed, ArrowLeft,
   Wallet, Smartphone, Coins, Volume2, VolumeX, Vibrate, VibrateOff, Monitor, Zap,
-  CalendarDays, CalendarPlus, Loader2,
+  CalendarDays, CalendarPlus, Loader2, ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, fmt, normalizeDigits, formatTime12, sessionPhase, nowHM, ATTENDANCE_LABEL, type SessionUser } from "./lib";
@@ -20,6 +20,7 @@ import { ContactActions } from "./contact-actions";
 import { OfflineStatusBar, useOnlineStatus, queueScan } from "./pwa";
 import { feedback, unlockAudio, useFeedbackSettings, useWakeLock } from "./feedback";
 import { usePrint, PrintableReceiptA4, PrintableReceiptThermal, type ReceiptData } from "./print";
+import { UnifiedAttendancePanel } from "./unified-attendance";
 
 type ScanSession = {
   id: string; startTime: string; endTime: string; status: string; date: string;
@@ -100,6 +101,8 @@ export function ScanView({ user, sessionOverride, clearSessionOverride, embedded
   const [showAdhoc, setShowAdhoc] = useState(false);
   const [kiosk, setKiosk] = useState(false);
   const [viewDate, setViewDate] = useState<string>(ymdCairo(0));
+  // الوضع الكلاسيكي (اختيار حصة + أدوات متقدمة) — مطوي افتراضيًا، اللوحة الموحدة هي الافتراضية
+  const [classicOpen, setClassicOpen] = useState(false);
   const wantedRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const sessionsRef = useRef<HTMLDivElement>(null);
@@ -199,6 +202,8 @@ export function ScanView({ user, sessionOverride, clearSessionOverride, embedded
     if (sessionOverride) {
       wantedRef.current = sessionOverride;
       setActiveSessionId(sessionOverride);
+      // جاي من مساحة عمل حصة → افتح الوضع الكلاسيكي مثبت على الحصة دي
+      if (!embedded) setClassicOpen(true);
       // في الوضع المدمج الحصة بتفضل مثبتة — الوضع العادي بيتصرف زي ما هو
       if (!embedded) clearSessionOverride();
     }
@@ -421,11 +426,33 @@ export function ScanView({ user, sessionOverride, clearSessionOverride, embedded
 
   return (
     <div className="space-y-4">
-      {!embedded && <PageHeader title="الحضور" subtitle="ابحث بالاسم أو امسح QR أو اكتب الكود — سؤال واحد بس وخلاص" />}
+      {!embedded && <PageHeader title="الحضور" subtitle="اكتب الكود أو امسح الكارت — والنظام يوصّل الطالب لمجموعته لوحده" />}
 
       {/* حالة الاتصال + طابور الحضور الأوفلاين */}
       <OfflineStatusBar />
 
+      {/* ===== لوحة الحضور الموحدة — النموذج الرابع المعتمد: 3 طرق في تاب واحدة + توجيه تلقائي ===== */}
+      {!embedded && <UnifiedAttendancePanel user={user} />}
+
+      {/* ===== زرار فتح/طي الوضع المتقدم (الكلاسيكي) ===== */}
+      {!embedded && (
+        <button
+          type="button"
+          onClick={() => setClassicOpen((v) => !v)}
+          data-testid="classic-toggle"
+          aria-expanded={classicOpen}
+          className="w-full flex items-center justify-between gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-start hover:bg-muted/40 transition"
+        >
+          <span className="min-w-0">
+            <b className="block text-[13.5px] font-extrabold">الوضع المتقدم — حصة محددة، دفع، وتسجيل في مجموعة</b>
+            <span className="block text-[11px] font-bold text-muted-foreground">اختار الحصة بنفسك وامسح داخلها — للدفع، تسجيل الطالب في مجموعة، والكشك الذاتي</span>
+          </span>
+          <ChevronDown className={cn("w-5 h-5 text-muted-foreground transition-transform shrink-0", classicOpen && "rotate-180")} />
+        </button>
+      )}
+
+      {(embedded || classicOpen) && (
+        <>
       {/* ===== Session picker (مخفي في الوضع المدمج — الحصة مثبتة من مساحة العمل) ===== */}
       {!embedded && (
       <div ref={sessionsRef}>
@@ -688,6 +715,8 @@ export function ScanView({ user, sessionOverride, clearSessionOverride, embedded
             ))}
           </ul>
         </SectionCard>
+      )}
+        </>
       )}
 
       {/* ===== تسجيل سريع من غير ما تخرج من شاشة الحضور ===== */}

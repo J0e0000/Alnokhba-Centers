@@ -2,13 +2,27 @@ import { db } from "@/lib/db";
 import { ok, handler, readJson } from "@/lib/api";
 import { requireCenterUser, rateLimit } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
-import { cleanRaw } from "@/lib/normalize";
+import { cleanRaw, cairoDateStr } from "@/lib/normalize";
 import { studentBalance, effectivePrice, amountDueToday } from "@/lib/finance";
 import { hasCapability } from "@/lib/center-capabilities";
 
 export const dynamic = "force-dynamic";
 
-type ScanBody = { query?: string; sessionId?: string };
+type ScanBody = { query?: string; sessionId?: string; autoRoute?: boolean };
+
+/** الدقايق من منتصف الليل بتوقيت القاهرة — عشان نختار الحصة المفتوحة الجارية دلوقتي */
+function cairoNowMin(): number {
+  const f = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Cairo", hour: "2-digit", minute: "2-digit", hour12: false });
+  const [h, m] = f.format(new Date()).split(":").map(Number);
+  return h * 60 + m;
+}
+
+/** تلميح للوحة الحضور الموحدة لما مفيش حصة مفتوحة تناسب الطالب */
+type AutoHint = {
+  kind: "CLOSED" | "CANCELLED" | "NONE_TODAY";
+  message: string;
+  sessions: { subject: string; groupName: string; grade: string; status: string; startTime: string }[];
+};
 
 /**
  * POST /api/attendance/scan — resolve a scan (QR token or 5-digit code) against a session.
@@ -128,8 +142,75 @@ export const POST = handler(async (req: Request) => {
     ? (alreadyAttended ? Math.max(-balance, 0) : amountDueToday(price, balance))
     : null;
 
+  // ==================== اللوحة الموحدة: التوجيه التلقائي ====================
+  // من غير sessionId: دوّر على حصة الطالب المفتوحة دلوقتي بين الحصص الشغالة
+  // (سيناريو «اكتر من حصة شغالة في نفس الوقت» — الموظف يكتب الكود والنظام يوصل مجموعته)
+  let autoHint: AutoHint | null = null;
+  if (body.autoRoute && !body.sessionId) {
+    const regGroupIds = [...new Set(student.registrations.map((r) => r.groupId))];
+    const today = cairoDateStr(new Date());
+    const todays = regGroupIds.length > 0
+      ? await db.sessionInstance.findMany({
+          where: {
+            centerId: user.centerId, date: today, groupId: { in: regGroupIds },
+            studentSource: { not: "OPEN" }, // الحضور المفتوح مالوش كشف — مش هدف للتوجيه
+          },
+          include: { group: { include: { subject: true, grade: true, teacher: true } } },
+          orderBy: { startTime: "asc" },
+        })
+      : [];
+
+    const openSessions = todays.filter((s) => s.status === "OPEN" && s.groupId);
+    if (openSessions.length > 0) {
+      // الأولوية: الحصة الجارية دلوقتي (وقتها يشمل الآن) — بعد كده أول مفتوحة
+      const nowMin = cairoNowMin();
+      const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+      const live = openSessions.find((s) => nowMin >= toMin(s.startTime) && nowMin <= toMin(s.endTime) + 15);
+      const pick = live ?? openSessions[0];
+      const reg = student.registrations.find((r) => r.groupId === pick.groupId);
+      registration = reg ? { groupId: reg.groupId, priceOverride: reg.priceOverride, subject: reg.group.subject.name } : null;
+      session = {
+        id: pick.id, startTime: pick.startTime, endTime: pick.endTime, status: pick.status, date: pick.date,
+        subject: pick.group?.subject.name ?? pick.name ?? "حصة", groupName: pick.group?.name ?? "—",
+        grade: pick.group?.grade.name ?? "—", teacher: pick.group?.teacher?.name ?? null,
+        groupId: pick.groupId!, price: pick.price, room: pick.room,
+      };
+      const att = await db.attendance.findUnique({
+        where: { sessionId_studentId: { sessionId: pick.id, studentId: student.id } },
+      });
+      alreadyAttended = !!att;
+      attendanceStatus = att?.status ?? null;
+      autoHint = null;
+    } else if (todays.length > 0) {
+      // حصص ليه النهاردة بس مفيش مفتوحة: خلصت أو اتلغت
+      const cancelled = todays.find((s) => s.status === "CANCELLED");
+      autoHint = {
+        kind: cancelled ? "CANCELLED" : "CLOSED",
+        message: cancelled
+          ? "حصته النهاردة اتلغت — مفيش حضور تتسجله عليها."
+          : "حصته خلصت النهاردة (مقفولة) — لو لازم تعديل كلّم المدير يعيد فتحها.",
+        sessions: todays.map((s) => ({
+          subject: s.group?.subject.name ?? s.name ?? "حصة", groupName: s.group?.name ?? "—",
+          grade: s.group?.grade.name ?? "—", status: s.status, startTime: s.startTime,
+        })),
+      };
+    } else {
+      autoHint = {
+        kind: "NONE_TODAY",
+        message: regGroupIds.length > 0
+          ? "الطالب ده مالوش حصة مفتوحة النهاردة — لو حصته لسه ما فتحتش، افتحها من الجدول فوق."
+          : "الطالب ده مش مسجل في أي مجموعة أصلًا — سجّله في مجموعة الأول.",
+        sessions: [],
+      };
+    }
+  }
+
+  const routedStatus = session
+    ? (registration ? "GREEN" : "ORANGE")
+    : (body.autoRoute ? "GREEN" : "ORANGE"); // autoRoute من غير حصة: الطالب معروف بس مفيش حصة
+
   return ok({
-    status: registration ? "GREEN" : "ORANGE",
+    status: routedStatus,
     message: registration
       ? "الطالب مسجل في المجموعة دي"
       : "الطالب مش مسجل في المجموعة دي",
@@ -153,6 +234,7 @@ export const POST = handler(async (req: Request) => {
     alreadyAttended,
     attendanceStatus,
     sessionClosed: session?.status === "CLOSED",
+    autoHint,
     // Receptionist cannot register a student into a group without permission
     canRegister: user.role === "MANAGER" || user.canAddStudents,
   });
