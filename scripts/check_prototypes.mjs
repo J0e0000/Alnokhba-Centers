@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { execSync } from "node:child_process";
 
-const files = ["index.html", "1.html", "2.html", "3.html"];
+const files = ["index.html", "1.html", "2.html", "3.html", "4.html"];
 let fail = 0;
 
 for (const f of files) {
