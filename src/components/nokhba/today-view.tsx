@@ -207,15 +207,16 @@ export function TodayView({ user, setView, openSession, goScanForSession }: {
       </button>
       )}
 
-      {/* حضور الموظف الذاتي — امسح كود شاشة المركز (لو الميزة مفعّلة) */}
+      {/* حضور الموظف الذاتي — امسح كود شاشة المركز (لو الميزة مفعّلة)
+          تصميم مميز عن كارت حضور الطلاب عشان ميتلخبطوش (كانوا شبه بعض: نفس الأيقونة والصياغة) */}
       {canSelfCheckin && (
-        <div className="nk-card rounded-2xl p-4 flex items-center gap-3.5">
-          <span className="rounded-xl p-2.5 nk-brand-bg-soft nk-brand-text"><LogIn className="w-5 h-5" /></span>
+        <div className="nk-card rounded-2xl p-4 flex items-center gap-3.5 border-dashed">
+          <span className="rounded-xl p-2.5 bg-muted text-muted-foreground"><LogIn className="w-5 h-5" /></span>
           <div className="flex-1 min-w-0">
-            <p className="font-extrabold text-sm">تسجيل حضورك</p>
-            <p className="text-[11px] font-bold text-muted-foreground">امسح كود شاشة المركز — مرة واحدة في اليوم</p>
+            <p className="font-extrabold text-sm">حضور الموظفين — تسجيل دخولك</p>
+            <p className="text-[11px] font-bold text-muted-foreground">كود شاشة المركز · مرة واحدة في اليوم · مش حضور الطلاب</p>
           </div>
-          <ActionSquare icon={<ScanLine className="w-5 h-5" />} label="امسح" variant="primary" size="sm" onClick={() => setCheckinOpen(true)} tooltip="فتح ماسح كود حضور الموظفين" />
+          <ActionSquare icon={<LogIn className="w-5 h-5" />} label="دخول" variant="secondary" size="sm" onClick={() => setCheckinOpen(true)} tooltip="فتح ماسح كود حضور الموظفين" />
         </div>
       )}
 

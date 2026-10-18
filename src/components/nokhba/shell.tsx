@@ -501,7 +501,7 @@ export function CenterShell({
         </aside>
 
         {/* ===== Main content ===== */}
-        <main className="flex-1 min-w-0 pb-28 lg:pb-6">{children}</main>
+        <main className="flex-1 min-w-0 pb-40 lg:pb-6">{children}</main>
       </div>
 
       {/* ===== شريط الحالة المصغّر على الموبايل ===== */}
@@ -697,7 +697,7 @@ export function AdminShell({
           ))}
         </aside>
 
-        <main className="flex-1 min-w-0 pb-28 lg:pb-6">
+        <main className="flex-1 min-w-0 pb-40 lg:pb-6">
           {/* mobile admin tabs */}
           <div className="lg:hidden flex gap-2 overflow-x-auto nk-scroll pb-3 -mx-1 px-1 mb-2">
             {ADMIN_NAV.map((n) => (

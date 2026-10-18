@@ -173,17 +173,24 @@ export function ReportsView({ user }: { user: SessionUser }) {
           ))}
         </div>
 
-        {/* فلاتر إضافية — المادة / المدرس / المجموعة / الطالب */}
-        <div className="border-t border-border/60 pt-3 space-y-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-bold text-muted-foreground">فلاتر إضافية (اختياري)</span>
-            {hasExtraFilters ? (
-              <button onClick={clearFilters} className="text-[11px] font-extrabold text-rose-600 flex items-center gap-1 dark:text-rose-400">
-                <X className="w-3.5 h-3.5" /> مسح الفلاتر
-              </button>
-            ) : null}
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+        {/* فلاتر إضافية — مطوية افتراضيًا (progressive disclosure) — بتفتح لوحدها لو في فلتر شغال */}
+        <details className="group border-t border-border/60 pt-3" defaultOpen={Boolean(hasExtraFilters)}>
+          <summary className="cursor-pointer select-none list-none flex items-center justify-between gap-2">
+            <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
+              فلاتر إضافية (اختياري)
+              {hasExtraFilters && <span className="rounded-full nk-brand-bg text-white text-[10px] font-extrabold px-2 py-0.5 nk-num">مفعّلة</span>}
+            </span>
+            <span className="flex items-center gap-2">
+              {hasExtraFilters && (
+                <button onClick={(e) => { e.preventDefault(); clearFilters(); }} className="text-[11px] font-extrabold text-rose-600 flex items-center gap-1 dark:text-rose-400">
+                  <X className="w-3.5 h-3.5" /> مسح الفلاتر
+                </button>
+              )}
+              <span className="text-[11px] font-extrabold text-muted-foreground group-open:hidden">عرض</span>
+              <span className="text-[11px] font-extrabold text-muted-foreground hidden group-open:inline">إخفاء</span>
+            </span>
+          </summary>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mt-2.5">
             <div>
               <label className="text-xs font-bold block mb-1">المادة</label>
               <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)}
@@ -247,10 +254,10 @@ export function ReportsView({ user }: { user: SessionUser }) {
               )}
             </div>
           </div>
-          <p className="text-[11px] text-muted-foreground font-semibold">
+          <p className="text-[11px] text-muted-foreground font-semibold mt-2.5">
             الفلاتر بتشتغل على التقارير اللي بتها — مثلاً فلتر المدرس مع «الإيراد حسب المدرس» أو مستحقاته، وفلتر الطالب مع مستحقات/أرصدة الطلاب وسجل الدفع.
           </p>
-        </div>
+        </details>
       </div>
 
       {loading ? (

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   CalendarDays, Plus, Pencil, Trash2, Copy, DoorClosed, Play,
   MapPin, Loader2, GraduationCap, Building2, X, Check, Ban, Printer, AlertTriangle,
-  Move, Info, GripVertical, CheckCircle2, Users, Percent, Coins, CalendarClock,
+  Move, Info, CheckCircle2, Users, Percent, Coins, CalendarClock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -40,7 +40,7 @@ const BLOCKS = [
 ];
 const DAY_START_MIN = 8 * 60;
 const DAY_SPAN_MIN = 14 * 60; // 08:00 → 22:00
-const ROW_H = 78; // ارتفاع صف القاعة لكل لين
+const ROW_H = 84; // ارتفاع صف القاعة لكل لين — زادت شوية عشان سطرين نص مقروءين
 
 type Slot = {
   id: string; dayOfWeek: number; startTime: string; endTime: string; room: string | null;
@@ -458,10 +458,10 @@ export function ScheduleView({ user, openSession }: { user: SessionUser; openSes
                 hint={isManager ? "ضيف قاعات من زرار «القاعات» فوق، وبعدين دوس على أي خلية فاضية تضيف حصة." : "المدير بيضيف القاعات والحصص."} />
             ) : (
               <div className="overflow-x-auto nk-scroll">
-                <div className="min-w-[880px]">
+                <div className="min-w-[880px] xl:min-w-[1120px]">
                   {/* رأس الأوقات */}
                   <div className="flex sticky top-0 z-20 bg-card border-b-2 border-border">
-                    <div className="w-32 shrink-0 px-3 py-2.5 text-[11px] font-extrabold text-muted-foreground flex items-center gap-1.5">
+                    <div className="w-32 shrink-0 sticky start-0 z-10 bg-card px-3 py-2.5 text-[11px] font-extrabold text-muted-foreground flex items-center gap-1.5">
                       <DoorClosed className="w-3.5 h-3.5" /> القاعة
                     </div>
                     <div className="flex-1 grid grid-cols-7">
@@ -482,8 +482,8 @@ export function ScheduleView({ user, openSession }: { user: SessionUser; openSes
                     const nowFrac = ((nowMinCairo() - DAY_START_MIN) / DAY_SPAN_MIN) * 100;
                     return (
                       <div key={name || "__none"} className="flex border-b border-border/50 last:border-0">
-                        {/* اسم القاعة */}
-                        <div className="w-32 shrink-0 px-3 py-3 bg-muted/30 border-s-0 flex flex-col justify-center gap-1">
+                        {/* اسم القاعة — لازق جنب البداية أثناء السكرول الأفقي */}
+                        <div className="w-32 shrink-0 sticky start-0 z-10 px-3 py-3 bg-card border-e border-border/60 flex flex-col justify-center gap-1">
                           <span className="font-extrabold text-[13px] nk-brand-text flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 shrink-0" /> {display}</span>
                           {room?.capacity ? <span className="text-[10px] font-bold text-muted-foreground nk-num">سعة {room.capacity}</span> : null}
                           <span className="text-[10px] font-bold text-muted-foreground nk-num">{roomSlots.length} حصة</span>
@@ -779,30 +779,32 @@ function SlotChip({ slot, lane, lanes, flags, dragging, draggable, onDragStart, 
         height: `calc(${laneH}% - 8px)`,
       }}
       className={cn(
-        "absolute z-10 rounded-xl border-2 px-2 py-1 text-start overflow-hidden transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer",
+        "absolute z-10 rounded-xl border-2 px-2 py-1 text-start overflow-hidden transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-grab active:cursor-grabbing",
         blocked.length > 0
           ? "border-amber-400 bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/15 dark:border-amber-500/60"
           : "border-emerald-300 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:border-emerald-500/40",
         dragging && "opacity-40 scale-[0.98]",
       )}
     >
+      {/* سطر 1: المادة لوحدها — عشان تتقرى حتى في البلوك الضيق */}
       <span className="flex items-center gap-1 min-w-0">
         {blocked.length > 0
           ? <AlertTriangle className="w-3 h-3 shrink-0 text-amber-600" aria-hidden="true" />
           : hints.length > 0
             ? <Info className="w-3 h-3 shrink-0 text-sky-600" aria-hidden="true" />
             : <CheckCircle2 className="w-3 h-3 shrink-0 text-emerald-600" aria-hidden="true" />}
-        <span className="font-extrabold text-[11.5px] truncate">
-          {slot.subject} — {slot.grade} {slot.groupName}
-        </span>
-        {draggable && <GripVertical className="w-3 h-3 shrink-0 text-muted-foreground/50 ms-auto" aria-hidden="true" />}
+        <span className="font-extrabold text-[12px] truncate">{slot.subject}</span>
       </span>
-      <span className="block text-[10px] font-bold text-muted-foreground truncate nk-num">
-        {slot.teacher} · {formatTime12(slot.startTime)}–{formatTime12(slot.endTime)}
+      {/* سطر 2: الصف والمجموعة + المدرس */}
+      <span className="block text-[10px] font-bold text-muted-foreground truncate">
+        {[slot.grade, slot.groupName].filter((x) => x && x.trim() && x.trim() !== "—").join(" · ")}
+        {slot.teacher ? ` · ${slot.teacher}` : ""}
       </span>
-      {blocked.length > 0 && (
-        <span className="block text-[9.5px] font-extrabold text-amber-700 truncate dark:text-amber-300">{blocked[0].label}</span>
-      )}
+      {/* سطر 3: الوقت — والتعارض بيتقرأ من الـ tooltip والشارة، مش سطر كامل بيقطع */}
+      <span className="block text-[9.5px] font-extrabold text-muted-foreground/80 truncate nk-num">
+        {formatTime12(slot.startTime)}–{formatTime12(slot.endTime)}
+        {blocked.length > 0 && <span className="text-amber-700 dark:text-amber-300"> · ⚠ تعارض</span>}
+      </span>
     </button>
   );
 }

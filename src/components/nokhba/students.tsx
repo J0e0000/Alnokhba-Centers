@@ -122,6 +122,24 @@ export function StudentsView({ user, openNew, onOpenNewConsumed, onOpenProfile }
         subtitle={data ? `${data.total} طالب في السنتر` : undefined}
         action={
           <div className="flex gap-2">
+            {canAdd ? (
+              <>
+                {/* الإجراء الأهم الأول (يمين RTL): إضافة طالب — بعدها الدفعة — التحديد للآخر */}
+                <button
+                  onClick={() => setShowAdd(true)}
+                  className="nk-brand-bg text-white font-extrabold rounded-xl px-4 py-2.5 shadow flex items-center gap-2 active:scale-[0.98]"
+                >
+                  <UserPlus className="w-4.5 h-4.5" /> إضافة طالب
+                </button>
+                <button
+                  onClick={() => setShowBulk(true)}
+                  title="تاب واحدة سريعة: صف لكل طالب — الاسم ورقمين والدفعة كلها تُسجل مرة واحدة"
+                  className="bg-card border-border border font-extrabold rounded-xl px-4 py-2.5 flex items-center gap-2 active:scale-[0.98]"
+                >
+                  <Layers className="w-4.5 h-4.5 nk-brand-text" /> إضافة دفعية
+                </button>
+              </>
+            ) : null}
             <button
               onClick={() => setSelectMode((v) => !v)}
               className={cn(
@@ -131,23 +149,6 @@ export function StudentsView({ user, openNew, onOpenNewConsumed, onOpenProfile }
             >
               <CheckSquare className="w-4.5 h-4.5" /> {selectMode ? "خروج من التحديد" : "تحديد الكروت"}
             </button>
-            {canAdd ? (
-              <>
-                <button
-                  onClick={() => setShowBulk(true)}
-                  title="تاب واحدة سريعة: صف لكل طالب — الاسم ورقمين والدفعة كلها تُسجل مرة واحدة"
-                  className="bg-card border-border border font-extrabold rounded-xl px-4 py-2.5 flex items-center gap-2 active:scale-[0.98]"
-                >
-                  <Layers className="w-4.5 h-4.5 nk-brand-text" /> إضافة دفعية
-                </button>
-                <button
-                  onClick={() => setShowAdd(true)}
-                  className="nk-brand-bg text-white font-extrabold rounded-xl px-4 py-2.5 shadow flex items-center gap-2 active:scale-[0.98]"
-                >
-                  <UserPlus className="w-4.5 h-4.5" /> إضافة طالب
-                </button>
-              </>
-            ) : null}
           </div>
         }
       />

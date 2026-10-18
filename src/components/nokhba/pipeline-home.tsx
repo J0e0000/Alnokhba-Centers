@@ -244,24 +244,19 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
 
   return (
     <div className="space-y-5 nk-anim-stagger">
-      {/* ===== Hero — مسار الحصص (بوابة الطوارئ) ===== */}
+      {/* ===== Hero مصغّر — سطر واحد + البوابة (الوصف الكامل ديسكتوب بس عشان الموبايل ميضيعش تحت الطية) ===== */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[11px] font-black tracking-widest nk-brand-text uppercase">مسار الحصص</div>
-          <h1 className="text-xl sm:text-2xl font-black mt-1 mb-0 leading-snug">يومك الدراسي في مسار واحد</h1>
+          <h1 className="text-lg sm:text-2xl font-black mt-0.5 mb-0 leading-snug">يومك الدراسي في مسار واحد</h1>
           <div className="nk2-gate" aria-hidden />
-          <p className="text-xs font-bold text-muted-foreground m-0 mt-1.5">
+          <p className="hidden sm:block text-xs font-bold text-muted-foreground m-0 mt-1.5">
             اختر اليوم، افتح الحصة، أنجز المطلوب، وأغلقها بدون التنقل بين شاشات كثيرة.
           </p>
         </div>
       </div>
 
-      <InstallCard />
-
-      {/* ===== رحلة البداية — للسنتر الجديد (بتختفي لوحده أول ما تخلص أو تتخطى) ===== */}
-      <OnboardingQuest user={user} setView={setView} />
-
-      {/* ===== شريط الأيام ===== */}
+      {/* ===== شريط الأيام — أهم حاجة الأولى: اختار يومك وافتح حصتك ===== */}
       <DayTimeline value={selectedDay} onChange={setSelectedDay} />
 
       {/* ===== 3 كروت إحصاء — بلاطات الطوارئ النيفي ===== */}
@@ -432,6 +427,10 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
 
       {isManager && legacy?.insight && <InsightCard insight={legacy.insight} setView={setView} />}
       {isManager && <ManagerExtras data={legacy} />}
+
+      {/* ===== غير اليومي تحت — تثبيت التطبيق + رحلة البداية (الشغل اليومي فوق دايمًا) ===== */}
+      <InstallCard />
+      <OnboardingQuest user={user} setView={setView} />
     </div>
   );
 }

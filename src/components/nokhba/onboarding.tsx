@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   UserPlus, Users, CalendarDays, ScanLine, Wallet, MessageCircle,
-  CheckCircle2, Circle, Play, RotateCcw, Gamepad2, PartyPopper, X,
+  CheckCircle2, Circle, Play, RotateCcw, Gamepad2, PartyPopper, X, ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -60,6 +60,9 @@ export function OnboardingQuest({ user, setView }: {
   const [data, setData] = useState<QuestData | null>(null);
   const [busy, setBusy] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
+  // مطوية افتراضيًا لما السنتر ماشي في الرحلة (progress > 0) — الشغل اليومي ميتغطاش
+  // سنتر جديد (0 مهام خلصت) → مفتوحة عادي كأنها بداية اللعبة
+  const [expanded, setExpanded] = useState<boolean | null>(null);
   const doneKey = `nk-quest-done-${user.id}`;
 
   const load = useCallback(async () => {
@@ -113,7 +116,9 @@ export function OnboardingQuest({ user, setView }: {
     }
   }
 
-  if (user.role === "TEACHER") return null;
+  // مهام البداية مهام مدير (مجموعات/حصص/موظفين) — الاستقبال مش هيقدر ينفذها
+  // فبنخفيها عنه خالص (كانت بتطلع له وكل CTA بيضرب 403)
+  if (user.role !== "MANAGER") return null;
   if (!data || !data.enabled || data.total === 0) return null;
 
   // كل المهام خلصت من قبل (سنتر قديم) → صفر إزعاج — مفيش كارت خالص
@@ -165,6 +170,40 @@ export function OnboardingQuest({ user, setView }: {
   const nextIdx = data.steps.findIndex((s) => !s.done);
   const pct = data.total ? Math.round((data.progress / data.total) * 100) : 0;
   const cheer = CHEER[String(data.progress)] ?? CHEER["0"];
+  const nextStep = nextIdx >= 0 ? data.steps[nextIdx] : null;
+  const isExpanded = expanded ?? data.progress === 0; // أول زيارة مفتوحة — بعد كده مطوية
+
+  // ===== الوضع المطوي: سطر واحد — التقدم + الخطوة الجاية + زرار فتح =====
+  if (!isExpanded) {
+    return (
+      <div className="nk-card rounded-2xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-2" aria-label="رحلة البداية — مطوية">
+        <span className="text-xs font-bold text-muted-foreground flex items-center gap-2 min-w-0">
+          <Gamepad2 className="w-4 h-4 shrink-0" aria-hidden />
+          رحلة البداية — {data.progress}/{data.total} خلصت
+          {nextStep && <span className="hidden sm:inline truncate">· الجاي: {nextStep.title}</span>}
+        </span>
+        <span className="flex items-center gap-2 shrink-0">
+          {nextStep && (
+            <button
+              onClick={() => setView(nextStep.view)}
+              className="rounded-xl nk-brand-bg text-white px-3 py-1.5 text-[11.5px] font-extrabold shadow active:scale-[0.97] transition inline-flex items-center gap-1.5"
+            >
+              <Play className="w-3 h-3" aria-hidden />
+              كمّل
+            </button>
+          )}
+          <button
+            onClick={() => setExpanded(true)}
+            className="text-xs font-extrabold nk-brand-text inline-flex items-center gap-1 hover:underline underline-offset-4"
+            aria-label="افتح رحلة البداية"
+          >
+            التفاصيل
+            <ChevronDown className="w-3.5 h-3.5" aria-hidden />
+          </button>
+        </span>
+      </div>
+    );
+  }
 
   return (
     <section className="nk-card rounded-2xl p-4 sm:p-5 nk-anim-stagger" aria-label="رحلة البداية">
@@ -188,6 +227,16 @@ export function OnboardingQuest({ user, setView }: {
           >
             {data.level.emoji} {data.level.label}
           </span>
+          {data.progress > 0 && (
+            <button
+              onClick={() => setExpanded(false)}
+              className="w-7 h-7 rounded-full grid place-items-center text-muted-foreground/70 hover:bg-muted hover:text-muted-foreground transition"
+              aria-label="اطوي رحلة البداية"
+              title="اطوي — بتلاقيها تحت في أي وقت"
+            >
+              <ChevronDown className="w-4 h-4 rotate-180" />
+            </button>
+          )}
           <button
             onClick={() => void act("skip")}
             disabled={busy}
