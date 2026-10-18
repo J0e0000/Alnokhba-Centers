@@ -67,3 +67,13 @@ scripts/pgtest/dev-pg.log
 
 *.db-shm
 *.db-wal
+
+# ===== سري — عمره ما يتتبع في جيت (المفتاح وقواعد البيانات المحلية والنسخ) =====
+db/emergency-signing.pem
+db-backup-*/
+db/*.db.*
+qae/snapshot-*.db
+qae/snapshot-*.sqlite
+benchmark/*.db
+*.pem
+*.db
