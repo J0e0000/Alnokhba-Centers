@@ -562,3 +562,23 @@ Stage Summary:
 - الإنتاج محدّث فعلاً ومطابق للأصل — مشكلة الوصول كانت في الجهاز/الجلسة مش في النشر
 - الدفعة الجديدة بتضمن: HTML طازة دايمًا online، تنبيه تحديث بزر، وبصمة build في الإعدادات للتحقق الفوري
 - متبقي (للتقرير): تنظيف lockfiles المزدوجة، الـ PWA القديمة على أجهزة المالك هتاخد التحديث أول reload
+
+---
+Task ID: 7 (env-key + zaki-one-liner + git-history-purge)
+Agent: main
+Task: موافقة المالك على 3 خطوات: (أ) خطوة الـ env للمفتاح (ب) إصلاح سطر زكي (ج) تنضيف تاريخ الجيت بالاحتياط الكامل.
+
+Work Log:
+- **(ب) سطر زكي**: agent.tsx:748 — زرار زكي العائم كان بيحصل تداخل مع الناف السفلي في 768-1023px لأن `md:bottom-6` والناف باقي ظاهر لحد lg → اتغيرت لـ `lg:bottom-6`. tsc src=0، eslint=0، build نجح. منشور في 37f8c2f.
+- **(أ) المفتاح**: اكتشفت إن حزمة التدوير اللي كانت جاهزة اتلمست (db/emergency-signing.pem مش موجود + scripts/rotation/ فاضي — البيئة اتبنت من جديد) → ولدت RSA-2048 جديد FP=9095996093098798 في db/emergency-signing.pem (gitignored) + base64 في scripts/rotation/new-key-base64.txt (600). الراوت بيقرأ EMERGENCY_SIGNING_KEY خام أو base64 (bc1526c شغال).
+- **Vercel auth**: مفيش توكن في البيئة الجديدة → `npx vercel login --non-interactive` (device flow) شغال في الخلفية — المالك لازم يوافق: vercel.com/oauth/device?user_code=SJVD-FNCZ (لو انتهى، نولد كود جديد).
+- **(ج) الاحتياط الكامل**: git bundle --all → backup/alnokhba-pre-clean-20261019.bundle (71MB، "records a complete history") + tar كامل لشجرة العمل بـ .git → backup/project-full-20261019.tar.gz (378MB). backup/ اتضاف للـ .gitignore.
+- **الجراحة**: اتحققت إن الملفات المسربة في **كل الفروع الخمسة** (main=65، perf-interactive=54، zaki-hide=54، zaki-robot=52، zaki-rebuild=35 كوميت) → mirror clone من GitHub → git filter-repo --invert-paths (db/custom.db + db/custom.db.pre-zaki-agent-fix + db/emergency-signing.pem + db-backup-*) — 269 كوميت اتعادت كتابتهم في 0.45s.
+- **الدفع**: force-push للفروع الخمسة (37f8c2f→fa9e902 لـ main). المزامنة المحلية: fetch + reset --hard origin/main.
+- **تحقق مستقل**: mirror داخلي = صفر مسارات/صفر objects. Fresh clone من GitHub = صفر في كل التاريخ + مفيش db-backup. Raw probes: main/db/emergency-signing.pem=404، main/db/custom.db=404، main/db-backup-20261015/custom.db=404.
+- **متبقي بعد موافقة المالك**: vercel link → env add EMERGENCY_SIGNING_KEY (production+preview) → redeploy → التأكد إن keyFp في الحزم المصدرة = 9095996093098798 ومش بيتغير بعد cold start.
+
+Stage Summary:
+- التاريخ العام على GitHub نضيف تمامًا من كل الفروع — الاحتياط الكامل محفوظ محليًا في backup/
+- ⚠️ SHA قديم (54fef65) لسه بيرجع 200 من raw.githubusercontent — GitHub بيحتفظ بالـ dangling objects لحد GC سيرفر-سايد؛ التخفيف الفعلي = تدوير المفتاح (المفتاح الجديد عمره ما كان في الجيت). ممكن طلب GC من GitHub Support كخطوة إضافية.
+- سطر زكي اتصلح ومنشور؛ المفتاح الجديد جاهز محليًا — استنى موافقة الـ device flow بس.
