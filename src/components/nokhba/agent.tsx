@@ -745,7 +745,7 @@ export function AgentDock({ user, view }: { user: SessionUser; view: string }) {
           onClick={() => { setOpen(true); showTutorialOnOpen(); }}
           aria-label={`افتح زكي — وكيل النخبة الذكي. ${ZAKI_STATE_AR[robotState]}`}
           className={cn(
-            "fixed bottom-[5.4rem] md:bottom-6 end-4 z-[70] rounded-full flex items-center justify-center",
+            "fixed bottom-[5.4rem] lg:bottom-6 end-4 z-[70] rounded-full flex items-center justify-center",
             "w-[4.25rem] h-[4.25rem] md:w-[4.75rem] md:h-[4.75rem] drop-shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
           )}
         >

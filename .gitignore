@@ -80,3 +80,4 @@ benchmark/*.db
 
 # تقرير تدوير المفتاح — قيم حساسة
 scripts/rotation/
+backup/
