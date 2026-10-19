@@ -517,3 +517,28 @@ Stage Summary:
 - «الفتح المدمج» بقى هو اللي فوق في تاب حضور الحصة على الإنتاج، وQR الحصة ميزة اختيارية من الإعدادات (مدير فقط) مطفية افتراضيًا على كل المراكز
 - كل شاشات التطبيق (17 شاشة) ورثت شكل النموذج الرابع المعتمد (هيرو + كروت طوارئ + بلاطات نيفي) فاتح/داكن
 - 6 مشاكل فعلية في شاشة الحضور اتلقطت بالإطار واتصلحت
+
+---
+Task ID: security-containment-push + ux-sweep-v5 + screenshot-fix + reports-autopen
+Agent: Super Z (main agent)
+Task: تنفيذ أوامر المالك الخمسة: (1) التحقق من الوضع الحالي ومطالب e80eeec (2) مراجعة كل الرحلات (3) أولويات UX (4) الأمان العاجل — تسريب المفتاح وقواعد البيانات في الريبو العام (5) حدود وإثباتات.
+
+Work Log:
+- **اكتشاف حرج**: كوميتات الأمان (4ed8a54 untrack + bc1526c env-first) كانت معملة محليًا لكن **مش منزولة** — origin/main لسه فيه db/emergency-signing.pem و db-backup-20261015/ (43.5MB بيانات) على رأس الريبو العام! تم الـ push فورًا (ae0f69f) — اتأكدت: git show origin/main:db/emergency-signing.pem = 0 bytes (اتشالت من الرأس). التاريخ القديم لسه فيه الملفات لحد موافقة المالك على التنضيف (ممنوع force-push من غير أمر).
+- مسح تاريخ الريبو لدسسلات إضافية: scripts/.dbpass عمره ما اترفع؛ الباسورد مش في أي ملف متتبع؛ سلسلة ref المشروع بس في worklog/docs (مش سر).
+- لغز لقطة الشاشة (t1-att-mobile-top.png كانت بورّي الرئيسية): السبب = agent-browser open بنفس الـ URL مع تغيير #hash بس = same-document navigation من غير reload → التطبيق مش بيقرا الهاش الجديد. **التطبيق نفسه سليم** — deep links (#scan/#payments/#students) شغالة 100% عند التحميل الحقيقي. أعدت توليد t1/t2 صح (لوحة الحضور الموحدة) + سكريبت دائم scripts/qae/regen_t1_t2.sh.
+- تحقق مطالب e80eeec على الديف: المسح المدمج فوق في تاب حضور الحصة + QR كارت مختفي (dynamic_qr=0 في CenterCapability + سينتينل mig:dynamic_qr_off_v1) + إعدادات الحضور مقفولة للاستقبال (5 أقسام بس) + dark mode نظيف — كلها ✓.
+- **UX Sweep v5** (scripts/qae/ux_sweep_v5*.sh + analyze_ux_sweep.py): 366 قياس نظيف (manager+reception × فاتح/غامق × 360/390/768/1024/1280/1440 × 15 شاشة + teacher portal) على standalone build — **صفر horizontal overflow في كل التركيبات**. فحص العناصر المتغطية بشاشات عائمة: أغلبه false positives من هيريستيك؛ المتأكد بصريًا: زكي بيغطي زرار «المزيد» في التابلت 768×1024 (agent.tsx:748 — md:bottom-6 والموبايل ناف باقي ظاهر لحد lg) — **زكي مجمد: مسجل فقط، الإصلاح سطر واحد مستني موافقة**. students@768 هندسيًا فيه تداخل نظري لكن اللقطة أثبتت آخر كارت واضح — محتاج إعادة نظر بعد تعديل زكي. schedule@1024 تداخل 19px بسيط.
+- dev DB كان فاضي (بيئة اترست) → prisma db push + seed (18 طالب/31 حصة) — دخول reception/manager/teacher(1234) كله شغال.
+- dev server ااتقتل OOM مرتين (2.68GB turbopack) → انتقلت لـ standalone build للسويب (ملاحظة: next start مش شغال مع output:standalone — لازم node .next/standalone/server.js).
+- **إصلاح reports**: <details defaultOpen> مش موجود في أنواع React ولا بيشتغل runtime — فلاتر التقارير مش بتفتح لوحدها. جرّبت open prop — React 19 مش بيطبقه بعد الماونت → الحل: ref effect (extraFiltersRef) يفتحها لما فلتر يتفعل، واحترام طيّ المستخدم (E2E: بتفتح تلقائي ✓ بتفضل مطوية لما المستخدم يطويها ✓ الشارة بتختفي لما الفلتر ي تشال ✓).
+- eslint: قاعدة react-hooks/set-state-in-effect الجديدة كانت ضاربة patterns قياسية (portal-mount في session-report + initial phase في staff-screen) → disable موثّق لكل واحد. tsc src = 0، eslint = 0، build نجح.
+- **اكتشاف أمني تاني**: بعد النشر، prod بقى يوقّع emergency بمفتاح **مؤقت لكل instance** (0fc992bb683ecc8e) — يعني EMERGENCY_SIGNING_KEY مش موجود في Vercel env دلوقتي (كان شغال time اللي فات a2b0a46f) → الحزم المصدرة بتتعطل بعد أي cold start. المفتاح المسرب نفسه بقى مش بيستخدم (كويس أمنيًا) بس النظام مش مستقر.
+- جهزت حزمة التدوير: مفتاح RSA-2048 جديد (fp 4303b78ad1b1e060) في db/emergency-signing.pem (gitignored، dev بيستخدمه) + base64 جاهز للصق في scripts/rotation/new-key-base64.txt (gitignored) + scripts/rotation/ اتضاف للـ .gitignore.
+- نشر e7fcdaf → Vercel → تحقق إنتاج: reports auto-open شغال على الإنتاج (open:true+badge:true) + سويت regression 11/11 (login/history+no-store/package=1 attachment/4.1MB/signed-license/xlsx PK/استقبال 403/teachers 200).
+
+Stage Summary:
+- الريبو العام نضيف من الملفات الحساسة على رأسه (التاريخ لسه محتاج تنضيف بموافقة المالك) — والإنتاج بقى يوقع بمفتاح مؤقت = **أولوية قصوى: حط EMERGENCY_SIGNING_KEY في Vercel بالمفتاح الجديد**
+- مطالب e80eeec الستة كلها متحققة بإعادة اختبار مستقلة، ولقطة الشاشة المضللة اترجعت صح
+- 366 قياس UX: صفر overflow، المشكلة الوحيدة المؤكدة بصريًا = زكي/المزيد في 768 (مجمد — مسجل)
+- الإصلاحات المنفذة: reports auto-open + lint disables + أدوات sweep دائمة — كلها منشورة ومتحقق منها على الإنتاج
