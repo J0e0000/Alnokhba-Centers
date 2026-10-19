@@ -36,6 +36,14 @@ const SECURITY_HEADERS = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // بصمة الإصدار: بتتعرض في الإعدادات عشان المدير يقدر يتأكد إن آخر تحديث
+  // وصل فعلاً لجهازه (شكوى «التحديثات مبتوصلش») — VERCEL_GIT_COMMIT_SHA
+  // بيحطه Vercel وقت البناء، ومحليًا بنرجع لآخر commit SHA.
+  env: {
+    NEXT_PUBLIC_BUILD_ID:
+      process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ??
+      (process.env.NODE_ENV === "development" ? "dev" : "local"),
+  },
   // Turbopack: ثبّت جذر الـ workspace صراحة — من غيره dev بيفشل أحيانًا لما
   // ميلاقي next/package.json من جوه src/app (بيحصل مع الـ sandbox layout)
   turbopack: {

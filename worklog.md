@@ -542,3 +542,23 @@ Stage Summary:
 - مطالب e80eeec الستة كلها متحققة بإعادة اختبار مستقلة، ولقطة الشاشة المضللة اترجعت صح
 - 366 قياس UX: صفر overflow، المشكلة الوحيدة المؤكدة بصريًا = زكي/المزيد في 768 (مجمد — مسجل)
 - الإصلاحات المنفذة: reports auto-open + lint disables + أدوات sweep دائمة — كلها منشورة ومتحقق منها على الإنتاج
+
+---
+Task ID: 6 (deploy-freshness verify + SW freshness batch)
+Agent: main
+Task: المالك أبلغ «التحديثات تقريبا مبتوصلش عالموقع اتاكد كده» — التحقق من وصول آخر التحديثات للإنتاج وسبب الإحساس بالقِدم.
+
+Work Log:
+- فحص git: HEAD = cc48c67 (screenshots بس) — origin/main = f546736، المحلي متقدم بـ 1 كوميت بس. مصدر src نظيف.
+- فحص الإنتاج (alnokhba-centers-nine.vercel.app): no-store على /api/emergency ✓، export=1 بيرجع حزمة 4.1MB موقّعة بـ content-disposition ✓ (bc1526c + مفتاح env شغال).
+- تنزيل وتفحص chunks الإنتاج لراوت /app (17 chunk + 3 lazy): علامات e80eeec («لوحة واحدة لكل طرق التسجيل»/«المسح المدمج») و87b7c3e («مشكلة شبكة») موجودة ✓.
+- audit منهجي: 1792 literal عربي من src مقابل الباندل — المجموعات الناقصة في الإنتاج = نفسها في build محلي بنفس الكوميت (كلها dead-code: dashboard/share-sheet/OpsSummaryStrip/roleLabels.MANAGER) → **الإنتاج مطابق لـ origin/main تمامًا**.
+- لغز صيغة الـ hashes: المستودع فيه lockfiles متضاربة — package-lock.json (10-12) يثبّت next 16.3.8، وbun.lock (10-18) يثبّت 16.1.3، وpg@8.23.1 اتضاف في package.json عند e80eeec من غير تحديث package-lock → npm ci فاشل على Vercel → fallback npm install → next 16.3.8 (base32 hashes). لازم تنظيف: كوميت واحد lockfile واحد.
+- سبب «التحديثات مبتوصلش» المُرجّح: SPA hash-routing + PWA standalone بيفضل مفتوح في الذاكرة أيام → الكود القديم شغال لحد reload يدوي + مفيش أي مؤشر تحديث للمستخدم + landing shell كانت cache-first (قديمة لقطة واحدة).
+- **دفعة إصلاح (4 ملفات)**: sw.js v11→v12 + network-first للتنقلات (HTML) مع fallback أوفلاين، pwa.tsx toast «في نسخة جديدة 🎉» بزر reload لما SW جديد ياخد الكنترول، next.config.ts NEXT_PUBLIC_BUILD_ID (VERCEL_GIT_COMMIT_SHA)، settings.tsx سطر «AlNokhba Management · build xxxxxxx».
+- تحقق: tsc src=0، eslint=0 errors، build ✓، standalone محلي + متصفح حقيقي: v12 متسجل، CONTROLLED، أوفلاين+reload الصفحة بتفتح من الكاش ✓، أونلاين نضيف، console مفيش errors.
+
+Stage Summary:
+- الإنتاج محدّث فعلاً ومطابق للأصل — مشكلة الوصول كانت في الجهاز/الجلسة مش في النشر
+- الدفعة الجديدة بتضمن: HTML طازة دايمًا online، تنبيه تحديث بزر، وبصمة build في الإعدادات للتحقق الفوري
+- متبقي (للتقرير): تنظيف lockfiles المزدوجة، الـ PWA القديمة على أجهزة المالك هتاخد التحديث أول reload

@@ -6,7 +6,7 @@
    - مفيش أي دعم لأي عملية دفع أوفلاين — ده قرار أمان متعمد
 ============================================================ */
 
-const CACHE = "nokhba-shell-v11";
+const CACHE = "nokhba-shell-v12";
 const SHELL = [
   "/",
   "/portal",
@@ -40,8 +40,30 @@ self.addEventListener("fetch", (event) => {
   // الـ API عمره ما يتكاش — محتاج داتا حية دايمًا
   if (url.pathname.startsWith("/api/")) return;
 
-  // Shell + static: cache-first مع تحديث في الخلفية
-  // المطابقة بالـ pathname فقط — عشان نسخ اللوجو اللي عليها ?v= تلاقي نسختها في الكاش
+  // صفحات HTML (تنقّل): NETWORK-FIRST — أحدث نسخة دايمًا لما النت موجود،
+  // والكاش fallback أوفلاين فقط. ده بيمنع إن المستخدم يشوف نسخة قديمة من
+  // التطبيق بعد نشر تحديث (شكوى «التحديثات مبتوصلش») — سبب التغيير من
+  // cache-first: الهيكل المتكاش كان بيرجع فورًا قبل ما الشبكة تتحدث.
+  const isNavigation =
+    event.request.mode === "navigate" ||
+    (event.request.headers.get("accept") ?? "").includes("text/html");
+  if (isNavigation && (SHELL.includes(url.pathname) || url.pathname === "/app")) {
+    event.respondWith(
+      fetch(event.request)
+        .then((res) => {
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(url.pathname, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match(url.pathname).then((c) => c || caches.match("/")))
+    );
+    return;
+  }
+
+  // ملفات ثابتة (خطوط/أيقونات/ chunks): cache-first — أسماءها content-hashed
+  // فنفس الاسم = نفس المحتوى، والتحديث في الخلفية بيضمن نسخة حية للمرة الجاية
   if (SHELL.includes(url.pathname) || url.pathname.startsWith("/_next/static/")) {
     event.respondWith(
       caches.match(url.pathname).then((cached) => {

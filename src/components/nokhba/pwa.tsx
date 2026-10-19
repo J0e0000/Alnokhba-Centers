@@ -20,6 +20,18 @@ export function PWARegister() {
   useEffect(() => {
     if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
     const register = () => {
+      // تحديث النظام: لما SW جديد ياخد الكنترول (سطر skipWaiting في sw.js)،
+      // الصفحة لسه شغالة بكود قديم في الذاكرة — نعرض زر تحديث فوري بدل ما
+      // المستخدم يفضل شغال بنسخة قديمة وهو فاكر إنه على آخر إصدار.
+      let hadController = navigator.serviceWorker.controller !== null;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (!hadController) { hadController = true; return; } // أول تسجيل مش تحديث
+        toast.info("في نسخة جديدة من النظام نزلت دلوقتي 🎉", {
+          description: "اضغط تحديث عشان آخر التعديلات تشتغل عندك فورًا.",
+          duration: Infinity,
+          action: { label: "تحديث الآن", onClick: () => window.location.reload() },
+        });
+      }, { once: false });
       navigator.serviceWorker.register("/sw.js").catch(() => {
         /* تسجيل الـ SW مش حرج — ساكتين لو فشل */
       });

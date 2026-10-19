@@ -303,6 +303,11 @@ export function SettingsView({ user, onBrandingChanged }: { user: SessionUser; o
       {tab === "agent" && user.role === "MANAGER" && <AgentBrainTab />}
       {tab === "prefs" && <PersonalPrefsTab />}
       {tab === "audit" && <AuditTab />}
+
+      {/* بصمة الإصدار — المدير بيقارنها بآخر commit عشان يتأكد إن التحديث وصل لجهازه */}
+      <p className="text-center text-[10.5px] font-bold text-muted-foreground/60 pt-1" dir="ltr">
+        AlNokhba Management · build {process.env.NEXT_PUBLIC_BUILD_ID ?? "—"}
+      </p>
     </div>
   );
 }
