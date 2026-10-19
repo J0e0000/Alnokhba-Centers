@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BarChart3, FileSpreadsheet, Printer, Loader2, CalendarRange, Filter, Search, X,
 } from "lucide-react";
@@ -106,6 +106,13 @@ export function ReportsView({ user }: { user: SessionUser }) {
   })();
 
   const hasExtraFilters = subjectId || teacherId || groupId || studentId;
+  // فتح الفلاتر الإضافية لوحدها لما فلتر يتفعّل (progressive disclosure) — ref effect أضمن من prop في React 19
+  const extraFiltersRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (hasExtraFilters && extraFiltersRef.current && !extraFiltersRef.current.open) {
+      extraFiltersRef.current.open = true;
+    }
+  }, [hasExtraFilters]);
   function clearFilters() {
     setSubjectId(""); setTeacherId(""); setGroupId("");
     setStudentId(""); setStudentName(""); setStudentMatches([]);
@@ -174,7 +181,7 @@ export function ReportsView({ user }: { user: SessionUser }) {
         </div>
 
         {/* فلاتر إضافية — مطوية افتراضيًا (progressive disclosure) — بتفتح لوحدها لو في فلتر شغال */}
-        <details className="group border-t border-border/60 pt-3" defaultOpen={Boolean(hasExtraFilters)}>
+        <details ref={extraFiltersRef} className="group border-t border-border/60 pt-3">
           <summary className="cursor-pointer select-none list-none flex items-center justify-between gap-2">
             <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
               فلاتر إضافية (اختياري)

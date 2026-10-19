@@ -1,0 +1,735 @@
+{"role":"manager","theme":"light","vp":"360x800","view":"home","m":"{\"o\":0,\"c\":2,\"n\":37,\"s\":[\"ففيزياء — الأول الثانو covered-by(lg:hidden)\",\"ككيمياء — الأول الثانو covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"today","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"students","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"books","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"home","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"today","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"students","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"books","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"home","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"today","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"students","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"books","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"home","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"today","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"students","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"books","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"home","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"today","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"students","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"books","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"home","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"today","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"students","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"books","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"home","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"today","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"students","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"books","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"home","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"today","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"students","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"books","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"home","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"today","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"students","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"books","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"home","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"today","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"students","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"books","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"home","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"today","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"students","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"books","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"home","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"today","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"students","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"books","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"home","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"today","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"students","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"books","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"home","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"today","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"students","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"books","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"home","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"today","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"students","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"books","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"home","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"today","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"students","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"books","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"home","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"today","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"students","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"books","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":3,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"home","m":"{\"o\":0,\"c\":4,\"n\":37,\"s\":[\"ككيمياء — الأول الثانو covered-by(lg:hidden)\",\"ففيزياء — الأول الثانو covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"today","m":"{\"o\":0,\"c\":4,\"n\":35,\"s\":[\"ابدأ covered-by(lg:hidden)\",\"مفتوح covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"scan","m":"{\"o\":0,\"c\":2,\"n\":24,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"students","m":"{\"o\":0,\"c\":10,\"n\":101,\"s\":[\"اتصال الطالب covered-by(lg:hidden)\",\"واتساب الطالب covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"messages","m":"{\"o\":0,\"c\":2,\"n\":28,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"payments","m":"{\"o\":0,\"c\":3,\"n\":50,\"s\":[\"btn covered-by(fixed)\",\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"accounting","m":"{\"o\":0,\"c\":2,\"n\":16,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"books","m":"{\"o\":0,\"c\":4,\"n\":23,\"s\":[\"بيع covered-by(fixed)\",\"بيع covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"reports","m":"{\"o\":0,\"c\":2,\"n\":27,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"schedule","m":"{\"o\":0,\"c\":4,\"n\":51,\"s\":[\"3:00 مكيمياء — الأول ا covered-by(lg:hidden)\",\"5:00 مفيزياء — الأول ا covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"groups","m":"{\"o\":0,\"c\":3,\"n\":25,\"s\":[\"تعديل covered-by(lg:hidden)\",\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"teachers","m":"{\"o\":0,\"c\":2,\"n\":21,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"approvals","m":"{\"o\":0,\"c\":2,\"n\":15,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"emergency","m":"{\"o\":0,\"c\":2,\"n\":21,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"settings","m":"{\"o\":0,\"c\":2,\"n\":21,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"home","m":"{\"o\":0,\"c\":4,\"n\":37,\"s\":[\"ككيمياء — الأول الثانو covered-by(lg:hidden)\",\"ففيزياء — الأول الثانو covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"today","m":"{\"o\":0,\"c\":4,\"n\":35,\"s\":[\"ابدأ covered-by(lg:hidden)\",\"مفتوح covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"scan","m":"{\"o\":0,\"c\":2,\"n\":24,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"students","m":"{\"o\":0,\"c\":10,\"n\":101,\"s\":[\"اتصال الطالب covered-by(lg:hidden)\",\"واتساب الطالب covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"messages","m":"{\"o\":0,\"c\":2,\"n\":28,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"payments","m":"{\"o\":0,\"c\":3,\"n\":50,\"s\":[\"btn covered-by(fixed)\",\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"accounting","m":"{\"o\":0,\"c\":2,\"n\":16,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"books","m":"{\"o\":0,\"c\":4,\"n\":23,\"s\":[\"بيع covered-by(fixed)\",\"بيع covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"reports","m":"{\"o\":0,\"c\":2,\"n\":27,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"schedule","m":"{\"o\":0,\"c\":4,\"n\":51,\"s\":[\"3:00 مكيمياء — الأول ا covered-by(lg:hidden)\",\"5:00 مفيزياء — الأول ا covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"groups","m":"{\"o\":0,\"c\":3,\"n\":25,\"s\":[\"تعديل covered-by(lg:hidden)\",\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"teachers","m":"{\"o\":0,\"c\":2,\"n\":21,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"approvals","m":"{\"o\":0,\"c\":2,\"n\":15,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"emergency","m":"{\"o\":0,\"c\":2,\"n\":21,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"settings","m":"{\"o\":0,\"c\":2,\"n\":21,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"home","m":"{\"o\":0,\"c\":0,\"n\":37,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"today","m":"{\"o\":0,\"c\":2,\"n\":37,\"s\":[\"امسح covered-by(fixed)\",\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"scan","m":"{\"o\":0,\"c\":1,\"n\":26,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"students","m":"{\"o\":0,\"c\":1,\"n\":103,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"messages","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":53,\"s\":[\"btn covered-by(fixed)\",\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":16,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"books","m":"{\"o\":0,\"c\":1,\"n\":26,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"schedule","m":"{\"o\":0,\"c\":1,\"n\":51,\"s\":[\"btn covered-by(fixed)\"]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":25,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":15,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"home","m":"{\"o\":0,\"c\":0,\"n\":37,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"today","m":"{\"o\":0,\"c\":2,\"n\":37,\"s\":[\"امسح covered-by(fixed)\",\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"scan","m":"{\"o\":0,\"c\":1,\"n\":26,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"students","m":"{\"o\":0,\"c\":1,\"n\":103,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"messages","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":53,\"s\":[\"btn covered-by(fixed)\",\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":16,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"books","m":"{\"o\":0,\"c\":1,\"n\":26,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"schedule","m":"{\"o\":0,\"c\":1,\"n\":51,\"s\":[\"btn covered-by(fixed)\"]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":25,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":15,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"home","m":"{\"o\":0,\"c\":0,\"n\":37,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"today","m":"{\"o\":0,\"c\":1,\"n\":37,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"scan","m":"{\"o\":0,\"c\":1,\"n\":26,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"students","m":"{\"o\":0,\"c\":1,\"n\":103,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"messages","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":53,\"s\":[\"btn covered-by(fixed)\",\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":16,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"books","m":"{\"o\":0,\"c\":1,\"n\":26,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":51,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":25,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":15,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"home","m":"{\"o\":0,\"c\":0,\"n\":37,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"today","m":"{\"o\":0,\"c\":1,\"n\":37,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"scan","m":"{\"o\":0,\"c\":1,\"n\":26,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"students","m":"{\"o\":0,\"c\":1,\"n\":103,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"messages","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":53,\"s\":[\"btn covered-by(fixed)\",\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":16,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"books","m":"{\"o\":0,\"c\":1,\"n\":26,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":51,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":25,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":15,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"home","m":"{\"o\":0,\"c\":0,\"n\":37,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"today","m":"{\"o\":0,\"c\":0,\"n\":37,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":26,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"students","m":"{\"o\":0,\"c\":0,\"n\":103,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":30,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":53,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":16,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"books","m":"{\"o\":0,\"c\":0,\"n\":26,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":30,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":51,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":25,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":15,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"home","m":"{\"o\":0,\"c\":0,\"n\":37,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"today","m":"{\"o\":0,\"c\":0,\"n\":37,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":26,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"students","m":"{\"o\":0,\"c\":0,\"n\":103,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":30,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":53,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":16,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"books","m":"{\"o\":0,\"c\":0,\"n\":26,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":30,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":51,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":25,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":15,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"teacher","theme":"light","vp":"390x844","view":"home","m":"{\"o\":0,\"c\":0,\"n\":5,\"s\":[]}"}
+{"role":"teacher","theme":"light","vp":"390x844","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":5,\"s\":[]}"}
+{"role":"teacher","theme":"light","vp":"390x844","view":"message","m":"{\"o\":0,\"c\":0,\"n\":5,\"s\":[]}"}
+{"role":"teacher","theme":"light","vp":"1024x768","view":"home","m":"{\"o\":0,\"c\":0,\"n\":5,\"s\":[]}"}
+{"role":"teacher","theme":"light","vp":"1024x768","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":5,\"s\":[]}"}
+{"role":"teacher","theme":"light","vp":"1024x768","view":"message","m":"{\"o\":0,\"c\":0,\"n\":5,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"home","m":"{\"o\":0,\"c\":1,\"n\":38,\"s\":[\"ككيمياء — الأول الثانو covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"today","m":"{\"o\":0,\"c\":1,\"n\":37,\"s\":[\"دخول covered-by(fixed)\"]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":26,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"students","m":"{\"o\":0,\"c\":1,\"n\":101,\"s\":[\"الأول الثانوي covered-by(fixed)\"]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"messages","m":"{\"o\":0,\"c\":1,\"n\":28,\"s\":[\"حصة التاريخ النهاردة ه covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":51,\"s\":[\"btn covered-by(fixed)\",\"btn covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":27,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"books","m":"{\"o\":0,\"c\":0,\"n\":38,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":28,\"s\":[\"النهاردة covered-by(fixed)\"]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"schedule","m":"{\"o\":0,\"c\":3,\"n\":37,\"s\":[\"السبت3 covered-by(fixed)\",\"الأحد2 covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":27,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":27,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":19,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"emergency","m":"{\"o\":0,\"c\":1,\"n\":24,\"s\":[\"نزّل نظام الطوارئ (7 أ covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"360x800","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":37,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"home","m":"{\"o\":0,\"c\":1,\"n\":38,\"s\":[\"ككيمياء — الأول الثانو covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"today","m":"{\"o\":0,\"c\":1,\"n\":37,\"s\":[\"دخول covered-by(fixed)\"]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":26,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"students","m":"{\"o\":0,\"c\":1,\"n\":101,\"s\":[\"الأول الثانوي covered-by(fixed)\"]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"messages","m":"{\"o\":0,\"c\":1,\"n\":28,\"s\":[\"حصة التاريخ النهاردة ه covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":51,\"s\":[\"btn covered-by(fixed)\",\"btn covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":27,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"books","m":"{\"o\":0,\"c\":0,\"n\":38,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":28,\"s\":[\"النهاردة covered-by(fixed)\"]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"schedule","m":"{\"o\":0,\"c\":3,\"n\":37,\"s\":[\"السبت3 covered-by(fixed)\",\"الأحد2 covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":27,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":27,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":19,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"emergency","m":"{\"o\":0,\"c\":1,\"n\":24,\"s\":[\"نزّل نظام الطوارئ (7 أ covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"360x800","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":37,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"home","m":"{\"o\":0,\"c\":1,\"n\":38,\"s\":[\"ككيمياء — الأول الثانو covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"today","m":"{\"o\":0,\"c\":0,\"n\":37,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"scan","m":"{\"o\":0,\"c\":3,\"n\":26,\"s\":[\"كتابة كود covered-by(lg:hidden)\",\"سكان covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"students","m":"{\"o\":0,\"c\":4,\"n\":101,\"s\":[\"اتصال الطالب covered-by(lg:hidden)\",\"واتساب الطالب covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"messages","m":"{\"o\":0,\"c\":3,\"n\":28,\"s\":[\"حصة التاريخ النهاردة ه covered-by(lg:hidden)\",\"حصة الجغرافيا هتكون في covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":51,\"s\":[\"btn covered-by(fixed)\",\"btn covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"accounting","m":"{\"o\":0,\"c\":1,\"n\":27,\"s\":[\"btn covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"books","m":"{\"o\":0,\"c\":0,\"n\":38,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":28,\"s\":[\"btn covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"schedule","m":"{\"o\":0,\"c\":2,\"n\":37,\"s\":[\"إضافة حصة في قاعة 1 covered-by(fixed)\",\"3:00 م–4:30 مكيمياء —  covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":27,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"teachers","m":"{\"o\":0,\"c\":2,\"n\":27,\"s\":[\"واتساب covered-by(lg:hidden)\",\"اتصال بـ أ. سارة علي covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":19,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":24,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"390x844","view":"settings","m":"{\"o\":0,\"c\":4,\"n\":37,\"s\":[\"اللون الأساسي covered-by(fixed)\",\"btn covered-by(fixed)\"]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"home","m":"{\"o\":0,\"c\":1,\"n\":38,\"s\":[\"ككيمياء — الأول الثانو covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"today","m":"{\"o\":0,\"c\":0,\"n\":37,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"scan","m":"{\"o\":0,\"c\":3,\"n\":26,\"s\":[\"كتابة كود covered-by(lg:hidden)\",\"سكان covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"students","m":"{\"o\":0,\"c\":4,\"n\":101,\"s\":[\"اتصال الطالب covered-by(lg:hidden)\",\"واتساب الطالب covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"messages","m":"{\"o\":0,\"c\":3,\"n\":28,\"s\":[\"حصة التاريخ النهاردة ه covered-by(lg:hidden)\",\"حصة الجغرافيا هتكون في covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":51,\"s\":[\"btn covered-by(fixed)\",\"btn covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"accounting","m":"{\"o\":0,\"c\":1,\"n\":27,\"s\":[\"btn covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"books","m":"{\"o\":0,\"c\":0,\"n\":38,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":28,\"s\":[\"btn covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"schedule","m":"{\"o\":0,\"c\":2,\"n\":37,\"s\":[\"إضافة حصة في قاعة 1 covered-by(fixed)\",\"3:00 م–4:30 مكيمياء —  covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":27,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"teachers","m":"{\"o\":0,\"c\":2,\"n\":27,\"s\":[\"واتساب covered-by(lg:hidden)\",\"اتصال بـ أ. سارة علي covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":19,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":24,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"390x844","view":"settings","m":"{\"o\":0,\"c\":4,\"n\":37,\"s\":[\"اللون الأساسي covered-by(fixed)\",\"btn covered-by(fixed)\"]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"home","m":"{\"o\":0,\"c\":4,\"n\":38,\"s\":[\"ككيمياء — الأول الثانو covered-by(lg:hidden)\",\"ففيزياء — الأول الثانو covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"today","m":"{\"o\":0,\"c\":4,\"n\":37,\"s\":[\"ابدأ covered-by(lg:hidden)\",\"مفتوح covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"scan","m":"{\"o\":0,\"c\":2,\"n\":26,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"students","m":"{\"o\":0,\"c\":10,\"n\":101,\"s\":[\"اتصال الطالب covered-by(lg:hidden)\",\"واتساب الطالب covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"messages","m":"{\"o\":0,\"c\":2,\"n\":28,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"payments","m":"{\"o\":0,\"c\":3,\"n\":51,\"s\":[\"btn covered-by(fixed)\",\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"accounting","m":"{\"o\":0,\"c\":2,\"n\":27,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"books","m":"{\"o\":0,\"c\":6,\"n\":38,\"s\":[\"بيع covered-by(lg:hidden)\",\"btn covered-by(fixed)\"]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"reports","m":"{\"o\":0,\"c\":2,\"n\":28,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"schedule","m":"{\"o\":0,\"c\":4,\"n\":55,\"s\":[\"12:25 مفيزياء — الأول  covered-by(lg:hidden)\",\"3:00 مكيمياء — الأول ا covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"groups","m":"{\"o\":0,\"c\":2,\"n\":27,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"teachers","m":"{\"o\":0,\"c\":4,\"n\":27,\"s\":[\"مبلغ الصرف بالجنيه covered-by(lg:hidden)\",\"صرف covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"approvals","m":"{\"o\":0,\"c\":2,\"n\":19,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"emergency","m":"{\"o\":0,\"c\":3,\"n\":24,\"s\":[\"دوس لاختيار ملف الاستر covered-by(lg:hidden)\",\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"768x1024","view":"settings","m":"{\"o\":0,\"c\":4,\"n\":37,\"s\":[\"btn covered-by(lg:hidden)\",\"btn covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"home","m":"{\"o\":0,\"c\":4,\"n\":38,\"s\":[\"ككيمياء — الأول الثانو covered-by(lg:hidden)\",\"ففيزياء — الأول الثانو covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"today","m":"{\"o\":0,\"c\":4,\"n\":37,\"s\":[\"ابدأ covered-by(lg:hidden)\",\"مفتوح covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"scan","m":"{\"o\":0,\"c\":2,\"n\":26,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"students","m":"{\"o\":0,\"c\":10,\"n\":101,\"s\":[\"اتصال الطالب covered-by(lg:hidden)\",\"واتساب الطالب covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"messages","m":"{\"o\":0,\"c\":2,\"n\":28,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"payments","m":"{\"o\":0,\"c\":3,\"n\":51,\"s\":[\"btn covered-by(fixed)\",\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"accounting","m":"{\"o\":0,\"c\":2,\"n\":27,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"books","m":"{\"o\":0,\"c\":6,\"n\":38,\"s\":[\"بيع covered-by(lg:hidden)\",\"btn covered-by(fixed)\"]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"reports","m":"{\"o\":0,\"c\":2,\"n\":28,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"schedule","m":"{\"o\":0,\"c\":4,\"n\":55,\"s\":[\"12:25 مفيزياء — الأول  covered-by(lg:hidden)\",\"3:00 مكيمياء — الأول ا covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"groups","m":"{\"o\":0,\"c\":2,\"n\":27,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"teachers","m":"{\"o\":0,\"c\":4,\"n\":27,\"s\":[\"مبلغ الصرف بالجنيه covered-by(lg:hidden)\",\"صرف covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"approvals","m":"{\"o\":0,\"c\":2,\"n\":19,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"emergency","m":"{\"o\":0,\"c\":3,\"n\":24,\"s\":[\"دوس لاختيار ملف الاستر covered-by(lg:hidden)\",\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"768x1024","view":"settings","m":"{\"o\":0,\"c\":4,\"n\":37,\"s\":[\"btn covered-by(lg:hidden)\",\"btn covered-by(lg:hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"home","m":"{\"o\":0,\"c\":0,\"n\":39,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"today","m":"{\"o\":0,\"c\":2,\"n\":42,\"s\":[\"امسح covered-by(fixed)\",\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"scan","m":"{\"o\":0,\"c\":1,\"n\":31,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"students","m":"{\"o\":0,\"c\":1,\"n\":104,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"messages","m":"{\"o\":0,\"c\":1,\"n\":31,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":56,\"s\":[\"btn covered-by(fixed)\",\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"accounting","m":"{\"o\":0,\"c\":1,\"n\":32,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"books","m":"{\"o\":0,\"c\":1,\"n\":43,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":33,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"schedule","m":"{\"o\":0,\"c\":3,\"n\":58,\"s\":[\"إضافة حصة في قاعة 2 بل covered-by(fixed)\",\"فيزياءالأول الثانوي ·  covered-by(fixed)\"]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"groups","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"teachers","m":"{\"o\":0,\"c\":1,\"n\":28,\"s\":[\"اتصال بـ أ. محمد حسن covered-by(fixed)\"]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"approvals","m":"{\"o\":0,\"c\":1,\"n\":24,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"emergency","m":"{\"o\":0,\"c\":1,\"n\":29,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1024x768","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":38,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"home","m":"{\"o\":0,\"c\":0,\"n\":39,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"today","m":"{\"o\":0,\"c\":2,\"n\":42,\"s\":[\"امسح covered-by(fixed)\",\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"scan","m":"{\"o\":0,\"c\":1,\"n\":31,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"students","m":"{\"o\":0,\"c\":1,\"n\":104,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"messages","m":"{\"o\":0,\"c\":1,\"n\":31,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":56,\"s\":[\"btn covered-by(fixed)\",\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"accounting","m":"{\"o\":0,\"c\":1,\"n\":32,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"books","m":"{\"o\":0,\"c\":1,\"n\":43,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":33,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"schedule","m":"{\"o\":0,\"c\":3,\"n\":58,\"s\":[\"إضافة حصة في قاعة 2 بل covered-by(fixed)\",\"فيزياءالأول الثانوي ·  covered-by(fixed)\"]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"groups","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"teachers","m":"{\"o\":0,\"c\":1,\"n\":28,\"s\":[\"اتصال بـ أ. محمد حسن covered-by(fixed)\"]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"approvals","m":"{\"o\":0,\"c\":1,\"n\":24,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"emergency","m":"{\"o\":0,\"c\":1,\"n\":29,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1024x768","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":38,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"home","m":"{\"o\":0,\"c\":0,\"n\":39,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"today","m":"{\"o\":0,\"c\":1,\"n\":42,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"scan","m":"{\"o\":0,\"c\":1,\"n\":31,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"students","m":"{\"o\":0,\"c\":1,\"n\":104,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"messages","m":"{\"o\":0,\"c\":1,\"n\":31,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":56,\"s\":[\"btn covered-by(fixed)\",\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"accounting","m":"{\"o\":0,\"c\":1,\"n\":32,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"books","m":"{\"o\":0,\"c\":1,\"n\":43,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":33,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"schedule","m":"{\"o\":0,\"c\":2,\"n\":58,\"s\":[\"إضافة حصة في قاعة 3 بل covered-by(fixed)\",\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"groups","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":28,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"approvals","m":"{\"o\":0,\"c\":1,\"n\":24,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"emergency","m":"{\"o\":0,\"c\":1,\"n\":29,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"light","vp":"1280x800","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":38,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"home","m":"{\"o\":0,\"c\":0,\"n\":39,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"today","m":"{\"o\":0,\"c\":1,\"n\":42,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"scan","m":"{\"o\":0,\"c\":1,\"n\":31,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"students","m":"{\"o\":0,\"c\":1,\"n\":104,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"messages","m":"{\"o\":0,\"c\":1,\"n\":31,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":56,\"s\":[\"btn covered-by(fixed)\",\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"accounting","m":"{\"o\":0,\"c\":1,\"n\":32,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"books","m":"{\"o\":0,\"c\":1,\"n\":43,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":33,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"schedule","m":"{\"o\":0,\"c\":2,\"n\":58,\"s\":[\"إضافة حصة في قاعة 3 بل covered-by(fixed)\",\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"groups","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":28,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"approvals","m":"{\"o\":0,\"c\":1,\"n\":24,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"emergency","m":"{\"o\":0,\"c\":1,\"n\":29,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"manager","theme":"dark","vp":"1280x800","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":38,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"home","m":"{\"o\":0,\"c\":0,\"n\":39,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"today","m":"{\"o\":0,\"c\":0,\"n\":42,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":31,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"students","m":"{\"o\":0,\"c\":0,\"n\":104,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":31,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":56,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":32,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"books","m":"{\"o\":0,\"c\":0,\"n\":43,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":33,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":58,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":30,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":28,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":24,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":29,\"s\":[]}"}
+{"role":"manager","theme":"light","vp":"1440x900","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":38,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"home","m":"{\"o\":0,\"c\":0,\"n\":39,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"today","m":"{\"o\":0,\"c\":0,\"n\":42,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":31,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"students","m":"{\"o\":0,\"c\":0,\"n\":104,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":31,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":56,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":32,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"books","m":"{\"o\":0,\"c\":0,\"n\":43,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":33,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":58,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":30,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":28,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":24,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":29,\"s\":[]}"}
+{"role":"manager","theme":"dark","vp":"1440x900","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":38,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"home","m":"{\"o\":0,\"c\":1,\"n\":37,\"s\":[\"ككيمياء — الأول الثانو covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"today","m":"{\"o\":0,\"c\":1,\"n\":35,\"s\":[\"دخول covered-by(fixed)\"]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":24,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"students","m":"{\"o\":0,\"c\":1,\"n\":101,\"s\":[\"الأول الثانوي covered-by(fixed)\"]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"messages","m":"{\"o\":0,\"c\":1,\"n\":28,\"s\":[\"حصة التاريخ النهاردة ه covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":50,\"s\":[\"btn covered-by(fixed)\",\"btn covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":16,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"books","m":"{\"o\":0,\"c\":0,\"n\":23,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":27,\"s\":[\"النهاردة covered-by(fixed)\"]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"schedule","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"3:00 م–4:30 مكيمياء —  covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":25,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":15,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"emergency","m":"{\"o\":0,\"c\":1,\"n\":21,\"s\":[\"نزّل نظام الطوارئ (7 أ covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"360x800","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"home","m":"{\"o\":0,\"c\":1,\"n\":37,\"s\":[\"ككيمياء — الأول الثانو covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"today","m":"{\"o\":0,\"c\":1,\"n\":35,\"s\":[\"دخول covered-by(fixed)\"]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":24,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"students","m":"{\"o\":0,\"c\":1,\"n\":101,\"s\":[\"الأول الثانوي covered-by(fixed)\"]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"messages","m":"{\"o\":0,\"c\":1,\"n\":28,\"s\":[\"حصة التاريخ النهاردة ه covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":50,\"s\":[\"btn covered-by(fixed)\",\"btn covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":16,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"books","m":"{\"o\":0,\"c\":0,\"n\":23,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":27,\"s\":[\"النهاردة covered-by(fixed)\"]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"schedule","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"3:00 م–4:30 مكيمياء —  covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":25,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":15,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"emergency","m":"{\"o\":0,\"c\":1,\"n\":21,\"s\":[\"نزّل نظام الطوارئ (7 أ covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"360x800","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"home","m":"{\"o\":0,\"c\":1,\"n\":37,\"s\":[\"ككيمياء — الأول الثانو covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"today","m":"{\"o\":0,\"c\":0,\"n\":35,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"scan","m":"{\"o\":0,\"c\":3,\"n\":24,\"s\":[\"كتابة كود covered-by(lg:hidden)\",\"سكان covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"students","m":"{\"o\":0,\"c\":4,\"n\":101,\"s\":[\"اتصال الطالب covered-by(lg:hidden)\",\"واتساب الطالب covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"messages","m":"{\"o\":0,\"c\":3,\"n\":28,\"s\":[\"حصة التاريخ النهاردة ه covered-by(lg:hidden)\",\"حصة الجغرافيا هتكون في covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":50,\"s\":[\"btn covered-by(fixed)\",\"btn covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":16,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"books","m":"{\"o\":0,\"c\":1,\"n\":23,\"s\":[\"btn covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":27,\"s\":[\"btn covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"schedule","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"5:00 م–6:30 مفيزياء —  covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"groups","m":"{\"o\":0,\"c\":1,\"n\":25,\"s\":[\"تعديل covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":15,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"390x844","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"home","m":"{\"o\":0,\"c\":1,\"n\":37,\"s\":[\"ككيمياء — الأول الثانو covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"today","m":"{\"o\":0,\"c\":0,\"n\":35,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"scan","m":"{\"o\":0,\"c\":3,\"n\":24,\"s\":[\"كتابة كود covered-by(lg:hidden)\",\"سكان covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"students","m":"{\"o\":0,\"c\":4,\"n\":101,\"s\":[\"اتصال الطالب covered-by(lg:hidden)\",\"واتساب الطالب covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"messages","m":"{\"o\":0,\"c\":3,\"n\":28,\"s\":[\"حصة التاريخ النهاردة ه covered-by(lg:hidden)\",\"حصة الجغرافيا هتكون في covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":50,\"s\":[\"btn covered-by(fixed)\",\"btn covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":16,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"books","m":"{\"o\":0,\"c\":1,\"n\":23,\"s\":[\"btn covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":27,\"s\":[\"btn covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"schedule","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"5:00 م–6:30 مفيزياء —  covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"groups","m":"{\"o\":0,\"c\":1,\"n\":25,\"s\":[\"تعديل covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":15,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"390x844","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"home","m":"{\"o\":0,\"c\":4,\"n\":37,\"s\":[\"ككيمياء — الأول الثانو covered-by(lg:hidden)\",\"ففيزياء — الأول الثانو covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"today","m":"{\"o\":0,\"c\":4,\"n\":35,\"s\":[\"ابدأ covered-by(lg:hidden)\",\"مفتوح covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"scan","m":"{\"o\":0,\"c\":2,\"n\":24,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"students","m":"{\"o\":0,\"c\":10,\"n\":101,\"s\":[\"اتصال الطالب covered-by(lg:hidden)\",\"واتساب الطالب covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"messages","m":"{\"o\":0,\"c\":2,\"n\":28,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"payments","m":"{\"o\":0,\"c\":3,\"n\":50,\"s\":[\"btn covered-by(fixed)\",\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"accounting","m":"{\"o\":0,\"c\":2,\"n\":16,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"books","m":"{\"o\":0,\"c\":4,\"n\":23,\"s\":[\"بيع covered-by(fixed)\",\"بيع covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"reports","m":"{\"o\":0,\"c\":2,\"n\":27,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"schedule","m":"{\"o\":0,\"c\":4,\"n\":51,\"s\":[\"3:00 مكيمياء — الأول ا covered-by(lg:hidden)\",\"5:00 مفيزياء — الأول ا covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"groups","m":"{\"o\":0,\"c\":3,\"n\":25,\"s\":[\"تعديل covered-by(lg:hidden)\",\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"teachers","m":"{\"o\":0,\"c\":2,\"n\":21,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"approvals","m":"{\"o\":0,\"c\":2,\"n\":15,\"s\":[\"افتح زكي — وكيل النخبة covered-by(lg:hidden)\",\"المزيد covered-by(fixed)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"emergency","m":"{\"o\":0,\"c\":4,\"n\":101,\"s\":[\"اتصال الطالب covered-by(lg:hidden)\",\"واتساب الطالب covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"768x1024","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"home","m":"{\"o\":0,\"c\":1,\"n\":37,\"s\":[\"ككيمياء — الأول الثانو covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"today","m":"{\"o\":0,\"c\":0,\"n\":35,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"scan","m":"{\"o\":0,\"c\":3,\"n\":24,\"s\":[\"كتابة كود covered-by(lg:hidden)\",\"سكان covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"students","m":"{\"o\":0,\"c\":4,\"n\":101,\"s\":[\"اتصال الطالب covered-by(lg:hidden)\",\"واتساب الطالب covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"messages","m":"{\"o\":0,\"c\":3,\"n\":28,\"s\":[\"حصة التاريخ النهاردة ه covered-by(lg:hidden)\",\"حصة الجغرافيا هتكون في covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":50,\"s\":[\"btn covered-by(fixed)\",\"btn covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":16,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"books","m":"{\"o\":0,\"c\":1,\"n\":23,\"s\":[\"btn covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":27,\"s\":[\"btn covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"schedule","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"5:00 م–6:30 مفيزياء —  covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"groups","m":"{\"o\":0,\"c\":1,\"n\":25,\"s\":[\"تعديل covered-by(lg:hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":15,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"768x1024","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"home","m":"{\"o\":0,\"c\":0,\"n\":37,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"today","m":"{\"o\":0,\"c\":2,\"n\":37,\"s\":[\"امسح covered-by(fixed)\",\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"scan","m":"{\"o\":0,\"c\":1,\"n\":26,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"students","m":"{\"o\":0,\"c\":1,\"n\":103,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"messages","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":53,\"s\":[\"btn covered-by(fixed)\",\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":16,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"books","m":"{\"o\":0,\"c\":1,\"n\":26,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"schedule","m":"{\"o\":0,\"c\":1,\"n\":51,\"s\":[\"btn covered-by(fixed)\"]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":25,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":15,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1024x768","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"home","m":"{\"o\":0,\"c\":0,\"n\":37,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"today","m":"{\"o\":0,\"c\":2,\"n\":37,\"s\":[\"امسح covered-by(fixed)\",\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"scan","m":"{\"o\":0,\"c\":1,\"n\":26,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"students","m":"{\"o\":0,\"c\":1,\"n\":103,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"messages","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":53,\"s\":[\"btn covered-by(fixed)\",\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":16,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"books","m":"{\"o\":0,\"c\":1,\"n\":26,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"schedule","m":"{\"o\":0,\"c\":1,\"n\":51,\"s\":[\"btn covered-by(fixed)\"]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":25,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":15,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1024x768","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"home","m":"{\"o\":0,\"c\":0,\"n\":37,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"today","m":"{\"o\":0,\"c\":1,\"n\":37,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"scan","m":"{\"o\":0,\"c\":1,\"n\":26,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"students","m":"{\"o\":0,\"c\":1,\"n\":103,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"messages","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":53,\"s\":[\"btn covered-by(fixed)\",\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":16,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"books","m":"{\"o\":0,\"c\":1,\"n\":26,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":51,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":25,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":15,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1280x800","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"home","m":"{\"o\":0,\"c\":0,\"n\":37,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"today","m":"{\"o\":0,\"c\":1,\"n\":37,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"scan","m":"{\"o\":0,\"c\":1,\"n\":26,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"students","m":"{\"o\":0,\"c\":1,\"n\":103,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"messages","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"payments","m":"{\"o\":0,\"c\":2,\"n\":53,\"s\":[\"btn covered-by(fixed)\",\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":16,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"books","m":"{\"o\":0,\"c\":1,\"n\":26,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"reports","m":"{\"o\":0,\"c\":1,\"n\":30,\"s\":[\"مساعدة — أسئلة وإجابات covered-by(hidden)\"]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":51,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":25,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":15,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1280x800","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"home","m":"{\"o\":0,\"c\":0,\"n\":37,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"today","m":"{\"o\":0,\"c\":0,\"n\":37,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":26,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"students","m":"{\"o\":0,\"c\":0,\"n\":103,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":30,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":53,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":16,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"books","m":"{\"o\":0,\"c\":0,\"n\":26,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":30,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":51,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":25,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":15,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"light","vp":"1440x900","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"home","m":"{\"o\":0,\"c\":0,\"n\":37,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"today","m":"{\"o\":0,\"c\":0,\"n\":37,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"scan","m":"{\"o\":0,\"c\":0,\"n\":26,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"students","m":"{\"o\":0,\"c\":0,\"n\":103,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"messages","m":"{\"o\":0,\"c\":0,\"n\":30,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"payments","m":"{\"o\":0,\"c\":0,\"n\":53,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"accounting","m":"{\"o\":0,\"c\":0,\"n\":16,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"books","m":"{\"o\":0,\"c\":0,\"n\":26,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"reports","m":"{\"o\":0,\"c\":0,\"n\":30,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"schedule","m":"{\"o\":0,\"c\":0,\"n\":51,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"groups","m":"{\"o\":0,\"c\":0,\"n\":25,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"teachers","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"approvals","m":"{\"o\":0,\"c\":0,\"n\":15,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"emergency","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}
+{"role":"reception","theme":"dark","vp":"1440x900","view":"settings","m":"{\"o\":0,\"c\":0,\"n\":21,\"s\":[]}"}

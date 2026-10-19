@@ -75,6 +75,7 @@ export default function StaffScreenPage() {
     aliveRef.current = true;
     let stored: string | null = null;
     try { stored = localStorage.getItem(KEY_STORAGE); } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- جلب أولي محفوظ من localStorage وقت الإقلاع (الحالة بتتحدث بعد الـ await مش مزامنة)
     if (stored) void fetchSlot(stored);
     else setPhase("pair");
 

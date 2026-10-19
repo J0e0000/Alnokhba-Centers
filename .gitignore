@@ -77,3 +77,6 @@ qae/snapshot-*.sqlite
 benchmark/*.db
 *.pem
 *.db
+
+# تقرير تدوير المفتاح — قيم حساسة
+scripts/rotation/

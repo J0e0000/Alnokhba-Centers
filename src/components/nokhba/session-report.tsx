@@ -69,6 +69,7 @@ export function recipientPhone(s: { phone: string | null; parentPhone?: string |
 /** بوابة للـ body — عشان الحوار يفلت من أي سياق transform في الأسلاف (fixed بيتحبس جواه) */
 function Portal({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- نمط portal القياسي: نرندر بعد التحميل فقط
   useEffect(() => setMounted(true), []);
   if (!mounted) return null;
   return createPortal(children, document.body);
