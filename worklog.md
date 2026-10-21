@@ -601,3 +601,20 @@ Stage Summary:
 - إجابة المالك: أيوه ده الجديد فعلاً — بس انت داخل بحساب الاختبار فشايف بيانات الضغط مش سنترك
 - الإنتاج شغّال بآخر كوميت (fa9e902) — لقطة الحية مطابقة 100%
 - المفتاح الجديد جاهز (0cc6fc4f2c4125f6) — اتمام خطوة الـ env معلق على موافقة الـ device flow
+
+---
+Task ID: 9 (device-flow round 2 — wrong account discovered + branch hygiene)
+Agent: main
+Task: المالك قبل لينك الـ device flow («done») → استكمال خطوة env المفتاح. اكتشاف: الحساب غلط.
+
+Work Log:
+- vercel whoami بعد القبول = joussefsoliman87-6830 — فحصت المشاريع بالـ REST API بالتوكن نفسه (v2/teams + v9/projects): فريق واحد «Youssef's projects» و6 مشاريع (frontend-alfares، alnokhba-db-probe، rifq-qiyam، alnokhbahelp، gatekeeper، v0-student-management-system) — **مفيش alnokhba-centers خالص**
+- الاستنتاج: المشروع (alnokhba-centers-nine.vercel.app) تابع لحساب Vercel تاني — المالك قبل الكود من براوزر الحساب الغلط
+- جيت: اكتشفت إن فاز 1+3 (190e48a، 695a591) متكومتين على main المحلي مع كوميتين UUID — تحققت إنهم كلهم داخلين في origin/feat/platform-hardening → reset main لـ origin/main (890dc51) + sync محلي للفرع = النظافة راجعت
+- المفتاح اتولّد تاني بعد تجدد الحاوية: FP=ae7f99d8ce3092a6 — db/emergency-signing.pem + scripts/rotation/new-key-base64.txt متطابقين (اتحقق تشفيري: نفس SPKI sha256)
+- device flow جديد شغال في الخلفية: user_code=KQPS-TGDX — مستنى القبول من براوزر الحساب الصاحب للمشروع
+
+Stage Summary:
+- القبول الأول كان بحساب مش مالك للمشروع — لينك جديد KQPS-TGDX اتبعت للمالك بتعليمات صريحة: يسجّل دخول براوزر حساب alnokhba-centers الأول
+- الفروز النضيف: main = origin/main (بدون كود الفازات) · feat/platform-hardening = 695a591 (فاز 1+3)
+- فور القبول: vercel link → env add EMERGENCY_SIGNING_KEY (production+preview) → redeploy → تحقق keyFp=ae7f99d8ce3092a6 مستقر بعد cold start
