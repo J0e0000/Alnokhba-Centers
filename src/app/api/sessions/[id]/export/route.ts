@@ -1,7 +1,8 @@
 import { db } from "@/lib/db";
 import { handler } from "@/lib/api";
-import { requireCenterUser, ApiError } from "@/lib/auth";
+import { ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
+import { requireExportAdmin } from "@/lib/export-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -39,11 +40,14 @@ function sanitizeFilename(name: string): string {
 }
 
 export const GET = handler(async (_req: Request, ctx: Ctx) => {
-  const user = await requireCenterUser();
+  // تصدير CSV للحضور = بيانات بالجملة — أدمن المنصة بس (spec المرحلة 1).
+  // النطاق بيتجاب من الحصة نفسها في الداتابيز (مش من ادعاء العميل) —
+  // فمفيش أي طريقة تلمس بيانات سنتر تاني حتى لو غيرت البارامز.
+  const { user } = await requireExportAdmin({ what: "attendance-csv" });
   const { id } = await ctx.params;
 
   const session = await db.sessionInstance.findFirst({
-    where: { id, centerId: user.centerId },
+    where: { id },
     include: {
       group: { include: { subject: true, grade: true } },
       attendance: {
@@ -92,11 +96,11 @@ export const GET = handler(async (_req: Request, ctx: Ctx) => {
   const csv = "\uFEFF" + [header.map(csvCell).join(","), ...rows].join("\r\n") + "\r\n";
 
   await logAudit({
-    user,
+    user: { ...user, centerId: session.centerId },
     action: AUDIT.ATTENDANCE_EXPORTED,
     entity: "SESSION",
     entityId: session.id,
-    reason: `تصدير CSV لحضور الحصة (${session.attendance.length} سجل)`,
+    reason: `تصدير CSV لحضور الحصة (${session.attendance.length} سجل) — سنتر: ${session.centerId}`,
   }).catch(() => {});
 
   const filename = `attendance-${sanitizeFilename(label)}-${session.date}.csv`;

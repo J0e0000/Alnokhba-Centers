@@ -193,6 +193,8 @@ export function EmergencyView({ user }: { user: SessionUser }) {
       />
 
       {/* ===== المبدأ ===== */}
+      {user.role === "ADMIN" ? (
+      <>
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3 dark:bg-amber-950/40 dark:border-amber-800/60">
         <ShieldAlert className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
         <div className="text-sm font-bold text-amber-800 leading-relaxed dark:text-amber-200">
@@ -204,7 +206,7 @@ export function EmergencyView({ user }: { user: SessionUser }) {
         </div>
       </div>
 
-      {/* ===== 1) تنزيل حزمة الطوارئ ===== */}
+      {/* ===== 1) تنزيل حزمة الطوارئ — أدمن المنصة بس (تصدير بالجملة) ===== */}
       <SectionCard title="① حزمة الطوارئ (أوفلاين — HTML)" icon={<PackageCheck className="w-4 h-4" />}>
         <button
           onClick={downloadPackage}
@@ -237,6 +239,13 @@ export function EmergencyView({ user }: { user: SessionUser }) {
           أو نزّل لوحة إكسل للطوارئ (بديل الجداول — للفتح في Excel)
         </button>
       </SectionCard>
+      </>
+      ) : (
+        <div className="rounded-2xl border border-border bg-muted/40 p-4 text-[12.5px] font-bold text-muted-foreground leading-relaxed">
+          🔒 تصدير حزم الطوارئ بقى من حساب <b>الإدارة العامة</b> بس (سياسة حماية البيانات بالجملة) — اطلب الحزمة من إدارة المنصة.
+          <span className="block mt-1">استرداد ملف المزامنة (الاستيراد) شغّال عادي من تحت زي ما هو.</span>
+        </div>
+      )}
 
       {/* ===== 2) استيراد ملف الاسترداد ===== */}
       <SectionCard title="② استيراد ملف الاسترداد (SYNC BACK)" icon={<Upload className="w-4 h-4" />}>

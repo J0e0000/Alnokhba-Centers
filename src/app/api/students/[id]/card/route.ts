@@ -1,7 +1,9 @@
 import QRCode from "qrcode";
 import { db } from "@/lib/db";
 import { ok, handler } from "@/lib/api";
-import { requireCenterUser, ApiError } from "@/lib/auth";
+import { requireCenterUser, ApiError, type SessionUser } from "@/lib/auth";
+import { logAudit, AUDIT } from "@/lib/audit";
+import { requireExportAdmin, centerParam } from "@/lib/export-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +39,8 @@ export const GET = handler(async (_req: Request, ctx: { params: Promise<{ id: st
   const { id } = await ctx.params;
   const cards = await cardsFor(user.centerId, [id]);
   if (cards.length === 0) throw new ApiError("الطالب ده مش موجود في السنتر ده.", 404);
+  // كارت طالب واحد = استخدام فردي مسموح لطاقم السنتر — بس بيتسجل (spec المرحلة 1)
+  await logAudit({ user, action: AUDIT.CARD_PRINTED, entity: "STUDENT", entityId: id, reason: "عرض/طباعة كارت طالب واحد" }).catch(() => {});
   return ok({
     center: {
       name: user.center!.name, logo: user.center!.logo, primaryColor: user.center!.primaryColor,
@@ -47,15 +51,22 @@ export const GET = handler(async (_req: Request, ctx: { params: Promise<{ id: st
 });
 
 export const POST = handler(async (req: Request) => {
-  const user = await requireCenterUser();
+  // الكروت بالجملة (حتى 200 كارت) = تصدير بالجملة — أدمن المنصة بس (spec المرحلة 1)
+  const url = new URL(req.url);
+  const grant = await requireExportAdmin({ what: "student-cards-bulk", centerId: centerParam(url) });
+  if (!grant.centerId) throw new ApiError("حدد السنتر (?centerId=) لطباعة الكروت بالجملة.", 400);
+  const user: SessionUser & { centerId: string } = { ...grant.user, centerId: grant.centerId };
   const body = await req.json().catch(() => ({})) as { ids?: string[] };
   const ids = Array.isArray(body.ids) ? body.ids.map(String).slice(0, 200) : [];
   if (!ids.length) throw new ApiError("اختار الطلاب الأول.", 400);
   const cards = await cardsFor(user.centerId, ids);
+  await logAudit({ user, action: AUDIT.CARD_PRINTED, entity: "STUDENT", reason: `طباعة كروت بالجملة (${cards.length} كارت)` }).catch(() => {});
+  // أدمن المنصة مالوش center محمّل في الجلسة — بنجيبه من الداتابيز بالنطاق المحدد
+  const centerRow = user.center ?? await db.center.findUnique({ where: { id: user.centerId } });
   return ok({
     center: {
-      name: user.center!.name, logo: user.center!.logo, primaryColor: user.center!.primaryColor,
-      secondaryColor: user.center!.secondaryColor, slogan: user.center!.slogan,
+      name: centerRow?.name ?? "", logo: centerRow?.logo, primaryColor: centerRow?.primaryColor,
+      secondaryColor: centerRow?.secondaryColor, slogan: centerRow?.slogan,
     },
     cards,
   });

@@ -1,8 +1,10 @@
 import { db } from "@/lib/db";
 import { ok, handler } from "@/lib/api";
 import { requireModule } from "@/lib/entitlements";
-import { requireCenterUser, ApiError } from "@/lib/auth";
+import { requireCenterUser, ApiError, type SessionUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
+import { logAudit, AUDIT } from "@/lib/audit";
+import { requireExportAdmin, centerParam } from "@/lib/export-guard";
 import { todayStr, cairoDateStr, cairoDayBounds } from "@/lib/normalize";
 
 export const dynamic = "force-dynamic";
@@ -29,10 +31,29 @@ function inCairoRange(d: Date, from: string, to: string): boolean {
 
 /** GET /api/reports?type=&from=&to=&groupId=&subjectId=&teacherId=&studentId=&export=csv */
 export const GET = handler(async (req: Request) => {
-  const user = await requireCenterUser();
-  await requireModule(user.centerId, "reports", user);
-  const centerId = user.centerId;
   const url = new URL(req.url);
+  const isExport = url.searchParams.get("export") === "csv";
+
+  // فك التشابك: التصدير (ملف CSV بالجملة) = أدمن المنصة بس (spec المرحلة 1)
+  // والمشاهدة على الشاشة (JSON للواجهة) بتفضل لطاقم السنتر بصلاحية VIEW_REPORTS.
+  let user: SessionUser;
+  let centerId: string;
+  if (isExport) {
+    const grant = await requireExportAdmin({ what: "reports-csv", centerId: centerParam(url) });
+    if (!grant.centerId) throw new ApiError("حدد السنتر المطلوب تصدير تقريره — أضف ?centerId=<معرف السنتر>.", 400);
+    user = grant.user;
+    centerId = grant.centerId;
+    await requireModule(centerId, "reports", user);
+  } else {
+    const cu = await requireCenterUser();
+    await requireModule(cu.centerId, "reports", cu);
+    if (!hasPermission(cu, "VIEW_REPORTS")) {
+      throw new ApiError("التقارير محتاجة صلاحية «عرض التقارير» — كلم مدير السنتر.", 403);
+    }
+    user = cu;
+    centerId = cu.centerId;
+  }
+
   const type = url.searchParams.get("type") ?? "daily";
   const today = todayStr();
   const from = url.searchParams.get("from") || today.slice(0, 8) + "01";
@@ -41,15 +62,8 @@ export const GET = handler(async (req: Request) => {
   const subjectId = url.searchParams.get("subjectId") || "";
   const teacherId = url.searchParams.get("teacherId") || "";
   const studentId = url.searchParams.get("studentId") || "";
-  const isExport = url.searchParams.get("export") === "csv";
 
-  // صلاحيات التقارير — سيرفري (spec §5): VIEW_REPORTS للمشاهدة، EXPORT_REPORTS للتصدير
-  if (!hasPermission(user, "VIEW_REPORTS")) {
-    throw new ApiError("التقارير محتاجة صلاحية «عرض التقارير» — كلم مدير السنتر.", 403);
-  }
-  if (isExport && !hasPermission(user, "EXPORT_REPORTS")) {
-    throw new ApiError("تصدير التقارير محتاج صلاحية «تصدير التقارير» — كلم مدير السنتر.", 403);
-  }
+  // ملاحظة: تصدير التقارير بقى أدمن-أونلي فوق — VIEW_REPORTS للمشاهدة بس
 
   let title = "";
   let columns: Col[] = [];
@@ -463,6 +477,13 @@ export const GET = handler(async (req: Request) => {
     const totalsLine = columns.filter((c) => totals[c.key] !== undefined).map((c) => csvEscape(c.label === c.label ? `إجمالي ${c.label}` : c.label)).join(",");
     const totalsVals = columns.filter((c) => totals[c.key] !== undefined).map((c) => (totals[c.key] / 100).toFixed(2)).join(",");
     const csv = `\uFEFF${head}\n${body}\n${totalsLine}\n${totalsVals}`;
+    await logAudit({
+      user: { ...user, centerId },
+      action: AUDIT.REPORTS_EXPORTED,
+      entity: "REPORT",
+      entityId: type,
+      reason: `تصدير تقرير ${type} (${from} → ${to}) — ${rows.length} صف`,
+    }).catch(() => {});
     return new Response(csv, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",

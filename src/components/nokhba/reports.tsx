@@ -125,10 +125,12 @@ export function ReportsView({ user }: { user: SessionUser }) {
         subtitle="تقارير مالية شاملة — بالفلاتر والتصدير"
         action={
           <div className="flex gap-2">
-            <a href={`/api/reports?${query}&export=csv`}
-              className="border border-border bg-card font-bold rounded-xl px-3.5 py-2.5 flex items-center gap-1.5 text-sm hover:bg-muted/60">
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Excel/CSV
-            </a>
+            {user.role === "ADMIN" && (
+              <a href={`/api/reports?${query}&export=csv&centerId=${user.centerId ?? ""}`}
+                className="border border-border bg-card font-bold rounded-xl px-3.5 py-2.5 flex items-center gap-1.5 text-sm hover:bg-muted/60">
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Excel/CSV
+              </a>
+            )}
             <button
               onClick={() => data && print(
                 <PrintableReport data={data} center={user.center} />,

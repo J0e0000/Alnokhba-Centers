@@ -157,4 +157,16 @@ export const AUDIT = {
   AGENT_CONFIRMATION_GRANTED: "تأكيد عملية الوكيل",
   AGENT_CONFIRMATION_CANCELLED: "إلغاء تأكيد عملية الوكيل",
   AGENT_FEEDBACK: "تقييم رد الوكيل",
+
+  // أمن التصدير + السجل العام (الموجة الجديدة — spec المراحل 1-9)
+  EXPORT_DENIED: "رفض محاولة تصدير بيانات",
+  REPORTS_EXPORTED: "تصدير تقرير CSV",
+  CARD_PRINTED: "طباعة/عرض كارت طالب",
+  PERMISSIONS_CHANGED: "تغيير صلاحيات مستخدم",
+  RECORD_ARCHIVED: "أرشفة سجل (حذف ناعم)",
+  RECORD_RESTORED: "استعادة سجل مؤرشف",
+  WHATSAPP_LINK_UPDATED: "تحديث رابط مجموعة واتساب",
+  IMPORT_EXECUTED: "تنفيذ استيراد بيانات",
+  IMPORT_DENIED: "رفض محاولة استيراد بيانات",
+  HEALTH_ALERT_RAISED: "رفع تنبيه تشغيلي",
 } as const;

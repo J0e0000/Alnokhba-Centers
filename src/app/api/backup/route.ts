@@ -1,7 +1,8 @@
 import { db } from "@/lib/db";
 import { ok, handler } from "@/lib/api";
-import { requireUser, requireManager, ApiError } from "@/lib/auth";
+import { requireUser, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
+import { requireExportAdmin, centerParam } from "@/lib/export-guard";
 import { createBackup, getBackupStatus, exportCenterJson, exportCenterCsv, CSV_TABLES, type CsvTableKey } from "@/lib/backup";
 import { readFile } from "fs/promises";
 import path from "path";
@@ -23,10 +24,11 @@ export const GET = handler(async (req: Request) => {
   const download = url.searchParams.get("download");
 
   if (download === "latest") {
-    // ملف الـ .db الفيزيائي بيضم قاعدة المنصة كاملة (كل السنترات) — للأدمن بس.
-    // المدير ياخد نسخة سنتره JSON/CSV — عزل بيانات السنترات (تدقيق المرحلة 2 — HIGH)
+    // ملف الـ .db الفيزيائي بيضم قاعدة المنصة كاملة (كل السنترات) — للأدمن بس
+    // (spec المرحلة 1: أي تصفير بيانات بالجملة = أدمن المنصة فقط)
     if (user.role !== "ADMIN") {
-      throw new ApiError("ملف قاعدة البيانات الفيزيائي بيضم كل السنترات — متاح للأدمن بس. استخدم تصدير JSON أو CSV لسنترك.", 403);
+      await logAudit({ user, action: AUDIT.EXPORT_DENIED, entity: "EXPORT", entityId: "backup-db-physical", reason: "محاولة تنزيل قاعدة البيانات الفيزيائية من غير دور الأدمن" }).catch(() => {});
+      throw new ApiError("ملف قاعدة البيانات الفيزيائي بيضم كل السنترات — متاح للأدمن بس.", 403);
     }
     const { file } = await createBackup("manual");
     const bytes = await readFile(path.join(process.cwd(), "backups", file));
@@ -39,15 +41,14 @@ export const GET = handler(async (req: Request) => {
     });
   }
 
-  // باقي مسارات النسخ الاحتياطي = مدير السنتر (نطاق سنتره بس)
-  if (user.role !== "MANAGER" || !user.centerId) {
-    throw new ApiError("العملية دي لمدير السنتر بس.", 403);
-  }
-  const centerId = user.centerId;
+  // كل تصدير/حالة النسخ الاحتياطي = أدمن المنصة بس (spec المرحلة 1 + 2)
+  const grant = await requireExportAdmin({ what: "backup-export", centerId: centerParam(url) });
+  const user2 = grant.user;
 
   if (format === "json") {
-    const payload = await exportCenterJson(centerId);
-    await logAudit({ user, action: AUDIT.BACKUP_EXPORTED, entity: "CENTER", entityId: user.centerId, after: { format: "json", counts: payload.meta.counts } });
+    if (!grant.centerId) throw new ApiError("حدد السنتر المطلوب تصدير بياناته — أضف ?centerId=<معرف السنتر>.", 400);
+    const payload = await exportCenterJson(grant.centerId);
+    await logAudit({ user: { ...user2, centerId: grant.centerId }, action: AUDIT.BACKUP_EXPORTED, entity: "CENTER", entityId: grant.centerId, after: { format: "json", counts: payload.meta.counts } });
     const stamp = new Date().toISOString().slice(0, 10);
     return new Response(JSON.stringify(payload, null, 2), {
       headers: {
@@ -58,10 +59,11 @@ export const GET = handler(async (req: Request) => {
   }
 
   if (format === "csv") {
+    if (!grant.centerId) throw new ApiError("حدد السنتر المطلوب تصدير جدوله — أضف ?centerId=<معرف السنتر>.", 400);
     const key = (CSV_TABLES.find((t) => t.key === table)?.key ?? null) as CsvTableKey | null;
     if (!key) throw new ApiError("اختار جدول التصدير من القائمة.");
-    const { filename, csv } = await exportCenterCsv(centerId, key);
-    await logAudit({ user, action: AUDIT.BACKUP_EXPORTED, entity: "CENTER", entityId: centerId, after: { format: "csv", table: key } });
+    const { filename, csv } = await exportCenterCsv(grant.centerId, key);
+    await logAudit({ user: { ...user2, centerId: grant.centerId }, action: AUDIT.BACKUP_EXPORTED, entity: "CENTER", entityId: grant.centerId, after: { format: "csv", table: key } });
     return new Response(csv, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
@@ -84,10 +86,11 @@ export const GET = handler(async (req: Request) => {
   });
 });
 
-/** POST /api/backup — trigger a backup snapshot right now (manager) */
-export const POST = handler(async () => {
-  const user = await requireManager();
+/** POST /api/backup — trigger a backup snapshot right now (admin only — spec المرحلة 2) */
+export const POST = handler(async (req: Request) => {
+  const url = new URL(req.url);
+  const { user } = await requireExportAdmin({ what: "backup-create", centerId: centerParam(url) });
   const { file, size } = await createBackup("manual");
-  await logAudit({ user, action: AUDIT.BACKUP_CREATED, entity: "CENTER", entityId: user.centerId, after: { file, size } });
+  await logAudit({ user, action: AUDIT.BACKUP_CREATED, entity: "CENTER", entityId: user.centerId ?? undefined, after: { file, size } });
   return ok({ file, size, status: await getBackupStatus() }, { status: 201 });
 });

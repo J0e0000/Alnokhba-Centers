@@ -1274,7 +1274,7 @@ function ReportStage({ data, user, isOpenSession, closed, roster, presentCount, 
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <button onClick={printAttendance} className="nk-wf-ghost flex items-center gap-1.5"><Printer className="w-4 h-4" /> طباعة كشف الحضور</button>
-            {closed && <button onClick={downloadCsv} className="nk-wf-ghost flex items-center gap-1.5"><Download className="w-4 h-4" /> تصدير CSV</button>}
+            {closed && user.role === "ADMIN" && <button onClick={downloadCsv} className="nk-wf-ghost flex items-center gap-1.5"><Download className="w-4 h-4" /> تصدير CSV</button>}
           </div>
           <div className="mt-3">
             <FoldSection
