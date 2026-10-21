@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db, dbMode } from "@/lib/db";
 import { ok, handler } from "@/lib/api";
 import { requireUser, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
@@ -29,6 +29,11 @@ export const GET = handler(async (req: Request) => {
     if (user.role !== "ADMIN") {
       await logAudit({ user, action: AUDIT.EXPORT_DENIED, entity: "EXPORT", entityId: "backup-db-physical", reason: "محاولة تنزيل قاعدة البيانات الفيزيائية من غير دور الأدمن" }).catch(() => {});
       throw new ApiError("ملف قاعدة البيانات الفيزيائي بيضم كل السنترات — متاح للأدمن بس.", 403);
+    }
+    // اللقطة الفيزيائية (VACUUM INTO) للـ SQLite المحلي بس — الإنتاج Postgres له مسار منفصل
+    // (سكريبت scripts/backup/postgres-backup.mts — توثيق كامل في docs/BACKUP-DR.md)
+    if (dbMode() !== "local") {
+      throw new ApiError("اللقطة الفيزيائية للمطور المحلي (SQLite) بس. الإنتاج (Postgres) بينسخ بسكريبت النسخ المنطقي — شوف docs/BACKUP-DR.md.", 400);
     }
     const { file } = await createBackup("manual");
     const bytes = await readFile(path.join(process.cwd(), "backups", file));

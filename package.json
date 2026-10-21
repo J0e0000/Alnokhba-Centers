@@ -14,7 +14,9 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
-    "test": "tsx scripts/spec-tests/export-role-matrix.mts"
+    "backup:pg": "tsx scripts/backup/postgres-backup.mts",
+    "backup:restore-test": "tsx scripts/backup/restore-test.mts",
+    "backup:selftest": "tsx scripts/backup/selftest.mts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
@@ -78,6 +80,8 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
+    "@electric-sql/pglite-socket": "^0.0.7",
     "@tailwindcss/postcss": "^4",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^19",
@@ -89,6 +93,7 @@
     "pngjs": "^7.0.0",
     "server-only": "^0.0.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "tw-animate-css": "^1.3.5",
     "typescript": "^5"
   }

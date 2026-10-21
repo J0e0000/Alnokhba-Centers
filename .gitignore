@@ -25,7 +25,7 @@ db/*.db-journal
 .zscripts/
 .recon/
 tool-results/
-backups/
+/backups/
 chatdata/
 chat_extract/
 download/
@@ -53,6 +53,7 @@ db/custom.db-shm
 # Vercel probe sandbox (device-flow link + pulled prod env values — never commit)
 scripts/vc-probe/
 .env.prod-url
+scripts/.device_code
 .vercel-token
 **/.vercel-token
 db/custom.db
@@ -80,4 +81,4 @@ benchmark/*.db
 
 # تقرير تدوير المفتاح — قيم حساسة
 scripts/rotation/
-backup/
+/backup/

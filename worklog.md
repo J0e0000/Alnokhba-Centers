@@ -603,6 +603,7 @@ Stage Summary:
 - المفتاح الجديد جاهز (0cc6fc4f2c4125f6) — اتمام خطوة الـ env معلق على موافقة الـ device flow
 
 ---
+---
 Task ID: 9 (device-flow round 2 — wrong account discovered + branch hygiene)
 Agent: main
 Task: المالك قبل لينك الـ device flow («done») → استكمال خطوة env المفتاح. اكتشاف: الحساب غلط.
@@ -618,3 +619,28 @@ Stage Summary:
 - القبول الأول كان بحساب مش مالك للمشروع — لينك جديد KQPS-TGDX اتبعت للمالك بتعليمات صريحة: يسجّل دخول براوزر حساب alnokhba-centers الأول
 - الفروز النضيف: main = origin/main (بدون كود الفازات) · feat/platform-hardening = 695a591 (فاز 1+3)
 - فور القبول: vercel link → env add EMERGENCY_SIGNING_KEY (production+preview) → redeploy → تحقق keyFp=ae7f99d8ce3092a6 مستقر بعد cold start
+
+---
+Task ID: 10 (vercel auth round-3 + phase-2 backup/DR)
+Agent: main
+Task: المالك بدّل لحساب المشروع الصح وطلب اللينك تاني → إتمام ربط Vercel يدوياً + تنفيذ المرحلة 2 (نسخ احتياطي/استرجاع).
+
+Work Log:
+- device-flow CLI بيموت بين الـ tool calls (tmux/screen مش متاحين) → **تنفيذ يدوي للـ OAuth device flow بـ curl**: discovery (vercel.com/.well-known) → device-authorization → poll للتوكن → كتابة auth.json بصيغة الـ CLI ({token, expiresAt, refreshToken}). الكود التالت CZFQ-VRPN اتقبل ✓.
+- **الربط صح**: moj4534-4875 / فريق Alnokhba / مشروع alnokhba-centers متلينك محلياً (.vercel/project.json). Production URL: alnokhba-centers-nine.vercel.app.
+- `vercel env pull` رجّع `DATABASE_URL="[SENSITIVE]"` — القيمة الحساسة مش بتتسحب بالتصميم → الباك أب الفعلي للإنتاج مؤجل لدور backup_reader (docs/BACKUP-DR.md §2). تنبيه: كلامي السابق «DATABASE_URL موجود محلياً» كان غلط.
+- **EMERGENCY_SIGNING_KEY اتحطت في إنتاج Vercel** (RSA-2048 جديدة FP=fd8081e902e9a250، base64 في scripts/rotation/) — هتتفعّل مع أول deploy بعد الدمج. الملفات القديمة ضاعوا مع الحاوية — التوليد الجديد مكافئ (المفتاح القديم عمره ما خرج).
+- **المرحلة 2**: scripts/backup/{postgres-backup,restore-test,selftest}.mts:
+  * backup: جلسة REPEATABLE READ READ ONLY (استحالة كتابة) → dump self-contained (DDL من pg_catalog بالترتيب الطوبولوجي + INSERTs + القيود PK/UNIQUE/FK بعد البيانات عشان FK الذاتي للمرتجعات) + sha256 + latest-status.json.
+  * restore-test: تحقق sha256 → استرجاع في PGlite (Postgres حقيقي in-process) → مقارنة صف كل جدول → فحص FK → validated في status.
+  * selftest: PGlite + PGLiteSocketServer (wire protocol حقيقي) على سكيما مصغرة (نص عربي بعلامات اقتباس + jsonb + مرجع ذاتي) → backup → restore → **مطابقة قيم 100% PASS**.
+  * علمنيتين: execSync بيجمّد الـ event loop فالـ socket server بيدّي مهلة → استبدل بـ spawn غير متزامن؛ gitignore نمط `backup/` كان بيبلع `scripts/backup/` → تثبيت على الجذر `/backup/` (نفس فخ `tests/` من المرحلة 1).
+- **حماية في /api/backup**: اللقطة الفيزيائية VACUUM INTO محصورة على وضع SQLite المحلي — في Postgres ترجع رسالة إرشادية عربي (400) بدل انهيار.
+- npm scripts: backup:pg / backup:restore-test / backup:selftest (tsx اتنزلت devDep رسمياً).
+- docs/BACKUP-DR.md كامل: التشغيل، دور القراءة فقط، DR Runbook (RTO ~10-15د)، الجدولة، المستويات الثلاثة.
+
+Stage Summary:
+- Vercel auth مقفول نهائياً — المالك جاهز للنشر/الإدارة.
+- المرحلة 2 مكتملة كوداً واختبارات (النسخة الحية محتاجة backup_reader URL من المالك).
+- المفتاح e2e جاهز في إنتاج (ينشط مع أول deploy).
+- المتبقي: مراحل 4-10 حسب السبيك.
