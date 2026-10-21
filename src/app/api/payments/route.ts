@@ -7,6 +7,7 @@ import { toPiastres, toEGP, todayStr, cairoDateStr, cairoDayBounds } from "@/lib
 import { studentBalance } from "@/lib/finance";
 import { sendPushToStudents } from "@/lib/push";
 import { hasPermission, canRequest } from "@/lib/permissions";
+import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,15 @@ type PayBody = {
   sessionId?: string;
   note?: string;
   type?: "PAYMENT" | "REFUND" | "ADJUSTMENT";
+  idemKey?: string; // مفتاح عدم التكرار (أو هيدر Idempotency-Key) — نفس المفتاح = نفس النتيجة من غير تسجيل مزدوج
 };
+
+/** بيجيب معاملة مكررة بالمفتاح + وصلها — للرد الموحد على الـ retries */
+async function findIdempotent(centerId: string, idemKey: string) {
+  const existing = await db.studentTransaction.findUnique({ where: { idemKey }, include: { receipt: { select: { id: true, number: true } } } });
+  if (!existing || existing.centerId !== centerId) return null;
+  return existing;
+}
 
 /**
  * POST /api/payments — record a payment / refund / adjustment.
@@ -68,6 +77,28 @@ export const POST = handler(async (req: Request) => {
 
   const method = ["CASH", "VODAFONE", "INSTAPAY"].includes(body.method ?? "") ? body.method! : "CASH";
 
+  // ===== idempotency — نفس المفتاح ميعادش يسجل مرتين (spec المرحلة 3) =====
+  // المصدر: هيدر Idempotency-Key (الأساسي) أو body.idemKey — وقبل التحقق من الصلاحيات؟
+  // لأ: بعد التحقق — الرد على المفتاح المكرر بنفس نتيجة المستخدم المصرّح له نفسه.
+  const idemKey = (req.headers.get("idempotency-key") || body.idemKey || "").trim().slice(0, 120) || null;
+  if (idemKey) {
+    const replay = await findIdempotent(user.centerId, idemKey);
+    if (replay) {
+      const bal = await studentBalance(studentId);
+      return ok({
+        txn: { id: replay.id, amount: replay.amount, type: replay.type, method: replay.method },
+        receipt: replay.receipt ? { id: replay.receipt.id, number: replay.receipt.number } : null,
+        before: bal - replay.amount,
+        after: bal,
+        balance: bal,
+        amountDue: Math.max(-bal, 0),
+        credit: Math.max(bal, 0),
+        message: "العملية دي اتسجلت قبل كده بنفس المفتاح — مفيش تسجيل مزدوج ✅",
+        idempotentReplay: true,
+      });
+    }
+  }
+
   let sessionId: string | null = null;
   if (body.sessionId) {
     const sess = await db.sessionInstance.findFirst({ where: { id: String(body.sessionId), centerId: user.centerId } });
@@ -82,37 +113,67 @@ export const POST = handler(async (req: Request) => {
 
   const before = await studentBalance(studentId);
 
-  const txn = await db.$transaction(async (tx) => {
-    const created = await tx.studentTransaction.create({
-      data: {
-        centerId: user.centerId, studentId, sessionId, type,
-        amount: signed, method: type === "PAYMENT" ? method : method,
-        reason: body.note?.trim() || null, createdBy: user.id,
-      },
-    });
+  // الكتابة داخل ترانزاكشن + إعادة محاولة على تعارض ترقيم الإيصالات
+  // (على Postgres max+1 بين اتنين طلبات متزامنة ممكن يتخانقوا على @@unique([centerId, seq])
+  //  — إعادة المحاولة بتحسب الترقيم من جديد. على SQLite الكاتب واحد فمفيش سباق أصلًا.)
+  let txn!: { txn: { id: string; amount: number; type: string; method: string | null }; receipt: { id: string; number: string } | null };
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      txn = await db.$transaction(async (tx) => {
+        const created = await tx.studentTransaction.create({
+          data: {
+            centerId: user.centerId, studentId, sessionId, type,
+            amount: signed, method: type === "PAYMENT" ? method : method,
+            reason: body.note?.trim() || null, createdBy: user.id,
+            ...(idemKey ? { idemKey } : {}),
+          },
+        });
 
-    // Payment receipt — sequential per center (RC-000001). SQLite is
-    // single-writer so max+1 inside the transaction is race-safe.
-    let receipt: { id: string; number: string } | null = null;
-    if (type === "PAYMENT") {
-      const last = await tx.receipt.findFirst({ where: { centerId: user.centerId }, orderBy: { seq: "desc" }, select: { seq: true } });
-      const seq = (last?.seq ?? 0) + 1;
-      const r = await tx.receipt.create({
-        data: {
-          centerId: user.centerId, seq,
-          number: `RC-${String(seq).padStart(6, "0")}`,
-          txnId: created.id, studentId,
-          amount: signed, method,
-          balanceBefore: before, balanceAfter: before + signed,
-          sessionId, issuedBy: user.id, issuedByName: user.name,
-          date: todayStr(),
-        },
+        // Payment receipt — sequential per center (RC-000001). SQLite is
+        // single-writer so max+1 inside the transaction is race-safe;
+        // Postgres: @@unique([centerId, seq]) + retry loop فوق هو الحارس.
+        let receipt: { id: string; number: string } | null = null;
+        if (type === "PAYMENT") {
+          const last = await tx.receipt.findFirst({ where: { centerId: user.centerId }, orderBy: { seq: "desc" }, select: { seq: true } });
+          const seq = (last?.seq ?? 0) + 1;
+          const r = await tx.receipt.create({
+            data: {
+              centerId: user.centerId, seq,
+              number: `RC-${String(seq).padStart(6, "0")}`,
+              txnId: created.id, studentId,
+              amount: signed, method,
+              balanceBefore: before, balanceAfter: before + signed,
+              sessionId, issuedBy: user.id, issuedByName: user.name,
+              date: todayStr(),
+            },
+          });
+          receipt = { id: r.id, number: r.number };
+        }
+
+        return { txn: created, receipt };
       });
-      receipt = { id: r.id, number: r.number };
+      break;
+    } catch (e) {
+      const isSeqClash = e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
+      if (isSeqClash && attempt < 3) continue; // ترقيم اتخانق — من جديد
+      // مفتاح idempotency اتخانق = طلب تاني سبقنا بنفس المفتاح — ردّ بالأصل
+      if (isSeqClash && idemKey) {
+        const replay = await findIdempotent(user.centerId, idemKey);
+        if (replay) {
+          const bal = await studentBalance(studentId);
+          return ok({
+            txn: { id: replay.id, amount: replay.amount, type: replay.type, method: replay.method },
+            receipt: replay.receipt ? { id: replay.receipt.id, number: replay.receipt.number } : null,
+            before: bal - replay.amount, after: bal, balance: bal,
+            amountDue: Math.max(-bal, 0), credit: Math.max(bal, 0),
+            message: "العملية دي اتسجلت قبل كده بنفس المفتاح — مفيش تسجيل مزدوج ✅",
+            idempotentReplay: true,
+          });
+        }
+      }
+      throw e;
     }
-
-    return { txn: created, receipt };
-  });
+  }
 
   const after = before + signed;
 
