@@ -1,5 +1,7 @@
 "use client";
 
+import { toWaNumber } from "@/lib/wa-number";
+
 /* ============================================================
    WhatsApp handoff — فتح محادثة wa.me بطريقة تعمل على كل المتصفحات.
    المشكلة المعروفة على iPhone/Safari: أي window.open بعد طلب async
@@ -32,14 +34,10 @@ export function openWhatsAppHandoff(waUrl: string): boolean {
 }
 
 /**
- * تحويل رقم مصري محلي (01xxxxxxxxx) لصيغة wa.me الدولية (20xxxxxxxxx)
- * + تجهيز اللينك برسالة عربية مترمّزة صح.
+ * تجهيز لينك واتساب برسالة عربية مترمّزة صح.
+ * تحويل الرقم موحّد في @/lib/wa-number (كان هنا ومانسوخ فيه فيه الغلط المشهور "2" بدل "20").
  */
 export function buildWaUrl(phone: string, message: string): string {
-  let p = (phone ?? "").replace(/\D/g, "");
-  if (p.startsWith("0020")) p = "0" + p.slice(4);
-  else if (p.startsWith("+20")) p = "0" + p.slice(3);
-  else if (p.startsWith("20") && p.length === 12) p = "0" + p.slice(2);
-  if (p.startsWith("0")) p = "2" + p.slice(1); // 01x → 201x
+  const p = toWaNumber(phone) ?? "";
   return `https://wa.me/${p}?text=${encodeURIComponent(message)}`;
 }

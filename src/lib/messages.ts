@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { toEGP, cleanRaw } from "@/lib/normalize";
+import { toEGP } from "@/lib/normalize";
+import { toWaNumber } from "@/lib/wa-number";
 import { studentBalance } from "@/lib/finance";
 import type { Student } from "@prisma/client";
 
@@ -20,11 +21,8 @@ export type MessageCenter = {
 };
 
 export function waUrl(phone: string, message: string): string {
-  let p = cleanRaw(phone);
-  if (p.startsWith("0020")) p = "0" + p.slice(4);
-  else if (p.startsWith("+20")) p = "0" + p.slice(3);
-  else if (p.startsWith("20") && p.length === 12) p = "0" + p.slice(2);
-  if (p.startsWith("0")) p = "2" + p.slice(1); // 01x → 201x
+  // التحويل الموحّد — كان منسوخ هنا بنفس الغلط ("2" بدل "20") فواتساب كان بيرفض الرقم
+  const p = toWaNumber(phone) ?? "";
   return `https://wa.me/${p}?text=${encodeURIComponent(message)}`;
 }
 

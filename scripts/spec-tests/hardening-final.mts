@@ -9,7 +9,10 @@
  */
 import { PrismaClient } from "@prisma/client";
 import { randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { startTestServer, type TestServer } from "./harness.mts";
+import { toWaNumber } from "../../src/lib/wa-number.ts";
+import { buildWaUrl } from "../../src/components/nokhba/wa.ts";
 
 let db: PrismaClient;
 let srv: TestServer;
@@ -52,6 +55,26 @@ async function main(): Promise<void> {
   }
   const grade = await db.grade.create({ data: { centerId, name: "أولى ثانوي", order: 1 } });
   const subject = await db.subject.create({ data: { centerId, name: "فيزياء" } });
+
+  /* ═══ إصلاح واتساب: تحويل الرقم الدولي (كان "2" بدل "20") ═══ */
+  console.log("\n━━━ إصلاح واتساب: toWaNumber ━━━");
+  check("المحلي 01014996636 → 201014996636 (رقم صورة المالك)", toWaNumber("01014996636") === "201014996636", String(toWaNumber("01014996636")));
+  check("+20 10 1499 6636 → 201014996636", toWaNumber("+20 10 1499 6636") === "201014996636");
+  check("دولي جاهز 201014996636 → زي ما هو", toWaNumber("201014996636") === "201014996636");
+  check("0020 1x → 201014996636", toWaNumber("00201014996636") === "201014996636");
+  check("الصفر اتنسخ (1014996636) → يتظبط", toWaNumber("1014996636") === "201014996636");
+  check("أرقام عربية ٠١٠١٤٩٩٦٦٣٦ → 201014996636", toWaNumber("٠١٠١٤٩٩٦٦٣٦") === "201014996636");
+  check("لاندلاين 02xxxx → 20 يوزع صح", toWaNumber("0223456789") === "20223456789");
+  check("فاضي → null", toWaNumber("") === null);
+  const waLink = buildWaUrl("01014996636", "سلام");
+  check("buildWaUrl لينك سليم", waLink.startsWith("https://wa.me/201014996636?text="), waLink);
+  // منع رجوع البق: المكالمات الثلاثة لازم تستخدم toWaNumber
+  const waTs = readFileSync("src/components/nokhba/wa.ts", "utf8");
+  const msgsTs = readFileSync("src/lib/messages.ts", "utf8");
+  const tplTs = readFileSync("src/app/api/templates/route.ts", "utf8");
+  check("wa.ts بيستخدم toWaNumber (مفيهوش نسخة محلية)", waTs.includes("toWaNumber") && !waTs.includes(`"2" + p.slice(1)`));
+  check("messages.ts بيستخدم toWaNumber", msgsTs.includes("toWaNumber") && !msgsTs.includes(`"2" + p.slice(1)`));
+  check("templates/route.ts بيستخدم toWaNumber", tplTs.includes("toWaNumber") && !tplTs.includes(`replace(/^0/, "20")`));
 
   /* ═══ المرحلة 8: لينكات واتساب ═══ */
   console.log("\n━━━ المرحلة 8: لينك جروب واتساب ━━━");

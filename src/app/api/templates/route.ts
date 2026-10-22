@@ -4,6 +4,7 @@ import { requireCenterUser, requireManager, ApiError } from "@/lib/auth";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { studentBalance, effectivePrice } from "@/lib/finance";
 import { formatDateAR, formatTime12 } from "@/lib/normalize";
+import { toWaNumber } from "@/lib/wa-number";
 
 export const dynamic = "force-dynamic";
 
@@ -84,7 +85,7 @@ export const POST = handler(async (req: Request) => {
     }
     const signature = center.signature ? `\n\n${center.signature}` : "";
     const fullText = `${text}${signature}`;
-    const waNumber = phone.replace(/^0/, "20");
+    const waNumber = toWaNumber(phone) ?? "";
     const link = phone ? `https://wa.me/${waNumber}?text=${encodeURIComponent(fullText)}` : null;
 
     return ok({ text: fullText, link, phone, templateName: tpl.name });
