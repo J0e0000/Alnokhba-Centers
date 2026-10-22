@@ -144,7 +144,7 @@ async function main() {
          LEFT JOIN pg_attrdef d ON a.attrelid = d.adrelid AND a.attnum = d.adnum
          WHERE a.attrelid = $1::regclass AND a.attnum > 0 AND NOT a.attisdropped
          ORDER BY a.attnum`,
-        [`public.${t}`],
+        [`"public"."${t}"`],
       )
     ).rows;
     const lines = tcols.map((c) => {
@@ -160,7 +160,8 @@ async function main() {
       `SELECT conname, conrelid::regclass::text AS tbl, pg_get_constraintdef(oid) AS def
        FROM pg_constraint
        WHERE connamespace='public'::regnamespace AND contype IN ('p','u','f')
-       ORDER BY conrelid::regclass::text, conname`,
+       ORDER BY CASE contype WHEN 'p' THEN 0 WHEN 'u' THEN 1 ELSE 2 END,
+                conrelid::regclass::text, conname`,
     )
   ).rows;
   const consSql = cons
