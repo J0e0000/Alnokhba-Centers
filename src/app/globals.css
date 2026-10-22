@@ -1399,3 +1399,21 @@ button.nk2-stat-gold:active { transform: scale(.985); }
 @media (prefers-reduced-motion: reduce) {
   .nkops-line, .nkops-area, .nkops-heat-row, .nkops-donut, .nkops-view, .nkops-stagger > * { animation: none !important; opacity: 1 !important; stroke-dashoffset: 0 !important; }
 }
+
+/* ============================================================
+   طابور الاستقبال — إيصالات فورية + كاروسيل كشوف متعددة
+   ============================================================ */
+@keyframes nk-receipt-in {
+  0% { opacity: 0; transform: translateY(10px) scale(.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.nk-receipt { animation: nk-receipt-in .28s cubic-bezier(.2, .8, .3, 1) both; }
+
+/* كاروسيل الكشوف — سحب أفقي بيتمرر بين المجموعات (موبايل) */
+.nk-snap-x { scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; scrollbar-width: none; }
+.nk-snap-x::-webkit-scrollbar { display: none; }
+.nk-snap-item { scroll-snap-align: center; scroll-snap-stop: always; }
+
+@media (prefers-reduced-motion: reduce) {
+  .nk-receipt { animation: none !important; }
+}

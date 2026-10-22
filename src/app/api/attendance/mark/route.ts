@@ -266,6 +266,8 @@ export const POST = handler(async (req: Request) => {
     amountDue: Math.max(-balance, 0),
     studentName: student.name,
     status: result.attendance.status,
+    // id سجل الحضور — عشان زرار التراجع في «سجل الطابور» يشتغل من أي شاشة (حتى من غير كشف مفتوح)
+    attendanceId: result.attendance.id,
   });
 });
 
