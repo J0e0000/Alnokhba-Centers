@@ -51,6 +51,29 @@ postgresql://backup_reader:كلمة-السر@db.<project-ref>.supabase.co:5432/p
 
 **التوصية:** احتفظ بالرابط ده في متغير `BACKUP_DATABASE_URL` (مش DATABASE_URL) — محلياً أو في أي مكان آمن.
 
+### شكل الرابط الفعلي (pooler — session mode)
+
+```
+postgresql://backup_reader.<PROJECT_REF>:<الباسورد>@aws-0-eu-west-2.pooler.supabase.com:5432/postgres
+```
+
+- `<PROJECT_REF>` = الـ reference بتاع المشروع (مثال حقيقي: `ttydfyqwzkwivucgiegy`)
+- اليوزر لازم يكون بصيغة `<role>.<ref>` على الـ pooler — مش `<role>` بس
+- بورت 5432 = session mode (يدعم معاملة REPEATABLE READ الموحّدة للنسخة)
+- أول نسخة حقيقية: 2026-10-22 — 61 جدول، 112,336 صف، 29MB — **restore-test: PASS** (61 جدول، 88 FK، مطابقة صف-بصف)
+
+### ملاحظة مهمة عن أدوات الاختبار (pglite)
+
+`@electric-sql/pglite` **مقصود إنها مش في package.json** — تعارض peer dependencies بتاعها كان بيكسر
+`npm install` على Vercel (فشل preview deploys). أداة محلية بس:
+
+```bash
+npm i --no-save @electric-sql/pglite --legacy-peer-deps   # مرة واحدة على جهازك
+npm run backup:restore-test
+```
+
+`npm run backup:pg` (النسخ نفسه) مش محتاجها — `pg` الموجودة أصلاً كفاية.
+
 ## 3) اختبار الاسترجاع (يشتغل تلقائياً)
 
 ```bash

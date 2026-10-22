@@ -16,7 +16,14 @@
 import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { PGlite } from "@electric-sql/pglite";
+// PG_TOOLS_HINT: pglite أداة محلية بس — مش في package.json عشان ما تكسرش npm install على Vercel
+let PGlite: any;
+try {
+  PGlite = (await import("@electric-sql/pglite")).PGlite;
+} catch {
+  console.error("❌ محتاج أداة الاختبار المحلية. شغّل مرة واحدة:\n   npm i --no-save @electric-sql/pglite --legacy-peer-deps");
+  process.exit(1);
+}
 
 const outDir = path.join(process.cwd(), "backup", "pg");
 

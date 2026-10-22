@@ -8,8 +8,21 @@
  *   4. يشغّل restore-test.mts على الـ dump → لازم PASS.
  *   5. يقارن القيم فعلياً (نص عربي بعلامات ' و JSON ومرجع ذاتي).
  */
-import { PGlite } from "@electric-sql/pglite";
-import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
+// PG_TOOLS_HINT: pglite أداة محلية بس — مش في package.json عشان ما تكسرش npm install على Vercel
+let PGlite: any;
+try {
+  PGlite = (await import("@electric-sql/pglite")).PGlite;
+} catch {
+  console.error("❌ محتاج أداة الاختبار المحلية. شغّل مرة واحدة:\n   npm i --no-save @electric-sql/pglite --legacy-peer-deps");
+  process.exit(1);
+}
+let PGLiteSocketServer: any;
+try {
+  PGLiteSocketServer = (await import("@electric-sql/pglite-socket")).PGLiteSocketServer;
+} catch {
+  console.error("❌ محتاج أداة السيلف تست المحلية. شغّل مرة واحدة:\n   npm i --no-save @electric-sql/pglite @electric-sql/pglite-socket@0.0.7 --legacy-peer-deps");
+  process.exit(1);
+}
 
 import { spawn } from "node:child_process";
 import { readFileSync, rmSync, readdirSync } from "node:fs";

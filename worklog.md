@@ -644,3 +644,22 @@ Stage Summary:
 - المرحلة 2 مكتملة كوداً واختبارات (النسخة الحية محتاجة backup_reader URL من المالك).
 - المفتاح e2e جاهز في إنتاج (ينشط مع أول deploy).
 - المتبقي: مراحل 4-10 حسب السبيك.
+
+---
+Task ID: 11 (first real prod backup + vercel preview deploy fix)
+Agent: main
+Task: المالك نفّذ سكريبت backup_reader (اتأكدت بلقطة: 61 جدول) وسأل «ليه مفيش deployments تظهر» + Vercel فشل preview على 9214f59 (npm install exit 1).
+
+Work Log:
+- **اكتشاف DATABASE_URL ref من سجل الشغل** (worklog سطر 54: ref ttydfyqwzkwivucgiegy من جلسة QAE القديمة) → يوفر سؤال المالك. pooler session: `backup_reader.<ref>@aws-0-eu-west-2.pooler.supabase.com:5432` — اتصال ✓ 61 جدول.
+- **أول نسخة إنتاج حقيقية**: 61 جدول، 112,336 صف، 29MB (StudentTransaction=40,815 / Attendance=38,591 / AuditLog=6,802 / Student=5,033) — جلسة REPEATABLE READ READ ONLY.
+- **باجين اتصلاحا أثناء أول تشغيل حقيقي**: (1) cast `::regclass` بيfold للم lowercase — `public.Center` بيتقلب `public.center` → الحل تمرير `"public"."Center"` مقتبس؛ (2) ترتيب القيود: FK بتتضاف قبل PK المرجَع → ترتيب PK ثم UNIQUE ثم FK.
+- **restore-test على النسخة الحقيقية: PASS** — مطابقة كل جدول صف-بصف + 88 FK + sha256.
+- **سبب فشل preview deploys**: pglite-socket@0.0.7 عايز pglite 0.3.2 وموجود 0.5.10 → ERESOLVE في npm install على Vercel (محلياً اتحل بـ --legacy-peer-deps بس Vercel بيستخدم الافتراضي). الحل: @electric-sql/* خرجت من package.json خالص (أداة محلية --no-save) + رسالة ارشادية graceful في السكريبتين لو الحزمة مش موجودة + توثيق في BACKUP-DR.md. تحقق: npm install --dry-run بدون legacy = نضيف ✓.
+- **زوبعة المزامنة**: بتقلب الفرع لـ main حتى في نص النداء الواحد (بعد كتابة ملفات backup/) → أداة النجاة: تشغيل النسخ من backup/run-scripts/ (نسخة ignore-محصنة) + checkout -f قبل كل عملية + commit فوري بعد أي تعديل.
+- scripts/.device_code اتحذف من التتبع (كان بيبوّظ الـ checkout).
+
+Stage Summary:
+- الإنتاج أصبح له نسخة احتياطية مثبتة الاسترجاع (RPO=اللحظة دي) + أداة جاهزة للتكرار اليومي.
+- preview deploys هتنجح من c2d3bf7 وطالع.
+- production لسه مش هيتحدث (المراحل على فرع معزول بالتصميم — الإنتاج من main بس).
