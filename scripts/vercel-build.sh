@@ -58,4 +58,7 @@ case "$DATABASE_URL" in
 esac
 
 echo "── Next.js build"
+# Turbopack persistent cache خدعتنا مرة: البناء طلع CSS قديم من كاش Vercel البعيد
+# مع أسماء chunk جديدة — فالنشر شكلته صح ومحتواه قديم. البناء النضيف دايمًا أضمن.
+rm -rf .next
 NODE_OPTIONS=--max-old-space-size=3072 npx next build
