@@ -751,3 +751,18 @@ Work Log:
 Stage Summary:
 - ملفات: portal.tsx + announcements.tsx + cards.tsx + print.tsx + unified-attendance.tsx + dashboard.tsx + globals.css + students/route + announcements/[id] + dashboard/route + alerts.ts + audit.ts + spec
 - الفيديو كان مقفول بتسجيل دخول — التصميم اتنفذ من الوصف التفصيلي اللي بعتّه المالك نفسه (ألوان/حركة/تايبوغرافي)
+
+---
+Task ID: seven-features-deploy
+Agent: main
+Task: نشر حزمة السبع ميزات + إصلاح كاش Vercel
+
+Work Log:
+- push a54d67b → Vercel أعطى «success» على GitHub بس الإنتاج طلع CSS قديم — تشخيص: كاش Turbopack (محلياً وبعيداً على Vercel) بيقدم globals.css قديم بأسماء chunks جديدة
+- إثبات محلي: build عادي → nkops=0 في CSS، clean build (rm -rf .next) → nkops=1 — نفس العلة على Vercel remote cache
+- الإصلاح الدائم: vercel-build.sh يعمل rm -rf .next قبل next build (b1f3919) → النشر الجديد لايف خلال ~90 ثانية
+- تحقق إنتاجي: nkops في CSS ✓ + ضهر الكارت وتأكيد الحذف في شانكس ✓ + برومبت البورتال والبانر الأحمر في شانكس /portal ✓ + الرئيسية 200 ✓
+
+Stage Summary:
+- كاش البناء بيكدب — أي تعديل CSS مستقبلاً لازم يتأكد من محتوى الـ CSS المبني مش مجرد نجاح البناء
+- الحزمة السبع كلها على الهوا: commit b1f3919 (يتضمن a54d67b + a8ab6b5 + الإصلاح)
