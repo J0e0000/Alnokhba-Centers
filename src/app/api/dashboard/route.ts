@@ -263,6 +263,43 @@ export const GET = handler(async () => {
     if (diff !== 0) alerts.push({ level: "warn", text: `فرق الصندوق النهاردة: ${(diff / 100).toLocaleString("en-EG")} جنيه` });
   }
 
+  // ===== بيانات الرسوم البيانية للداشبورد الجديد (جوه الـ micro-cache — مفيش حمل إضافي) =====
+  // تحصيل آخر 14 يوم (دفعات حقيقية) + حضور النهاردة بالساعة بتوقيت القاهرة + توزيع طرق الحضور آخر 7 أيام
+  const d14Date = cairoDateStr(new Date(new Date(`${today}T12:00:00.000Z`).getTime() - 13 * 86400000));
+  const d7Date = cairoDateStr(new Date(new Date(`${today}T12:00:00.000Z`).getTime() - 6 * 86400000));
+  const [payRows14, attTodayRows, methodAgg] = await Promise.all([
+    db.studentTransaction.findMany({
+      where: { centerId, type: "PAYMENT", createdAt: { gte: cairoDayBounds(d14Date).start } },
+      select: { amount: true, createdAt: true },
+    }),
+    db.attendance.findMany({
+      where: { centerId, session: { date: today }, status: { in: ["PRESENT", "LATE"] } },
+      select: { createdAt: true },
+    }),
+    db.attendance.groupBy({
+      by: ["method"],
+      _count: true,
+      where: { centerId, createdAt: { gte: cairoDayBounds(d7Date).start } },
+    }),
+  ]);
+  const revByDate = new Map<string, number>();
+  for (let i = 13; i >= 0; i--) {
+    const d = cairoDateStr(new Date(new Date(`${today}T12:00:00.000Z`).getTime() - i * 86400000));
+    revByDate.set(d, 0);
+  }
+  for (const p of payRows14) {
+    const key = cairoDateStr(p.createdAt);
+    if (revByDate.has(key)) revByDate.set(key, (revByDate.get(key) ?? 0) + p.amount);
+  }
+  const revenueSeries = [...revByDate.entries()].map(([date, value]) => ({ date, value }));
+  const hourFmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Cairo", hour: "2-digit", hour12: false });
+  const hourly = new Array<number>(24).fill(0);
+  for (const a of attTodayRows) {
+    const h = Number(hourFmt.format(a.createdAt)) % 24;
+    if (!Number.isNaN(h)) hourly[h] += 1;
+  }
+  const methods = methodAgg.map((m) => ({ method: m.method, count: m._count })).sort((a, b) => b.count - a.count);
+
   const managerPayload = {
     ...base,
     role: "MANAGER",
@@ -297,6 +334,7 @@ export const GET = handler(async () => {
       : null,
     alerts,
     insight,
+    series: { revenue: revenueSeries, hourly, methods },
   };
   dashCache.set(cacheKey, { at: Date.now(), payload: managerPayload });
   return ok(managerPayload);

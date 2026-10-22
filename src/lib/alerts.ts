@@ -167,7 +167,44 @@ export async function computeAlerts(
     }
   }
 
-  /* 6) نسخة الاحتياطي قديمة (وضع Postgres بس — المطور المحلي مالوش) — INFO */
+  /* 6) Smart detection: طلاب بنفس الرقم (موبايل الطالب أو ولي الأمر) — WARN
+     بيتكشف من البيانات نفسها لحظة الفحص — بيمسك التكرارات القديمة اللي اتسجلت قبل الإنذارات */
+  const phoneDupRows = await db.student.findMany({
+    where: { centerId, status: "ACTIVE", AND: [{ phone: { not: null } }, { parentPhone: { not: null } }] },
+    select: { id: true, name: true, code: true, phone: true, parentPhone: true },
+  });
+  const dupGroups: { phone: string; students: { name: string; code: string }[] }[] = [];
+  {
+    const byPhone = new Map<string, { name: string; code: string }[]>();
+    for (const s of phoneDupRows) {
+      for (const p of [s.phone, s.parentPhone]) {
+        if (!p) continue;
+        const list = byPhone.get(p);
+        if (list) {
+          if (!list.some((x) => x.code === s.code)) list.push({ name: s.name, code: s.code });
+        } else byPhone.set(p, [{ name: s.name, code: s.code }]);
+      }
+    }
+    for (const [phone, students] of byPhone) {
+      if (students.length >= 2) dupGroups.push({ phone, students });
+    }
+    dupGroups.sort((a, b) => b.students.length - a.students.length);
+  }
+  if (dupGroups.length > 0) {
+    alerts.push({
+      key: "DUPLICATE_PHONES",
+      severity: "WARN",
+      title: "أرقام متكررة بين طلاب",
+      detail: `${dupGroups.length} رقم مشارك بين أكتر من طالب — ممكن إخوة/توأم (طبيعي) أو تكرار بالغلط — راجعهم`,
+      count: dupGroups.length,
+      items: dupGroups.slice(0, 5).map((g) => ({
+        label: g.students.map((s) => s.name).join(" ↔ "),
+        sub: `${g.students.map((s) => `كود ${s.code}`).join(" · ")}`,
+      })),
+    });
+  }
+
+  /* 7) نسخة الاحتياطي قديمة (وضع Postgres بس — المطور المحلي مالوش) — INFO */
   if (opts?.includeBackupStale) {
     const lastOk = await db.backupRun.findFirst({
       where: { kind: "PLATFORM", target: "DB", status: "SUCCESS" },

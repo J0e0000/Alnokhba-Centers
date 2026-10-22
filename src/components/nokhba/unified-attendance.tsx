@@ -184,6 +184,8 @@ export function UnifiedAttendancePanel({ user }: { user: SessionUser }) {
   }, [res]);
 
   // ===== تسجيل حضور (قلب التسجيل للطرق التلاتة) =====
+  // OPTIMISTIC: الضغطة بتقلّب الصف في الكشف في نفس اللحظة — الطلب بيمشي للسيرفر في الخلفية
+  // ولو فشل الصف بيرجع زي ما كان + رسالة غلط. (طلب المالك: «لو دوست حضور يشجل لحظيا»)
   const doMark = useCallback(async (opts: {
     studentId: string; sessionId: string; status?: "PRESENT" | "LATE";
     display: string; sessLabel: string; method?: "MANUAL" | "QR_SCAN";
@@ -192,6 +194,19 @@ export function UnifiedAttendancePanel({ user }: { user: SessionUser }) {
     const mKey = `${opts.rosterSessionId ?? opts.sessionId}:${opts.studentId}`;
     if (marking[mKey]) return;
     setMarking((m) => ({ ...m, [mKey]: true }));
+    const nextStatus = (opts.status ?? "PRESENT") as RosterRow["status"];
+    // لحظة الضغطة: قلب الصف فورًا (قبل أي شبكة)
+    const prevRow = opts.rosterSessionId
+      ? (rosters[opts.rosterSessionId] ?? []).find((r) => r.studentId === opts.studentId)
+      : undefined;
+    if (opts.rosterSessionId && prevRow && !prevRow.status) {
+      setRosters((rs) => ({
+        ...rs,
+        [opts.rosterSessionId!]: (rs[opts.rosterSessionId!] ?? []).map((r) =>
+          r.studentId === opts.studentId ? { ...r, status: nextStatus } : r,
+        ),
+      }));
+    }
     try {
       const m = await api<{ alreadyAttended: boolean; charged: number | null; balance: number; amountDue: number }>("/api/attendance/mark", {
         method: "POST",
@@ -207,21 +222,30 @@ export function UnifiedAttendancePanel({ user }: { user: SessionUser }) {
       setRes((cur) => cur?.student?.id === opts.studentId && cur.session?.id === opts.sessionId
         ? { ...cur, alreadyAttended: true, attendanceStatus: opts.status ?? "PRESENT", balance: m.balance, amountDue: m.amountDue }
         : cur);
-      // تحديث الكشف في وضع الاسم
+      // تثبيت الكشف بالبيانات الحقيقية من الرد (المبلغ المتحسب بالظبط)
       if (opts.rosterSessionId) {
         setRosters((rs) => {
           const rows = rs[opts.rosterSessionId!];
           if (!rows) return rs;
-          return { ...rs, [opts.rosterSessionId!]: rows.map((r) => r.studentId === opts.studentId ? { ...r, status: (opts.status ?? "PRESENT") as RosterRow["status"] } : r) };
+          return { ...rs, [opts.rosterSessionId!]: rows.map((r) => r.studentId === opts.studentId ? { ...r, status: nextStatus, charged: m.charged } : r) };
         });
       }
       loadSessions(); // العدادات تتحدث
     } catch (e) {
+      // رجوع فوري: الصف يرجع زي ما كان — التسجيل ماعملش
+      if (opts.rosterSessionId && prevRow) {
+        setRosters((rs) => ({
+          ...rs,
+          [opts.rosterSessionId!]: (rs[opts.rosterSessionId!] ?? []).map((r) =>
+            r.studentId === opts.studentId ? { ...r, status: prevRow.status, attId: prevRow.attId, charged: prevRow.charged } : r,
+          ),
+        }));
+      }
       toast.error(e instanceof Error ? e.message : "التسجيل ماعملش — جرب تاني.");
     } finally {
       setMarking((m) => { const n = { ...m }; delete n[mKey]; return n; });
     }
-  }, [marking, loadSessions]);
+  }, [marking, loadSessions, rosters]);
 
   // ===== سكان الكاميرا =====
   const onScan = useCallback(async (q: string) => {
@@ -448,12 +472,17 @@ export function UnifiedAttendancePanel({ user }: { user: SessionUser }) {
                                     {r.attId && (
                                       <button type="button" title="مسح الرصد" disabled={isMarking}
                                         onClick={async () => {
+                                          // OPTIMISTIC: العلامة تختفي فورًا — لو فشل السيرفر بترجع زي ما كانت
+                                          const snapshotRow = r;
+                                          setRosters((rs) => ({ ...rs, [s.id]: (rs[s.id] ?? []).map((x) => x.studentId === r.studentId ? { ...x, status: null, attId: null, charged: null } : x) }));
                                           try {
                                             await api(`/api/attendance/mark?attendanceId=${r.attId}`, { method: "DELETE" });
-                                            setRosters((rs) => ({ ...rs, [s.id]: (rs[s.id] ?? []).map((x) => x.studentId === r.studentId ? { ...x, status: null, attId: null, charged: null } : x) }));
                                             setFeed((f) => [{ name: r.name, note: "اتشال العلامة", at: new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }) }, ...f].slice(0, 10));
                                             loadSessions();
-                                          } catch (e) { toast.error(e instanceof Error ? e.message : "مش كده."); }
+                                          } catch (e) {
+                                            setRosters((rs) => ({ ...rs, [s.id]: (rs[s.id] ?? []).map((x) => x.studentId === snapshotRow.studentId ? { ...x, status: snapshotRow.status, attId: snapshotRow.attId, charged: snapshotRow.charged } : x) }));
+                                            toast.error(e instanceof Error ? e.message : "مش كده.");
+                                          }
                                         }}
                                         className="rounded-lg border border-border p-1.5 text-muted-foreground hover:text-foreground transition disabled:opacity-50">
                                         <Undo2 className="w-3.5 h-3.5" />

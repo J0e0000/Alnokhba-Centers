@@ -180,6 +180,41 @@ async function main(): Promise<void> {
   const c2Body = await c2.json() as { pushed: number };
   check("تاني في نفس اليوم → صفر إضافي (dedupe)", c2.status === 200 && c2Body.pushed === 0, `pushed=${c2Body.pushed}`);
 
+  /* ═══ حزمة 2026-10-22: حذف الإعلانات + توصيل الإشعارات + Smart detection ═══ */
+  console.log("\n━━━ نشر → توصيل → حذف إعلان ━━━");
+  const sd1 = await db.student.create({ data: { centerId, code: `9${stamp.slice(-4)}`, qrToken: `qr-del-a-${stamp}`, name: "طالب إشعارات أ", parentName: "ولي أ", parentPhone: "01012100001", status: "ACTIVE" } });
+  const sd2 = await db.student.create({ data: { centerId, code: `8${stamp.slice(-4)}`, qrToken: `qr-del-b-${stamp}`, name: "طالب إشعارات ب", parentName: "ولي ب", parentPhone: "01012100002", status: "ACTIVE" } });
+  const pub = await call("/api/announcements", { method: "POST", body: { title: "إعلان تجربة الحذف", body: "هيتمسح بعد التحقق من التوصيل", audienceType: "ALL" } });
+  const pubBody = await pub.json() as { announcement?: { id: string }; recipients?: number };
+  check("نشر إعلان → 201", pub.status === 201, `status=${pub.status}`);
+  const delivered = await db.studentNotification.count({ where: { announcementId: pubBody.announcement?.id ?? "" } });
+  check("توصيل الإشعار: صف لكل طالب في الجمهور (كل الطلاب النشطين)", (pubBody.recipients ?? 0) >= 2 && delivered === pubBody.recipients, `recipients=${pubBody.recipients} rows=${delivered}`);
+
+  const delOther = await call(`/api/announcements/${pubBody.announcement?.id}`, { method: "DELETE", as: "rec" });
+  check("استقبال يحذف إعلان مش بتاعه → 403", delOther.status === 403, `status=${delOther.status}`);
+  const delOk = await call(`/api/announcements/${pubBody.announcement?.id}`, { method: "DELETE" });
+  check("المدير يحذف الإعلان → 200", delOk.status === 200, `status=${delOk.status}`);
+  const delBody = await delOk.json() as { removedNotifications?: number };
+  check("إشعارات الطلاب اتمسحت معاه", delBody.removedNotifications === delivered && (await db.studentNotification.count({ where: { announcementId: pubBody.announcement?.id ?? "" } })) === 0);
+  const delAgain = await call(`/api/announcements/${pubBody.announcement?.id}`, { method: "DELETE" });
+  check("حذف تاني → 404", delAgain.status === 404);
+
+  console.log("\n━━━ Smart detection: تكرار رقم الطالب ━━━");
+  const dupPhone = `01012100${stamp.slice(-3)}`; // 11 رقم — فريد لكل تشغيلة
+  const dupParent = `01112100${stamp.slice(-3)}`;
+  const s1 = await call("/api/students", { method: "POST", body: { name: "طالب تكرار أولا", phone: dupPhone, parentName: "ولي أمر التكرار", parentPhone: dupParent, gradeId: grade.id } });
+  const s1Body = await s1.json() as { student?: { id: string }; warnings?: string[] };
+  check("تسجيل طالب أول مرة → 201 من غير تحذير", s1.status === 201 && (s1Body.warnings?.length ?? 0) === 0, `status=${s1.status}`);
+  const s2 = await call("/api/students", { method: "POST", body: { name: "طالب تكرار تاني", phone: dupPhone, parentName: "ولي أمر التكرار", parentPhone: `01212100${stamp.slice(-3)}`, gradeId: grade.id } });
+  const s2Body = await s2.json() as { student?: { id: string }; warnings?: string[] };
+  check("تسجيل بنفس الرقم → 201 مع تحذير «نفس رقم»", s2.status === 201 && (s2Body.warnings?.some((w) => w.includes("نفس رقم")) ?? false), `warnings=${JSON.stringify(s2Body.warnings)}`);
+  const dupNotif = await db.staffNotification.findFirst({ where: { userId: mgr.id, refId: `dup-student-${s2Body.student?.id ?? ""}` } });
+  check("إنذار لحظي للمدير (staffNotification) اتصنع", !!dupNotif, "refId=dup-student-*");
+  const alertsRes = await call("/api/alerts");
+  const alertsBody = await alertsRes.json() as { alerts?: { key: string }[] };
+  check("محرك التنبيهات بيكشف التكرار الموجود (DUPLICATE_PHONES)", (alertsBody.alerts ?? []).some((a) => a.key === "DUPLICATE_PHONES"), `keys=${(alertsBody.alerts ?? []).map((a) => a.key).join(",")}`);
+  void sd1; void sd2; // بذر التوصيل — مش محتاجينهم بعد الفحص
+
   /* ─── النتيجة ─── */
   console.log(`\n━━━ النتيجة: ${passed} ناجح / ${failed} فاشل ━━━`);
   if (failed > 0) { console.log(failures.map((f) => `  • ${f}`).join("\n")); }

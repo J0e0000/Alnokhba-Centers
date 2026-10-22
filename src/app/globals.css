@@ -1298,3 +1298,104 @@ button.nk2-stat-gold:active { transform: scale(.985); }
 @media (max-width: 640px) {
   .nk-menu-sheet { position: fixed; inset-inline: .5rem; top: auto; bottom: 1rem; min-width: 0; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   OPS DASHBOARD — لغة الفيديو (Code & Chill operations dashboard):
+   فحمي #101010 + كروت #1C1C1E بحدود #2A2A2A + ليموني #D6FF6C
+   لابلز 11px uppercase tracked + أرقام ضخمة + حركة: رسم خط/صفوف متدرجة/دونات
+   ═══════════════════════════════════════════════════════════════════ */
+.nkops {
+  --ops-bg: #101010;
+  --ops-card: #1C1C1E;
+  --ops-card2: #232323;
+  --ops-line: #2A2A2A;
+  --ops-ink: #F5F5F2;
+  --ops-mut: #8A8A8A;
+  --ops-dim: #5A5A5A;
+  --ops-lime: #D6FF6C;
+  --ops-red: #FF3B30;
+  --ops-green: #34C759;
+  --ops-orange: #FF9F0A;
+  --ops-blue: #0A84FF;
+  background: var(--ops-bg);
+  color: var(--ops-ink);
+  border-radius: 24px;
+  padding: 18px;
+}
+.nkops-card {
+  background: var(--ops-card);
+  border: 1px solid var(--ops-line);
+  border-radius: 18px;
+  padding: 16px;
+  min-width: 0;
+}
+.nkops-card--hover { transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+.nkops-card--hover:hover { transform: translateY(-2px); border-color: #3a3a3c; box-shadow: 0 10px 28px rgba(0,0,0,.45); }
+.nkops-label {
+  font-size: 11px; font-weight: 800; letter-spacing: .08em;
+  color: var(--ops-mut); text-transform: uppercase;
+}
+.nkops-big { font-size: clamp(30px, 5vw, 52px); font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.nkops-sub { color: var(--ops-mut); font-weight: 600; }
+.nkops-lime { color: var(--ops-lime); }
+.nkops-green { color: var(--ops-green); }
+.nkops-red { color: var(--ops-red); }
+.nkops-orange { color: var(--ops-orange); }
+.nkops-blue { color: var(--ops-blue); }
+
+/* تابات البيل المتزحلق */
+.nkops-tabs { position: relative; display: flex; gap: 4px; background: var(--ops-card); border: 1px solid var(--ops-line); border-radius: 999px; padding: 4px; width: fit-content; }
+.nkops-tab {
+  position: relative; z-index: 1; border: 0; background: transparent; color: var(--ops-mut);
+  font-weight: 800; font-size: 13px; padding: 8px 16px; border-radius: 999px; cursor: pointer;
+  transition: color .18s ease; font-family: inherit;
+}
+.nkops-tab[aria-selected="true"] { color: #101010; }
+.nkops-tab-pill {
+  position: absolute; top: 4px; bottom: 4px; z-index: 0; border-radius: 999px;
+  background: var(--ops-lime);
+  transition: left .22s cubic-bezier(.22,1,.36,1), width .22s cubic-bezier(.22,1,.36,1);
+}
+.nkops-view { animation: nkops-view-in .2s cubic-bezier(.22,1,.36,1) both; }
+@keyframes nkops-view-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* رسم الخط البياني من الشمال لليمين (pathLength=1) */
+.nkops-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: nkops-draw 1.1s .15s cubic-bezier(.4,0,.2,1) forwards; }
+@keyframes nkops-draw { to { stroke-dashoffset: 0; } }
+.nkops-area { opacity: 0; animation: nkops-fade .6s .9s ease forwards; }
+@keyframes nkops-fade { to { opacity: 1; } }
+
+/* خريطة حرارية: الصفوف بتظهر واحدة ورا التانية */
+.nkops-heat-row { opacity: 0; animation: nkops-row-in .4s ease forwards; }
+@keyframes nkops-row-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* الدونات بتتملى clockwise (@property مدعوم حديثًا — الفولباك ثابت بدون حركة) */
+@property --nkops-donut { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
+.nkops-donut {
+  background: conic-gradient(var(--ops-lime) var(--nkops-donut), #2A2A2A var(--nkops-donut));
+  animation: nkops-donut-fill 1s .2s cubic-bezier(.4,0,.2,1) forwards;
+}
+@keyframes nkops-donut-fill { from { --nkops-donut: 0%; } }
+
+/* نبض خفيف للمؤشرات العاجلة */
+@keyframes nkops-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+.nkops-pulse { animation: nkops-pulse 1.6s ease-in-out infinite; }
+
+/* كانبان: كروت بتدخل متدرجة من تحت */
+.nkops-stagger > * { opacity: 0; animation: nkops-card-in .35s ease forwards; }
+.nkops-stagger > *:nth-child(1) { animation-delay: .0s; }
+.nkops-stagger > *:nth-child(2) { animation-delay: .05s; }
+.nkops-stagger > *:nth-child(3) { animation-delay: .1s; }
+.nkops-stagger > *:nth-child(4) { animation-delay: .15s; }
+.nkops-stagger > *:nth-child(5) { animation-delay: .2s; }
+.nkops-stagger > *:nth-child(n+6) { animation-delay: .25s; }
+@keyframes nkops-card-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* شريط تمرير رفيع داكن */
+.nkops-scroll { scrollbar-width: thin; scrollbar-color: #3a3a3c transparent; }
+.nkops-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+.nkops-scroll::-webkit-scrollbar-thumb { background: #3a3a3c; border-radius: 999px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .nkops-line, .nkops-area, .nkops-heat-row, .nkops-donut, .nkops-view, .nkops-stagger > * { animation: none !important; opacity: 1 !important; stroke-dashoffset: 0 !important; }
+}

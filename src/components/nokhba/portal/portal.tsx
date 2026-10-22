@@ -142,6 +142,39 @@ export function PortalApp() {
   const [unread, setUnread] = useState(0);
   const [homeRefreshing, setHomeRefreshing] = useState(false);
 
+  // ===== إشعارات الطالب: برومبت فوري عند الدخول + بانر أحمر لو مش مفعّلة (طلب المالك) =====
+  const [pushState, setPushState] = useState<PortalPushState | null>(null);
+
+  useEffect(() => {
+    if (boot !== "app") return;
+    setPushState(currentPushState());
+  }, [boot]);
+
+  // برومبت تلقائي مرة واحدة لكل جلسة تصفح — أول ما الطالب يدخل البورتال
+  useEffect(() => {
+    if (boot !== "app" || pushState !== "default") return;
+    try {
+      if (sessionStorage.getItem("nk-push-asked") === "1") return;
+      sessionStorage.setItem("nk-push-asked", "1");
+    } catch { /* ignore */ }
+    let alive = true;
+    // مهلة قصيرة عشان الصفحة تثبت — برومبت المتصفح بيفتح لوحده
+    const t = setTimeout(async () => {
+      const st = await enablePortalPush();
+      if (alive) setPushState(st);
+    }, 900);
+    return () => { alive = false; clearTimeout(t); };
+  }, [boot, pushState]);
+
+  async function activatePush() {
+    setPushState("enabling");
+    const st = await enablePortalPush();
+    setPushState(st);
+    if (st === "granted") toast.success("تم تفعيل التنبيهات 🔔 — الرسايل هتوصلک فورًا");
+    else if (st === "denied") toast.info("التنبيهات اترفض من المتصفح — فعّلها من إعدادات الموقع (أيقونة القفل جنب اللينك).", { duration: 8000 });
+    else if (st === "ios-browser") toast.info("على الآيفون: زرار المشاركة ⬆️ ← «إضافة إلى الشاشة الرئيسية» ← افتح التطبيق من الأيقونة وفعّل التنبيهات.", { duration: 9000 });
+  }
+
   // سكان الحضور: زرار عائم في كل الشاشات + ديب-لينك /portal?scan=1 يفتحه على طول
   const [scanOpen, setScanOpen] = useState(() => {
     try { return new URLSearchParams(window.location.search).get("scan") === "1"; } catch { return false; }
@@ -429,6 +462,39 @@ export function PortalApp() {
           </button>
         </div>
       </header>
+
+      {/* ===== بانر التنبيهات الأحمر — ظاهر طول ما الإشعارات مش مفعّلة (طلب المالك) ===== */}
+      {pushState && pushState !== "granted" && pushState !== "unsupported" && (
+        <div className="w-full mx-auto max-w-lg px-4 pt-3" role="alert">
+          <div className="rounded-2xl border-2 border-red-300 bg-red-50 text-red-900 px-4 py-3 flex items-center gap-3 shadow-sm nk-anim-in">
+            <BellRing className="w-5 h-5 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="font-extrabold text-[13px] leading-snug m-0">
+                {pushState === "denied"
+                  ? "التنبيهات متقفلة من المتصفح — ممكن تفوتك رسايل مهمة"
+                  : pushState === "ios-browser"
+                    ? "التنبيهات محتاجة إضافة التطبيق للشاشة الرئيسية"
+                    : pushState === "enabling"
+                      ? "بنفّع التنبيهات…"
+                      : "التنبيهات مش مفعّلة — ممكن تفوتك رسايل مهمة"}
+              </p>
+              <p className="text-[11px] font-semibold opacity-80 m-0">
+                {pushState === "denied"
+                  ? "فعّلها من أيقونة القفل 🔒 جنب عنوان الموقع في المتصفح."
+                  : "فعّلها عشان توصلك الدفعات والإعلانات وتغييرات المواعيد لحظتها."}
+              </p>
+            </div>
+            {(pushState === "default" || pushState === "ios-browser") && (
+              <button
+                onClick={activatePush}
+                className="shrink-0 rounded-xl bg-red-600 text-white text-xs font-extrabold px-3.5 py-2.5 active:scale-95 transition shadow"
+              >
+                تفعيل
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ===== content ===== */}
       <main className="flex-1 w-full mx-auto max-w-lg px-4 py-4 pb-28">
@@ -847,6 +913,45 @@ function PortalSchedule() {
       )}
     </div>
   );
+}
+
+// ============================= Push مشترك (برومبت الدخول + تاب الرسايل) =============================
+
+export type PortalPushState = "granted" | "default" | "denied" | "unsupported" | "ios-browser" | "enabling";
+
+/** حالة صلاحية الإشعارات دلوقتي — آمنة على السيرفر (كل الفحوصات browser-side) */
+export function currentPushState(): PortalPushState {
+  if (typeof Notification === "undefined" || !("serviceWorker" in navigator)) {
+    if (isIOS() && !isStandalone()) return "ios-browser";
+    return "unsupported";
+  }
+  const p = Notification.permission;
+  return p === "granted" ? "granted" : p === "denied" ? "denied" : "default";
+}
+
+/**
+ * تفعيل التنبيهات — صلاحية المتصفح + اشتراك الخادم. بيرجّع الحالة الجديدة.
+ * (المنطق الموحّد للبرومبت الفوري عند الدخول ولزرار تاب الرسايل)
+ */
+export async function enablePortalPush(): Promise<PortalPushState> {
+  const before = currentPushState();
+  if (before === "ios-browser" || before === "unsupported") return before;
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") return "denied";
+  } catch { return "denied"; }
+  try {
+    const keys = await papi<{ publicKey: string | null }>("/api/portal/push", { silent: true });
+    if (keys.publicKey) {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(keys.publicKey) as unknown as BufferSource,
+      });
+      await papi("/api/portal/push", { method: "POST", body: { subscription: sub.toJSON() } });
+    }
+  } catch { /* الصلاحية اتحصلت — الاشتراك ممكن يتظبط من تاب الرسايل بعدين */ }
+  return "granted";
 }
 
 // ============================= Messages (الرسائل — إعلانات + إشعارات في مكان واحد) =============================

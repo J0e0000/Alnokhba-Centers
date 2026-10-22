@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Printer, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { api, BRAND_DEFAULTS, type CenterInfo } from "./lib";
 import { usePrint, PrintableCards, brandInk, brandOnLight } from "./print";
 import {
@@ -60,10 +61,53 @@ export function StudentCard({ card, center, index }: { card: CardData; center: C
   );
 }
 
+/** ضهر الكارت — تعليمات الاستخدام + بيانات التواصل (نفس مقاس وش الكارت بالظبط) */
+export function StudentCardBack({ card, center }: { card: CardData; center: CenterInfo | null }) {
+  const primary = center?.primaryColor ?? BRAND_DEFAULTS.primary;
+  const secondary = center?.secondaryColor ?? BRAND_DEFAULTS.secondary;
+  return (
+    <div className="nk-print-card relative shrink-0" style={{ width: "85.6mm", height: "53.98mm", borderRadius: "4.5mm", overflow: "hidden", border: "1px solid #e2e8eb", background: "#fff", boxShadow: "0 2px 10px rgba(0,0,0,.08)", color: "#1b2635", direction: "rtl" }}>
+      {/* شريط مغناطيسي */}
+      <div style={{ height: "8mm", marginTop: "4mm", background: `linear-gradient(120deg, ${primary}, ${secondary})` }} />
+
+      {/* التعليمات + صندوق الكود */}
+      <div style={{ display: "flex", gap: "3mm", padding: "3mm 4mm 0", alignItems: "flex-start" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: "2.9mm", fontWeight: 800, marginBottom: "1.4mm" }}>تعليمات الكارت</div>
+          {[
+            "الكارت شخصي لصاحبه — مينفعش يتدى لحد تاني.",
+            "الحضور بمسح الـ QR اللي في وش الكارت عند الاستقبال.",
+            "لو الكارت ضاع كلّم الاستقبال فورًا لإصدار بديل.",
+          ].map((tip, i) => (
+            <div key={i} style={{ fontSize: "2.25mm", fontWeight: 700, color: "#5c6f77", display: "flex", gap: "1.2mm", marginBottom: "1mm", lineHeight: 1.35 }}>
+              <span style={{ color: brandOnLight(secondary), fontWeight: 900 }}>•</span>
+              <span>{tip}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ width: "26mm", background: `color-mix(in srgb, ${primary} 10%, #fff)`, borderRadius: "2mm", padding: "1.6mm 2.2mm", textAlign: "center" }}>
+          <div style={{ fontSize: "2mm", fontWeight: 800, color: "#5c6f77" }}>كود الطالب</div>
+          <div style={{ fontSize: "4.2mm", fontWeight: 900, letterSpacing: "0.9mm", color: brandOnLight(primary), fontVariantNumeric: "tabular-nums", lineHeight: 1.2 }}>{card.code}</div>
+          <div style={{ fontSize: "1.9mm", fontWeight: 700, color: "#5c6f77", marginTop: "0.6mm", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{card.name}</div>
+        </div>
+      </div>
+
+      {/* شريط التواصل تحت */}
+      <div style={{ position: "absolute", bottom: 0, insetInline: 0, height: "9mm", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 4mm", borderTop: "0.3mm solid #eef2f3", background: "#fafcfc" }}>
+        <span style={{ fontSize: "2.2mm", fontWeight: 700, color: "#5c6f77" }}>
+          {center?.phone ? `☎ ${center.phone}` : ""}{center?.address ? ` · ${center.address.slice(0, 40)}` : ""}
+        </span>
+        <span style={{ fontSize: "2mm", color: "#9aa8ae", fontWeight: 800, letterSpacing: "0.3mm" }}>{center?.name ?? "السنتر"} · ALNOKHBA</span>
+      </div>
+    </div>
+  );
+}
+
 export function StudentCardPrint({ open, onClose, studentIds, center }: {
   open: boolean; onClose: () => void; studentIds: string[]; center: CenterInfo | null;
 }) {
   const [cards, setCards] = useState<CardData[] | null>(null);
+  const [side, setSide] = useState<"front" | "back">("front");
   const print = usePrint();
   // reset stale cards when the dialog re-opens (render-time adjustment)
   const [prevOpen, setPrevOpen] = useState(open);
@@ -102,23 +146,49 @@ export function StudentCardPrint({ open, onClose, studentIds, center }: {
           <p className="text-sm font-bold text-muted-foreground text-center py-8">مفيش كروت — راجع بيانات الطالب.</p>
         ) : (
           <div className="space-y-4">
-            <div className="flex flex-wrap gap-4 justify-center">
-              {cards.map((c, i) => <StudentCard key={c.code} card={c} center={center} index={i} />)}
+            {/* وش / ضهر — معاينة */}
+            <div className="flex items-center justify-center gap-1.5">
+              {(["front", "back"] as const).map((sd) => (
+                <button
+                  key={sd}
+                  onClick={() => setSide(sd)}
+                  className={cn(
+                    "rounded-full px-4 py-2 text-xs font-extrabold border transition active:scale-[0.98]",
+                    side === sd ? "nk-brand-bg text-white border-transparent shadow" : "bg-card border-border text-muted-foreground",
+                  )}
+                >
+                  {sd === "front" ? "وش الكارت" : "ضهر الكارت"}
+                </button>
+              ))}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-4 justify-center">
+              {cards.map((c, i) => side === "front"
+                ? <StudentCard key={c.code} card={c} center={center} index={i} />
+                : <StudentCardBack key={c.code} card={c} center={center} />)}
+            </div>
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => print(
                   <PrintableCards cards={cards} center={center} />,
                   `كروت الطلاب — ${center?.name ?? "AlNokhba Management"}`,
                 )}
-                className="flex-1 nk-brand-bg text-white font-extrabold rounded-xl px-4 py-3.5 shadow flex items-center justify-center gap-2 active:scale-[0.99]"
+                className="flex-1 min-w-[160px] nk-brand-bg text-white font-extrabold rounded-xl px-4 py-3.5 shadow flex items-center justify-center gap-2 active:scale-[0.99]"
               >
-                <Printer className="w-5 h-5" /> طباعة {cards.length > 1 ? `(${cards.length} كارت)` : "الكارت"}
+                <Printer className="w-5 h-5" /> طباعة الوش
+              </button>
+              <button
+                onClick={() => print(
+                  <PrintableCards cards={cards} center={center} includeBacks />,
+                  `كروت الطلاب وش + ضهر — ${center?.name ?? "AlNokhba Management"}`,
+                )}
+                className="flex-1 min-w-[160px] rounded-xl border-2 border-[color-mix(in_srgb,var(--c-primary)_35%,white)] bg-card nk-brand-text font-extrabold px-4 py-3.5 flex items-center justify-center gap-2 active:scale-[0.99]"
+              >
+                <Printer className="w-5 h-5" /> طباعة وش + ضهر
               </button>
               <button onClick={onClose} className="rounded-xl border border-border bg-card font-bold px-5">إغلاق</button>
             </div>
             <p className="text-[11px] text-muted-foreground font-semibold text-center">
-              مقاس الكارت زي كارت البنك (85.6×54 مم) — اطبع على كارت PVC أو ورق مقوى.
+              مقاس الكارت زي كارت البنك (85.6×54 مم) — اطبع على كارت PVC أو ورق مقوى. «وش + ضهر» بيطلع الأوشا الأول وبعدين الأضهر صفحة لوحدها.
             </p>
           </div>
         )}

@@ -209,12 +209,53 @@ type CardData = {
   name: string; code: string; grade: string; group: string; qrDataUrl: string;
 };
 
-export function PrintableCards({ cards, center }: { cards: CardData[]; center: CenterInfo | null }) {
+export function PrintableCards({ cards, center, includeBacks }: { cards: CardData[]; center: CenterInfo | null; includeBacks?: boolean }) {
   return (
     <div className="nk-print-cards">
       {cards.map((c, i) => (
         <CardForPrint key={c.code} card={c} center={center} index={i} />
       ))}
+      {/* الأضهر بعد الأوشا كلها — صفحة مستقلة يسهل الطباعة على الوجهين أو اللصق */}
+      {includeBacks && cards.map((c) => (
+        <CardBackForPrint key={`back-${c.code}`} card={c} center={center} />
+      ))}
+    </div>
+  );
+}
+
+/** نسخة الطباعة من ضهر الكارت — شريط مغناطيسي + تعليمات + صندوق الكود (بدون ظلال) */
+function CardBackForPrint({ card, center }: { card: CardData; center: CenterInfo | null }) {
+  const primary = normalizeCenterBranding(center)?.primaryColor ?? BRAND_DEFAULTS.primary;
+  const secondary = normalizeCenterBranding(center)?.secondaryColor ?? BRAND_DEFAULTS.secondary;
+  return (
+    <div className="nk-print-card" style={{ width: "85.6mm", height: "53.98mm", borderRadius: "3mm", overflow: "hidden", border: "0.4mm dashed #b9c6cc", background: "#fff", position: "relative", color: "#1b2635", direction: "rtl" }}>
+      <div style={{ height: "8mm", marginTop: "4mm", background: `linear-gradient(120deg, ${primary}, ${secondary})` }} />
+      <div style={{ display: "flex", gap: "3mm", padding: "3mm 4mm 0", alignItems: "flex-start" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: "2.9mm", fontWeight: 800, marginBottom: "1.4mm" }}>تعليمات الكارت</div>
+          {[
+            "الكارت شخصي لصاحبه — مينفعش يتدى لحد تاني.",
+            "الحضور بمسح الـ QR اللي في وش الكارت عند الاستقبال.",
+            "لو الكارت ضاع كلّم الاستقبال فورًا لإصدار بديل.",
+          ].map((tip, i) => (
+            <div key={i} style={{ fontSize: "2.25mm", fontWeight: 700, color: "#5c6f77", display: "flex", gap: "1.2mm", marginBottom: "1mm", lineHeight: 1.35 }}>
+              <span style={{ color: brandOnLight(secondary), fontWeight: 900 }}>•</span>
+              <span>{tip}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ width: "26mm", background: `color-mix(in srgb, ${primary} 10%, #fff)`, borderRadius: "2mm", padding: "1.6mm 2.2mm", textAlign: "center" }}>
+          <div style={{ fontSize: "2mm", fontWeight: 800, color: "#5c6f77" }}>كود الطالب</div>
+          <div style={{ fontSize: "4.2mm", fontWeight: 900, letterSpacing: "0.9mm", color: brandOnLight(primary), fontVariantNumeric: "tabular-nums", lineHeight: 1.2 }}>{card.code}</div>
+          <div style={{ fontSize: "1.9mm", fontWeight: 700, color: "#5c6f77", marginTop: "0.6mm", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{card.name}</div>
+        </div>
+      </div>
+      <div style={{ position: "absolute", bottom: 0, insetInline: 0, height: "9mm", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 4mm", borderTop: "0.3mm solid #eef2f3", background: "#fafcfc" }}>
+        <span style={{ fontSize: "2.2mm", fontWeight: 700, color: "#5c6f77" }}>
+          {center?.phone ? `☎ ${center.phone}` : ""}{center?.address ? ` · ${center.address.slice(0, 40)}` : ""}
+        </span>
+        <span style={{ fontSize: "2mm", color: "#9aa8ae", fontWeight: 800, letterSpacing: "0.3mm" }}>{center?.name ?? "السنتر"} · ALNOKHBA</span>
+      </div>
     </div>
   );
 }

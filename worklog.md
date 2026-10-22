@@ -731,3 +731,23 @@ Work Log:
 
 Stage Summary:
 - الإصلاح على الهوا فعلاً — شكوى «نفس مشكلة الواتس» مقفولة: زر واتساب المدرس + قبول كل صيغ لصق لينك الجروب
+
+---
+Task ID: seven-features
+Agent: main
+Task: حزمة سبع ميزات بطلب المالك: برومبت إشعارات البورتال + حذف الرسائل + ضهر الكارت + تحقق التوصيل + Smart detection + داشبورد الفيديو + الحضور اللحظي
+
+Work Log:
+- بورتال الطالب: enablePortalPush مشتركة (module-level) + برومبت تلقائي مرة/جلسة عند الدخول (sessionStorage guard) + بانر أحمر دايم تحت الهيدر لحد ما الإشعارات تتفعل (default/denied/ios-browser لكل حالة نصه)
+- حذف الإعلانات: DELETE /api/announcements/[id] (مدير أو صاحبه، بيمسح studentNotification معاه) + زرار حذف بخطوتين تأكيد في الإعلانات المنشورة (optimistic مع رجوع لو فشل) + AUDIT.ANNOUNCEMENT_DELETED
+- ضهر كارت الطالب: StudentCardBack + CardBackForPrint (شريط مغناطيسي + تعليمات + صندوق الكود + تواصل) + معاينة وش/ضهر + طباعة «وش» أو «وش + ضهر» (الأضهر صفحة مستقلة)
+- تحقق التوصيل end-to-end في spec: نشر → صف studentNotification لكل طالب في الجمهور → حذف بيشيل الكل (48 حالة)
+- Smart detection: POST /api/stargs يرجّع warnings + staffNotification لحظي لمدراء السنتر (refId=dup-student-*) + مفتاح DUPLICATE_PHONES في محرك التنبيهات للبيانات القديمة + toast.warning للموظف في الواجهة
+- داشبورد المدير الجديد (لغة فيديو Code & Chill): جزيرة داكنة nkops (#101010/#1C1C1E/#2A2A2A/ليموني #D6FF6C) + تابات بيل متزحلق + عدادات count-up + رسم تحصيل 14 يوم بيرسم LTR + خريطة حرارية ساعات الذروة + دونت الحضور الإلكتروني + كانبان حصص (شغالة/جاية/محتاجة تقفيل/خلصت) + تقرير كامل — مع بيانات جديدة في /api/dashboard (series.revenue/hourly/methods) — المدرس/الاستقبال زي ما هما
+- حضور لحظي optimistic: doMark بيقلب صف الكشف فورًا قبل الشبكة + رجوع تلقائي لو فشل + مسح الرصد optimistic كمان
+- CSS: nkops كاملة في globals.css (draw/row-fade/donut @property/stagger/pulse + prefers-reduced-motion)
+- بناء ✓ + 118/118 اختبار (hardening 48 + finance 27 + export 43) ✓
+
+Stage Summary:
+- ملفات: portal.tsx + announcements.tsx + cards.tsx + print.tsx + unified-attendance.tsx + dashboard.tsx + globals.css + students/route + announcements/[id] + dashboard/route + alerts.ts + audit.ts + spec
+- الفيديو كان مقفول بتسجيل دخول — التصميم اتنفذ من الوصف التفصيلي اللي بعتّه المالك نفسه (ألوان/حركة/تايبوغرافي)

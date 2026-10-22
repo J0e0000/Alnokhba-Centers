@@ -78,6 +78,7 @@ export const AUDIT = {
   SCHEDULE_UPDATED: "تعديل جدول",
   SCHEDULE_DELETED: "إلغاء حصة من الجدول",
   ANNOUNCEMENT_PUBLISHED: "نشر إعلان",
+  ANNOUNCEMENT_DELETED: "حذف إعلان",
   STUDENT_NOTIFIED: "إرسال إشعار للطلاب",
   PORTAL_LOGIN: "دخول طالب للبورتال",
   EMERGENCY_EXPORTED: "تصدير ملف الطوارئ",

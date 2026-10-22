@@ -179,6 +179,50 @@ export const POST = handler(async (req: Request) => {
     return st;
   });
 
+  // ===== Smart detection: احتمال تكرار (نفس رقم الطالب / نفس رقم ولي الأمر) =====
+  // مش مانع التسجيل — التوأم والإخوة بيشاركوا رقم ولي أمر فعلاً — بس بننبّه فورًا:
+  // تحذير في رد الـ API للموظف + إشعار لحظي لكل مدراء السنتر (refId للطالب الجديد).
+  const dupWarnings: string[] = [];
+  const dupMatches = await db.student.findMany({
+    where: {
+      centerId: user.centerId,
+      status: "ACTIVE",
+      id: { not: student.id },
+      OR: [
+        ...(phoneCheck.normalized ? [{ phone: phoneCheck.normalized }] : []),
+        { parentPhone: parentPhoneCheck.normalized },
+      ],
+    },
+    select: { id: true, name: true, code: true, phone: true, parentPhone: true },
+    take: 6,
+  });
+  for (const d of dupMatches) {
+    if (phoneCheck.normalized && d.phone === phoneCheck.normalized) {
+      dupWarnings.push(`نفس رقم موبايل الطالب: ${d.name} (كود ${d.code})`);
+    } else if (d.parentPhone === parentPhoneCheck.normalized) {
+      dupWarnings.push(`نفس رقم ولي الأمر: ${d.name} (كود ${d.code})`);
+    }
+  }
+  if (dupWarnings.length > 0) {
+    const managers = await db.user.findMany({
+      where: { centerId: user.centerId, role: "MANAGER" },
+      select: { id: true },
+    });
+    if (managers.length > 0) {
+      await db.staffNotification.createMany({
+        data: managers.map((m) => ({
+          centerId: user.centerId,
+          userId: m.id,
+          type: "SYSTEM",
+          title: "احتمال تكرار في تسجيل طالب",
+          body: `الطالب الجديد «${student.name}» (كود ${student.code}) — ${dupWarnings.join(" · ")}. راجع الملفين لو كان تكرار بالغلط.`,
+          link: "students",
+          refId: `dup-student-${student.id}`,
+        })),
+      });
+    }
+  }
+
   await logAudit({
     user,
     action: AUDIT.STUDENT_CREATED,
@@ -194,7 +238,7 @@ export const POST = handler(async (req: Request) => {
     inverse: { id: student.id, status: "ACTIVE" },
   });
 
-  return ok({ student: { id: student.id, code: student.code, name: student.name, qrToken: student.qrToken } }, { status: 201 });
+  return ok({ student: { id: student.id, code: student.code, name: student.name, qrToken: student.qrToken }, warnings: dupWarnings }, { status: 201 });
 });
 
 /** PUT /api/students — quick helper: price override for a registration (manager) */

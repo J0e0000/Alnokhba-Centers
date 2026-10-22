@@ -35,6 +35,8 @@ export function AnnouncementsView({ user, embedded }: { user: SessionUser; embed
   const [audienceType, setAudienceType] = useState<(typeof AUDIENCE_TYPES)[number]["id"]>("ALL");
   const [audienceId, setAudienceId] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmDel, setConfirmDel] = useState<string | null>(null); // إعلان مستني تأكيد الحذف
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(() => {
     api<AnnouncementsData>("/api/announcements").then(setData).catch(() => {});
@@ -64,6 +66,25 @@ export function AnnouncementsView({ user, embedded }: { user: SessionUser; embed
       setAudienceId("");
       load();
     } catch { /* toast */ } finally { setBusy(false); }
+  }
+
+  /** حذف إعلان منشور — مدير أو صاحب الإعلان (السيرفر بيفرض) — optimistic: بيختفي فورًا ويرجع لو فشل */
+  async function removeAnnouncement(id: string) {
+    if (deleting) return;
+    const snapshot = data;
+    setDeleting(true);
+    // اختفاء فوري من القايمة
+    setData((d) => d ? { ...d, announcements: d.announcements.filter((x) => x.id !== id) } : d);
+    setConfirmDel(null);
+    try {
+      const res = await api<{ message: string }>(`/api/announcements/${id}`, { method: "DELETE" });
+      toast.success(res.message ?? "الإعلان اتمسح.");
+    } catch (e) {
+      setData(snapshot); // رجّع القايمة زي ما كانت — الحذف ماعملش
+      toast.error(e instanceof Error ? e.message : "الحذف ماعملش — جرب تاني.");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   const examples = [
@@ -176,7 +197,10 @@ export function AnnouncementsView({ user, embedded }: { user: SessionUser; embed
           <EmptyState icon={<Megaphone className="w-8 h-8" />} title="لسه مفيش إعلانات" hint="انشر أول إعلان من فوق." />
         ) : (
           <ul className="divide-y">
-            {data.announcements.map((a) => (
+            {data.announcements.map((a) => {
+              const canDelete = user.role === "MANAGER" || a.createdByName === user.name;
+              const confirming = confirmDel === a.id;
+              return (
               <li key={a.id} className="py-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -189,9 +213,30 @@ export function AnnouncementsView({ user, embedded }: { user: SessionUser; embed
                       <span>· {timeAgoAR(a.createdAt)}</span>
                     </p>
                   </div>
+                  {canDelete && (
+                    <button
+                      onClick={() => confirming ? void removeAnnouncement(a.id) : setConfirmDel(a.id)}
+                      onMouseLeave={() => confirming && setConfirmDel(null)}
+                      disabled={deleting}
+                      aria-label={confirming ? "تأكيد الحذف" : "حذف الإعلان"}
+                      title={confirming ? "دوس تاني للتأكيد" : "حذف الإعلان (بيتشال من بورتال الطلاب كمان)"}
+                      className={cn(
+                        "shrink-0 rounded-lg p-2 border transition active:scale-95 disabled:opacity-50",
+                        confirming
+                          ? "bg-rose-600 text-white border-rose-600 animate-pulse"
+                          : "text-muted-foreground hover:text-rose-600 hover:border-rose-300 border-border bg-card",
+                      )}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
+                {confirming && (
+                  <p className="text-[11px] font-bold text-rose-600 mt-1 m-0">دوس زرار الحذف تاني للتأكيد — هيتشال من بورتال {a.recipients} طالب.</p>
+                )}
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </SectionCard>

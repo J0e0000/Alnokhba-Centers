@@ -506,10 +506,12 @@ export function StudentFormDialog({ open, onClose, onCreated, onOpenProfile, use
 
     setBusy(true);
     try {
-      const res = await api<{ student: { id: string; code: string; name: string; qrToken: string } }>("/api/students", {
+      const res = await api<{ student: { id: string; code: string; name: string; qrToken: string }; warnings?: string[] }>("/api/students", {
         method: "POST",
         body: { ...form, phone, parentPhone: pphone },
       });
+      // Smart detection: تكرار رقم → تحذير فوري للموظف قبل ما يقفل الشاشة
+      for (const w of res.warnings ?? []) toast.warning(w, { duration: 9000 });
       const s = {
         id: res.student.id, code: res.student.code, name: res.student.name,
         qrToken: res.student.qrToken, phone, parentPhone: pphone,
