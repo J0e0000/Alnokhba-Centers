@@ -663,3 +663,24 @@ Stage Summary:
 - الإنتاج أصبح له نسخة احتياطية مثبتة الاسترجاع (RPO=اللحظة دي) + أداة جاهزة للتكرار اليومي.
 - preview deploys هتنجح من c2d3bf7 وطالع.
 - production لسه مش هيتحدث (المراحل على فرع معزول بالتصميم — الإنتاج من main بس).
+
+---
+Task ID: 9 (deploy phases 1-3 + phase 6+8+10 completion)
+Agent: main
+Task: «انشر، و شوف فاضل ايه معملتوش و اعمله» — نشر المراحل المكتملة + إكمال الناقص من مواصفة التحوينات العشرة.
+
+Work Log:
+- إصلاح سبب فشل نشر Vercel: حزم @electric-sql/pglite كانت devDeps بتكسر npm install (peer conflict) — c2d3bf7 كان شالها، اتأكدت إن المانيفست نضيف + شالت bun.lock (lockfile واحد → npm ci متنبهت) في كوميت الدمج 310f5b1.
+- دمج feat/platform-hardening في main (conflict add/add واحد في سكريبت اللوجين — اتخذت نسخة الفرع الأحدث) + push → نشر إنتاج للمراحل 1-3.
+- جرد المراحل 4/5/7/9: مغطاة من شغل سابق — AuditLog (45 راوت + تاب «سجل العمليات»)، UndoEntry + أرشفة بدل مسح، QR (كروت/سكانر/حصص/PIN)، نظام طوارئ الاستيراد. موثقة في التقرير بأدلة.
+- المرحلة 6 (جديدة): src/lib/alerts.ts محرك read-only (مديونيات CRITICAL / موافقات قديمة + خزنة مفتوحة + حصص مش مقفولة WARN / غياب 3 حصص متتالية + احتياطي قديم INFO) + GET /api/alerts للمدير + كارت في الرئيسية + cron يومي 05:00 UTC بدفع إشعار مجمل (dedupe refId، CRON_SECRET-aware) + crons في vercel.json.
+- المرحلة 8 (جديدة): Group.whatsappUrl (سكيما SQLite+Postgres) + تحقق https-only (chat.whatsapp.com/channel/wa.me — رفض javascript:/http/دومينات غريبة) + خانة في فورم المجموعة + شيب على الكارت.
+- اختبارات جديدة scripts/spec-tests/hardening-final.mts — 19/19 خضرا (بناء + eslint + tsc قبل الكوميت).
+- المرحلة 10: ريجريشن كامل 27+43+19 = 89/89 خضرا + تحقق SEO (robots.ts/sitemap.ts/metadata) + التقرير النهائي docs/PLATFORM-HARDENING.md.
+- prisma db push محلي (عمود whatsappUrl — additive، بدون لمس بيانات).
+
+Stage Summary:
+- المنشور: 310f5b1 (مراحل 1-3 + lockfile واحد) ثم e4f3ba3 (مرحلة 6+8) — البيلد الجديد انطلق أوتوماتيك من GitHub.
+- التحوينات العشرة كلها مكتملة — الأدلة في docs/PLATFORM-HARDENING.md.
+- متبقيات اختيارية: CRON_SECRET على Vercel (حماية إضافية للكرون) + GC من GitHub Support + تنضيف سكريبتات تشخيص قديمة.
+- تحقق النشر محتاج موافقة device-flow جديد (التوكن ضاع مع تجديد الحاوية).
