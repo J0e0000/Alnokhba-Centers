@@ -766,3 +766,27 @@ Work Log:
 Stage Summary:
 - كاش البناء بيكدب — أي تعديل CSS مستقبلاً لازم يتأكد من محتوى الـ CSS المبني مش مجرد نجاح البناء
 - الحزمة السبع كلها على الهوا: commit b1f3919 (يتضمن a54d67b + a8ab6b5 + الإصلاح)
+
+---
+Task ID: home-redesign
+Agent: main
+Task: «شكل dashboard الحالية بتاعت manager / reception رخمة و معقدة, خليها ابسط و اشيك»
+
+Work Log:
+- تشخيص: الشاشة الرئيسية الفعلية هي pipeline-home.tsx (موحدة لكل الأدوار) — dashboard.tsx (DashboardView الـ 926 سطر) طلعت يتيمة مش مستوردة من أي مكان. المشكلة: ~13 قسم مكدس للمدير (hero ضخم + بوابة + 3 تايلز نيفي/دهبي متدرجة + AlertCard + قايمة + بانر كهرماني + تنبيهات legacy مكررة + 3-5 كروت BigAction ضخمة + InsightCard + 4 كروت MoneyStat + details + install + onboarding).
+- إعادة التصميم (pipeline-home.tsx 587→391 سطر):
+  1. سطر ترحيب هادئ «مساء الخير، فلان 👋» + التاريخ — بدل hero + بوابة + وصف
+  2. شريط أرقام موحد: كارت واحد بخلايا مفصولة (divide-x RTL-safe) — حصص · طلاب · رصد معلّق (كهرماني قابل للضغط يفتح الحصة) + تحصيل اليوم للمدير — بدل 3 تايلز متدرجة ثقيلة
+  3. قايمة الحصص نفسها (nk-session-card) + شارة «ناقص N رصد» كهرمانية جوه صف الحصة نفسها — بدل البانر الكهرماني المنفصل المكرر
+  4. شريط إجراءات سريعة: صف أزرار compact (h-11) — مدير: امسح الحضور/دفعة/طالب/تقارير · استقبال: امسح QR/دفعة/طالب/طلاب/جدول · مدرس: جدولي/طلابي — بدل كروت 100px
+  5. أرقام الشهر: details واحد مطوي (السعر الظاهر: صافي السنتر) + 5 أرقام داخله — بدل 4 كروت دايمًا ظاهرة
+  6. حذف: تنبيهات legacy الكبيرة (بقت chips صغيرة rare-only لأن فيها اشتراك/فرق صندوق غير مغطاة بالمحرك الذكي) + OpsSummaryStrip الميتة
+- منطق البيانات زي ما هو بالظبط: polling 25ث + nk-sessions-changed + dashboard 60ث للمدير + ترتيب الصفوف + suggestions اليوم بس
+- تحقق: build نظيف (clean) + eslint 0 + tsc src 0 + 118/118 اختبار (hardening 48 + finance 27 + export 43) + فحص CSS المبني فيه كل classes
+- فحص بصري ببيانات تجريبية (dev-seed-visual.mts — سنتر+مدير+استقبال+حصص شغالة/جاية/منتهية): desktop light مدير ✓ · mobile 390px استقبال ✓ · mobile مدير (4 خلايا) ✓ · desktop dark ✓ — ثم dev-clean-visual.mts مسح كل حاجة
+- نشر: push b42a3a8 → Vercel auto-deploy → تأكدت من محتوى الإنتاج نفسه (الدرس القديم): CSS chunk جديد فيه كل classes ✓ + JS chunk فيه «رصد معلّق» ✓ + الرئيسية 200
+
+Stage Summary:
+- ملفات: src/components/nokhba/pipeline-home.tsx (إعادة تصميم كاملة) + scripts/dev-{seed,clean,peek}-visual.{mts} (أدوات فحص بصري مؤقتة)
+- الرئيسية بقت: ترحيب سطر → شريط أيام → شريط أرقام واحد → قايمة حصص → إجراءات سريعة → (مدير: chips + تنبيهات ذكية + insight + أرقام شهر مطوية) → install/onboarding
+- dashboard.tsx (DashboardView) لسه موجودة يتيمة — مرشحة للحذف في تنظيف جاي (مش اتلمست عمدًا)
