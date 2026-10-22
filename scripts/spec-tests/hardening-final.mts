@@ -68,13 +68,15 @@ async function main(): Promise<void> {
   check("فاضي → null", toWaNumber("") === null);
   const waLink = buildWaUrl("01014996636", "سلام");
   check("buildWaUrl لينك سليم", waLink.startsWith("https://wa.me/201014996636?text="), waLink);
-  // منع رجوع البق: المكالمات الثلاثة لازم تستخدم toWaNumber
+  // منع رجوع البق: كل مكامن بناء wa.me لازم تستخدم toWaNumber
   const waTs = readFileSync("src/components/nokhba/wa.ts", "utf8");
   const msgsTs = readFileSync("src/lib/messages.ts", "utf8");
   const tplTs = readFileSync("src/app/api/templates/route.ts", "utf8");
+  const groupsTs = readFileSync("src/components/nokhba/groups.tsx", "utf8");
   check("wa.ts بيستخدم toWaNumber (مفيهوش نسخة محلية)", waTs.includes("toWaNumber") && !waTs.includes(`"2" + p.slice(1)`));
   check("messages.ts بيستخدم toWaNumber", msgsTs.includes("toWaNumber") && !msgsTs.includes(`"2" + p.slice(1)`));
   check("templates/route.ts بيستخدم toWaNumber", tplTs.includes("toWaNumber") && !tplTs.includes(`replace(/^0/, "20")`));
+  check("groups.tsx بيستخدم toWaNumber (مفيهوش بناء يدوي wa.me/2)", groupsTs.includes("toWaNumber") && !groupsTs.includes("wa.me/2${"));
 
   /* ═══ المرحلة 8: لينكات واتساب ═══ */
   console.log("\n━━━ المرحلة 8: لينك جروب واتساب ━━━");
@@ -105,6 +107,26 @@ async function main(): Promise<void> {
   const createdBody = await created.json() as { group?: { id: string } };
   const g2 = createdBody.group?.id ? await db.group.findUnique({ where: { id: createdBody.group.id } }) : null;
   check("إنشاء مجموعة بلينك صالح → متخزنة", created.status === 201 && g2?.whatsappUrl === "https://chat.whatsapp.com/NewGroup9");
+
+  /* صيغ اللصق الشائعة من تطبيق واتساب — كانت كلها بتترفض (شكوى المالك 2026-10-22) */
+  const pasteShare = await call("/api/academics", { method: "PATCH", body: { type: "group", id: group.id, whatsapp: "انضم إلى مجموعة واتساب الخاصة بي: https://chat.whatsapp.com/Invite123456789?mode=r_t" } });
+  const pasteShareVal = await call("/api/academics").then((r) => r.json()) as { groups: { id: string; whatsapp: string | null }[] };
+  check("لصق نص المشاركة + query → متخزن نضيف", pasteShare.status === 200 && pasteShareVal.groups.find((g) => g.id === group.id)?.whatsapp === "https://chat.whatsapp.com/Invite123456789?mode=r_t", JSON.stringify(pasteShareVal.groups.find((g) => g.id === group.id)?.whatsapp));
+
+  const pasteInvite = await call("/api/academics", { method: "PATCH", body: { type: "group", id: group.id, whatsapp: "https://chat.whatsapp.com/invite/AbCdEf123456" } });
+  check("المسار القديم /invite/ → مقبول", pasteInvite.status === 200);
+
+  const pasteUpper = await call("/api/academics", { method: "PATCH", body: { type: "group", id: group.id, whatsapp: "HTTPS://WWW.Chat.Whatsapp.COM/AbCdEf123456" } });
+  check("www + حروف كبيرة → مقبول", pasteUpper.status === 200);
+
+  const pasteChannel = await call("/api/academics", { method: "PATCH", body: { type: "group", id: group.id, whatsapp: "https://www.whatsapp.com/channel/0029VaBcD123456" } });
+  check("قناة بـ www → مقبول", pasteChannel.status === 200);
+
+  const pasteWaMe = await call("/api/academics", { method: "PATCH", body: { type: "group", id: group.id, whatsapp: "https://wa.me/201014996636?text=مرحبا" } });
+  check("wa.me برسالة query → مقبول", pasteWaMe.status === 200);
+
+  const pasteSub = await call("/api/academics", { method: "PATCH", body: { type: "group", id: group.id, whatsapp: "https://chat.whatsapp.com.evil.com/AbCdEf123" } });
+  check("دومين شبيه (com.evil) → مرفوض", pasteSub.status === 400);
 
   /* ═══ المرحلة 6: التنبيهات الذكية ═══ */
   console.log("\n━━━ المرحلة 6: /api/alerts ━━━");

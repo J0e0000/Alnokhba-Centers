@@ -10,13 +10,24 @@ export const dynamic = "force-dynamic";
 /**
  * لينك جروب واتساب أولياء الأمور — مسموح بس دواعي/قنوات واتساب الرسمية (https فقط).
  * فاضي/ناقص = null (مسح). أي حاجة تانية = رفض (منع javascript: أو لينكات تصيّد).
+ *
+ * بيتسامح مع كل صيغ اللصق الشائعة من تطبيق واتساب (كانت بتترفض وده شكوى المالك):
+ *  - نص المشاركة الكامل: «انضم إلى مجموعة واتساب: https://chat.whatsapp.com/xxx?mode=r_t»
+ *  - query في الآخر (?mode=... / ?text=...) · المسار القديم /invite/ · www. · حروف كبيرة
+ *  - علامات RTL/LTR مخفية (U+200E/U+200F) من نسخ الموبايل — بتتقاص بره الماتش
+ * الاستخراج بيرجّع اللينك النضيف بس — والدومين محصور على واتساب الرسمي (https فقط).
  */
+const WA_LINK_RE =
+  /https:\/\/(?:www\.)?(?:chat\.whatsapp\.com\/(?:invite\/)?[A-Za-z0-9_-]+|whatsapp\.com\/channel\/[A-Za-z0-9_.-]+|wa\.me\/\d{6,15})(?:[/?#][^\s]*)?/i;
+
 export function normalizeWhatsapp(raw: string | undefined | null): string | null {
   const s = String(raw ?? "").trim();
   if (!s) return null;
-  const m = s.match(/^https:\/\/(?:chat\.whatsapp\.com\/[A-Za-z0-9_-]+|whatsapp\.com\/channel\/[A-Za-z0-9_.-]+|wa\.me\/\d{6,15})\/?$/);
-  if (!m) throw new ApiError("لينك واتساب مش صالح — استخدم لينك الدعوة اللي شكله https://chat.whatsapp.com/xxxx");
-  return s;
+  const m = s.match(WA_LINK_RE);
+  if (!m) {
+    throw new ApiError("لينك واتساب مش صالح — الصق لينك الدعوة اللي شكله https://chat.whatsapp.com/xxxx");
+  }
+  return m[0];
 }
 
 /** GET /api/academics — all academic references for the center */

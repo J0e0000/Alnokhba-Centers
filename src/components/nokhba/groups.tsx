@@ -6,6 +6,7 @@ import {
   Layers, Plus, Pencil, BookOpen, GraduationCap, Users, Loader2, Trash2, Banknote, KeyRound, MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toWaNumber } from "@/lib/wa-number";
 import { api, fmt } from "./lib";
 import { PageHeader, Chip, Loading, EmptyState, SectionCard } from "./shared";
 import { Field, inputCls } from "./students";
@@ -155,8 +156,10 @@ export function GroupsView() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {data.teachers.map((t) => {
                 const groups = data.groups.filter((g) => g.teacherId === t.id);
-                const waLink = t.phone
-                  ? `https://wa.me/2${t.phone.replace(/^0/, "")}?text=${encodeURIComponent(
+                // التحويل الموحّد (كود مصر 20 مش 2) — البناء اليدوي القديم كان بيطلع 21014996636 وواتساب بيرفضه
+                const waNum = t.phone ? toWaNumber(t.phone) : null;
+                const waLink = waNum
+                  ? `https://wa.me/${waNum}?text=${encodeURIComponent(
                       `مرحبًا ${t.name} 👋\nدي بيانات دخول بورتال المدرس:\n📍 الرابط: ${window.location.origin}/teacher\n📱 الموبايل: ${t.phone}\n🔑 الكود: ${t.loginCode ?? "—"}\n\nجوا هتلاقي جدولك وطلابك ومستحقاتك.`,
                     )}`
                   : null;
