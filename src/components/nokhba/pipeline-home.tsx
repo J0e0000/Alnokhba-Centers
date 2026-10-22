@@ -2,27 +2,27 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  CalendarDays, Loader2, Ban, CheckCircle2, ChevronDown, Zap,
-  TrendingUp, TrendingDown, AlertTriangle,
-  UserPlus, Wallet, Users,
+  CalendarDays, Loader2, Ban, Zap, TrendingUp, TrendingDown, AlertTriangle,
+  UserPlus, Wallet, Users, ScanLine, BarChart3, ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { api, formatTime12, type SessionUser } from "./lib";
-import { MoneyStat, Stat, SectionCard, Loading } from "./shared";
+import { api, fmt, formatTime12, type SessionUser } from "./lib";
+import { Loading } from "./shared";
 import { AlertsCard } from "./alerts-card";
 import { InstallCard } from "./pwa";
 import { OnboardingQuest } from "./onboarding";
 import type { ViewId } from "./shell";
 
 /* ============================================================
-   الرئيسية — مسار الحصص (نقل workflow المنصة الأساسية Alnokhba):
-   • شريط الأيام (DayTimeline): اختيار اليوم بيقود قائمة الحصص — اليوم بتظهر
-     اقتراحات الجدول، والأيام التانية حصص محفوظة بس (مراجعة — عمرها ما بتعمل إنشاء).
-   • 3 كروت إحصاء بالظبط: حصص اليوم · طلاب اليوم · إجراءات معلقة (زرار بيقفز للحصة).
-   • كروت الحصص: شريط تقدم مرصد/إجمالي + شارة الحالة + الحصة القادمة مميزة.
-   • تنبيه الرصد: حصص شغالة فيها طلاب لم يُرصدوا + زرار إكمال الرصد.
-   • تحتها محتوى السنترز المميز (محفوظ): ملخص تشغيلي للمدير + اختصارات + تنبيهات.
+   الرئيسية — «يومك في شاشة واحدة» (تصميم 2026 المبسّط):
+   • سطر ترحيب هادئ بدل الـ hero الضخم.
+   • شريط الأيام (DayTimeline): اختيار اليوم بيقود قائمة الحصص.
+   • شريط أرقام واحد أنيق (كارت واحد بخلايا مفصولة) بدل تايلز متدرجة ثقيلة.
+   • حصص اليوم: صفوف نظيفة + شارة «ناقص رصد» على الصف نفسه (بدل بانر منفصل).
+   • إجراءات سريعة: شريط أزرار compact بدل كروت ضخمة.
+   • للمدير: التنبيهات الذكية + أرقام الشهر في details قابل للطي.
+   محفوظ من التصميم السابق: التنبيهات الذكية (المرحلة 6) + كارت التثبيت + رحلة البداية.
 ============================================================ */
 
 // ─── أنواع البيانات (GET /api/sessions?date=) ───
@@ -68,7 +68,7 @@ function addDaysISO(iso: string, n: number): string {
 const AR_WD = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
 const AR_WD_FULL = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 
-/** شريط الأيام — ‹ / 7 أيام (-3..+3) / › + زرار «اليوم ↺» — نفس تجربة المنصة الأساسية */
+/** شريط الأيام — ‹ / 7 أيام (-3..+3) / › + زرار «اليوم ↺» */
 function DayTimeline({ value, onChange }: { value: string; onChange: (iso: string) => void }) {
   const days = useMemo(() => [-3, -2, -1, 0, 1, 2, 3].map((n) => addDaysISO(value, n)), [value]);
   const today = todayISO();
@@ -89,7 +89,7 @@ function DayTimeline({ value, onChange }: { value: string; onChange: (iso: strin
               key={iso} type="button" role="option" aria-selected={selected}
               onClick={() => onChange(iso)}
               className={cn(
-                "rounded-xl py-1.5 px-1 flex flex-col items-center gap-0.5 border-2 transition active:scale-[0.97]",
+                "rounded-xl py-1.5 px-1 flex flex-col items-center gap-0.5 border transition active:scale-[0.97]",
                 selected
                   ? "nk-brand-grad text-white border-transparent shadow"
                   : "border-border bg-card hover:border-[color-mix(in_srgb,var(--c-primary)_35%,white)]",
@@ -121,7 +121,68 @@ function DayTimeline({ value, onChange }: { value: string; onChange: (iso: strin
   );
 }
 
-export function PipelineHome({ user, setView, openSession, goScanForSession }: {
+// ─── خلية رقم واحدة في شريط الأرقام ───
+function NumCell({ label, value, suffix, tone, onClick }: {
+  label: string; value: string | number; suffix?: string;
+  tone?: "amber" | "brand" | "mut"; onClick?: () => void;
+}) {
+  const Tag = (onClick ? "button" : "div") as "button";
+  return (
+    <Tag
+      onClick={onClick}
+      className={cn(
+        "px-2 sm:px-4 py-3.5 text-center min-w-0 transition",
+        onClick && "cursor-pointer active:scale-[0.98] hover:bg-amber-500/[.06]",
+      )}
+    >
+      <small className="block text-[10px] sm:text-[10.5px] font-bold text-muted-foreground truncate">{label}</small>
+      <strong className={cn(
+        "block text-[1.3rem] sm:text-[1.45rem] font-black leading-tight mt-0.5 nk-num",
+        tone === "amber" && "text-amber-600 dark:text-amber-400",
+        tone === "brand" && "nk-brand-text",
+        tone === "mut" && "text-muted-foreground",
+      )}>
+        {value}{suffix && <span className="text-[11px] font-extrabold text-muted-foreground ms-1">{suffix}</span>}
+      </strong>
+    </Tag>
+  );
+}
+
+// ─── زرار الإجراءات السريعة ───
+function QuickBtn({ icon: Icon, label, onClick, primary }: {
+  icon: React.ComponentType<{ className?: string }>; label: string; onClick: () => void; primary?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-2 rounded-xl h-11 px-4 text-[13px] font-extrabold transition active:scale-[0.97] whitespace-nowrap",
+        primary
+          ? "nk-brand-bg text-white shadow"
+          : "border border-border bg-card hover:border-[color-mix(in_srgb,var(--c-primary)_35%,white)] hover:shadow-sm",
+      )}
+    >
+      <Icon className={cn("w-4 h-4", !primary && "nk-brand-text")} />
+      {label}
+    </button>
+  );
+}
+
+// ─── رقم صغير داخل details أرقام الشهر ───
+function MiniNum({ label, value, tone }: { label: string; value: string; tone?: "amber" | "ok" }) {
+  return (
+    <div className="py-1.5 min-w-0">
+      <small className="block text-[10px] font-bold text-muted-foreground truncate">{label}</small>
+      <b className={cn(
+        "block text-[14px] font-black nk-num mt-0.5 truncate",
+        tone === "amber" && "text-amber-600 dark:text-amber-400",
+        tone === "ok" && "text-emerald-600 dark:text-emerald-400",
+      )}>{value}</b>
+    </div>
+  );
+}
+
+export function PipelineHome({ user, setView, openSession }: {
   user: SessionUser;
   setView: (v: ViewId) => void;
   openSession: (id: string, opts?: { tab?: "overview" | "attendance" | "operations" | "review"; qrFullscreen?: boolean }) => void;
@@ -158,7 +219,7 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
     return () => { alive = false; clearInterval(t); };
   }, [isManager]);
 
-  // ===== الصف الموحّد: حصص حقيقية + اقتراحات الجدول (اليوم بس) — نفس ترتيب المنصة الأساسية =====
+  // ===== الصف الموحّد: حصص حقيقية + اقتراحات الجدول (اليوم بس) =====
   const rows = useMemo(() => {
     if (!data) return [];
     type Row = {
@@ -169,7 +230,7 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
       status: "OPEN" | "CLOSED" | "CANCELLED" | "PLANNED";
       studentSource?: "ROSTER" | "OPEN";
       attendanceCount?: number; rosterTotal?: number | null; presentCount?: number;
-      students?: number; cancelled?: boolean;
+      students?: number;
     };
     const list: Row[] = data.sessions.map((s) => ({
       key: `s-${s.id}`, kind: "session" as const, id: s.id,
@@ -177,7 +238,6 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
       subject: s.subject, grade: s.grade, groupName: s.groupName, teacher: s.teacher,
       status: s.status, studentSource: s.studentSource,
       attendanceCount: s.attendanceCount, rosterTotal: s.rosterTotal, presentCount: s.presentCount,
-      cancelled: s.status === "CANCELLED",
     }));
     // الأيام غير النهاردة: مفيش اقتراحات — حصص محفوظة بس (المراجعة عمرها ما بتنشئ حصة)
     if (dayIsToday) {
@@ -197,7 +257,7 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
     });
   }, [data, dayIsToday]);
 
-  // ===== إحصاءات الـ 3 كروت (نفس حسابات المنصة الأساسية) =====
+  // ===== إحصاءات شريط الأرقام =====
   const stats = useMemo(() => {
     const sessionsCount = rows.length;
     let studentsToday = 0;
@@ -219,7 +279,7 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
     return { sessionsCount, studentsToday, pending };
   }, [rows]);
 
-  // أول حصة شغالة فيها رصد ناقص — هدف زرار «إجراءات معلقة» و«إكمال الرصد»
+  // أول حصة شغالة فيها رصد ناقص — هدف خلية «معلقات»
   const pendingSession = rows.find((r) => r.status === "OPEN" && (r.rosterTotal ?? 0) > (r.attendanceCount ?? 0));
   // الحصة القادمة = أول غير منتهية (شغالة ثم مخططة) — بتاخد التمييز البصري
   const nextKey = rows.length && (rows[0].status === "OPEN" || rows[0].status === "PLANNED") ? rows[0].key : null;
@@ -240,50 +300,51 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
   }
 
   const heading = dayIsToday ? "حصص اليوم" : `حصص يوم ${AR_WD_FULL[new Date(`${selectedDay}T00:00:00`).getDay()]}`;
+  const h = new Date().getHours();
+  const greeting = h < 12 ? "صباح الخير" : h < 17 ? "نهار سعيد" : "مساء الخير";
+  const dateLabel = new Date().toLocaleDateString("ar-EG-u-nu-latn", { weekday: "long", day: "numeric", month: "long" });
 
   if (!data) return <Loading />;
 
   return (
-    <div className="space-y-5 nk-anim-stagger">
-      {/* ===== Hero مصغّر — سطر واحد + البوابة (الوصف الكامل ديسكتوب بس عشان الموبايل ميضيعش تحت الطية) ===== */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-[11px] font-black tracking-widest nk-brand-text uppercase">مسار الحصص</div>
-          <h1 className="text-lg sm:text-2xl font-black mt-0.5 mb-0 leading-snug">يومك الدراسي في مسار واحد</h1>
-          <div className="nk2-gate" aria-hidden />
-          <p className="hidden sm:block text-xs font-bold text-muted-foreground m-0 mt-1.5">
-            اختر اليوم، افتح الحصة، أنجز المطلوب، وأغلقها بدون التنقل بين شاشات كثيرة.
-          </p>
-        </div>
+    <div className="space-y-4 nk-anim-stagger">
+      {/* ===== 1. سطر ترحيب هادئ — سطر واحد بدل hero ضخم ===== */}
+      <div className="flex items-end justify-between gap-3">
+        <h1 className="text-[1.15rem] sm:text-xl font-black m-0 leading-snug">
+          {greeting}، {user.name.split(" ")[0]} <span aria-hidden className="align-middle">👋</span>
+        </h1>
+        <span className="hidden sm:block text-[11.5px] font-extrabold text-muted-foreground whitespace-nowrap">
+          {dateLabel}
+        </span>
       </div>
 
-      {/* ===== شريط الأيام — أهم حاجة الأولى: اختار يومك وافتح حصتك ===== */}
+      {/* ===== 2. شريط الأيام ===== */}
       <DayTimeline value={selectedDay} onChange={setSelectedDay} />
 
-      {/* ===== 3 كروت إحصاء — بلاطات الطوارئ النيفي ===== */}
-      <div className="grid grid-cols-3 gap-3">
-        <NkStat small={dayIsToday ? "حصص اليوم" : "حصص اليوم المحدد"} value={stats.sessionsCount} />
-        <NkStat small={dayIsToday ? "طلاب اليوم" : "طلاب اليوم المحدد"} value={stats.studentsToday} ghost />
-        {dayIsToday && stats.pending > 0 && pendingSession ? (
-          <button className="nk2-stat-gold text-start cursor-pointer" onClick={() => pendingSession.id && openSession(pendingSession.id)}>
-            <small>إجراءات معلقة — متابعة ←</small>
-            <strong>{stats.pending}</strong>
-          </button>
+      {/* ===== 3. شريط الأرقام — كارت واحد بخلايا مفصولة بدل تايلز ثقيلة ===== */}
+      <div className={cn(
+        "grid rounded-2xl border border-border bg-card overflow-hidden divide-x divide-border",
+        isManager ? "grid-cols-4" : "grid-cols-3",
+      )}>
+        <NumCell label={dayIsToday ? "حصص اليوم" : "الحصص"} value={stats.sessionsCount} />
+        <NumCell label={dayIsToday ? "طلاب اليوم" : "الطلاب"} value={stats.studentsToday} tone="brand" />
+        {dayIsToday && stats.pending > 0 && pendingSession?.id ? (
+          <NumCell label="رصد معلّق" value={stats.pending} tone="amber" onClick={() => openSession(pendingSession.id!)} />
         ) : (
-          <div className="nk2-stat-gold">
-            <small>إجراءات معلقة</small>
-            <strong>{stats.pending}</strong>
-          </div>
+          <NumCell label="رصد معلّق" value={stats.pending} tone={stats.pending > 0 ? "amber" : "mut"} />
+        )}
+        {isManager && legacy?.stats && (
+          <NumCell label="تحصيل اليوم" value={fmt(legacy.stats.collectedToday)} suffix="ج" />
         )}
       </div>
 
-      {/* ===== التنبيهات الذكية — للمدير بس (المرحلة 6) ===== */}
-      {isManager && <AlertsCard />}
-
-      {/* ===== حصص اليوم — كارت الطوارئ بالشريط العلوي ===== */}
-      <div className="nk2-card">
+      {/* ===== 4. حصص اليوم ===== */}
+      <section className="nk2-card">
         <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 mb-3">
-          <h2 className="nk2-sec-title">{heading}</h2>
+          <h2 className="nk2-sec-title">
+            {heading}
+            {rows.length > 0 && <span className="ms-2 text-[11px] font-extrabold text-muted-foreground nk-num">({rows.length})</span>}
+          </h2>
           <span className="nk2-sec-sub">اضغط على الحصة لفتح مساحة العمل</span>
         </div>
 
@@ -310,9 +371,9 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
             {rows.map((r) => {
               const isNext = dayIsToday && r.key === nextKey;
               const clickable = r.status === "OPEN" || r.status === "CLOSED" || (r.status === "PLANNED" && dayIsToday);
-              const isPlanned = r.kind === "planned";
               const marked = r.attendanceCount ?? 0;
               const total = r.rosterTotal ?? marked;
+              const unmarked = r.status === "OPEN" && r.studentSource !== "OPEN" ? Math.max(0, total - marked) : 0;
               const showProgress = r.status === "OPEN" && r.studentSource !== "OPEN" && (r.rosterTotal ?? 0) > 0;
               return (
                 <button
@@ -350,7 +411,12 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
                       {showProgress && (
                         <span className="flex items-center gap-2 mt-1.5">
                           <span className="nk-bar w-24"><span style={{ width: `${total ? Math.round((marked / total) * 100) : 0}%` }} /></span>
-                          <span className="text-[.66rem] font-bold text-muted-foreground nk-num" dir="ltr">{marked}/{total} مرصد</span>
+                          <span className="text-[.66rem] font-bold text-muted-foreground nk-num" dir="ltr">{marked}/{total}</span>
+                          {unmarked > 0 && (
+                            <span className="rounded-full bg-amber-500/12 border border-amber-500/35 text-amber-700 dark:text-amber-300 px-2 py-0.5 text-[.62rem] font-black whitespace-nowrap">
+                              ناقص {unmarked} رصد
+                            </span>
+                          )}
                         </span>
                       )}
                     </span>
@@ -372,79 +438,65 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
             })}
           </div>
         )}
-      </div>
+      </section>
 
-      {/* ===== تنبيه الرصد (نفس قاعدة المنصة الأساسية) ===== */}
-      {dayIsToday && pendingSession && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-4 py-3">
-          <span className="text-sm font-bold text-amber-800 dark:text-amber-200 flex items-center gap-2">
-            <AlertTriangle className="w-4.5 h-4.5 shrink-0" />
-            حصص جارية لديها طلاب لم يُرصد حضورهم بعد — أكمل الرصد قبل الإنهاء.
-          </span>
-          {pendingSession.id && (
-            <button
-              onClick={() => openSession(pendingSession.id!)}
-              className="shrink-0 rounded-xl bg-amber-500 hover:bg-amber-600 text-white px-3.5 py-2 text-xs font-extrabold shadow active:scale-[0.98] transition"
-            >
-              إكمال الرصد ←
-            </button>
+      {/* ===== 5. إجراءات سريعة — شريط واحد compact بدل كروت ضخمة ===== */}
+      <div>
+        <p className="text-[11px] font-extrabold text-muted-foreground mb-2 mt-0">إجراءات سريعة</p>
+        <div className="flex flex-wrap gap-2">
+          {isManager && (
+            <>
+              <QuickBtn icon={Zap} label="امسح الحضور" onClick={() => setView("scan")} primary />
+              <QuickBtn icon={Wallet} label="تسجيل دفعة" onClick={() => setView("payments")} />
+              <QuickBtn icon={UserPlus} label="إضافة طالب" onClick={() => setView("students")} />
+              <QuickBtn icon={BarChart3} label="التقارير" onClick={() => setView("reports")} />
+            </>
+          )}
+          {isTeacher && (
+            <>
+              <QuickBtn icon={CalendarDays} label="جدولي" onClick={() => setView("schedule")} primary />
+              <QuickBtn icon={Users} label="طلابي" onClick={() => setView("students")} />
+            </>
+          )}
+          {!isManager && !isTeacher && (
+            <>
+              <QuickBtn icon={ScanLine} label="امسح QR" onClick={() => setView("scan")} primary />
+              <QuickBtn icon={Wallet} label="تسجيل دفعة" onClick={() => setView("payments")} />
+              <QuickBtn icon={UserPlus} label="إضافة طالب" onClick={() => setView("students")} />
+              <QuickBtn icon={Users} label="الطلاب" onClick={() => setView("students")} />
+              <QuickBtn icon={CalendarDays} label="الجدول الأسبوعي" onClick={() => setView("schedule")} />
+            </>
           )}
         </div>
-      )}
+      </div>
 
+      {/* ===== 6. للمدير: تنبيهات الاشتراك/الصندوق (chips خفيفة) + التنبيهات الذكية ===== */}
       {isManager && (legacy?.alerts?.length ?? 0) > 0 && (
-        <div className="space-y-2">
+        <div className="flex flex-wrap gap-2">
           {legacy!.alerts!.map((a, i) => (
-            <div key={i} className={cn(
-              "flex items-center gap-2.5 rounded-2xl border px-4 py-3 text-sm font-bold",
-              a.level === "warn" ? "bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-200" : "bg-sky-50 border-sky-200 text-sky-800 dark:bg-sky-950/30 dark:border-sky-800 dark:text-sky-200",
+            <span key={i} className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11.5px] font-extrabold",
+              a.level === "warn"
+                ? "border-amber-300 text-amber-800 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-200"
+                : "border-sky-300 text-sky-800 bg-sky-50 dark:bg-sky-950/30 dark:border-sky-800 dark:text-sky-200",
             )}>
-              <AlertTriangle className="w-4.5 h-4.5 shrink-0" />
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
               {a.text}
-            </div>
+            </span>
           ))}
         </div>
       )}
+      {isManager && <AlertsCard />}
 
-      {isManager && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <BigAction icon={<Zap className="w-7 h-7" />} label="امسح الحضور" desc="كشف حصة شغالة" onClick={() => setView("scan")} primary />
-          <BigAction icon={<Wallet className="w-6 h-6" />} label="تسجيل دفعة" desc="استلام فلوس" onClick={() => setView("payments")} />
-          <BigAction icon={<UserPlus className="w-6 h-6" />} label="إضافة طالب" desc="تسجيل طالب جديد" onClick={() => setView("students")} />
-        </div>
-      )}
-      {isTeacher && (
-        <div className="grid grid-cols-2 gap-3">
-          <BigAction icon={<CalendarDays className="w-6 h-6" />} label="جدول النهاردة" desc={`${stats.sessionsCount} حصة`} onClick={() => setView("schedule")} primary />
-          <BigAction icon={<Users className="w-6 h-6" />} label="طلابي" desc="متابعة الطلاب" onClick={() => setView("students")} />
-        </div>
-      )}
-      {!isManager && !isTeacher && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          <BigAction icon={<Zap className="w-7 h-7" />} label="امسح QR" desc="تسجيل حضور فوري" onClick={() => setView("scan")} primary />
-          <BigAction icon={<Users className="w-6 h-6" />} label="ابحث عن طالب" desc="بالاسم أو الكود" onClick={() => setView("students")} />
-          <BigAction icon={<Wallet className="w-6 h-6" />} label="تسجيل دفع" desc="استلام فلوس" onClick={() => setView("payments")} />
-          <BigAction icon={<Users className="w-6 h-6" />} label="الطلاب" onClick={() => setView("students")} />
-          <BigAction icon={<CalendarDays className="w-6 h-6" />} label="جدول الأسبوع" onClick={() => setView("schedule")} />
-        </div>
-      )}
-
+      {/* ===== 7. للمدير: تغيّر الحضور الأسبوعي (يظهر بس لما يكون فيه تغير ملحوظ) ===== */}
       {isManager && legacy?.insight && <InsightCard insight={legacy.insight} setView={setView} />}
-      {isManager && <ManagerExtras data={legacy} />}
 
-      {/* ===== غير اليومي تحت — تثبيت التطبيق + رحلة البداية (الشغل اليومي فوق دايمًا) ===== */}
+      {/* ===== 8. للمدير: أرقام الشهر — سطر واحد + details للتفاصيل ===== */}
+      {isManager && legacy?.stats && <MonthLine stats={legacy.stats} />}
+
+      {/* ===== غير اليومي تحت — تثبيت التطبيق + رحلة البداية (بيخفوا لوحدهم) ===== */}
       <InstallCard />
       <OnboardingQuest user={user} setView={setView} />
-    </div>
-  );
-}
-
-// ─── كروت الإحصاء ببلاطات الطوارئ (نيفي متدرج / شبح أبيض) ───
-function NkStat({ small, value, ghost }: { small: string; value: number; ghost?: boolean }) {
-  return (
-    <div className={cn("nk2-stat", ghost && "ghost")}>
-      <small>{small}</small>
-      <strong className="nk-num">{value}</strong>
     </div>
   );
 }
@@ -462,57 +514,52 @@ function sessionTitle(r: { subject: string; grade: string; groupName: string }) 
   return tail.length ? `${r.subject} — ${tail.join(" ")}` : r.subject;
 }
 
-// ─── المكوّنات المحفوظة من داشبورد السنترز (نفس السلوك) ───
-
-function ManagerExtras({ data }: { data: LegacyDash | null }) {
-  if (!data) return null;
+// ─── للمدير: أرقام الشهر — ملخص مطوي أنيق ───
+function MonthLine({ stats }: { stats: NonNullable<LegacyDash["stats"]> }) {
+  const net = stats.monthNet;
   return (
-    <div className="space-y-4">
-      {data.stats && (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <MoneyStat label="تحصيل النهاردة" piastres={data.stats.collectedToday} tone="brand" icon={<Wallet className="w-4 h-4" />} />
-            <Stat label="حضور النهاردة" value={data.stats.attendanceToday} hint="طالب" />
-            <MoneyStat label="صافي الشهر" piastres={data.stats.monthNet} tone={(data.stats.monthNet ?? 0) >= 0 ? "success" : "danger"} />
-            <MoneyStat label="مستحقات على الطلاب" piastres={data.stats.totalOwed} tone="warning" />
-          </div>
-          <details className="group rounded-2xl border border-border bg-card">
-            <summary className="cursor-pointer select-none list-none px-4 py-3 text-[12.5px] font-extrabold text-muted-foreground flex items-center justify-between hover:text-foreground transition">
-              باقي أرقام الشهر — إيراد · مصروفات · أرصدة · نصيب المدرسين
-              <ChevronDown className="w-4 h-4 transition group-open:rotate-180" />
-            </summary>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-4 pb-4">
-              <MoneyStat label="إيراد الشهر" piastres={data.stats.monthRevenue} />
-              <MoneyStat label="مصروفات الشهر" piastres={data.stats.monthExpenses} />
-              <MoneyStat label="أرصدة الطلاب" piastres={data.stats.totalCredit} />
-              <MoneyStat label="نصيب مدرسين الشهر" piastres={data.stats.monthTeacherShare} />
-            </div>
-          </details>
-        </>
-      )}
-    </div>
+    <details className="group rounded-2xl border border-border bg-card overflow-hidden">
+      <summary className="cursor-pointer list-none select-none px-4 py-3.5 flex items-center justify-between gap-3 hover:bg-muted/40 transition">
+        <span className="text-[12.5px] font-extrabold text-muted-foreground">أرقام الشهر</span>
+        <span className="flex items-center gap-2 text-[12.5px] min-w-0">
+          <span className="font-bold text-muted-foreground whitespace-nowrap">صافي السنتر</span>
+          <b className={cn("nk-num font-black whitespace-nowrap", net >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+            {fmt(net)} ج
+          </b>
+          <ChevronDown className="w-4 h-4 text-muted-foreground transition group-open:rotate-180 shrink-0" />
+        </span>
+      </summary>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-x-3 px-4 pb-4 pt-2 border-t border-border">
+        <MiniNum label="إيراد الشهر" value={`${fmt(stats.monthRevenue)} ج`} />
+        <MiniNum label="مصروفات الشهر" value={`${fmt(stats.monthExpenses)} ج`} />
+        <MiniNum label="مستحقات على الطلاب" value={`${fmt(stats.totalOwed)} ج`} tone="amber" />
+        <MiniNum label="أرصدة الطلاب" value={`${fmt(stats.totalCredit)} ج`} tone="ok" />
+        <MiniNum label="نصيب المدرسين" value={`${fmt(stats.monthTeacherShare)} ج`} />
+      </div>
+    </details>
   );
 }
 
+// ─── للمدير: تغيّر الحضور الأسبوعي — يظهر بس لما يكون فيه تغير ملحوظ ───
 function InsightCard({ insight, setView }: { insight: NonNullable<LegacyDash["insight"]>; setView: (v: ViewId) => void }) {
   const pct = insight.changePct;
   if (pct === null || insight.prevWeek < 5 || (pct > -8 && pct < 8)) return null;
   const down = pct < 0;
   return (
     <div className={cn(
-      "rounded-2xl border-2 p-4 flex items-start gap-3.5",
-      down ? "bg-amber-50/70 border-amber-300 dark:bg-amber-950/20 dark:border-amber-800" : "bg-emerald-50/70 border-emerald-300 dark:bg-emerald-950/20 dark:border-emerald-800",
+      "rounded-2xl border p-4 flex items-start gap-3.5",
+      down ? "bg-amber-50/70 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800" : "bg-emerald-50/70 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800",
     )}>
       <span className={cn("rounded-xl p-2.5 shrink-0", down ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300")}>
         {down ? <TrendingDown className="w-5 h-5" /> : <TrendingUp className="w-5 h-5" />}
       </span>
       <div className="flex-1 min-w-0">
-        <p className="font-extrabold text-sm leading-relaxed">
+        <p className="font-extrabold text-sm leading-relaxed m-0">
           الحضور {down ? "نزل" : "زاد"} <span className="nk-num">{Math.abs(pct)}%</span> الأسبوع ده مقارنة بالأسبوع اللي فات
           <span className="text-muted-foreground font-bold"> — <span className="nk-num">{insight.thisWeek}</span> مقابل <span className="nk-num">{insight.prevWeek}</span> تسجيل حضور</span>
         </p>
         {down && insight.topDrop && (
-          <p className="text-xs font-bold text-muted-foreground mt-1">
+          <p className="text-xs font-bold text-muted-foreground mt-1 m-0">
             الأكثر تأثرًا: <span className="text-foreground font-extrabold">{insight.topDrop.label}</span> — يستاهل مراجعة.
           </p>
         )}
@@ -520,7 +567,7 @@ function InsightCard({ insight, setView }: { insight: NonNullable<LegacyDash["in
       <button
         onClick={() => setView("reports")}
         className={cn(
-          "shrink-0 rounded-xl px-3.5 py-2 text-xs font-extrabold border-2 active:scale-[0.98] transition",
+          "shrink-0 rounded-xl px-3.5 py-2 text-xs font-extrabold border active:scale-[0.98] transition",
           down ? "border-amber-300 text-amber-800 hover:bg-amber-100 dark:text-amber-200 dark:border-amber-700 dark:hover:bg-amber-900/40" : "border-emerald-300 text-emerald-800 hover:bg-emerald-100 dark:text-emerald-200 dark:border-emerald-700 dark:hover:bg-emerald-900/40",
         )}
       >
@@ -529,59 +576,3 @@ function InsightCard({ insight, setView }: { insight: NonNullable<LegacyDash["in
     </div>
   );
 }
-
-function OpsSummaryStrip({ summary, openSession, setView }: {
-  summary: NonNullable<LegacyDash["opsSummary"]>;
-  openSession: (id: string, opts?: { tab?: "overview" | "attendance" | "operations" | "review"; qrFullscreen?: boolean }) => void;
-  setView: (v: ViewId) => void;
-}) {
-  const needsClosing = summary.attention ?? [];
-  const pending = summary.pendingApprovals ?? 0;
-  const active = summary.activeSessions ?? 0;
-  const items: { key: string; label: string; value: string; tone: string; onClick?: () => void }[] = [];
-
-  if (active > 0) items.push({ key: "active", label: "حصص شغالة", value: `${active}`, tone: "bg-emerald-50 border-emerald-300 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-700/60 dark:text-emerald-300", onClick: () => setView("today") });
-  if (needsClosing.length > 0) items.push({ key: "closing", label: "محتاجة تقفيل", value: `${needsClosing.length}`, tone: "bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-950/40 dark:border-amber-700/60 dark:text-amber-300", onClick: () => openSession(needsClosing[0].id) });
-  if (pending > 0) items.push({ key: "approvals", label: "طلبات محتاجة موافقة", value: `${pending}`, tone: "bg-sky-50 border-sky-300 text-sky-700 dark:bg-sky-950/40 dark:border-sky-700/60 dark:text-sky-300", onClick: () => setView("approvals") });
-  if ((summary.paymentIssues?.length ?? 0) > 0) items.push({ key: "pay", label: "ملاحظات دفع", value: `${summary.paymentIssues.length}`, tone: "bg-rose-50 border-rose-300 text-rose-700 dark:bg-rose-950/40 dark:border-rose-700/60 dark:text-rose-300", onClick: () => setView("payments") });
-
-  if (items.length === 0) {
-    return (
-      <div className="flex items-center gap-2 rounded-2xl border-2 border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700 font-extrabold text-sm dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300">
-        <CheckCircle2 className="w-5 h-5" />
-        كل حاجة تمام — مفيش حاجة محتاجة انتباه
-      </div>
-    );
-  }
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-      {items.map((it) => (
-        <button key={it.key} onClick={it.onClick} className={cn("rounded-2xl border-2 px-3.5 py-3 text-start transition hover:scale-[1.02] active:scale-95", it.tone)}>
-          <div className="text-2xl font-black nk-num leading-none">{it.value}</div>
-          <div className="text-[11.5px] font-extrabold mt-1">{it.label}</div>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function BigAction({ icon, label, desc, onClick, primary }: { icon: React.ReactNode; label: string; desc?: string; onClick: () => void; primary?: boolean }) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "rounded-2xl border p-4 flex flex-col items-start gap-2 text-start transition active:scale-[0.98] min-h-[100px] justify-between",
-        primary ? "nk-brand-grad nk-portal-card text-white border-transparent shadow-lg" : "nk-card hover:shadow-md hover:border-[color-mix(in_srgb,var(--c-primary)_30%,white)]",
-      )}
-    >
-      <span className={cn("rounded-xl p-2.5", primary ? "bg-white/20" : "nk-brand-bg-soft nk-brand-text")}>{icon}</span>
-      <span>
-        <span className="block font-extrabold text-[15px]">{label}</span>
-        {desc && <span className={cn("block text-[11px] font-semibold", primary ? "text-white/95" : "text-muted-foreground")}>{desc}</span>}
-      </span>
-    </button>
-  );
-}
-
-// keep fmt referenced for future price chips on cards
-void Ban;
