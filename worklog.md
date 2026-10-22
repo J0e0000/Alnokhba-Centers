@@ -717,3 +717,17 @@ Stage Summary:
 - ملفات: groups.tsx + academics/route.ts + hardening-final.mts + check-wa-regex.mjs
 - البق الحقيقي لشكوى «نفس مشكلة الواتس»: زر واتساب المدرس في شاشة المجموعات (آخر مكان بنياء يدوي)
 - مش محتاج توكن Vercel: النشر بيحصل أوتوماتيك من GitHub push (اتأكدنا من deployment سابق ناجح بنفس الطريقة)
+
+---
+Task ID: wa-fix-2-deploy
+Agent: main
+Task: تحقق النشر — commit e074d44 على main
+
+Work Log:
+- push d5264f6..e074d44 → main ✓ (بدون توكن — Vercel auto-deploy من GitHub)
+- مراقبة الإنتاج: turbopack runtime اتغير + شانك app اتبدلت خلال ~50 ثانية → نشر جديد لايف
+- تنزيل كل شانكس الإنتاج (12): البق القديم wa.me/2 مختفي تماماً ✓ + منطق toWaNumber (0020) موجود في 3 شانكس ✓
+- الصفحة الرئيسية 200 ✓
+
+Stage Summary:
+- الإصلاح على الهوا فعلاً — شكوى «نفس مشكلة الواتس» مقفولة: زر واتساب المدرس + قبول كل صيغ لصق لينك الجروب
