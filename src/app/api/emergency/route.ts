@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { ok, handler } from "@/lib/api";
-import { requireManager, ApiError } from "@/lib/auth";
+import { requireManager, ApiError, type SessionUser } from "@/lib/auth";
+import { requireExportAdmin, scopeAdminToCenter, centerParam } from "@/lib/export-guard";
 import { logAudit, AUDIT } from "@/lib/audit";
 import { todayStr, dayNameAR, formatTime12 } from "@/lib/normalize";
 import { manyBalances, sessionEconomics } from "@/lib/finance";
@@ -85,11 +86,23 @@ function cellTime(c: ExcelJS.CellValue): string {
 // ============================= GET — تصدير / سجل =============================
 
 export const GET = handler(async (req: Request) => {
-  const user = await requireManager();
   const url = new URL(req.url);
 
   // ?package=1 (زرار حزمة الأوفلاين) أو ?export=1 (الكلاسيكي) — الاتنين تصدير
   const wantsPackage = url.searchParams.get("package") === "1" || url.searchParams.get("export") === "1";
+
+  // تصدير حزمة الطوارئ (HTML موقّعة/إكسل) = بيانات بالجملة — أدمن المنصة بس (spec المرحلة 1).
+  // سجل المزامنات (بيانات تشغيلية لشاشة الاسترداد) بيفضل للمدير — الاسترداد استيراد
+  // وصلاحية الاستيراد مستقلة عن التصدير (spec Phase 9).
+  let user: SessionUser & { centerId: string };
+  if (wantsPackage) {
+    const fmt0 = url.searchParams.get("format");
+    const grant = await requireExportAdmin({ what: fmt0 === "xlsx" ? "emergency-xlsx" : "emergency-package", centerId: centerParam(url) });
+    if (!grant.centerId) throw new ApiError("حدد السنتر المطلوب تصدير حزمة طوارئه — أضف ?centerId=<معرف السنتر>.", 400);
+    user = scopeAdminToCenter(grant, grant.centerId);
+  } else {
+    user = await requireManager();
+  }
 
   if (!wantsPackage) {
     // سجل المزامنات — إكسل كلاسيكي + استرداد JSON (مدموجين)

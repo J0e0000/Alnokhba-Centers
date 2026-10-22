@@ -451,16 +451,20 @@ model StudentTransaction {
   amount    Int // signed piastres
   method    String? // CASH | VODAFONE | INSTAPAY (payments)
   reason    String?
-  idemKey   String?  @unique // emergency-import idempotency key (EMG-YYYY-NNNNNN) — duplicate imports are rejected
+  idemKey   String?  @unique // idempotency key (emergency EMG-… / payments client key) — duplicate posts return the original
+  refTxnId  String? // المعاملة الأصلية اللي العملية دي بتصححها (استرداد/عكس مرتبط) — الأصل عمره ما يتعمل عليه update/delete
   createdBy String // userId
   createdAt DateTime @default(now())
   student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   receipt   Receipt?
+  refTxn      StudentTransaction?  @relation("TxnCorrections", fields: [refTxnId], references: [id])
+  corrections StudentTransaction[] @relation("TxnCorrections")
 
   @@index([centerId, studentId])
   @@index([centerId, createdAt])
   @@index([centerId, type])
   @@index([sessionId])
+  @@index([refTxnId])
 }
 
 model Expense {

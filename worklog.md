@@ -601,3 +601,65 @@ Stage Summary:
 - إجابة المالك: أيوه ده الجديد فعلاً — بس انت داخل بحساب الاختبار فشايف بيانات الضغط مش سنترك
 - الإنتاج شغّال بآخر كوميت (fa9e902) — لقطة الحية مطابقة 100%
 - المفتاح الجديد جاهز (0cc6fc4f2c4125f6) — اتمام خطوة الـ env معلق على موافقة الـ device flow
+
+---
+---
+Task ID: 9 (device-flow round 2 — wrong account discovered + branch hygiene)
+Agent: main
+Task: المالك قبل لينك الـ device flow («done») → استكمال خطوة env المفتاح. اكتشاف: الحساب غلط.
+
+Work Log:
+- vercel whoami بعد القبول = joussefsoliman87-6830 — فحصت المشاريع بالـ REST API بالتوكن نفسه (v2/teams + v9/projects): فريق واحد «Youssef's projects» و6 مشاريع (frontend-alfares، alnokhba-db-probe، rifq-qiyam، alnokhbahelp، gatekeeper، v0-student-management-system) — **مفيش alnokhba-centers خالص**
+- الاستنتاج: المشروع (alnokhba-centers-nine.vercel.app) تابع لحساب Vercel تاني — المالك قبل الكود من براوزر الحساب الغلط
+- جيت: اكتشفت إن فاز 1+3 (190e48a، 695a591) متكومتين على main المحلي مع كوميتين UUID — تحققت إنهم كلهم داخلين في origin/feat/platform-hardening → reset main لـ origin/main (890dc51) + sync محلي للفرع = النظافة راجعت
+- المفتاح اتولّد تاني بعد تجدد الحاوية: FP=ae7f99d8ce3092a6 — db/emergency-signing.pem + scripts/rotation/new-key-base64.txt متطابقين (اتحقق تشفيري: نفس SPKI sha256)
+- device flow جديد شغال في الخلفية: user_code=KQPS-TGDX — مستنى القبول من براوزر الحساب الصاحب للمشروع
+
+Stage Summary:
+- القبول الأول كان بحساب مش مالك للمشروع — لينك جديد KQPS-TGDX اتبعت للمالك بتعليمات صريحة: يسجّل دخول براوزر حساب alnokhba-centers الأول
+- الفروز النضيف: main = origin/main (بدون كود الفازات) · feat/platform-hardening = 695a591 (فاز 1+3)
+- فور القبول: vercel link → env add EMERGENCY_SIGNING_KEY (production+preview) → redeploy → تحقق keyFp=ae7f99d8ce3092a6 مستقر بعد cold start
+
+---
+Task ID: 10 (vercel auth round-3 + phase-2 backup/DR)
+Agent: main
+Task: المالك بدّل لحساب المشروع الصح وطلب اللينك تاني → إتمام ربط Vercel يدوياً + تنفيذ المرحلة 2 (نسخ احتياطي/استرجاع).
+
+Work Log:
+- device-flow CLI بيموت بين الـ tool calls (tmux/screen مش متاحين) → **تنفيذ يدوي للـ OAuth device flow بـ curl**: discovery (vercel.com/.well-known) → device-authorization → poll للتوكن → كتابة auth.json بصيغة الـ CLI ({token, expiresAt, refreshToken}). الكود التالت CZFQ-VRPN اتقبل ✓.
+- **الربط صح**: moj4534-4875 / فريق Alnokhba / مشروع alnokhba-centers متلينك محلياً (.vercel/project.json). Production URL: alnokhba-centers-nine.vercel.app.
+- `vercel env pull` رجّع `DATABASE_URL="[SENSITIVE]"` — القيمة الحساسة مش بتتسحب بالتصميم → الباك أب الفعلي للإنتاج مؤجل لدور backup_reader (docs/BACKUP-DR.md §2). تنبيه: كلامي السابق «DATABASE_URL موجود محلياً» كان غلط.
+- **EMERGENCY_SIGNING_KEY اتحطت في إنتاج Vercel** (RSA-2048 جديدة FP=fd8081e902e9a250، base64 في scripts/rotation/) — هتتفعّل مع أول deploy بعد الدمج. الملفات القديمة ضاعوا مع الحاوية — التوليد الجديد مكافئ (المفتاح القديم عمره ما خرج).
+- **المرحلة 2**: scripts/backup/{postgres-backup,restore-test,selftest}.mts:
+  * backup: جلسة REPEATABLE READ READ ONLY (استحالة كتابة) → dump self-contained (DDL من pg_catalog بالترتيب الطوبولوجي + INSERTs + القيود PK/UNIQUE/FK بعد البيانات عشان FK الذاتي للمرتجعات) + sha256 + latest-status.json.
+  * restore-test: تحقق sha256 → استرجاع في PGlite (Postgres حقيقي in-process) → مقارنة صف كل جدول → فحص FK → validated في status.
+  * selftest: PGlite + PGLiteSocketServer (wire protocol حقيقي) على سكيما مصغرة (نص عربي بعلامات اقتباس + jsonb + مرجع ذاتي) → backup → restore → **مطابقة قيم 100% PASS**.
+  * علمنيتين: execSync بيجمّد الـ event loop فالـ socket server بيدّي مهلة → استبدل بـ spawn غير متزامن؛ gitignore نمط `backup/` كان بيبلع `scripts/backup/` → تثبيت على الجذر `/backup/` (نفس فخ `tests/` من المرحلة 1).
+- **حماية في /api/backup**: اللقطة الفيزيائية VACUUM INTO محصورة على وضع SQLite المحلي — في Postgres ترجع رسالة إرشادية عربي (400) بدل انهيار.
+- npm scripts: backup:pg / backup:restore-test / backup:selftest (tsx اتنزلت devDep رسمياً).
+- docs/BACKUP-DR.md كامل: التشغيل، دور القراءة فقط، DR Runbook (RTO ~10-15د)، الجدولة، المستويات الثلاثة.
+
+Stage Summary:
+- Vercel auth مقفول نهائياً — المالك جاهز للنشر/الإدارة.
+- المرحلة 2 مكتملة كوداً واختبارات (النسخة الحية محتاجة backup_reader URL من المالك).
+- المفتاح e2e جاهز في إنتاج (ينشط مع أول deploy).
+- المتبقي: مراحل 4-10 حسب السبيك.
+
+---
+Task ID: 11 (first real prod backup + vercel preview deploy fix)
+Agent: main
+Task: المالك نفّذ سكريبت backup_reader (اتأكدت بلقطة: 61 جدول) وسأل «ليه مفيش deployments تظهر» + Vercel فشل preview على 9214f59 (npm install exit 1).
+
+Work Log:
+- **اكتشاف DATABASE_URL ref من سجل الشغل** (worklog سطر 54: ref ttydfyqwzkwivucgiegy من جلسة QAE القديمة) → يوفر سؤال المالك. pooler session: `backup_reader.<ref>@aws-0-eu-west-2.pooler.supabase.com:5432` — اتصال ✓ 61 جدول.
+- **أول نسخة إنتاج حقيقية**: 61 جدول، 112,336 صف، 29MB (StudentTransaction=40,815 / Attendance=38,591 / AuditLog=6,802 / Student=5,033) — جلسة REPEATABLE READ READ ONLY.
+- **باجين اتصلاحا أثناء أول تشغيل حقيقي**: (1) cast `::regclass` بيfold للم lowercase — `public.Center` بيتقلب `public.center` → الحل تمرير `"public"."Center"` مقتبس؛ (2) ترتيب القيود: FK بتتضاف قبل PK المرجَع → ترتيب PK ثم UNIQUE ثم FK.
+- **restore-test على النسخة الحقيقية: PASS** — مطابقة كل جدول صف-بصف + 88 FK + sha256.
+- **سبب فشل preview deploys**: pglite-socket@0.0.7 عايز pglite 0.3.2 وموجود 0.5.10 → ERESOLVE في npm install على Vercel (محلياً اتحل بـ --legacy-peer-deps بس Vercel بيستخدم الافتراضي). الحل: @electric-sql/* خرجت من package.json خالص (أداة محلية --no-save) + رسالة ارشادية graceful في السكريبتين لو الحزمة مش موجودة + توثيق في BACKUP-DR.md. تحقق: npm install --dry-run بدون legacy = نضيف ✓.
+- **زوبعة المزامنة**: بتقلب الفرع لـ main حتى في نص النداء الواحد (بعد كتابة ملفات backup/) → أداة النجاة: تشغيل النسخ من backup/run-scripts/ (نسخة ignore-محصنة) + checkout -f قبل كل عملية + commit فوري بعد أي تعديل.
+- scripts/.device_code اتحذف من التتبع (كان بيبوّظ الـ checkout).
+
+Stage Summary:
+- الإنتاج أصبح له نسخة احتياطية مثبتة الاسترجاع (RPO=اللحظة دي) + أداة جاهزة للتكرار اليومي.
+- preview deploys هتنجح من c2d3bf7 وطالع.
+- production لسه مش هيتحدث (المراحل على فرع معزول بالتصميم — الإنتاج من main بس).

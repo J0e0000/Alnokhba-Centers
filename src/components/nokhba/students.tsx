@@ -319,13 +319,15 @@ export function StudentsView({ user, openNew, onOpenNewConsumed, onOpenProfile }
             <span className="font-extrabold text-sm flex-1 text-center">
               {selected.size > 0 ? `${selected.size} طالب محدد` : "اختار الطلاب"}
             </span>
-            <button
-              onClick={printSelected}
-              disabled={selected.size === 0}
-              className="nk-brand-bg text-white font-extrabold rounded-xl px-4 py-2.5 shadow flex items-center gap-2 active:scale-[0.98] disabled:opacity-50"
-            >
-              <Printer className="w-4.5 h-4.5" /> طباعة الكروت
-            </button>
+            {user.role === "ADMIN" && (
+              <button
+                onClick={printSelected}
+                disabled={selected.size === 0}
+                className="nk-brand-bg text-white font-extrabold rounded-xl px-4 py-2.5 shadow flex items-center gap-2 active:scale-[0.98] disabled:opacity-50"
+              >
+                <Printer className="w-4.5 h-4.5" /> طباعة الكروت
+              </button>
+            )}
             <button
               onClick={copySelectedPhones}
               disabled={selected.size === 0}

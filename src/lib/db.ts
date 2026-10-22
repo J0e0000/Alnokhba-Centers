@@ -47,6 +47,21 @@ if (process.env.DATABASE_URL.startsWith('postgres')) {
   }
 }
 
+// SQLite: pool=1 — SQLite كاتب واحد أصلًا، والـ pool الواحد بيلغي SQLITE_BUSY
+// بين طلبات متزامنة جوه نفس العملية (سباق الدفعات المتزامنة — spec المرحلة 3)
+// وبيخلي PRAGMA (WAL/busy_timeout) متطبق فعلًا على الكونكشن الوحيد.
+// التوسّع الأفقي بيفضل شغال عبر busy_timeout على مستوى الملف لو حصلت عمليات متعددة.
+if (process.env.DATABASE_URL.startsWith('file:')) {
+  try {
+    const u = new URL(process.env.DATABASE_URL)
+    if (!u.searchParams.has('connection_limit')) u.searchParams.set('connection_limit', '1')
+    if (!u.searchParams.has('pool_timeout')) u.searchParams.set('pool_timeout', '15')
+    process.env.DATABASE_URL = u.toString()
+  } catch {
+    // file: URL غير قياسي (path بدون scheme صحيح) — سيبه
+  }
+}
+
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
@@ -74,8 +89,11 @@ export const db =
 
 // SQLite WAL (توسعة Task R) — mode دايم على مستوى الملف؛ تنفيذ أول تشغيل كفاية
 // (فشل صامت لو الملف مقفول من عملية تانية — المرة الجاية هيتم)
+// busy_timeout: كتّاب متزامنين بيستنوا في الدور (حتى 5ث) بدل ما يفشلوا فورًا بـ
+// SQLITE_BUSY — أساس idempotency-race في الدفعات (spec المرحلة 3).
 if (process.env.DATABASE_URL.startsWith('file:')) {
   db.$queryRawUnsafe('PRAGMA journal_mode=WAL;').catch(() => {})
+  db.$queryRawUnsafe('PRAGMA busy_timeout=5000;').catch(() => {})
 }
 
 // ============================================================
