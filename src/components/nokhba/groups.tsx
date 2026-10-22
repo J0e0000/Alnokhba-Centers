@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
-  Layers, Plus, Pencil, BookOpen, GraduationCap, Users, Loader2, Trash2, Banknote, KeyRound,
+  Layers, Plus, Pencil, BookOpen, GraduationCap, Users, Loader2, Trash2, Banknote, KeyRound, MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api, fmt } from "./lib";
@@ -20,7 +20,7 @@ type Academics = {
   groups: {
     id: string; name: string; subject: string; subjectId: string; grade: string; gradeId: string;
     teacher: string | null; teacherId: string | null; price: number; teacherPercent: number;
-    room: string | null; students: number; schedules: number;
+    room: string | null; whatsapp: string | null; students: number; schedules: number;
   }[];
 };
 
@@ -81,6 +81,12 @@ export function GroupsView() {
                     <Chip className="bg-card border-border">{g.schedules} حصة/أسبوع</Chip>
                     <Chip className="bg-card border-border">للمدرس {g.teacherPercent}% · للسنتر {100 - g.teacherPercent}%</Chip>
                     {g.room && <Chip className="bg-card border-border">{g.room}</Chip>}
+                    {g.whatsapp && (
+                      <a href={g.whatsapp} target="_blank" rel="noreferrer"
+                        className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-xs font-bold text-emerald-600 hover:bg-emerald-500/10 transition">
+                        <MessageCircle className="w-3 h-3" /> جروب الواتساب
+                      </a>
+                    )}
                   </div>
                   <div className="flex gap-1.5 mt-3 pt-3 border-t">
                     <button onClick={() => setDialog({ mode: "group", editId: g.id })}
@@ -216,14 +222,14 @@ function AcademicDialog({ mode, editId, data, onClose, onSaved }: {
   const [form, setForm] = useState(() => {
     const base = {
       name: "", gradeId: data.grades[0]?.id ?? "", subjectId: data.subjects[0]?.id ?? "",
-      teacherId: "", price: "", teacherPercent: "70", room: "", phone: "",
+      teacherId: "", price: "", teacherPercent: "70", room: "", phone: "", whatsapp: "",
     };
     if (mode === "group" && existing) {
       const g = existing as Academics["groups"][number];
       return {
         ...base, name: g.name, gradeId: g.gradeId, subjectId: g.subjectId,
         teacherId: g.teacherId ?? "", price: String(g.price / 100),
-        teacherPercent: String(g.teacherPercent), room: g.room ?? "",
+        teacherPercent: String(g.teacherPercent), room: g.room ?? "", whatsapp: g.whatsapp ?? "",
       };
     }
     if (mode === "teacher" && existing) {
@@ -242,6 +248,7 @@ function AcademicDialog({ mode, editId, data, onClose, onSaved }: {
         Object.assign(body, {
           gradeId: form.gradeId, subjectId: form.subjectId, teacherId: form.teacherId || null,
           price: parseFloat(form.price), teacherPercent: parseInt(form.teacherPercent, 10), room: form.room,
+          whatsapp: form.whatsapp.trim(),
         });
       }
       if (mode === "teacher") Object.assign(body, { phone: form.phone });
@@ -307,6 +314,10 @@ function AcademicDialog({ mode, editId, data, onClose, onSaved }: {
                   <input className={inputCls(false)} value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })} placeholder="قاعة 2" />
                 </Field>
               </div>
+              <Field label="جروب واتساب أولياء الأمور" hint="لينك الدعوة — اختياري، وبيظهر للي مهمّم بإدارة المجموعة">
+                <input dir="ltr" className={cn(inputCls(false), "text-xs")} value={form.whatsapp}
+                  onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} placeholder="https://chat.whatsapp.com/AbCdEf..." />
+              </Field>
             </>
           ) : mode === "teacher" ? (
             <>

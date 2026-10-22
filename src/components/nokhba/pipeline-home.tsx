@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api, formatTime12, type SessionUser } from "./lib";
 import { MoneyStat, Stat, SectionCard, Loading } from "./shared";
+import { AlertsCard } from "./alerts-card";
 import { InstallCard } from "./pwa";
 import { OnboardingQuest } from "./onboarding";
 import type { ViewId } from "./shell";
@@ -275,6 +276,9 @@ export function PipelineHome({ user, setView, openSession, goScanForSession }: {
           </div>
         )}
       </div>
+
+      {/* ===== التنبيهات الذكية — للمدير بس (المرحلة 6) ===== */}
+      {isManager && <AlertsCard />}
 
       {/* ===== حصص اليوم — كارت الطوارئ بالشريط العلوي ===== */}
       <div className="nk2-card">

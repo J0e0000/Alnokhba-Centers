@@ -208,6 +208,7 @@ model Group {
   sessionPrice   Int // piastres
   teacherPercent Int      @default(50) // 0..100
   room           String?
+  whatsappUrl    String? // https://chat.whatsapp.com/<invite> — جروب واتساب أولياء الأمور للمجموعة
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   center         Center   @relation(fields: [centerId], references: [id])

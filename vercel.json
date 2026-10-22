@@ -4,5 +4,9 @@
   "functions": {
     "src/app/api/**/route.ts": { "memory": 1769 },
     "src/app/**/page.tsx": { "memory": 1769 }
-  }
+  },
+  "crons": [
+    { "path": "/api/alerts/cron", "schedule": "0 5 * * *" }
+  ]
 }
+

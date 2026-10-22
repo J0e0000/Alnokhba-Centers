@@ -7,6 +7,18 @@ import { generateTeacherCode } from "@/lib/teacher-auth";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * لينك جروب واتساب أولياء الأمور — مسموح بس دواعي/قنوات واتساب الرسمية (https فقط).
+ * فاضي/ناقص = null (مسح). أي حاجة تانية = رفض (منع javascript: أو لينكات تصيّد).
+ */
+export function normalizeWhatsapp(raw: string | undefined | null): string | null {
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
+  const m = s.match(/^https:\/\/(?:chat\.whatsapp\.com\/[A-Za-z0-9_-]+|whatsapp\.com\/channel\/[A-Za-z0-9_.-]+|wa\.me\/\d{6,15})\/?$/);
+  if (!m) throw new ApiError("لينك واتساب مش صالح — استخدم لينك الدعوة اللي شكله https://chat.whatsapp.com/xxxx");
+  return s;
+}
+
 /** GET /api/academics — all academic references for the center */
 export const GET = handler(async () => {
   const user = await requireCenterUser();
@@ -38,6 +50,7 @@ export const GET = handler(async () => {
       grade: g.grade.name, gradeId: g.gradeId,
       teacher: g.teacher?.name ?? null, teacherId: g.teacherId,
       price: g.sessionPrice, teacherPercent: g.teacherPercent, room: g.room,
+      whatsapp: g.whatsappUrl,
       students: g._count.students, schedules: g._count.schedules,
     })),
   });
@@ -49,6 +62,7 @@ type CreateBody = {
   // group
   gradeId?: string; subjectId?: string; teacherId?: string;
   price?: number; teacherPercent?: number; room?: string;
+  whatsapp?: string; // لينك جروب واتساب أولياء الأمور (فاضي = مسح)
   // teacher
   phone?: string;
   regenCode?: boolean; // توليد كود جديد لبورتال المدرس
@@ -109,6 +123,7 @@ export const POST = handler(async (req: Request) => {
         centerId: user.centerId, name,
         gradeId: grade.id, subjectId: subject.id, teacherId: teacher?.id ?? null,
         sessionPrice: price, teacherPercent: pct, room: body.room?.trim() || null,
+        whatsappUrl: normalizeWhatsapp(body.whatsapp),
       },
     });
     await logAudit({
@@ -161,6 +176,7 @@ export const PATCH = handler(async (req: Request) => {
       data.teacherPercent = pct;
     }
     if (body.room !== undefined) data.room = body.room?.trim() || null;
+    if (body.whatsapp !== undefined) data.whatsappUrl = normalizeWhatsapp(body.whatsapp);
 
     await db.group.update({ where: { id }, data: data as never });
     await logAudit({
