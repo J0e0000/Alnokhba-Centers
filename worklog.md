@@ -810,3 +810,18 @@ Stage Summary:
 - commit 8a70430 منشور → deploy أوتوماتيكي على alnokhba-centers-nine.vercel.app
 - تدفق الريسيبشن بقى: اكتب كود → بيب → اكتب الكود اللي بعده (صفر ضغطات لكل طالب)، أو اسحب بين كشوف المجموعات في نفس الشاشة
 - بقية الطابور: 1) إشعارات البورتال 2) حذف الرسائل 3) ضهر كارت الطالب 4) تحقق توصيل الإشعارات 5) Smart detection لنفس رقم الموبايل 7) Optimistic UI إضافي
+
+---
+Task ID: cleanup-orphan-dashboard
+Agent: Super Z (main agent)
+Task: «كمل كله» — استكمال كل المتبقي: تحقق النشر + تنظيف dashboard.tsx اليتيمة + فحص شامل
+
+Work Log:
+- تحقق النشر: main...origin/main = 0/0 (كل commits متدفعة) + الإنتاج لايف: الرئيسية 200 + مفتاح طابور الريسيبشن nk-ua-instant موجود في شانكس /app الإنتاجية (3gzwvdi3a6511.js) + undoReceipt/attendanceId موجودين — يعني reception-queue-flow منشور وشغال فعلاً
+- تنظيف: dashboard.tsx (926 سطر) اتأكدت إنها يتيمة 100% (صفر imports حتى dynamic — كل مراجع «dashboard» التانية strings للـ AI tools وtab IDs) → git rm + commit 55cbbc8
+- فحص شامل بعد الحذف: tsc src = 0 أخطاء ✓ + eslint src = 0 ✓ + clean build (rm -rf .next) نجح ✓ + 118/118 اختبار (hardening 48 + finance 27 + export 43) ✓
+- push 55cbbc8 → Vercel auto-deploy
+
+Stage Summary:
+- الطابور بقى فاضي: كل ميزات المالك (السبع + home redesign + طابور الريسيبشن) منشورة ومتحقق منها في الإنتاج
+- الحزمة الوحيدة اللي اتعملت الجلسة دي: تنظيف dashboard.tsx اليتيمة — الكودبيس أنضف بـ 926 سطر ميت
